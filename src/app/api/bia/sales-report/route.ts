@@ -22,7 +22,6 @@ function toISODateOnly(v: any): string | null {
   if (!v) return null;
   const s = String(v).trim();
   if (!s) return null;
-  // allow yyyy-mm-dd or yyyy-mm-ddTHH:mm:ss
   const m = s.match(/^(\d{4}-\d{2}-\d{2})/);
   return m ? m[1] : null;
 }
@@ -45,30 +44,10 @@ function monthStart(year: number, month: number) {
   return `${year}-${mm}-01`;
 }
 function monthEnd(year: number, month: number) {
-  const d = new Date(year, month, 0); // month is 1-based, day 0 => last day prev month
+  const d = new Date(year, month, 0);
   const mm = String(month).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
   return `${year}-${mm}-${dd}`;
-}
-
-function pickInvoiceEffectiveDate(si: AnyRec, soByOrderNo: Map<string, AnyRec>): string | null {
-  const d1 = toISODateOnly(si?.invoice_date);
-  if (d1) return d1;
-
-  const d2 = toISODateOnly(si?.dispatch_date);
-  if (d2) return d2;
-
-  const d3 = toISODateOnly(si?.created_date);
-  if (d3) return d3;
-
-  const orderId = si?.order_id;
-  if (orderId) {
-    const so = soByOrderNo.get(String(orderId));
-    const d4 = toISODateOnly(so?.order_date);
-    if (d4) return d4;
-  }
-
-  return null;
 }
 
 function dayOfMonth(iso: string | null): number | null {
@@ -88,11 +67,15 @@ function inSelectedMonths(dateISO: string | null, year: number, months: number[]
   return y === year && months.includes(mo);
 }
 
-async function directusGET<T = any>(path: string, params?: Record<string, string>) {
+function chunk<T>(arr: T[], size: number) {
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
+}
+
+async function directusGET(path: string, params?: Record<string, string>) {
   const url = new URL(`${DIRECTUS_BASE}${path.startsWith("/") ? "" : "/"}${path}`);
-  if (params) {
-    for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
-  }
+  if (params) for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
 
   const res = await fetch(url.toString(), {
     method: "GET",
@@ -105,44 +88,22 @@ async function directusGET<T = any>(path: string, params?: Record<string, string
 
   const ct = res.headers.get("content-type") || "";
   const isJson = ct.includes("application/json");
-  const body = isJson ? await res.json() : await res.text();
+  const body = isJson ? await res.json().catch(() => null) : await res.text().catch(() => "");
 
-  if (!res.ok) {
-    return {
-      ok: false,
-      status: res.status,
-      body,
-    } as const;
-  }
-
-  return {
-    ok: true,
-    status: res.status,
-    body,
-  } as const;
+  if (!res.ok) return { ok: false, status: res.status, body, url: url.toString() } as const;
+  return { ok: true, status: res.status, body, url: url.toString() } as const;
 }
-
-/**
- * Assumptions (Directus collections):
- * - salesman: { id, salesman_name, salesman_code }
- * - customer: { customer_code, customer_name, classification }
- * - customer_classification: { id, classification_name }
- * - sales_order: { order_no, salesman_id, customer_code, order_date, allocated_amount, isCancelled, order_status }
- * - sales_invoice: { invoice_id, salesman_id, customer_code, invoice_date, dispatch_date, created_date, net_amount, order_id }
- * - sales_invoice_sales_return: { invoice_no, return_no }
- * - sales_return: { return_id, total_amount }
- *
- * If your collection/field names differ, keep the UI code as-is and adjust ONLY these fetch field lists.
- */
 
 export async function GET(req: NextRequest) {
   const envErr = requireEnv();
   if (envErr) return json({ success: false, message: envErr, data: null }, { status: 500 });
 
+  const warnings: string[] = [];
+
   const sp = req.nextUrl.searchParams;
   const mode = (sp.get("mode") || "report").toLowerCase();
 
-  // LOOKUPS: employees + accounts (accounts derived from salesman rows)
+  // LOOKUPS
   if (mode === "lookups") {
     const r = await directusGET("/items/salesman", {
       fields: "id,salesman_name,salesman_code",
@@ -159,7 +120,6 @@ export async function GET(req: NextRequest) {
 
     const rows = (r.body?.data ?? []) as AnyRec[];
 
-    // Group employees by salesman_name
     const empMap = new Map<string, { employee: string; accounts: AnyRec[] }>();
     for (const s of rows) {
       const name = String(s?.salesman_name ?? "").trim() || "—";
@@ -185,8 +145,9 @@ export async function GET(req: NextRequest) {
 
   // REPORT
   const year = Number(sp.get("year") || "");
-  const months = parseCsvMonths(sp.get("months")); // e.g. "2,3"
-  const salesmanIds = parseCsvInts(sp.get("salesman_ids")); // accounts
+  const months = parseCsvMonths(sp.get("months"));
+  const salesmanIds = parseCsvInts(sp.get("salesman_ids"));
+
   if (!Number.isFinite(year) || year < 2000 || year > 2100) {
     return json({ success: false, message: "Invalid year", data: null }, { status: 400 });
   }
@@ -197,13 +158,12 @@ export async function GET(req: NextRequest) {
     return json({ success: false, message: "Please select at least 1 account", data: null }, { status: 400 });
   }
 
-  // Build a broad date range for fetching. (We still filter precisely in code.)
   const minM = Math.min(...months);
   const maxM = Math.max(...months);
   const rangeStart = monthStart(year, minM);
   const rangeEnd = monthEnd(year, maxM);
 
-  // 1) customers + classifications
+  // customers + classifications
   const [custRes, clsRes] = await Promise.all([
     directusGET("/items/customer", {
       fields: "customer_code,customer_name,classification",
@@ -219,10 +179,7 @@ export async function GET(req: NextRequest) {
     return json({ success: false, message: "Failed to fetch customers", error: custRes.body, data: null }, { status: custRes.status });
   }
   if (!clsRes.ok) {
-    return json(
-      { success: false, message: "Failed to fetch customer classifications", error: clsRes.body, data: null },
-      { status: clsRes.status },
-    );
+    return json({ success: false, message: "Failed to fetch customer classifications", error: clsRes.body, data: null }, { status: clsRes.status });
   }
 
   const customers = (custRes.body?.data ?? []) as AnyRec[];
@@ -242,7 +199,7 @@ export async function GET(req: NextRequest) {
     customerByCode.set(code, c);
   }
 
-  // 2) sales orders (SO)
+  // sales orders (SO)
   const soRes = await directusGET("/items/sales_order", {
     fields: "order_no,salesman_id,customer_code,order_date,allocated_amount,isCancelled,order_status",
     limit: "-1",
@@ -251,7 +208,12 @@ export async function GET(req: NextRequest) {
         { salesman_id: { _in: salesmanIds } },
         { order_date: { _between: [rangeStart, rangeEnd] } },
         {
-          _or: [{ isCancelled: { _null: true } }, { isCancelled: { _eq: false } }, { isCancelled: { _eq: 0 } }, { isCancelled: { _eq: "0" } }],
+          _or: [
+            { isCancelled: { _null: true } },
+            { isCancelled: { _eq: false } },
+            { isCancelled: { _eq: 0 } },
+            { isCancelled: { _eq: "0" } },
+          ],
         },
         { order_status: { _neq: "Cancelled" } },
       ],
@@ -269,60 +231,63 @@ export async function GET(req: NextRequest) {
     if (k) soByOrderNo.set(k, so);
   }
 
-  // 3) invoices (SI) - fetch by date windows across possible date fields
+  // invoices (SI) - by invoice_date
   const siRes = await directusGET("/items/sales_invoice", {
-    fields: "invoice_id,salesman_id,customer_code,invoice_date,dispatch_date,created_date,net_amount,order_id,discount_amount",
+    fields: "invoice_id,salesman_id,customer_code,invoice_date,net_amount,order_id",
     limit: "-1",
     filter: JSON.stringify({
-      _and: [
-        { salesman_id: { _in: salesmanIds } },
-        {
-          _or: [
-            { invoice_date: { _between: [rangeStart, rangeEnd] } },
-            { dispatch_date: { _between: [rangeStart, rangeEnd] } },
-            { created_date: { _between: [rangeStart, rangeEnd] } },
-          ],
-        },
-      ],
+      _and: [{ invoice_date: { _between: [rangeStart, rangeEnd] } }],
     }),
   });
 
   if (!siRes.ok) {
     return json({ success: false, message: "Failed to fetch sales invoices", error: siRes.body, data: null }, { status: siRes.status });
   }
+
   const salesInvoices = (siRes.body?.data ?? []) as AnyRec[];
 
-  // 4) returns link + returns totals
-  // Gather invoice_ids we have, then fetch links for those invoice ids
+  // =========================
+  // ✅ FIXED RETURNS FETCH
+  // - chunk invoice ids
+  // - never hard-fail report
+  // =========================
+  const returnedTotalByInvoice = new Map<string, number>();
+
   const invoiceIds = salesInvoices
     .map((x) => x?.invoice_id)
     .map((x) => (x === null || x === undefined ? "" : String(x).trim()))
     .filter(Boolean);
 
-  let returnedTotalByInvoice = new Map<string, number>();
+  // Link rows accumulate here
+  const linksAll: AnyRec[] = [];
 
   if (invoiceIds.length) {
-    const linkRes = await directusGET("/items/sales_invoice_sales_return", {
-      fields: "invoice_no,return_no",
-      limit: "-1",
-      filter: JSON.stringify({ invoice_no: { _in: invoiceIds } }),
-    });
+    const invoiceChunks = chunk(invoiceIds, 200); // safe chunk size to avoid huge URL
 
-    if (!linkRes.ok) {
-      return json(
-        { success: false, message: "Failed to fetch invoice-return links", error: linkRes.body, data: null },
-        { status: linkRes.status },
-      );
+    for (const part of invoiceChunks) {
+      const linkRes = await directusGET("/items/sales_invoice_sales_return", {
+        fields: "invoice_no,return_no",
+        limit: "-1",
+        filter: JSON.stringify({ invoice_no: { _in: part } }),
+      });
+
+      if (!linkRes.ok) {
+        warnings.push(
+          `Failed invoice-return links chunk (status ${linkRes.status}). This may be a Directus collection/field mismatch or URL limit. Upstream: ${JSON.stringify(
+            linkRes.body,
+          ).slice(0, 500)}`,
+        );
+        // Do not fail; proceed without returns for this chunk
+        continue;
+      }
+
+      const chunkRows = (linkRes.body?.data ?? []) as AnyRec[];
+      linksAll.push(...chunkRows);
     }
 
-    const links = (linkRes.body?.data ?? []) as AnyRec[];
-    const returnIds = links
-      .map((l) => l?.return_no)
-      .map((x) => (x === null || x === undefined ? "" : String(x).trim()))
-      .filter(Boolean);
-
+    // build invoice -> returnIds map
     const invoiceToReturnIds = new Map<string, string[]>();
-    for (const l of links) {
+    for (const l of linksAll) {
       const inv = String(l?.invoice_no ?? "").trim();
       const rid = String(l?.return_no ?? "").trim();
       if (!inv || !rid) continue;
@@ -331,28 +296,36 @@ export async function GET(req: NextRequest) {
       invoiceToReturnIds.set(inv, arr);
     }
 
+    const returnIds = Array.from(new Set(Array.from(invoiceToReturnIds.values()).flat()));
+
     if (returnIds.length) {
-      const srRes = await directusGET("/items/sales_return", {
-        fields: "return_id,total_amount",
-        limit: "-1",
-        filter: JSON.stringify({ return_id: { _in: returnIds } }),
-      });
+      const returnChunks = chunk(returnIds, 200);
 
-      if (!srRes.ok) {
-        return json({ success: false, message: "Failed to fetch sales returns", error: srRes.body, data: null }, { status: srRes.status });
-      }
-
-      const returns = (srRes.body?.data ?? []) as AnyRec[];
       const returnAmountById = new Map<string, number>();
-      for (const r of returns) {
-        const id = String(r?.return_id ?? "").trim();
-        if (!id) continue;
-        const amt = Number(r?.total_amount ?? 0) || 0;
-        returnAmountById.set(id, amt);
+
+      for (const part of returnChunks) {
+        const srRes = await directusGET("/items/sales_return", {
+          fields: "return_id,total_amount",
+          limit: "-1",
+          filter: JSON.stringify({ return_id: { _in: part } }),
+        });
+
+        if (!srRes.ok) {
+          warnings.push(
+            `Failed sales returns chunk (status ${srRes.status}). Upstream: ${JSON.stringify(srRes.body).slice(0, 500)}`,
+          );
+          continue;
+        }
+
+        const returns = (srRes.body?.data ?? []) as AnyRec[];
+        for (const r of returns) {
+          const id = String(r?.return_id ?? "").trim();
+          if (!id) continue;
+          returnAmountById.set(id, Number(r?.total_amount ?? 0) || 0);
+        }
       }
 
       // sum per invoice
-      returnedTotalByInvoice = new Map<string, number>();
       for (const [inv, rids] of invoiceToReturnIds.entries()) {
         let sum = 0;
         for (const rid of rids) sum += Number(returnAmountById.get(rid) ?? 0) || 0;
@@ -361,7 +334,7 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // Aggregation key: customer_code (we display classification + customer_name)
+  // ---------- Main aggregated report rows ----------
   type Agg = {
     customer_code: string;
     classification: string;
@@ -431,63 +404,68 @@ export async function GET(req: NextRequest) {
 
   // SO accumulation
   for (const so of salesOrders) {
-    const d = toISODateOnly(so?.order_date);
-    if (!inSelectedMonths(d, year, months)) continue;
+    const soDate = toISODateOnly(so?.order_date);
+    if (!inSelectedMonths(soDate, year, months)) continue;
 
     const code = String(so?.customer_code ?? "").trim();
     if (!code) continue;
 
-    const a = ensureAgg(code);
-
-    const amt = Number(so?.allocated_amount ?? 0) || 0;
-    const dom = dayOfMonth(d);
+    const dom = dayOfMonth(soDate);
     if (!dom) continue;
+
+    const a = ensureAgg(code);
+    const amt = Number(so?.allocated_amount ?? 0) || 0;
 
     if (dom >= 1 && dom <= 15) {
       a.so_1_15 += amt;
-      if (d) {
-        const mm = bumpDateMinMax(a.so_1_15_date_min, a.so_1_15_date_max, d);
+      if (soDate) {
+        const mm = bumpDateMinMax(a.so_1_15_date_min, a.so_1_15_date_max, soDate);
         a.so_1_15_date_min = mm.min;
         a.so_1_15_date_max = mm.max;
       }
     } else {
       a.so_16_eom += amt;
-      if (d) {
-        const mm = bumpDateMinMax(a.so_16_eom_date_min, a.so_16_eom_date_max, d);
+      if (soDate) {
+        const mm = bumpDateMinMax(a.so_16_eom_date_min, a.so_16_eom_date_max, soDate);
         a.so_16_eom_date_min = mm.min;
         a.so_16_eom_date_max = mm.max;
       }
     }
   }
 
-  // SI accumulation (net - returns)
+  // SI accumulation (by si.invoice_date)
   for (const si of salesInvoices) {
-    const effDate = pickInvoiceEffectiveDate(si, soByOrderNo);
-    if (!inSelectedMonths(effDate, year, months)) continue;
+    const siDate = toISODateOnly(si?.invoice_date);
+    if (!inSelectedMonths(siDate, year, months)) continue;
 
-    const code = String(si?.customer_code ?? "").trim();
+    const orderId = String(si?.order_id ?? "").trim();
+    const so = orderId ? soByOrderNo.get(orderId) : null;
+    const effSalesmanId = Number(si?.salesman_id ?? so?.salesman_id ?? 0);
+    if (!salesmanIds.includes(effSalesmanId)) continue;
+
+    const code = String(si?.customer_code ?? so?.customer_code ?? "").trim();
     if (!code) continue;
 
     const invId = String(si?.invoice_id ?? "").trim();
     const ret = Number(returnedTotalByInvoice.get(invId) ?? 0) || 0;
+    const net = (Number(si?.net_amount ?? 0) || 0) - ret;
 
-    const net = (Number(si?.net_amount ?? 0) || 0) + (Number(si?.discount_amount ?? 0) || 0) - ret;
-    const dom = dayOfMonth(effDate);
+    const dom = dayOfMonth(siDate);
     if (!dom) continue;
 
     const a = ensureAgg(code);
 
     if (dom >= 1 && dom <= 15) {
       a.si_1_15 += net;
-      if (effDate) {
-        const mm = bumpDateMinMax(a.si_1_15_date_min, a.si_1_15_date_max, effDate);
+      if (siDate) {
+        const mm = bumpDateMinMax(a.si_1_15_date_min, a.si_1_15_date_max, siDate);
         a.si_1_15_date_min = mm.min;
         a.si_1_15_date_max = mm.max;
       }
     } else {
       a.si_16_eom += net;
-      if (effDate) {
-        const mm = bumpDateMinMax(a.si_16_eom_date_min, a.si_16_eom_date_max, effDate);
+      if (siDate) {
+        const mm = bumpDateMinMax(a.si_16_eom_date_min, a.si_16_eom_date_max, siDate);
         a.si_16_eom_date_min = mm.min;
         a.si_16_eom_date_max = mm.max;
       }
@@ -520,23 +498,65 @@ export async function GET(req: NextRequest) {
         total_si: totalSI,
       };
     })
-    .sort((x, y) => (x.classification || "").localeCompare(y.classification || "") || (x.customer_name || "").localeCompare(y.customer_name || ""));
+    .sort(
+      (x, y) =>
+        (x.classification || "").localeCompare(y.classification || "") ||
+        (x.customer_name || "").localeCompare(y.customer_name || ""),
+    );
 
   const totalAllocated = rows.reduce((s, r) => s + (Number(r.so_1_15) || 0) + (Number(r.so_16_eom) || 0), 0);
   const totalInvoiced = rows.reduce((s, r) => s + (Number(r.si_1_15) || 0) + (Number(r.si_16_eom) || 0), 0);
   const unservedBalance = totalAllocated - totalInvoiced;
+
+  // invoices table
+  const invoiceRows = salesInvoices
+    .map((si) => {
+      const invId = String(si?.invoice_id ?? "").trim();
+      const siDate = toISODateOnly(si?.invoice_date);
+      if (!inSelectedMonths(siDate, year, months)) return null;
+
+      const orderId = String(si?.order_id ?? "").trim();
+      const so = orderId ? soByOrderNo.get(orderId) : null;
+      const effSalesmanId = Number(si?.salesman_id ?? so?.salesman_id ?? 0);
+      if (!salesmanIds.includes(effSalesmanId)) return null;
+
+      const custCode = String(si?.customer_code ?? so?.customer_code ?? "").trim();
+      const cust = custCode ? customerByCode.get(custCode) : null;
+      const customerName = String(cust?.customer_name ?? "").trim() || custCode || "—";
+
+      const poDate = toISODateOnly(so?.order_date);
+      const ret = Number(returnedTotalByInvoice.get(invId) ?? 0) || 0;
+      const net = (Number(si?.net_amount ?? 0) || 0) - ret;
+
+      return {
+        customer: customerName,
+        po_date: poDate ?? "—",
+        si_date: siDate ?? "—",
+        net_amount: net,
+      };
+    })
+    .filter(Boolean) as Array<{ customer: string; po_date: string; si_date: string; net_amount: number }>;
+
+  invoiceRows.sort(
+    (a, b) =>
+      (a.customer || "").localeCompare(b.customer || "") ||
+      (a.po_date || "").localeCompare(b.po_date || "") ||
+      (a.si_date || "").localeCompare(b.si_date || ""),
+  );
 
   return json(
     {
       success: true,
       message: "OK",
       data: {
+        warnings, // ✅ you can log/show this if needed
         kpis: {
           total_allocated: totalAllocated,
           total_invoiced: totalInvoiced,
           unserved_balance: unservedBalance,
         },
         rows,
+        invoices: invoiceRows,
       },
     },
     { status: 200 },

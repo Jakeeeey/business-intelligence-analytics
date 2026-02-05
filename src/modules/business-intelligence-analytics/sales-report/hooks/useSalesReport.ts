@@ -3,7 +3,13 @@
 import * as React from "react";
 import { toast } from "sonner";
 
-import type { EmployeeGroup, SalesReportFilters, SalesReportKpis, SalesReportRow } from "../types";
+import type {
+  EmployeeGroup,
+  SalesReportFilters,
+  SalesReportKpis,
+  SalesReportRow,
+  SalesInvoiceRow,
+} from "../types";
 import { getLookups, getSalesReport } from "../providers/fetchProvider";
 
 export function useSalesReport() {
@@ -19,6 +25,7 @@ export function useSalesReport() {
 
   const [loading, setLoading] = React.useState(false);
   const [rows, setRows] = React.useState<SalesReportRow[]>([]);
+  const [invoices, setInvoices] = React.useState<SalesInvoiceRow[]>([]);
   const [kpis, setKpis] = React.useState<SalesReportKpis | null>(null);
 
   async function loadLookups() {
@@ -45,7 +52,9 @@ export function useSalesReport() {
         months: filters.months,
         salesman_ids: filters.accountIds,
       });
+
       setRows(data.rows ?? []);
+      setInvoices(data.invoices ?? []);
       setKpis(data.kpis ?? null);
     } catch (e: any) {
       toast.error(e?.message || "Failed to generate report.");
@@ -64,6 +73,7 @@ export function useSalesReport() {
 
     loading,
     rows,
+    invoices,
     kpis,
 
     generate,

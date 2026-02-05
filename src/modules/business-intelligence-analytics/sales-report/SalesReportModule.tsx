@@ -4,6 +4,7 @@ import * as React from "react";
 import { SalesReportFiltersBar } from "./components/SalesReportFilters";
 import { SalesReportKpisBar } from "./components/SalesReportKpis";
 import { SalesReportTable } from "./components/SalesReportTable";
+import { SalesInvoicesTable } from "./components/SalesInvoicesTable";
 import { exportSalesReportCsv } from "./utils/exportCsv";
 import { useSalesReport } from "./hooks/useSalesReport";
 
@@ -35,6 +36,9 @@ export default function SalesReportModule() {
       <SalesReportKpisBar kpis={sr.kpis} />
 
       <SalesReportTable rows={sr.rows} loading={sr.loading} />
+
+      {/* ✅ NEW: Invoices table below */}
+      <SalesInvoicesTable rows={sr.invoices} loading={sr.loading} />
     </div>
   );
 }

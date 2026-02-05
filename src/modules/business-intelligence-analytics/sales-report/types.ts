@@ -1,11 +1,11 @@
 export type SalesmanAccount = {
-  id: number; // salesman.id (account)
+  id: number;
   salesman_code: string;
   salesman_name: string;
 };
 
 export type EmployeeGroup = {
-  employee: string; // salesman_name grouped
+  employee: string;
   accounts: SalesmanAccount[];
 };
 
@@ -25,7 +25,7 @@ export type SalesReportRow = {
 
   // Freq 1 (1-15)
   so_1_15: number;
-  so_1_15_date: string; // single date or range label
+  so_1_15_date: string;
   si_1_15: number;
   si_1_15_date: string;
 
@@ -39,14 +39,22 @@ export type SalesReportRow = {
   total_si: number;
 };
 
+export type SalesInvoiceRow = {
+  customer: string;
+  po_date: string; // sales_order.order_date (date only / label)
+  si_date: string; // sales_invoice.invoice_date (date only / label)
+  net_amount: number; // si.net_amount - total returns linked
+};
+
 export type SalesReportFilters = {
-  employee: string | null; // employee group (salesman_name)
-  accountIds: number[]; // salesman ids (multi)
-  months: number[]; // 1..12 (multi)
+  employee: string | null;
+  accountIds: number[];
+  months: number[];
   year: number;
 };
 
 export type SalesReportResponse = {
   kpis: SalesReportKpis;
   rows: SalesReportRow[];
+  invoices: SalesInvoiceRow[]; // ✅ new
 };
