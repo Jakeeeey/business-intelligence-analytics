@@ -1,130 +1,149 @@
 "use client";
 
 import * as React from "react";
-import { toast } from "sonner";
-
 import type { EmployeeGroup, SalesReportFilters } from "../types";
-import { MONTHS } from "../utils/months";
+
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+
 import { MultiSelect } from "./MultiSelect";
 
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-
-function yearOptions(nowYear: number) {
-  return [nowYear, nowYear - 1, nowYear - 2].map((y) => String(y));
-}
-
-export function SalesReportFiltersBar(props: {
+type Props = {
   employees: EmployeeGroup[];
   value: SalesReportFilters;
-  onChange: (next: SalesReportFilters) => void;
+  onChange: React.Dispatch<React.SetStateAction<SalesReportFilters>>;
   onGenerate: () => void;
   onExport: () => void;
-  disabled?: boolean;
   loading?: boolean;
-}) {
-  const { employees, value, onChange, onGenerate, onExport, disabled, loading } = props;
+  disabled?: boolean;
+};
 
-  const employeeOptions = employees.map((e) => ({ value: e.employee, label: e.employee }));
-  const selectedEmployee = value.employee ? employees.find((e) => e.employee === value.employee) : null;
+export function SalesReportFiltersBar(props: Props) {
+  const { employees, value, onChange, onGenerate, onExport, loading, disabled } = props;
 
-  const accountOptions =
-    selectedEmployee?.accounts.map((a) => ({
-      value: String(a.id),
-      label: `${a.salesman_code} - ${a.salesman_name}`,
-    })) ?? [];
+  const employeeOptions =
+    employees?.map((e) => ({ label: e.employee, value: e.employee })) ?? [];
 
-  const monthOptions = MONTHS.map((m) => ({ value: String(m.value), label: m.label }));
+  const selectedEmployee = value.employee;
+  const accountsForEmployee =
+    employees.find((e) => e.employee === selectedEmployee)?.accounts ?? [];
 
-  const years = yearOptions(new Date().getFullYear());
+  const accountOptions = accountsForEmployee.map((a) => ({
+    label: `${a.salesman_code ? `${a.salesman_code} - ` : ""}${a.salesman_name}`,
+    value: String(a.id),
+  }));
+
+  const monthOptions = [
+    { label: "January", value: "1" },
+    { label: "February", value: "2" },
+    { label: "March", value: "3" },
+    { label: "April", value: "4" },
+    { label: "May", value: "5" },
+    { label: "June", value: "6" },
+    { label: "July", value: "7" },
+    { label: "August", value: "8" },
+    { label: "September", value: "9" },
+    { label: "October", value: "10" },
+    { label: "November", value: "11" },
+    { label: "December", value: "12" },
+  ];
+
+  const yearOptions = [2026, 2025, 2024].map((y) => ({ label: String(y), value: String(y) }));
 
   return (
     <Card className="border-muted">
       <CardContent className="p-4">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-end">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[260px_260px_200px_120px_auto_auto] lg:items-center lg:justify-end w-full">
-            {/* Employee (single) */}
-            <Select
-              value={value.employee ?? ""}
-              onValueChange={(v) => {
-                // reset accounts when employee changes
-                onChange({ ...value, employee: v || null, accountIds: [] });
-              }}
-              disabled={disabled || loading}
-            >
-              <SelectTrigger className="w-full cursor-pointer">
-                <SelectValue placeholder="Select Salesman" />
-              </SelectTrigger>
-              <SelectContent>
-                {employeeOptions.map((o) => (
-                  <SelectItem key={o.value} value={o.value} className="cursor-pointer">
-                    {o.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            {/* Accounts (multi) */}
-            <MultiSelect
-              value={value.accountIds.map(String)}
-              options={accountOptions}
-              placeholder="Select Accounts"
-              searchPlaceholder="Search accounts..."
-              disabled={disabled || loading || !value.employee}
-              onChange={(vals) => onChange({ ...value, accountIds: vals.map((x) => Number(x)).filter(Number.isFinite) })}
-            />
-
-            {/* Months (multi) */}
-            <MultiSelect
-              value={value.months.map(String)}
-              options={monthOptions}
-              placeholder="Select Months"
-              searchPlaceholder="Search months..."
-              disabled={disabled || loading}
-              onChange={(vals) => onChange({ ...value, months: vals.map((x) => Number(x)).filter((n) => Number.isFinite(n) && n >= 1 && n <= 12) })}
-            />
-
-            {/* Year (single) */}
-            <Select
-              value={String(value.year)}
-              onValueChange={(v) => onChange({ ...value, year: Number(v) })}
-              disabled={disabled || loading}
-            >
-              <SelectTrigger className="w-full cursor-pointer">
-                <SelectValue placeholder="Year" />
-              </SelectTrigger>
-              <SelectContent>
-                {years.map((y) => (
-                  <SelectItem key={y} value={y} className="cursor-pointer">
-                    {y}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Button
-              className="w-full cursor-pointer lg:w-auto"
-              disabled={disabled || loading}
-              onClick={() => {
-                if (!value.employee) return toast.error("Please select a Salesman.");
-                if (!value.accountIds.length) return toast.error("Please select at least 1 account.");
-                if (!value.months.length) return toast.error("Please select at least 1 month.");
-                onGenerate();
-              }}
-            >
-              {loading ? "Generating..." : "Generate"}
-            </Button>
-
-            <Button
-              variant="outline"
-              className="w-full cursor-pointer lg:w-auto"
-              disabled={disabled || loading}
-              onClick={onExport}
-            >
-              Export
-            </Button>
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          {/* LEFT: Title */}
+          <div className="min-w-0">
+            <div className="text-xl font-bold leading-tight">Sales Performance</div>
+            <div className="text-sm text-muted-foreground">Allocation vs. Invoiced Report</div>
           </div>
+
+          {/* RIGHT: Filters + Actions */}
+          <div className="flex w-full flex-col gap-3 lg:w-auto lg:flex-row lg:items-center lg:justify-end">
+            <div className="flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap lg:w-auto lg:flex-nowrap">
+              {/* ✅ Salesman MUST be single-select */}
+              <div className="min-w-0 flex-1 sm:flex-none sm:min-w-[220px] lg:min-w-[240px]">
+                <MultiSelect
+                  mode="single"
+                  placeholder="Select Salesman"
+                  options={employeeOptions}
+                  value={value.employee ? [value.employee] : []}
+                  onChange={(vals) => {
+                    const emp = (vals?.[0] ?? null) as string | null;
+
+                    onChange((prev) => ({
+                      ...prev,
+                      employee: emp,
+                      // reset accounts if salesman changes
+                      accountIds: [],
+                    }));
+                  }}
+                  disabled={disabled}
+                />
+              </div>
+
+              {/* Accounts stays multi-select */}
+              <div className="min-w-0 flex-1 sm:flex-none sm:min-w-[240px] lg:min-w-[260px]">
+                <MultiSelect
+                  mode="multi"
+                  placeholder="Select Accounts"
+                  options={accountOptions}
+                  value={(value.accountIds ?? []).map(String)}
+                  onChange={(vals) => {
+                    const ids = (vals ?? []).map((v) => Number(v)).filter(Number.isFinite);
+                    onChange((prev) => ({ ...prev, accountIds: ids }));
+                  }}
+                  disabled={disabled || !value.employee}
+                />
+              </div>
+
+              {/* Month stays multi-select */}
+              <div className="min-w-0 flex-1 sm:flex-none sm:min-w-[200px] lg:min-w-[200px]">
+                <MultiSelect
+                  mode="multi"
+                  placeholder="Select Month"
+                  options={monthOptions}
+                  value={(value.months ?? []).map(String)}
+                  onChange={(vals) => {
+                    const ms = (vals ?? []).map((v) => Number(v)).filter(Number.isFinite);
+                    onChange((prev) => ({ ...prev, months: ms }));
+                  }}
+                  disabled={disabled}
+                />
+              </div>
+
+              {/* Year single-select */}
+              <div className="min-w-0 flex-1 sm:flex-none sm:min-w-[120px] lg:min-w-[120px]">
+                <MultiSelect
+                  mode="single"
+                  placeholder="Year"
+                  options={yearOptions}
+                  value={[String(value.year)]}
+                  onChange={(vals) => {
+                    const y = Number(vals?.[0] ?? value.year);
+                    onChange((prev) => ({ ...prev, year: Number.isFinite(y) ? y : prev.year }));
+                  }}
+                  disabled={disabled}
+                />
+              </div>
+            </div>
+
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:justify-end">
+              <Button className="w-full sm:w-auto" onClick={onGenerate} disabled={disabled || loading}>
+                {loading ? "Generating..." : "Generate"}
+              </Button>
+              <Button variant="outline" className="w-full sm:w-auto" onClick={onExport} disabled={loading}>
+                Export
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4">
+          <Separator />
         </div>
       </CardContent>
     </Card>

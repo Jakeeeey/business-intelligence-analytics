@@ -18,20 +18,27 @@ export default function SalesReportModule() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-1">
+      {/* <div className="flex flex-col gap-1">
         <div className="text-2xl font-bold">Sales Performance</div>
         <div className="text-sm text-muted-foreground">Allocation vs. Invoiced Report</div>
-      </div>
+      </div> */}
 
       <SalesReportFiltersBar
         employees={sr.employees}
         value={sr.filters}
         onChange={sr.setFilters}
         onGenerate={sr.generate}
-        onExport={() => exportSalesReportCsv(sr.rows)}
+        onExport={() =>
+          exportSalesReportCsv({
+            reportRows: sr.rows,
+            invoiceRows: sr.invoices,
+            filters: sr.filters,
+          })
+        }
         loading={sr.loading}
         disabled={sr.loadingLookups}
       />
+
 
       <SalesReportKpisBar kpis={sr.kpis} />
 
