@@ -54,7 +54,7 @@ export function SalesReportFiltersBar(props: {
               disabled={disabled || loading}
             >
               <SelectTrigger className="w-full cursor-pointer">
-                <SelectValue placeholder="Select Employee" />
+                <SelectValue placeholder="Select Salesman" />
               </SelectTrigger>
               <SelectContent>
                 {employeeOptions.map((o) => (
@@ -107,7 +107,7 @@ export function SalesReportFiltersBar(props: {
               className="w-full cursor-pointer lg:w-auto"
               disabled={disabled || loading}
               onClick={() => {
-                if (!value.employee) return toast.error("Please select an employee.");
+                if (!value.employee) return toast.error("Please select a Salesman.");
                 if (!value.accountIds.length) return toast.error("Please select at least 1 account.");
                 if (!value.months.length) return toast.error("Please select at least 1 month.");
                 onGenerate();

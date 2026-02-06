@@ -4,17 +4,66 @@ import * as React from "react";
 import type { SalesReportRow } from "../types";
 import { formatNumber } from "../utils/format";
 
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
+
+function ReportTableSkeletonRows(props: { rows?: number }) {
+  const rows = props.rows ?? 6;
+
+  return (
+    <>
+      {Array.from({ length: rows }).map((_, i) => (
+        <TableRow key={`sk-${i}`}>
+          <TableCell>
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-[180px]" />
+              <Skeleton className="h-3 w-[120px]" />
+            </div>
+          </TableCell>
+
+          <TableCell>
+            <Skeleton className="h-4 w-[260px]" />
+          </TableCell>
+
+          {/* FREQ 1 */}
+          <TableCell className="text-right">
+            <Skeleton className="ml-auto h-4 w-[110px]" />
+          </TableCell>
+          <TableCell>
+            <Skeleton className="h-4 w-[140px]" />
+          </TableCell>
+          <TableCell className="text-right">
+            <Skeleton className="ml-auto h-4 w-[110px]" />
+          </TableCell>
+          <TableCell>
+            <Skeleton className="h-4 w-[140px]" />
+          </TableCell>
+
+          {/* FREQ 2 */}
+          <TableCell className="text-right">
+            <Skeleton className="ml-auto h-4 w-[110px]" />
+          </TableCell>
+          <TableCell>
+            <Skeleton className="h-4 w-[140px]" />
+          </TableCell>
+          <TableCell className="text-right">
+            <Skeleton className="ml-auto h-4 w-[110px]" />
+          </TableCell>
+          <TableCell>
+            <Skeleton className="h-4 w-[140px]" />
+          </TableCell>
+
+          {/* TOTAL */}
+          <TableCell className="text-right">
+            <Skeleton className="ml-auto h-4 w-[120px]" />
+          </TableCell>
+        </TableRow>
+      ))}
+    </>
+  );
+}
 
 export function SalesReportTable(props: { rows: SalesReportRow[]; loading?: boolean }) {
   const { rows, loading } = props;
@@ -23,42 +72,48 @@ export function SalesReportTable(props: { rows: SalesReportRow[]; loading?: bool
     <Card className="border-muted">
       <CardContent className="p-0">
         <ScrollArea className="w-full">
-          <div className="min-w-[1400px]">
+          <div className="min-w-[1200px]">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead rowSpan={2} className="w-[220px]">CLASSIFICATION</TableHead>
-                  <TableHead rowSpan={2} className="w-[320px]">CUSTOMER NAME</TableHead>
+                  <TableHead rowSpan={2} className="w-[200px] align-middle">
+                    CLASSIFICATION
+                  </TableHead>
+                  <TableHead rowSpan={2} className="w-[320px] align-middle">
+                    CUSTOMER NAME
+                  </TableHead>
 
-                  <TableHead colSpan={4} className="text-center">FREQ 1 (1 - 15)</TableHead>
-                  <TableHead colSpan={4} className="text-center">FREQ 2 (16 - END)</TableHead>
+                  <TableHead colSpan={4} className="text-center">
+                    FREQ 1 ( 1 - 15 )
+                  </TableHead>
+                  <TableHead colSpan={4} className="text-center">
+                    FREQ 2 ( 16 - END )
+                  </TableHead>
 
-                  <TableHead rowSpan={2} className="text-right w-[160px]">TOTAL (SI)</TableHead>
+                  <TableHead rowSpan={2} className="w-[140px] text-right align-middle">
+                    TOTAL (SI)
+                  </TableHead>
                 </TableRow>
 
                 <TableRow>
-                  <TableHead className="w-[150px] text-right">Allocated (SO)</TableHead>
-                  <TableHead className="w-[180px]">SO Date</TableHead>
-                  <TableHead className="w-[150px] text-right">Net Sales (SI)</TableHead>
-                  <TableHead className="w-[180px]">SI Date</TableHead>
+                  <TableHead className="text-right">Allocated (SO)</TableHead>
+                  <TableHead>SO Date</TableHead>
+                  <TableHead className="text-right">Net Sales (SI)</TableHead>
+                  <TableHead>SI Date</TableHead>
 
-                  <TableHead className="w-[150px] text-right">Allocated (SO)</TableHead>
-                  <TableHead className="w-[180px]">SO Date</TableHead>
-                  <TableHead className="w-[150px] text-right">Net Sales (SI)</TableHead>
-                  <TableHead className="w-[180px]">SI Date</TableHead>
+                  <TableHead className="text-right">Allocated (SO)</TableHead>
+                  <TableHead>SO Date</TableHead>
+                  <TableHead className="text-right">Net Sales (SI)</TableHead>
+                  <TableHead>SI Date</TableHead>
                 </TableRow>
               </TableHeader>
 
               <TableBody>
                 {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={11} className="h-28 text-center text-muted-foreground">
-                      Loading...
-                    </TableCell>
-                  </TableRow>
+                  <ReportTableSkeletonRows rows={7} />
                 ) : rows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={11} className="h-28 text-center text-muted-foreground">
+                    <TableCell colSpan={11} className="h-24 text-center text-muted-foreground">
                       No content in table
                     </TableCell>
                   </TableRow>

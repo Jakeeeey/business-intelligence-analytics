@@ -7,6 +7,38 @@ import { formatNumber } from "../utils/format";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
+
+function InvoicesTableSkeletonRows(props: { rows?: number }) {
+  const rows = props.rows ?? 6;
+
+  return (
+    <>
+      {Array.from({ length: rows }).map((_, i) => (
+        <TableRow key={`inv-sk-${i}`}>
+          <TableCell>
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-[320px]" />
+              <Skeleton className="h-3 w-[200px]" />
+            </div>
+          </TableCell>
+
+          <TableCell>
+            <Skeleton className="h-4 w-[140px]" />
+          </TableCell>
+
+          <TableCell>
+            <Skeleton className="h-4 w-[160px]" />
+          </TableCell>
+
+          <TableCell className="text-right">
+            <Skeleton className="ml-auto h-4 w-[150px]" />
+          </TableCell>
+        </TableRow>
+      ))}
+    </>
+  );
+}
 
 export function SalesInvoicesTable(props: { rows: SalesInvoiceRow[]; loading?: boolean }) {
   const { rows, loading } = props;
@@ -35,17 +67,13 @@ export function SalesInvoicesTable(props: { rows: SalesInvoiceRow[]; loading?: b
 
               <TableBody>
                 {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
-                      Loading...
-                    </TableCell>
-                  </TableRow>
+                  <InvoicesTableSkeletonRows rows={7} />
                 ) : rows.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
                       No content in table
                     </TableCell>
-                  </TableRow>
+                </TableRow>
                 ) : (
                   rows.map((r, idx) => (
                     <TableRow key={idx}>
