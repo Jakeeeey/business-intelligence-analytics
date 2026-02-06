@@ -1,3 +1,4 @@
+//src/modules/business-intelligence-analytics/sales-report/SalesReportModule.tsx
 "use client";
 
 import * as React from "react";

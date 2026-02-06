@@ -1,12 +1,15 @@
+// src/modules/business-intelligence-analytics/sales-report/types.ts
+
 export type SalesmanAccount = {
-  id: number;
+  salesman_id: number;
   salesman_code: string;
   salesman_name: string;
 };
 
 export type EmployeeGroup = {
-  employee: string;
-  accounts: SalesmanAccount[];
+  employee_id: number;        // ✅ key for Salesman dropdown
+  employee_name: string;      // ✅ display label
+  accounts: SalesmanAccount[]; // ✅ Accounts are salesman_code under this employee_id
 };
 
 export type SalesReportLookups = {
@@ -41,20 +44,21 @@ export type SalesReportRow = {
 
 export type SalesInvoiceRow = {
   customer: string;
-  po_date: string; // sales_order.order_date (date only / label)
-  si_date: string; // sales_invoice.invoice_date (date only / label)
-  net_amount: number; // si.net_amount - total returns linked
+  po_date: string;
+  si_date: string;
+  net_amount: number;
 };
 
 export type SalesReportFilters = {
-  employee: string | null;
+  employee_id: number | null; // ✅
   accountIds: number[];
   months: number[];
   year: number;
 };
 
+
 export type SalesReportResponse = {
   kpis: SalesReportKpis;
   rows: SalesReportRow[];
-  invoices: SalesInvoiceRow[]; // ✅ new
+  invoices: SalesInvoiceRow[];
 };

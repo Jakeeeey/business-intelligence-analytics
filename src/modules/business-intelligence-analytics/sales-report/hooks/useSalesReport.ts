@@ -1,3 +1,4 @@
+// src/modules/business-intelligence-analytics/sales-report/hooks/useSalesReport.ts
 "use client";
 
 import * as React from "react";
@@ -17,11 +18,12 @@ export function useSalesReport() {
   const [loadingLookups, setLoadingLookups] = React.useState(false);
 
   const [filters, setFilters] = React.useState<SalesReportFilters>(() => ({
-    employee: null,
-    accountIds: [],
-    months: [],
-    year: new Date().getFullYear(),
-  }));
+  employee_id: null,
+  accountIds: [],
+  months: [],
+  year: new Date().getFullYear(),
+}));
+
 
   const [loading, setLoading] = React.useState(false);
   const [rows, setRows] = React.useState<SalesReportRow[]>([]);
@@ -41,8 +43,8 @@ export function useSalesReport() {
   }
 
   async function generate() {
-    if (!filters.employee) return toast.error("Please select an employee.");
-    if (!filters.accountIds.length) return toast.error("Please select at least 1 account.");
+    if (!filters.employee_id) return toast.error("Please select a salesman.");
+    if (!filters.salesman_codes.length) return toast.error("Please select at least 1 account.");
     if (!filters.months.length) return toast.error("Please select at least 1 month.");
 
     setLoading(true);
@@ -50,7 +52,8 @@ export function useSalesReport() {
       const data = await getSalesReport({
         year: filters.year,
         months: filters.months,
-        salesman_ids: filters.accountIds,
+        employee_id: filters.employee_id,
+        salesman_codes: filters.salesman_codes,
       });
 
       setRows(data.rows ?? []);

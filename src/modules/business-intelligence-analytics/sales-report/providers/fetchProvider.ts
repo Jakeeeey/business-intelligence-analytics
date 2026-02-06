@@ -1,3 +1,4 @@
+// src/modules/business-intelligence-analytics/sales-report/providers/fetchProvider.ts
 import type { SalesReportLookups, SalesReportResponse } from "../types";
 
 async function http<T>(url: string): Promise<T> {
@@ -18,13 +19,15 @@ export async function getLookups() {
 
 export async function getSalesReport(params: {
   year: number;
-  months: number[]; // multi
-  salesman_ids: number[]; // accounts multi
+  months: number[];
+  employee_id: number;
+  salesman_codes: string[];
 }) {
   const sp = new URLSearchParams();
   sp.set("mode", "report");
   sp.set("year", String(params.year));
   sp.set("months", params.months.join(","));
-  sp.set("salesman_ids", params.salesman_ids.join(","));
+  sp.set("employee_id", String(params.employee_id));
+  sp.set("salesman_codes", params.salesman_codes.join(","));
   return http<SalesReportResponse>(`/api/bia/sales-report?${sp.toString()}`);
 }

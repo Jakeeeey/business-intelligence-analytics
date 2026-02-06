@@ -1,3 +1,4 @@
+// src/modules/business-intelligence-analytics/sales-report/utils/exportCsv.ts
 "use client";
 
 import * as XLSX from "xlsx";
@@ -120,7 +121,8 @@ export function exportSalesReportCsv(args: {
   XLSX.utils.book_append_sheet(wb, ws1, "Sales Report");
   XLSX.utils.book_append_sheet(wb, ws2, "Invoices");
 
-  const employeePart = safeFilenamePart(filters?.employee ?? "AllSalesmen");
+  // ✅ UPDATED: Salesman selection is employee_id now
+  const employeePart = safeFilenamePart(String(filters?.employee_id ?? "AllSalesmen"));
   const yearPart = safeFilenamePart(String(filters?.year ?? ""));
   const monthPart = safeFilenamePart(formatMonths(filters?.months));
 

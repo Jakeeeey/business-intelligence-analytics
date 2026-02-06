@@ -1,3 +1,4 @@
+// src/modules/business-intelligence-analytics/sales-report/components/SalesReportFilters.tsx
 "use client";
 
 import * as React from "react";
@@ -22,16 +23,21 @@ type Props = {
 export function SalesReportFiltersBar(props: Props) {
   const { employees, value, onChange, onGenerate, onExport, loading, disabled } = props;
 
+  // ✅ Salesman dropdown: value = employee_id
   const employeeOptions =
-    employees?.map((e) => ({ label: e.employee, value: e.employee })) ?? [];
+  employees?.map((e) => ({
+    label: e.employee,              // ✅ displays "Dave Wilmore Duran"
+    value: String(e.employee_id),   // ✅ internal filter uses employee_id
+  })) ?? [];
 
-  const selectedEmployee = value.employee;
+  const selectedEmployeeId = value.employee_id; // number | null
   const accountsForEmployee =
-    employees.find((e) => e.employee === selectedEmployee)?.accounts ?? [];
+    employees.find((e) => e.employee_id === selectedEmployeeId)?.accounts ?? [];
 
+  // ✅ Accounts dropdown: value = salesman_code
   const accountOptions = accountsForEmployee.map((a) => ({
-    label: `${a.salesman_code ? `${a.salesman_code} - ` : ""}${a.salesman_name}`,
-    value: String(a.id),
+    label: `${a.salesman_code}${a.salesman_name ? ` - ${a.salesman_name}` : ""}`,
+    value: String(a.salesman_code),
   }));
 
   const monthOptions = [
@@ -64,39 +70,37 @@ export function SalesReportFiltersBar(props: Props) {
           {/* RIGHT: Filters + Actions */}
           <div className="flex w-full flex-col gap-3 lg:w-auto lg:flex-row lg:items-center lg:justify-end">
             <div className="flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap lg:w-auto lg:flex-nowrap">
-              {/* ✅ Salesman MUST be single-select */}
+              {/* ✅ Salesman single-select (employee_id) */}
               <div className="min-w-0 flex-1 sm:flex-none sm:min-w-[220px] lg:min-w-[240px]">
                 <MultiSelect
                   mode="single"
                   placeholder="Select Salesman"
                   options={employeeOptions}
-                  value={value.employee ? [value.employee] : []}
+                  value={value.employee_id ? [String(value.employee_id)] : []}
                   onChange={(vals) => {
-                    const emp = (vals?.[0] ?? null) as string | null;
-
+                    const id = Number(vals?.[0] ?? "");
                     onChange((prev) => ({
                       ...prev,
-                      employee: emp,
-                      // reset accounts if salesman changes
-                      accountIds: [],
+                      employee_id: Number.isFinite(id) ? id : null,
+                      accountIds: [], // reset accounts when salesman changes
                     }));
                   }}
-                  disabled={disabled}
                 />
+
               </div>
 
-              {/* Accounts stays multi-select */}
+              {/* ✅ Accounts multi-select (salesman_code) */}
               <div className="min-w-0 flex-1 sm:flex-none sm:min-w-[240px] lg:min-w-[260px]">
                 <MultiSelect
                   mode="multi"
                   placeholder="Select Accounts"
                   options={accountOptions}
-                  value={(value.accountIds ?? []).map(String)}
+                  value={(value.salesman_codes ?? []).map(String)}
                   onChange={(vals) => {
-                    const ids = (vals ?? []).map((v) => Number(v)).filter(Number.isFinite);
-                    onChange((prev) => ({ ...prev, accountIds: ids }));
+                    const codes = (vals ?? []).map(String).filter(Boolean);
+                    onChange((prev) => ({ ...prev, salesman_codes: codes }));
                   }}
-                  disabled={disabled || !value.employee}
+                  disabled={disabled || !value.employee_id}
                 />
               </div>
 

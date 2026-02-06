@@ -31,7 +31,15 @@ function parseCsvInts(s: string | null): number[] {
   return s
     .split(",")
     .map((x) => Number(String(x).trim()))
-    .filter((n) => Number.isFinite(n) && n > 0);
+    .filter((n) => Number.isFinite(n));
+}
+
+function parseCsvStrings(s: string | null): string[] {
+  if (!s) return [];
+  return s
+    .split(",")
+    .map((x) => String(x).trim())
+    .filter((v) => !!v);
 }
 
 function parseCsvMonths(s: string | null): number[] {
@@ -73,6 +81,32 @@ function chunk<T>(arr: T[], size: number) {
   return out;
 }
 
+function isNotCancelled(so: AnyRec) {
+  const v = so?.isCancelled;
+  const os = String(so?.order_status ?? "").trim();
+  const cancelled =
+    v === true ||
+    v === 1 ||
+    v === "1" ||
+    v === "true" ||
+    v === "TRUE" ||
+    v === "yes" ||
+    v === "YES";
+  return !cancelled && os !== "Cancelled";
+}
+
+function dateLabel(min: string | null, max: string | null) {
+  if (!min && !max) return "—";
+  if (min && max && min !== max) return `${min} → ${max}`;
+  return min ?? max ?? "—";
+}
+
+function bumpDateMinMax(curMin: string | null, curMax: string | null, d: string) {
+  const min = !curMin || d < curMin ? d : curMin;
+  const max = !curMax || d > curMax ? d : curMax;
+  return { min, max };
+}
+
 async function directusGET(path: string, params?: Record<string, string>) {
   const url = new URL(`${DIRECTUS_BASE}${path.startsWith("/") ? "" : "/"}${path}`);
   if (params) for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
@@ -94,59 +128,105 @@ async function directusGET(path: string, params?: Record<string, string>) {
   return { ok: true, status: res.status, body, url: url.toString() } as const;
 }
 
+async function fetchAllItems(collection: string, fields: string, filterObj?: AnyRec) {
+  // NOTE: Directus may impose server-side max; you can paginate later if needed.
+  const r = await directusGET(`/items/${collection}`, {
+    fields,
+    limit: "-1",
+    ...(filterObj ? { filter: JSON.stringify(filterObj) } : {}),
+  });
+
+  if (!r.ok) {
+    return { ok: false as const, status: r.status, error: r.body, url: r.url, data: [] as AnyRec[] };
+  }
+
+  return { ok: true as const, status: r.status, data: (r.body?.data ?? []) as AnyRec[] };
+}
+
 export async function GET(req: NextRequest) {
   const envErr = requireEnv();
   if (envErr) return json({ success: false, message: envErr, data: null }, { status: 500 });
 
   const warnings: string[] = [];
-
   const sp = req.nextUrl.searchParams;
   const mode = (sp.get("mode") || "report").toLowerCase();
 
-  // LOOKUPS
-  if (mode === "lookups") {
-    const r = await directusGET("/items/salesman", {
-      fields: "id,salesman_name,salesman_code",
-      limit: "-1",
-      sort: "salesman_name,salesman_code",
-    });
+  // =========================================
+  // LOOKUPS: group accounts by employee_id
+  // =========================================
+  // =========================================
+// LOOKUPS: group accounts by employee_id
+// - Display name comes from salesman.salesman_name
+// - NO /items/users call (Directus users is special)
+// =========================================
+if (mode === "lookups") {
+  const sm = await fetchAllItems(
+    "salesman",
+    "id,employee_id,salesman_name,salesman_code",
+    undefined,
+  );
 
-    if (!r.ok) {
-      return json(
-        { success: false, message: "Failed to fetch salesman lookups", error: r.body, data: null },
-        { status: r.status },
-      );
-    }
-
-    const rows = (r.body?.data ?? []) as AnyRec[];
-
-    const empMap = new Map<string, { employee: string; accounts: AnyRec[] }>();
-    for (const s of rows) {
-      const name = String(s?.salesman_name ?? "").trim() || "—";
-      const acc = {
-        id: Number(s?.id),
-        salesman_code: String(s?.salesman_code ?? "").trim(),
-        salesman_name: name,
-      };
-      if (!Number.isFinite(acc.id)) continue;
-
-      const g = empMap.get(name) ?? { employee: name, accounts: [] };
-      g.accounts.push(acc);
-      empMap.set(name, g);
-    }
-
-    const employees = Array.from(empMap.values()).map((x) => ({
-      employee: x.employee,
-      accounts: x.accounts,
-    }));
-
-    return json({ success: true, message: "OK", data: { employees } }, { status: 200 });
+  if (!sm.ok) {
+    return json(
+      { success: false, message: "Failed to fetch salesman lookups", error: sm.error, data: null },
+      { status: sm.status },
+    );
   }
 
-  // REPORT
+  // group by employee_id
+  const groups = new Map<number, { employee_id: number; employee: string; accounts: AnyRec[] }>();
+
+  for (const s of sm.data) {
+    const empId = Number(s?.employee_id ?? 0);
+    if (!Number.isFinite(empId) || empId <= 0) continue;
+
+    const salesmanName = String(s?.salesman_name ?? "").trim() || `Employee #${empId}`;
+
+    const acc = {
+      id: Number(s?.id),
+      employee_id: empId,
+      salesman_code: String(s?.salesman_code ?? "").trim(),
+      salesman_name: salesmanName,
+    };
+
+    if (!Number.isFinite(acc.id)) continue;
+
+    const g = groups.get(empId) ?? {
+      employee_id: empId,
+      employee: salesmanName, // ✅ SHOW THIS IN DROPDOWN
+      accounts: [],
+    };
+
+    // keep the first non-empty name as the employee display
+    if (!g.employee || g.employee.startsWith("Employee #")) {
+      g.employee = salesmanName;
+    }
+
+    g.accounts.push(acc);
+    groups.set(empId, g);
+  }
+
+  const employees = Array.from(groups.values())
+    .sort((a, b) => String(a.employee).localeCompare(String(b.employee)))
+    .map((g) => ({
+      employee_id: g.employee_id,
+      employee: g.employee,
+      accounts: g.accounts
+        .slice()
+        .sort((a, b) => String(a.salesman_code).localeCompare(String(b.salesman_code))),
+    }));
+
+  return json({ success: true, message: "OK", data: { employees } }, { status: 200 });
+}
+
+
+  // =========================================
+  // REPORT: replicate BOTH views in JS
+  // =========================================
   const year = Number(sp.get("year") || "");
   const months = parseCsvMonths(sp.get("months"));
-  const salesmanIds = parseCsvInts(sp.get("salesman_ids"));
+  const employeeId = Number(sp.get("employee_id") || "");
+  const salesmanCodes = parseCsvStrings(sp.get("salesman_codes"));
 
   if (!Number.isFinite(year) || year < 2000 || year > 2100) {
     return json({ success: false, message: "Invalid year", data: null }, { status: 400 });
@@ -154,7 +234,10 @@ export async function GET(req: NextRequest) {
   if (!months.length) {
     return json({ success: false, message: "Please select at least 1 month", data: null }, { status: 400 });
   }
-  if (!salesmanIds.length) {
+  if (!Number.isFinite(employeeId) || employeeId <= 0) {
+    return json({ success: false, message: "Please select an employee", data: null }, { status: 400 });
+  }
+  if (!salesmanCodes.length) {
     return json({ success: false, message: "Please select at least 1 account", data: null }, { status: 400 });
   }
 
@@ -163,47 +246,69 @@ export async function GET(req: NextRequest) {
   const rangeStart = monthStart(year, minM);
   const rangeEnd = monthEnd(year, maxM);
 
-  // customers + classifications
+  // 1) get salesmen matching (employee_id + selected salesman_code)
+  const smRes = await fetchAllItems(
+    "salesman",
+    "id,employee_id,salesman_code,salesman_name",
+    {
+      _and: [
+        { employee_id: { _eq: employeeId } },
+        { salesman_code: { _in: salesmanCodes } },
+      ],
+    },
+  );
+
+  if (!smRes.ok) {
+    return json(
+      { success: false, message: "Failed to fetch salesman accounts", error: smRes.error, data: null },
+      { status: smRes.status },
+    );
+  }
+
+  const salesmanRows = smRes.data;
+  const salesmanIds = salesmanRows
+    .map((s) => Number(s?.id))
+    .filter((n) => Number.isFinite(n) && n > 0);
+
+  if (!salesmanIds.length) {
+    return json(
+      { success: true, message: "OK", data: { warnings: ["No salesman accounts matched your selection."], kpis: { total_allocated: 0, total_invoiced: 0, unserved_balance: 0 }, rows: [], invoices: [] } },
+      { status: 200 },
+    );
+  }
+
+  // 2) customer + classification lookups
   const [custRes, clsRes] = await Promise.all([
-    directusGET("/items/customer", {
-      fields: "customer_code,customer_name,classification",
-      limit: "-1",
-    }),
-    directusGET("/items/customer_classification", {
-      fields: "id,classification_name",
-      limit: "-1",
-    }),
+    fetchAllItems("customer", "customer_code,customer_name,classification", undefined),
+    fetchAllItems("customer_classification", "id,classification_name", undefined),
   ]);
 
   if (!custRes.ok) {
-    return json({ success: false, message: "Failed to fetch customers", error: custRes.body, data: null }, { status: custRes.status });
+    return json({ success: false, message: "Failed to fetch customers", error: custRes.error, data: null }, { status: custRes.status });
   }
   if (!clsRes.ok) {
-    return json({ success: false, message: "Failed to fetch customer classifications", error: clsRes.body, data: null }, { status: clsRes.status });
+    return json({ success: false, message: "Failed to fetch classifications", error: clsRes.error, data: null }, { status: clsRes.status });
   }
 
-  const customers = (custRes.body?.data ?? []) as AnyRec[];
-  const classifications = (clsRes.body?.data ?? []) as AnyRec[];
-
   const clsNameById = new Map<number, string>();
-  for (const c of classifications) {
+  for (const c of clsRes.data) {
     const id = Number(c?.id);
     if (!Number.isFinite(id)) continue;
     clsNameById.set(id, String(c?.classification_name ?? "").trim() || "—");
   }
 
   const customerByCode = new Map<string, AnyRec>();
-  for (const c of customers) {
+  for (const c of custRes.data) {
     const code = String(c?.customer_code ?? "").trim();
     if (!code) continue;
     customerByCode.set(code, c);
   }
 
-  // sales orders (SO)
-  const soRes = await directusGET("/items/sales_order", {
-    fields: "order_no,salesman_id,customer_code,order_date,allocated_amount,isCancelled,order_status",
-    limit: "-1",
-    filter: JSON.stringify({
+  // 3) SALES ORDERS (same filter as your view)
+  const soRes = await fetchAllItems(
+    "sales_order",
+    "order_no,salesman_id,customer_code,order_date,allocated_amount,isCancelled,order_status",
+    {
       _and: [
         { salesman_id: { _in: salesmanIds } },
         { order_date: { _between: [rangeStart, rangeEnd] } },
@@ -217,75 +322,71 @@ export async function GET(req: NextRequest) {
         },
         { order_status: { _neq: "Cancelled" } },
       ],
-    }),
-  });
+    },
+  );
 
   if (!soRes.ok) {
-    return json({ success: false, message: "Failed to fetch sales orders", error: soRes.body, data: null }, { status: soRes.status });
+    return json({ success: false, message: "Failed to fetch sales orders", error: soRes.error, data: null }, { status: soRes.status });
   }
 
-  const salesOrders = (soRes.body?.data ?? []) as AnyRec[];
+  const salesOrders = soRes.data.filter(isNotCancelled);
   const soByOrderNo = new Map<string, AnyRec>();
   for (const so of salesOrders) {
     const k = String(so?.order_no ?? "").trim();
     if (k) soByOrderNo.set(k, so);
   }
 
-  // invoices (SI) - by invoice_date
-  const siRes = await directusGET("/items/sales_invoice", {
-    fields: "invoice_id,salesman_id,customer_code,invoice_date,net_amount,order_id",
-    limit: "-1",
-    filter: JSON.stringify({
-      _and: [{ invoice_date: { _between: [rangeStart, rangeEnd] } }],
-    }),
-  });
+  // 4) SALES INVOICES (same date window; later filtered by salesman via coalesce logic)
+  const siRes = await fetchAllItems(
+    "sales_invoice",
+    "invoice_id,salesman_id,customer_code,invoice_date,dispatch_date,created_date,net_amount,order_id",
+    {
+      _and: [
+        {
+          _or: [
+            { invoice_date: { _between: [rangeStart, rangeEnd] } },
+            { dispatch_date: { _between: [rangeStart, rangeEnd] } },
+            { created_date: { _between: [rangeStart, rangeEnd] } },
+          ],
+        },
+      ],
+    },
+  );
 
   if (!siRes.ok) {
-    return json({ success: false, message: "Failed to fetch sales invoices", error: siRes.body, data: null }, { status: siRes.status });
+    return json({ success: false, message: "Failed to fetch sales invoices", error: siRes.error, data: null }, { status: siRes.status });
   }
 
-  const salesInvoices = (siRes.body?.data ?? []) as AnyRec[];
+  const salesInvoices = siRes.data;
 
-  // =========================
-  // ✅ FIXED RETURNS FETCH
-  // - chunk invoice ids
-  // - never hard-fail report
-  // =========================
-  const returnedTotalByInvoice = new Map<string, number>();
-
+  // 5) RETURNS: same as your views
+  //   sales_invoice_sales_return: invoice_no -> return_no
+  //   sales_return: return_id -> total_amount
   const invoiceIds = salesInvoices
     .map((x) => x?.invoice_id)
     .map((x) => (x === null || x === undefined ? "" : String(x).trim()))
     .filter(Boolean);
 
-  // Link rows accumulate here
-  const linksAll: AnyRec[] = [];
+  const returnedTotalByInvoice = new Map<string, number>();
 
   if (invoiceIds.length) {
-    const invoiceChunks = chunk(invoiceIds, 200); // safe chunk size to avoid huge URL
+    const linksAll: AnyRec[] = [];
+    const invoiceChunks = chunk(invoiceIds, 200);
 
     for (const part of invoiceChunks) {
-      const linkRes = await directusGET("/items/sales_invoice_sales_return", {
-        fields: "invoice_no,return_no",
-        limit: "-1",
-        filter: JSON.stringify({ invoice_no: { _in: part } }),
-      });
+      const linkRes = await fetchAllItems(
+        "sales_invoice_sales_return",
+        "invoice_no,return_no",
+        { invoice_no: { _in: part } },
+      );
 
       if (!linkRes.ok) {
-        warnings.push(
-          `Failed invoice-return links chunk (status ${linkRes.status}). This may be a Directus collection/field mismatch or URL limit. Upstream: ${JSON.stringify(
-            linkRes.body,
-          ).slice(0, 500)}`,
-        );
-        // Do not fail; proceed without returns for this chunk
+        warnings.push(`Failed invoice-return link chunk (status ${linkRes.status}). Returns may be incomplete.`);
         continue;
       }
-
-      const chunkRows = (linkRes.body?.data ?? []) as AnyRec[];
-      linksAll.push(...chunkRows);
+      linksAll.push(...linkRes.data);
     }
 
-    // build invoice -> returnIds map
     const invoiceToReturnIds = new Map<string, string[]>();
     for (const l of linksAll) {
       const inv = String(l?.invoice_no ?? "").trim();
@@ -299,33 +400,28 @@ export async function GET(req: NextRequest) {
     const returnIds = Array.from(new Set(Array.from(invoiceToReturnIds.values()).flat()));
 
     if (returnIds.length) {
+      const returnAmountById = new Map<string, number>();
       const returnChunks = chunk(returnIds, 200);
 
-      const returnAmountById = new Map<string, number>();
-
       for (const part of returnChunks) {
-        const srRes = await directusGET("/items/sales_return", {
-          fields: "return_id,total_amount",
-          limit: "-1",
-          filter: JSON.stringify({ return_id: { _in: part } }),
-        });
+        const srRes = await fetchAllItems(
+          "sales_return",
+          "return_id,total_amount",
+          { return_id: { _in: part } },
+        );
 
         if (!srRes.ok) {
-          warnings.push(
-            `Failed sales returns chunk (status ${srRes.status}). Upstream: ${JSON.stringify(srRes.body).slice(0, 500)}`,
-          );
+          warnings.push(`Failed sales_return chunk (status ${srRes.status}). Returns may be incomplete.`);
           continue;
         }
 
-        const returns = (srRes.body?.data ?? []) as AnyRec[];
-        for (const r of returns) {
+        for (const r of srRes.data) {
           const id = String(r?.return_id ?? "").trim();
           if (!id) continue;
           returnAmountById.set(id, Number(r?.total_amount ?? 0) || 0);
         }
       }
 
-      // sum per invoice
       for (const [inv, rids] of invoiceToReturnIds.entries()) {
         let sum = 0;
         for (const rid of rids) sum += Number(returnAmountById.get(rid) ?? 0) || 0;
@@ -334,7 +430,10 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // ---------- Main aggregated report rows ----------
+  // =========================================
+  // Replicate VIEW: sales_report_salesman
+  // Aggregation per customer (across selected months)
+  // =========================================
   type Agg = {
     customer_code: string;
     classification: string;
@@ -356,12 +455,6 @@ export async function GET(req: NextRequest) {
     si_16_eom_date_min: string | null;
     si_16_eom_date_max: string | null;
   };
-
-  function bumpDateMinMax(curMin: string | null, curMax: string | null, d: string) {
-    const min = !curMin || d < curMin ? d : curMin;
-    const max = !curMax || d > curMax ? d : curMax;
-    return { min, max };
-  }
 
   const aggByCustomer = new Map<string, Agg>();
 
@@ -433,15 +526,26 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // SI accumulation (by si.invoice_date)
-  for (const si of salesInvoices) {
-    const siDate = toISODateOnly(si?.invoice_date);
-    if (!inSelectedMonths(siDate, year, months)) continue;
+  // SI accumulation using “effective date” same idea as view (invoice_date/dispatch_date/created_date/so.order_date)
+  function invoiceEffectiveDate(si: AnyRec, so: AnyRec | null): string | null {
+    return (
+      toISODateOnly(si?.invoice_date) ||
+      toISODateOnly(si?.dispatch_date) ||
+      toISODateOnly(si?.created_date) ||
+      toISODateOnly(so?.order_date) ||
+      null
+    );
+  }
 
+  for (const si of salesInvoices) {
     const orderId = String(si?.order_id ?? "").trim();
     const so = orderId ? soByOrderNo.get(orderId) : null;
+
     const effSalesmanId = Number(si?.salesman_id ?? so?.salesman_id ?? 0);
     if (!salesmanIds.includes(effSalesmanId)) continue;
+
+    const effDate = invoiceEffectiveDate(si, so);
+    if (!inSelectedMonths(effDate, year, months)) continue;
 
     const code = String(si?.customer_code ?? so?.customer_code ?? "").trim();
     if (!code) continue;
@@ -450,32 +554,26 @@ export async function GET(req: NextRequest) {
     const ret = Number(returnedTotalByInvoice.get(invId) ?? 0) || 0;
     const net = (Number(si?.net_amount ?? 0) || 0) - ret;
 
-    const dom = dayOfMonth(siDate);
+    const dom = dayOfMonth(effDate);
     if (!dom) continue;
 
     const a = ensureAgg(code);
 
     if (dom >= 1 && dom <= 15) {
       a.si_1_15 += net;
-      if (siDate) {
-        const mm = bumpDateMinMax(a.si_1_15_date_min, a.si_1_15_date_max, siDate);
+      if (effDate) {
+        const mm = bumpDateMinMax(a.si_1_15_date_min, a.si_1_15_date_max, effDate);
         a.si_1_15_date_min = mm.min;
         a.si_1_15_date_max = mm.max;
       }
     } else {
       a.si_16_eom += net;
-      if (siDate) {
-        const mm = bumpDateMinMax(a.si_16_eom_date_min, a.si_16_eom_date_max, siDate);
+      if (effDate) {
+        const mm = bumpDateMinMax(a.si_16_eom_date_min, a.si_16_eom_date_max, effDate);
         a.si_16_eom_date_min = mm.min;
         a.si_16_eom_date_max = mm.max;
       }
     }
-  }
-
-  function dateLabel(min: string | null, max: string | null) {
-    if (!min && !max) return "—";
-    if (min && max && min !== max) return `${min} → ${max}`;
-    return min ?? max ?? "—";
   }
 
   const rows = Array.from(aggByCustomer.values())
@@ -508,23 +606,27 @@ export async function GET(req: NextRequest) {
   const totalInvoiced = rows.reduce((s, r) => s + (Number(r.si_1_15) || 0) + (Number(r.si_16_eom) || 0), 0);
   const unservedBalance = totalAllocated - totalInvoiced;
 
-  // invoices table
+  // =========================================
+  // Replicate VIEW: salesman_so_si_date (Invoices list)
+  // =========================================
   const invoiceRows = salesInvoices
     .map((si) => {
-      const invId = String(si?.invoice_id ?? "").trim();
-      const siDate = toISODateOnly(si?.invoice_date);
-      if (!inSelectedMonths(siDate, year, months)) return null;
-
       const orderId = String(si?.order_id ?? "").trim();
       const so = orderId ? soByOrderNo.get(orderId) : null;
+
       const effSalesmanId = Number(si?.salesman_id ?? so?.salesman_id ?? 0);
       if (!salesmanIds.includes(effSalesmanId)) return null;
+
+      const siDate = toISODateOnly(si?.invoice_date);
+      // table view uses invoice_date for SI list (matches your view)
+      if (!inSelectedMonths(siDate, year, months)) return null;
 
       const custCode = String(si?.customer_code ?? so?.customer_code ?? "").trim();
       const cust = custCode ? customerByCode.get(custCode) : null;
       const customerName = String(cust?.customer_name ?? "").trim() || custCode || "—";
 
       const poDate = toISODateOnly(so?.order_date);
+      const invId = String(si?.invoice_id ?? "").trim();
       const ret = Number(returnedTotalByInvoice.get(invId) ?? 0) || 0;
       const net = (Number(si?.net_amount ?? 0) || 0) - ret;
 
@@ -549,7 +651,7 @@ export async function GET(req: NextRequest) {
       success: true,
       message: "OK",
       data: {
-        warnings, // ✅ you can log/show this if needed
+        warnings,
         kpis: {
           total_allocated: totalAllocated,
           total_invoiced: totalInvoiced,
