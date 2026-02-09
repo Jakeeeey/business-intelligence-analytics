@@ -63,7 +63,7 @@ export function SalesReportFiltersBar(props: Props) {
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           {/* LEFT: Title */}
           <div className="min-w-0">
-            <div className="text-xl font-bold leading-tight">Sales Performance</div>
+            <div className="text-xl font-bold leading-tight">Salesman Performance</div>
             <div className="text-sm text-muted-foreground">Allocation vs. Invoiced Report</div>
           </div>
 
