@@ -37,6 +37,50 @@ const data = {
             icon: SquareTerminal,
             isActive: true,
         },
+        {
+            title: "Target Settings",
+            url: "#",
+            icon: SquareTerminal,
+            isActive: false,
+            items: [
+                {
+                    title: "Executive",
+                    url: "/bia/target-setting/executive",
+                },
+                {
+                    title: "Manager",
+                    url: "/bia/target-setting/manager",
+                },
+                {
+                    title: "Supervisor",
+                    url: "/bia/target-setting/supervisor",
+                },
+            ],
+        },
+        {
+            title: "Target Setting Reports",
+            url: "#",
+            icon: SquareTerminal,
+            isActive: false,
+            items: [
+                {
+                    title: "Executive Health",
+                    url: "/bia/target-setting-reports/executive-health",
+                },
+                {
+                    title: "Managerial / Supplier",
+                    url: "/bia/target-setting-reports/managerial-supplier",
+                },
+                {
+                    title: "Salesman KPI",
+                    url: "/bia/target-setting-reports/salesman-kpi",
+                },
+                {
+                    title: "AR and Remittance",
+                    url: "/bia/target-setting-reports/ar-and-remittance",
+                },
+            ],
+        },
     ],
 }
 
