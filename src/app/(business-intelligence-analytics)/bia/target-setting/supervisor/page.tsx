@@ -10,10 +10,10 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { NavUser } from "../_components/nav-user";
+import { NavUser } from "../../_components/nav-user";
 
 import { cookies } from "next/headers";
-import { SalesReportModule } from "@/modules/business-intelligence-analytics/sales-report";
+import ComingSoon from "../../_components/ComingSoon"
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -102,7 +102,7 @@ export default async function Page() {
                             </BreadcrumbItem>
                             <BreadcrumbSeparator className="hidden md:block" />
                             <BreadcrumbItem>
-                                <BreadcrumbPage>Salesman Performance</BreadcrumbPage>
+                                <BreadcrumbPage>Supervisor</BreadcrumbPage>
                             </BreadcrumbItem>
                         </BreadcrumbList>
                     </Breadcrumb>
@@ -115,7 +115,7 @@ export default async function Page() {
 
             <ScrollArea className="min-h-0 flex-1">
                 <div className="p-4">
-                    <SalesReportModule />
+                    <ComingSoon />
                 </div>
             </ScrollArea>
         </div>
