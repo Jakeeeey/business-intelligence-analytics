@@ -36,6 +36,16 @@ const data = {
             url: "/bia/sales-report",
             icon: SquareTerminal,
             isActive: true,
+            items: [
+                {
+                    title: "Salesman Performance",
+                    url: "/bia/sales-report/salesman-performance",
+                },
+                {
+                    title: "Product Sales Performance",
+                    url: "/bia/sales-report/product-sales-performance",
+                },
+            ],
         },
         {
             title: "Target Settings",
