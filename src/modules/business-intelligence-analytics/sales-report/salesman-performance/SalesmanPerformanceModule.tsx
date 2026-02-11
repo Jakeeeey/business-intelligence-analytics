@@ -1,4 +1,4 @@
-//src/modules/business-intelligence-analytics/sales-report/SalesReportModule.tsx
+//src/modules/business-intelligence-analytics/sales-report/SalesmanPerformanceModule.tsx
 "use client";
 
 import * as React from "react";
@@ -9,7 +9,7 @@ import { SalesInvoicesTable } from "./components/SalesInvoicesTable";
 import { exportSalesReportCsv } from "./utils/exportCsv";
 import { useSalesReport } from "./hooks/useSalesReport";
 
-export default function SalesReportModule() {
+export default function SalesmanPerformanceModule() {
   const sr = useSalesReport();
 
   React.useEffect(() => {

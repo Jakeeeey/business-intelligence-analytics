@@ -14,7 +14,7 @@ async function http<T>(url: string): Promise<T> {
 }
 
 export async function getLookups() {
-  return http<SalesReportLookups>("/api/bia/sales-report?mode=lookups");
+  return http<SalesReportLookups>("/api/bia/sales-report/salesman-performance?mode=lookups");
 }
 
 export async function getSalesReport(params: {
@@ -29,5 +29,5 @@ export async function getSalesReport(params: {
   sp.set("months", params.months.join(","));
   sp.set("employee_id", String(params.employee_id));
   sp.set("salesman_codes", params.salesman_codes.join(","));
-  return http<SalesReportResponse>(`/api/bia/sales-report?${sp.toString()}`);
+  return http<SalesReportResponse>(`/api/bia/sales-report/salesman-performance?${sp.toString()}`);
 }
