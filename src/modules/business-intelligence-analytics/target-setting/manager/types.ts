@@ -42,7 +42,6 @@ export type TargetSettingSupplier = {
   created_by: number | null;
   created_at: string | null;
 
-  // ✅ now included (as per your API)
   fiscal_period: string | null;
   status: TargetStatus;
 };
@@ -79,6 +78,21 @@ export type UserRow = {
   is_deleted?: any;
 };
 
+/**
+ * ✅ New table for supervisor mapping by division
+ * /items/supervisor_per_division
+ */
+export type SupervisorPerDivisionRow = {
+  id: number;
+  division_id: number;
+  supervisor_id: number; // maps to user.user_id
+  is_deleted: number; // 0/1
+  created_at: string | null;
+  created_by: number | null;
+  updated_at: string | null;
+  updated_by: number | null;
+};
+
 export type ManagerBootstrapResponse = {
   target_setting_executive: TargetSettingExecutive[];
   target_setting_division: TargetSettingDivision[];
@@ -88,4 +102,7 @@ export type ManagerBootstrapResponse = {
   division: DivisionRow[];
   suppliers: SupplierRow[];
   users: UserRow[];
+
+  // ✅ added
+  supervisor_per_division: SupervisorPerDivisionRow[];
 };

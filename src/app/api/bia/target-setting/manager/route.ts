@@ -134,7 +134,7 @@ export async function GET() {
     const envErr = requireEnv();
     if (envErr) return NextResponse.json({ error: envErr }, { status: 500 });
 
-    const [exec, div, supp, supv, divisions, suppliers, users] = await Promise.all([
+    const [exec, div, supp, supv, divisions, suppliers, users, supervisorPerDivision] = await Promise.all([
       fetchDirectus<{ data: any[] }>(`/items/target_setting_executive?limit=-1`),
       fetchDirectus<{ data: any[] }>(`/items/target_setting_division?limit=-1`),
       fetchDirectus<{ data: any[] }>(`/items/target_setting_supplier?limit=-1`),
@@ -142,6 +142,9 @@ export async function GET() {
       fetchDirectus<{ data: any[] }>(`/items/division?limit=-1`),
       fetchDirectus<{ data: any[] }>(`/items/suppliers?limit=-1`),
       fetchDirectus<{ data: any[] }>(`/items/user?limit=-1`),
+
+      // ✅ new
+      fetchDirectus<{ data: any[] }>(`/items/supervisor_per_division?limit=-1`),
     ]);
 
     return NextResponse.json({
@@ -152,6 +155,9 @@ export async function GET() {
       division: divisions.data ?? [],
       suppliers: suppliers.data ?? [],
       users: users.data ?? [],
+
+      // ✅ new
+      supervisor_per_division: supervisorPerDivision.data ?? [],
     });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message ?? "Failed to load manager targets." }, { status: 500 });
@@ -184,14 +190,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Please select Supervisor." }, { status: 400 });
     }
 
-    // ✅ executive context (source of fiscal_period + status cascade)
     const ctx = await resolveExecutiveContextByTsdId(tsd_id);
 
     const existing = await findSupplierAllocation(tsd_id, supplier_id);
 
     let tssId: number;
 
-    // ✅ also write status + fiscal_period into target_setting_supplier
     const supplierPayload = {
       target_amount,
       fiscal_period: ctx.fiscal_period,
@@ -239,7 +243,7 @@ export async function PATCH(req: NextRequest) {
     const action = String(body?.action ?? "").toUpperCase();
     if (action !== "UPDATE_SUPPLIER") return NextResponse.json({ error: "Invalid action." }, { status: 400 });
 
-    const id = Number(body.id); // target_setting_supplier.id
+    const id = Number(body.id);
     const target_amount = Number(body.target_amount);
     const supervisor_user_id =
       body.supervisor_user_id === null || typeof body.supervisor_user_id === "undefined"
@@ -259,7 +263,6 @@ export async function PATCH(req: NextRequest) {
     const tsd_id = Number(tss.tsd_id);
     const ctx = await resolveExecutiveContextByTsdId(tsd_id);
 
-    // ✅ also keep status/fiscal_period consistent on supplier
     await fetchDirectus(`/items/target_setting_supplier/${id}`, {
       method: "PATCH",
       body: JSON.stringify({

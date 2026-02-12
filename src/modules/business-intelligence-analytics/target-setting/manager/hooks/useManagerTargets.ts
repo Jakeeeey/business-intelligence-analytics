@@ -10,6 +10,7 @@ import type {
   TargetSettingExecutive,
   TargetSettingSupplier,
   UserRow,
+  SupervisorPerDivisionRow,
 } from "../types";
 
 import {
@@ -65,6 +66,14 @@ function normalizeStatus(v: any): AllocationLogRow["status"] {
 function fullName(u: UserRow) {
   const parts = [u.user_fname, u.user_mname, u.user_lname].map((x) => String(x ?? "").trim()).filter(Boolean);
   return parts.join(" ").trim() || `User #${u.user_id}`;
+}
+
+function isNotDeleted(v: any) {
+  if (typeof v === "number") return v === 0;
+  if (typeof v === "boolean") return !v;
+  const s = String(v ?? "").trim().toLowerCase();
+  if (!s) return true;
+  return s === "0" || s === "false";
 }
 
 export function useManagerTargets() {
@@ -128,13 +137,38 @@ export function useManagerTargets() {
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [raw]);
 
+  /**
+   * ✅ JOIN supervisor_per_division -> user, filtered by selected division
+   * Only show supervisors mapped to that division (is_deleted=0).
+   */
   const supervisorOptions = React.useMemo<SupervisorOption[]>(() => {
-    const users = raw?.users ?? [];
+    if (!raw) return [];
+
+    const users = raw.users ?? [];
+    const spd: SupervisorPerDivisionRow[] = (raw.supervisor_per_division ?? []) as any;
+
+    const divisionId = selectedDivisionTarget?.division_id ?? null;
+    if (!divisionId) return [];
+
+    const allowedSupervisorIds = new Set<number>(
+      spd
+        .filter((r: any) => Number(r?.division_id) === Number(divisionId))
+        .filter((r: any) => isNotDeleted(r?.is_deleted))
+        .map((r: any) => Number(r?.supervisor_id))
+        .filter((id: any) => Number.isFinite(id) && id > 0),
+    );
+
     return users
+      .filter((u) => allowedSupervisorIds.has(Number(u.user_id)))
       .map((u) => ({ id: Number(u.user_id), name: fullName(u) }))
       .filter((u) => Number.isFinite(u.id) && u.id > 0 && u.name.trim())
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [raw]);
+  }, [raw, selectedDivisionTarget]);
+
+  // reset supervisor when division changes (important)
+  React.useEffect(() => {
+    setSelectedSupervisorId(null);
+  }, [selectedDivisionTsdId]);
 
   const supplierAllocationsForSelectedDivision = React.useMemo<TargetSettingSupplier[]>(() => {
     if (!raw || !selectedDivisionTsdId) return [];
@@ -188,7 +222,6 @@ export function useManagerTargets() {
       const d = divisions.find((z) => z.division_id === tsd.division_id);
       const s = (suppliers as any[]).find((z) => Number(z.id) === tss.supplier_id);
 
-      // ✅ IMPORTANT: supplier row status must come from target_setting_supplier.status
       const supplierStatus = normalizeStatus((tss as any).status ?? execStatus);
 
       out.push({
@@ -271,7 +304,8 @@ export function useManagerTargets() {
 
     if (!existing) {
       if (totals.rawRemaining <= 0) return toast.error("Remaining is 0. You cannot allocate more for this division.");
-      if (target_amount > totals.remaining) return toast.error(`Cannot allocate more than remaining (${formatPeso(totals.remaining)}).`);
+      if (target_amount > totals.remaining)
+        return toast.error(`Cannot allocate more than remaining (${formatPeso(totals.remaining)}).`);
     } else {
       const prev = Number(existing.target_amount) || 0;
       const delta = target_amount - prev;
