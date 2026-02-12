@@ -6,10 +6,10 @@ import ManagerHeader from "./components/ManagerHeader";
 import AllocationLogTable from "./components/AllocationLogTable";
 import SupplierAllocationsTable from "./components/SupplierAllocationsTable";
 
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 
 import { useManagerTargets } from "./hooks/useManagerTargets";
 
@@ -34,7 +34,7 @@ export default function ManagerModule() {
     return (
       <div className="space-y-4">
         <Skeleton className="h-[160px] w-full" />
-        <Skeleton className="h-[320px] w-full" />
+        <Skeleton className="h-[420px] w-full" />
       </div>
     );
   }
@@ -44,7 +44,6 @@ export default function ManagerModule() {
     !m.selectedDivisionTsdId ||
     !m.selectedSupplierId ||
     (() => {
-      // disable only if user is trying to CREATE while remaining is 0
       const existing = m.supplierAllocationsForSelectedDivision.find(
         (x) => x.supplier_id === (m.selectedSupplierId ?? -1),
       );
@@ -70,33 +69,47 @@ export default function ManagerModule() {
       />
 
       <Card className="shadow-sm">
-        <CardContent className="p-4">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <CardHeader className="pb-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
             <div className="space-y-1">
-              <div className="text-sm font-semibold">Division Summary</div>
-              <div className="text-xs text-muted-foreground">
-                Supplier volumes (allocation targets) based on the selected division target.
-              </div>
+              <CardTitle className="text-base">Division Summary</CardTitle>
+              <CardDescription>Supplier volumes (allocation targets) based on the selected division target.</CardDescription>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 md:justify-end">
               <Badge variant="secondary">Division Target: {m.formatPeso(m.totals.divisionTarget)}</Badge>
               <Badge variant="secondary">Allocated: {m.formatPeso(m.totals.allocatedToSuppliers)}</Badge>
-              <Badge variant={m.totals.remaining <= 0 ? "destructive" : "outline"}>
+              <Badge variant={m.totals.rawRemaining <= 0 ? "destructive" : "outline"}>
                 Remaining: {m.formatPeso(m.totals.remaining)}
               </Badge>
             </div>
           </div>
+        </CardHeader>
 
+        <CardContent className="pt-0">
+          {/* ✅ Line between the two title sections */}
           <Separator className="my-4" />
 
-          <SupplierAllocationsTable
-            rows={m.supplierAllocationsForSelectedDivision}
-            supplierNameById={supplierNameById}
-            formatPeso={m.formatPeso}
-            onDelete={m.removeAllocation}
-            disabled={m.refreshing}
-          />
+          {/* Supplier Allocations title (below the line) */}
+          <div className="mb-3">
+            <div className="text-sm font-semibold">Supplier Allocations</div>
+            <div className="text-xs text-muted-foreground">
+              Create, update, and delete supplier allocations under the selected division.
+            </div>
+          </div>
+
+          {/* Table container */}
+          <div className="rounded-md border bg-background">
+            <div className="overflow-hidden rounded-md">
+              <SupplierAllocationsTable
+                rows={m.supplierAllocationsForSelectedDivision}
+                supplierNameById={supplierNameById}
+                formatPeso={m.formatPeso}
+                onDelete={m.removeAllocation}
+                disabled={m.refreshing}
+              />
+            </div>
+          </div>
         </CardContent>
       </Card>
 

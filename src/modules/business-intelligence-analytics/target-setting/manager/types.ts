@@ -4,8 +4,10 @@ export type TargetSettingExecutive = {
   id: number;
   created_by: number | null;
   target_amount: number;
-  period_from: string; // YYYY-MM-DD
-  period_to: string; // YYYY-MM-DD
+
+  // ✅ updated field
+  fiscal_period: string; // ex: "October 2024" or "2026-01" depending on your DB
+
   isApproved?: DirectusBool;
   created_at?: string | null;
   updated_at?: string | null;

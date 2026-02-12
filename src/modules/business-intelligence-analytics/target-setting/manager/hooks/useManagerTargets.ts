@@ -18,7 +18,7 @@ import {
   updateSupplierAllocation,
 } from "../providers/fetchProvider";
 
-import { formatMonthLabel, formatPeso, isTrue } from "../utils/format";
+import { formatPeso } from "../utils/format";
 
 type DivisionOption = {
   tsd: TargetSettingDivision;
@@ -29,6 +29,41 @@ type SupplierOption = {
   id: number;
   name: string;
 };
+
+function formatFiscalPeriodLabel(input: any, fallbackId: number) {
+  const raw = String(input ?? "").trim();
+  if (!raw) return `Fiscal #${fallbackId}`;
+
+  const m = raw.match(/^(\d{4})-(\d{2})(?:-(\d{2}))?/);
+  if (!m) return raw;
+
+  const year = Number(m[1]);
+  const month = Number(m[2]);
+  if (!Number.isFinite(year) || !Number.isFinite(month) || month < 1 || month > 12) return raw;
+
+  const date = new Date(Date.UTC(year, month - 1, 1));
+  return date.toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
+}
+
+function isTradeSupplier(supplierType: any) {
+  const v = String(supplierType ?? "").trim().toUpperCase();
+  return v === "TRADE";
+}
+
+// ✅ normalize any status string to a safe UI status enum string
+function normalizeStatus(v: any): AllocationLogRow["status"] {
+  const s = String(v ?? "").trim().toUpperCase();
+
+  // Prefer your backend strings
+  if (s === "APPROVED") return "APPROVED";
+  if (s === "PENDING") return "PENDING";
+  if (s === "REJECTED") return "REJECTED";
+  if (s === "SUBMITTED") return "SUBMITTED";
+  if (s === "DRAFT") return "DRAFT";
+
+  // fallback: if empty, assume SET (consistent with your old behavior)
+  return "DRAFT";
+}
 
 export function useManagerTargets() {
   const [loading, setLoading] = React.useState(true);
@@ -46,10 +81,10 @@ export function useManagerTargets() {
     const list = raw?.target_setting_executive ?? [];
     return list
       .slice()
-      .sort((a, b) => (a.period_from < b.period_from ? 1 : -1))
+      .sort((a, b) => String((a as any).fiscal_period ?? "").localeCompare(String((b as any).fiscal_period ?? "")))
       .map((e) => ({
         id: e.id,
-        label: formatMonthLabel(e.period_from, e.period_to),
+        label: formatFiscalPeriodLabel((e as any).fiscal_period, e.id),
         raw: e,
       }));
   }, [raw]);
@@ -78,11 +113,13 @@ export function useManagerTargets() {
     return (raw.target_setting_division ?? []).find((x) => x.id === selectedDivisionTsdId) ?? null;
   }, [raw, selectedDivisionTsdId]);
 
+  // ✅ ONLY TRADE suppliers + active
   const supplierOptions = React.useMemo<SupplierOption[]>(() => {
     const suppliers = raw?.suppliers ?? [];
     return suppliers
-      .filter((s) => Number(s.isActive ?? 1) === 1)
-      .map((s) => ({ id: s.id, name: s.supplier_name }))
+      .filter((s: any) => Number(s?.isActive ?? 1) === 1)
+      .filter((s: any) => isTradeSupplier(s?.supplier_type))
+      .map((s: any) => ({ id: Number(s.id), name: String(s.supplier_name ?? "").trim() || `Supplier #${s.id}` }))
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [raw]);
 
@@ -91,12 +128,19 @@ export function useManagerTargets() {
     return (raw.target_setting_supplier ?? []).filter((x) => x.tsd_id === selectedDivisionTsdId);
   }, [raw, selectedDivisionTsdId]);
 
+  /**
+   * ✅ Allocation hierarchy status rule (per your instruction):
+   * Executive → Manager → Supervisor
+   * Whatever Executive status is, all lower levels show the same status.
+   */
   const allocationLog = React.useMemo<AllocationLogRow[]>(() => {
     if (!raw || !selectedExecutiveId) return [];
 
     const out: AllocationLogRow[] = [];
 
     const exec = (raw.target_setting_executive ?? []).find((x) => x.id === selectedExecutiveId);
+    const execStatus = normalizeStatus((exec as any)?.status);
+
     if (exec) {
       out.push({
         id: `exec-${exec.id}`,
@@ -104,21 +148,22 @@ export function useManagerTargets() {
         contextAssignedTo: "Company Wide",
         detail: "TOTAL COMPANY GOAL",
         targetAmount: exec.target_amount,
-        status: isTrue(exec.isApproved) ? "Approved" : "Set",
+        status: execStatus,
       });
     }
 
     const divTargets = (raw.target_setting_division ?? []).filter((x) => x.tse_id === selectedExecutiveId);
     const divisions = raw.division ?? [];
+
     divTargets.forEach((tsd) => {
       const d = divisions.find((z) => z.division_id === tsd.division_id);
       out.push({
         id: `div-${tsd.id}`,
-        creatorRole: "Executive",
+        creatorRole: "Manager",
         contextAssignedTo: d?.division_name ?? `Division #${tsd.division_id}`,
         detail: "DIVISION ALLOCATION",
         targetAmount: tsd.target_amount,
-        status: "Set",
+        status: execStatus, // ✅ inherit
       });
     });
 
@@ -131,22 +176,23 @@ export function useManagerTargets() {
       if (tsd.tse_id !== selectedExecutiveId) return;
 
       const d = divisions.find((z) => z.division_id === tsd.division_id);
-      const s = suppliers.find((z) => z.id === tss.supplier_id);
+      const s = (suppliers as any[]).find((z) => Number(z.id) === tss.supplier_id);
 
       out.push({
         id: `supp-${tss.id}`,
-        creatorRole: "Div Manager",
-        contextAssignedTo: `${d?.division_name ?? `Div #${tsd.division_id}`} - ${s?.supplier_name ?? `Supplier #${tss.supplier_id}`}`,
+        creatorRole: "Manager",
+        contextAssignedTo: `${d?.division_name ?? `Div #${tsd.division_id}`} - ${String(
+          s?.supplier_name ?? `Supplier #${tss.supplier_id}`,
+        )}`,
         detail: "SUPPLIER ALLOCATION",
         targetAmount: tss.target_amount,
-        status: "Approved",
+        status: execStatus, // ✅ inherit
       });
     });
 
     return out;
   }, [raw, selectedExecutiveId]);
 
-  // ✅ totals with rawRemaining (can be negative)
   const totals = React.useMemo(() => {
     const divisionTarget = selectedDivisionTarget?.target_amount ?? 0;
     const allocatedToSuppliers = supplierAllocationsForSelectedDivision.reduce(
@@ -154,7 +200,7 @@ export function useManagerTargets() {
       0,
     );
 
-    const rawRemaining = divisionTarget - allocatedToSuppliers; // can be negative
+    const rawRemaining = divisionTarget - allocatedToSuppliers;
     const remaining = Math.max(0, rawRemaining);
 
     return { divisionTarget, allocatedToSuppliers, rawRemaining, remaining };
@@ -166,11 +212,8 @@ export function useManagerTargets() {
       const data = await bootstrapManagerTargets();
       setRaw(data);
 
-      const latestExec = (data.target_setting_executive ?? [])
-        .slice()
-        .sort((a, b) => (a.period_from < b.period_from ? 1 : -1))[0];
-
-      if (latestExec && !selectedExecutiveId) setSelectedExecutiveId(latestExec.id);
+      const first = (data.target_setting_executive ?? [])[0];
+      if (first && !selectedExecutiveId) setSelectedExecutiveId(first.id);
     } catch (e: any) {
       toast.error(e?.message ?? "Failed to load data.");
     } finally {
@@ -223,7 +266,6 @@ export function useManagerTargets() {
 
     const existing = supplierAllocationsForSelectedDivision.find((x) => x.supplier_id === selectedSupplierId);
 
-    // ✅ HARD FRONTEND ENFORCEMENT (cannot exceed division target)
     if (!existing) {
       if (totals.rawRemaining <= 0) {
         toast.error("Remaining is 0. You cannot allocate more for this division.");

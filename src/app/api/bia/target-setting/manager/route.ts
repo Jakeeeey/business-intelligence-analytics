@@ -85,7 +85,7 @@ export async function GET() {
     divisionTargets: "/items/target_setting_division?limit=-1",
     supplierTargets: "/items/target_setting_supplier?limit=-1",
     divisions: "/items/division?limit=-1",
-    suppliers: "/items/suppliers?limit=-1",
+    suppliers: "/items/suppliers?limit=-1&filter[supplier_type][_eq]=TRADE",
   };
 
   const [a, b, c, d, e] = await Promise.all([

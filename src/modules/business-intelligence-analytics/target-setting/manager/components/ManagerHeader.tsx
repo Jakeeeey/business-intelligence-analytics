@@ -1,27 +1,98 @@
 "use client";
 
 import * as React from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Check, ChevronDown } from "lucide-react";
 
-type Option = { id: number; label: string };
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+
+import { cn } from "@/lib/utils";
+
+type Opt = { id: number; label: string };
+
+function ComboboxField(props: {
+  label: string;
+  placeholder: string;
+  searchPlaceholder: string;
+  options: Opt[];
+  valueId: number | null;
+  onChange: (id: number | null) => void;
+  disabled?: boolean;
+}) {
+  const { label, placeholder, searchPlaceholder, options, valueId, onChange, disabled } = props;
+
+  const [open, setOpen] = React.useState(false);
+
+  const selectedLabel = React.useMemo(() => {
+    const hit = options.find((x) => x.id === valueId);
+    return hit?.label ?? "";
+  }, [options, valueId]);
+
+  return (
+    <div className="space-y-2">
+      <Label className="text-[11px] font-medium text-muted-foreground">{label}</Label>
+
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            className={cn("h-10 w-full justify-between px-3 text-left font-normal", !valueId && "text-muted-foreground")}
+            disabled={!!disabled}
+          >
+            <span className="truncate">{valueId ? selectedLabel : placeholder}</span>
+            <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+
+        <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+          <Command>
+            <CommandInput placeholder={searchPlaceholder} />
+            <CommandList className="max-h-[260px] overflow-y-auto">
+              <CommandEmpty>No results found.</CommandEmpty>
+
+              <CommandGroup>
+                {options.map((o) => (
+                  <CommandItem
+                    key={o.id}
+                    value={o.label}
+                    onSelect={() => {
+                      onChange(o.id);
+                      setOpen(false);
+                    }}
+                    className="cursor-pointer"
+                  >
+                    <span className="truncate">{o.label}</span>
+                    <Check className={cn("ml-auto h-4 w-4", valueId === o.id ? "opacity-100" : "opacity-0")} />
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
 
 export default function ManagerHeader(props: {
-  fiscalOptions: Option[];
-  divisionOptions: { id: number; label: string }[];
-  supplierOptions: { id: number; label: string }[];
+  fiscalOptions: Opt[];
+  divisionOptions: Opt[];
+  supplierOptions: Opt[];
 
   fiscalId: number | null;
-  onFiscalChange: (id: number) => void;
+  onFiscalChange: (id: number | null) => void;
 
   divisionTsdId: number | null;
-  onDivisionChange: (id: number) => void;
+  onDivisionChange: (id: number | null) => void;
 
   supplierId: number | null;
-  onSupplierChange: (id: number) => void;
+  onSupplierChange: (id: number | null) => void;
 
   targetAmountInput: string;
   onTargetAmountChange: (v: string) => void;
@@ -47,89 +118,68 @@ export default function ManagerHeader(props: {
 
   return (
     <Card className="shadow-sm">
-      <CardContent className="p-6">
+      <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
-            <div className="text-base font-semibold">Div Manager: Supplier Allocation</div>
-            <div className="text-sm text-muted-foreground">
-              Step 2: Take Division Target and allocate it to specific Suppliers.
-            </div>
+            <CardTitle className="text-base">Div Manager: Supplier Allocation</CardTitle>
+            <CardDescription>Step 2: Take Division Target and allocate it to specific Suppliers.</CardDescription>
           </div>
 
-          <Button className="cursor-pointer" onClick={onSave} disabled={savingDisabled}>
+          <Button className="cursor-pointer" onClick={onSave} disabled={!!savingDisabled}>
             Save Allocation
           </Button>
         </div>
+      </CardHeader>
 
-        <div className="mt-6 grid gap-4 md:grid-cols-4">
-          <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground">FISCAL PERIOD</Label>
-            <Select
-              value={fiscalId ? String(fiscalId) : ""}
-              onValueChange={(v) => onFiscalChange(Number(v))}
-            >
-              <SelectTrigger className="h-10">
-                <SelectValue placeholder="Select period" />
-              </SelectTrigger>
-              <SelectContent>
-                {fiscalOptions.map((o) => (
-                  <SelectItem key={o.id} value={String(o.id)} className="cursor-pointer">
-                    {o.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+      <CardContent className="pt-0">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {/* ✅ Fiscal Period (searchable + scrollable) */}
+          <ComboboxField
+            label="FISCAL PERIOD"
+            placeholder="Select period"
+            searchPlaceholder="Search period..."
+            options={fiscalOptions}
+            valueId={fiscalId}
+            onChange={onFiscalChange}
+          />
 
-          <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground">SELECT YOUR DIVISION</Label>
-            <Select
-              value={divisionTsdId ? String(divisionTsdId) : ""}
-              onValueChange={(v) => onDivisionChange(Number(v))}
-              disabled={!fiscalId}
-            >
-              <SelectTrigger className="h-10">
-                <SelectValue placeholder="Select division" />
-              </SelectTrigger>
-              <SelectContent>
-                {divisionOptions.map((o) => (
-                  <SelectItem key={o.id} value={String(o.id)} className="cursor-pointer">
-                    {o.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {/* ✅ Division (searchable + scrollable) */}
+          <ComboboxField
+            label="SELECT YOUR DIVISION"
+            placeholder="Select division"
+            searchPlaceholder="Search division..."
+            options={divisionOptions}
+            valueId={divisionTsdId}
+            onChange={onDivisionChange}
+            disabled={!fiscalId}
+          />
 
-          <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground">SELECT SUPPLIER</Label>
-            <Select
-              value={supplierId ? String(supplierId) : ""}
-              onValueChange={(v) => onSupplierChange(Number(v))}
-              disabled={!divisionTsdId}
-            >
-              <SelectTrigger className="h-10">
-                <SelectValue placeholder="Select supplier" />
-              </SelectTrigger>
-              <SelectContent>
-                {supplierOptions.map((o) => (
-                  <SelectItem key={o.id} value={String(o.id)} className="cursor-pointer">
-                    {o.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {/* ✅ Supplier (searchable + scrollable) */}
+          <ComboboxField
+            label="SELECT SUPPLIER"
+            placeholder="Select supplier"
+            searchPlaceholder="Search supplier..."
+            options={supplierOptions}
+            valueId={supplierId}
+            onChange={onSupplierChange}
+            disabled={!divisionTsdId}
+          />
 
+          {/* Target Share */}
           <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground">SUPPLIER TARGET SHARE</Label>
-            <Input
-              className="h-10"
-              placeholder="₱ 0"
-              value={targetAmountInput}
-              onChange={(e) => onTargetAmountChange(e.target.value)}
-              disabled={!supplierId}
-            />
+            <Label className="text-[11px] font-medium text-muted-foreground">SUPPLIER TARGET SHARE</Label>
+            <div className="relative">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                ₱
+              </span>
+              <Input
+                className="h-10 w-full pl-8"
+                inputMode="numeric"
+                placeholder="0"
+                value={targetAmountInput}
+                onChange={(e) => onTargetAmountChange(e.target.value)}
+              />
+            </div>
           </div>
         </div>
       </CardContent>
