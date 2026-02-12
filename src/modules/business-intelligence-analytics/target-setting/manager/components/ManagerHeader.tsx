@@ -1,61 +1,66 @@
 "use client";
 
 import * as React from "react";
-import { Check, ChevronDown } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+
+import { ChevronsUpDown, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type Opt = { id: number; label: string };
+type Option = { id: number; label: string };
 
-function ComboboxField(props: {
+function SearchableSelect(props: {
   label: string;
   placeholder: string;
-  searchPlaceholder: string;
-  options: Opt[];
   valueId: number | null;
-  onChange: (id: number | null) => void;
-  disabled?: boolean;
+  options: Option[];
+  onChange: (id: number) => void;
 }) {
-  const { label, placeholder, searchPlaceholder, options, valueId, onChange, disabled } = props;
+  const { label, placeholder, valueId, options, onChange } = props;
+  const selected = options.find((o) => o.id === valueId);
 
   const [open, setOpen] = React.useState(false);
 
-  const selectedLabel = React.useMemo(() => {
-    const hit = options.find((x) => x.id === valueId);
-    return hit?.label ?? "";
-  }, [options, valueId]);
-
   return (
     <div className="space-y-2">
-      <Label className="text-[11px] font-medium text-muted-foreground">{label}</Label>
+      <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</Label>
 
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
-            type="button"
             variant="outline"
-            className={cn("h-10 w-full justify-between px-3 text-left font-normal", !valueId && "text-muted-foreground")}
-            disabled={!!disabled}
+            role="combobox"
+            className="h-10 w-full justify-between font-normal"
           >
-            <span className="truncate">{valueId ? selectedLabel : placeholder}</span>
-            <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            <span className="truncate">{selected?.label ?? placeholder}</span>
+            <ChevronsUpDown className="h-4 w-4 opacity-50" />
           </Button>
         </PopoverTrigger>
 
         <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
           <Command>
-            <CommandInput placeholder={searchPlaceholder} />
-            <CommandList className="max-h-[260px] overflow-y-auto">
+            <CommandInput placeholder={`Search ${label.toLowerCase()}...`} />
+            <CommandList className="max-h-[240px] overflow-auto">
               <CommandEmpty>No results found.</CommandEmpty>
-
               <CommandGroup>
                 {options.map((o) => (
                   <CommandItem
@@ -65,10 +70,9 @@ function ComboboxField(props: {
                       onChange(o.id);
                       setOpen(false);
                     }}
-                    className="cursor-pointer"
                   >
+                    <Check className={cn("mr-2 h-4 w-4", valueId === o.id ? "opacity-100" : "opacity-0")} />
                     <span className="truncate">{o.label}</span>
-                    <Check className={cn("ml-auto h-4 w-4", valueId === o.id ? "opacity-100" : "opacity-0")} />
                   </CommandItem>
                 ))}
               </CommandGroup>
@@ -81,18 +85,22 @@ function ComboboxField(props: {
 }
 
 export default function ManagerHeader(props: {
-  fiscalOptions: Opt[];
-  divisionOptions: Opt[];
-  supplierOptions: Opt[];
+  fiscalOptions: Option[];
+  divisionOptions: Option[];
+  supplierOptions: Option[];
+  supervisorOptions: Option[];
 
   fiscalId: number | null;
-  onFiscalChange: (id: number | null) => void;
+  onFiscalChange: (id: number) => void;
 
   divisionTsdId: number | null;
-  onDivisionChange: (id: number | null) => void;
+  onDivisionChange: (id: number) => void;
 
   supplierId: number | null;
-  onSupplierChange: (id: number | null) => void;
+  onSupplierChange: (id: number) => void;
+
+  supervisorId: number | null;
+  onSupervisorChange: (id: number) => void;
 
   targetAmountInput: string;
   onTargetAmountChange: (v: string) => void;
@@ -104,14 +112,21 @@ export default function ManagerHeader(props: {
     fiscalOptions,
     divisionOptions,
     supplierOptions,
+    supervisorOptions,
+
     fiscalId,
     onFiscalChange,
     divisionTsdId,
     onDivisionChange,
     supplierId,
     onSupplierChange,
+
+    supervisorId,
+    onSupervisorChange,
+
     targetAmountInput,
     onTargetAmountChange,
+
     onSave,
     savingDisabled,
   } = props;
@@ -125,60 +140,72 @@ export default function ManagerHeader(props: {
             <CardDescription>Step 2: Take Division Target and allocate it to specific Suppliers.</CardDescription>
           </div>
 
-          <Button className="cursor-pointer" onClick={onSave} disabled={!!savingDisabled}>
+          <Button
+            className="cursor-pointer"
+            onClick={() => {
+              if (savingDisabled) {
+                toast.error("Cannot save. Please check your inputs / remaining allocation.");
+                return;
+              }
+              onSave();
+            }}
+            disabled={savingDisabled}
+          >
             Save Allocation
           </Button>
         </div>
       </CardHeader>
 
       <CardContent className="pt-0">
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {/* ✅ Fiscal Period (searchable + scrollable) */}
-          <ComboboxField
-            label="FISCAL PERIOD"
+        {/* 2 rows layout like your screenshot */}
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <SearchableSelect
+            label="Fiscal Period"
             placeholder="Select period"
-            searchPlaceholder="Search period..."
-            options={fiscalOptions}
             valueId={fiscalId}
+            options={fiscalOptions}
             onChange={onFiscalChange}
           />
 
-          {/* ✅ Division (searchable + scrollable) */}
-          <ComboboxField
-            label="SELECT YOUR DIVISION"
+          <SearchableSelect
+            label="Select Your Division"
             placeholder="Select division"
-            searchPlaceholder="Search division..."
-            options={divisionOptions}
             valueId={divisionTsdId}
+            options={divisionOptions}
             onChange={onDivisionChange}
-            disabled={!fiscalId}
           />
 
-          {/* ✅ Supplier (searchable + scrollable) */}
-          <ComboboxField
-            label="SELECT SUPPLIER"
+          <SearchableSelect
+            label="Select Supplier"
             placeholder="Select supplier"
-            searchPlaceholder="Search supplier..."
-            options={supplierOptions}
             valueId={supplierId}
+            options={supplierOptions}
             onChange={onSupplierChange}
-            disabled={!divisionTsdId}
           />
 
-          {/* Target Share */}
-          <div className="space-y-2">
-            <Label className="text-[11px] font-medium text-muted-foreground">SUPPLIER TARGET SHARE</Label>
-            <div className="relative">
-              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                ₱
-              </span>
-              <Input
-                className="h-10 w-full pl-8"
-                inputMode="numeric"
-                placeholder="0"
-                value={targetAmountInput}
-                onChange={(e) => onTargetAmountChange(e.target.value)}
-              />
+          {/* ✅ NEW Supervisor */}
+          <SearchableSelect
+            label="Select Supervisor"
+            placeholder="Select supervisor"
+            valueId={supervisorId}
+            options={supervisorOptions}
+            onChange={onSupervisorChange}
+          />
+
+          {/* Target share spans full width */}
+          <div className="md:col-span-2">
+            <div className="space-y-2">
+              <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Supplier Target Share</Label>
+              <div className="relative">
+                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">₱</span>
+                <Input
+                  className="h-10 pl-8"
+                  inputMode="numeric"
+                  placeholder="0"
+                  value={targetAmountInput}
+                  onChange={(e) => onTargetAmountChange(e.target.value)}
+                />
+              </div>
             </div>
           </div>
         </div>

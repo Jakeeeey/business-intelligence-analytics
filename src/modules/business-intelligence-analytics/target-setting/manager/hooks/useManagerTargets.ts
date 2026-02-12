@@ -9,6 +9,7 @@ import type {
   TargetSettingDivision,
   TargetSettingExecutive,
   TargetSettingSupplier,
+  UserRow,
 } from "../types";
 
 import {
@@ -26,6 +27,11 @@ type DivisionOption = {
 };
 
 type SupplierOption = {
+  id: number;
+  name: string;
+};
+
+type SupervisorOption = {
   id: number;
   name: string;
 };
@@ -50,19 +56,15 @@ function isTradeSupplier(supplierType: any) {
   return v === "TRADE";
 }
 
-// ✅ normalize any status string to a safe UI status enum string
 function normalizeStatus(v: any): AllocationLogRow["status"] {
   const s = String(v ?? "").trim().toUpperCase();
+  const allowed = new Set(["DRAFT", "SUBMITTED", "PENDING", "APPROVED", "REJECTED", "SET"]);
+  return (allowed.has(s) ? (s as any) : "SET");
+}
 
-  // Prefer your backend strings
-  if (s === "APPROVED") return "APPROVED";
-  if (s === "PENDING") return "PENDING";
-  if (s === "REJECTED") return "REJECTED";
-  if (s === "SUBMITTED") return "SUBMITTED";
-  if (s === "DRAFT") return "DRAFT";
-
-  // fallback: if empty, assume SET (consistent with your old behavior)
-  return "DRAFT";
+function fullName(u: UserRow) {
+  const parts = [u.user_fname, u.user_mname, u.user_lname].map((x) => String(x ?? "").trim()).filter(Boolean);
+  return parts.join(" ").trim() || `User #${u.user_id}`;
 }
 
 export function useManagerTargets() {
@@ -74,6 +76,7 @@ export function useManagerTargets() {
   const [selectedExecutiveId, setSelectedExecutiveId] = React.useState<number | null>(null);
   const [selectedDivisionTsdId, setSelectedDivisionTsdId] = React.useState<number | null>(null);
   const [selectedSupplierId, setSelectedSupplierId] = React.useState<number | null>(null);
+  const [selectedSupervisorId, setSelectedSupervisorId] = React.useState<number | null>(null);
 
   const [targetAmountInput, setTargetAmountInput] = React.useState<string>("");
 
@@ -113,13 +116,23 @@ export function useManagerTargets() {
     return (raw.target_setting_division ?? []).find((x) => x.id === selectedDivisionTsdId) ?? null;
   }, [raw, selectedDivisionTsdId]);
 
-  // ✅ ONLY TRADE suppliers + active
   const supplierOptions = React.useMemo<SupplierOption[]>(() => {
     const suppliers = raw?.suppliers ?? [];
     return suppliers
       .filter((s: any) => Number(s?.isActive ?? 1) === 1)
       .filter((s: any) => isTradeSupplier(s?.supplier_type))
-      .map((s: any) => ({ id: Number(s.id), name: String(s.supplier_name ?? "").trim() || `Supplier #${s.id}` }))
+      .map((s: any) => ({
+        id: Number(s.id),
+        name: String(s.supplier_name ?? "").trim() || `Supplier #${s.id}`,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [raw]);
+
+  const supervisorOptions = React.useMemo<SupervisorOption[]>(() => {
+    const users = raw?.users ?? [];
+    return users
+      .map((u) => ({ id: Number(u.user_id), name: fullName(u) }))
+      .filter((u) => Number.isFinite(u.id) && u.id > 0 && u.name.trim())
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [raw]);
 
@@ -128,11 +141,6 @@ export function useManagerTargets() {
     return (raw.target_setting_supplier ?? []).filter((x) => x.tsd_id === selectedDivisionTsdId);
   }, [raw, selectedDivisionTsdId]);
 
-  /**
-   * ✅ Allocation hierarchy status rule (per your instruction):
-   * Executive → Manager → Supervisor
-   * Whatever Executive status is, all lower levels show the same status.
-   */
   const allocationLog = React.useMemo<AllocationLogRow[]>(() => {
     if (!raw || !selectedExecutiveId) return [];
 
@@ -157,13 +165,15 @@ export function useManagerTargets() {
 
     divTargets.forEach((tsd) => {
       const d = divisions.find((z) => z.division_id === tsd.division_id);
+      const divStatus = normalizeStatus((tsd as any).status ?? execStatus);
+
       out.push({
         id: `div-${tsd.id}`,
         creatorRole: "Manager",
         contextAssignedTo: d?.division_name ?? `Division #${tsd.division_id}`,
         detail: "DIVISION ALLOCATION",
         targetAmount: tsd.target_amount,
-        status: execStatus, // ✅ inherit
+        status: divStatus,
       });
     });
 
@@ -178,6 +188,9 @@ export function useManagerTargets() {
       const d = divisions.find((z) => z.division_id === tsd.division_id);
       const s = (suppliers as any[]).find((z) => Number(z.id) === tss.supplier_id);
 
+      // ✅ IMPORTANT: supplier row status must come from target_setting_supplier.status
+      const supplierStatus = normalizeStatus((tss as any).status ?? execStatus);
+
       out.push({
         id: `supp-${tss.id}`,
         creatorRole: "Manager",
@@ -186,7 +199,7 @@ export function useManagerTargets() {
         )}`,
         detail: "SUPPLIER ALLOCATION",
         targetAmount: tss.target_amount,
-        status: execStatus, // ✅ inherit
+        status: supplierStatus,
       });
     });
 
@@ -199,10 +212,8 @@ export function useManagerTargets() {
       (sum, x) => sum + (Number(x.target_amount) || 0),
       0,
     );
-
     const rawRemaining = divisionTarget - allocatedToSuppliers;
     const remaining = Math.max(0, rawRemaining);
-
     return { divisionTarget, allocatedToSuppliers, rawRemaining, remaining };
   }, [selectedDivisionTarget, supplierAllocationsForSelectedDivision]);
 
@@ -241,62 +252,46 @@ export function useManagerTargets() {
   React.useEffect(() => {
     setSelectedDivisionTsdId(null);
     setSelectedSupplierId(null);
+    setSelectedSupervisorId(null);
     setTargetAmountInput("");
   }, [selectedExecutiveId]);
 
   async function saveAllocation() {
-    if (!selectedExecutiveId) {
-      toast.error("Please select fiscal period.");
-      return;
-    }
-    if (!selectedDivisionTsdId) {
-      toast.error("Please select your division.");
-      return;
-    }
-    if (!selectedSupplierId) {
-      toast.error("Please select supplier.");
-      return;
-    }
+    if (!selectedExecutiveId) return toast.error("Please select fiscal period.");
+    if (!selectedDivisionTsdId) return toast.error("Please select your division.");
+    if (!selectedSupplierId) return toast.error("Please select supplier.");
+    if (!selectedSupervisorId) return toast.error("Please select supervisor.");
 
     const target_amount = Number(String(targetAmountInput).replace(/[^\d.]/g, ""));
     if (!Number.isFinite(target_amount) || target_amount <= 0) {
-      toast.error("Supplier target share must be greater than 0.");
-      return;
+      return toast.error("Supplier target share must be greater than 0.");
     }
 
     const existing = supplierAllocationsForSelectedDivision.find((x) => x.supplier_id === selectedSupplierId);
 
     if (!existing) {
-      if (totals.rawRemaining <= 0) {
-        toast.error("Remaining is 0. You cannot allocate more for this division.");
-        return;
-      }
-      if (target_amount > totals.remaining) {
-        toast.error(`Cannot allocate more than remaining (${formatPeso(totals.remaining)}).`);
-        return;
-      }
+      if (totals.rawRemaining <= 0) return toast.error("Remaining is 0. You cannot allocate more for this division.");
+      if (target_amount > totals.remaining) return toast.error(`Cannot allocate more than remaining (${formatPeso(totals.remaining)}).`);
     } else {
       const prev = Number(existing.target_amount) || 0;
       const delta = target_amount - prev;
-
       if (delta > 0) {
-        if (totals.rawRemaining <= 0) {
-          toast.error("Remaining is 0. You cannot increase this allocation.");
-          return;
-        }
-        if (delta > totals.remaining) {
-          toast.error(`Increase exceeds remaining (${formatPeso(totals.remaining)}).`);
-          return;
-        }
+        if (totals.rawRemaining <= 0) return toast.error("Remaining is 0. You cannot increase this allocation.");
+        if (delta > totals.remaining) return toast.error(`Increase exceeds remaining (${formatPeso(totals.remaining)}).`);
       }
     }
 
     try {
       if (existing) {
-        await updateSupplierAllocation({ id: existing.id, target_amount });
+        await updateSupplierAllocation({ id: existing.id, target_amount, supervisor_user_id: selectedSupervisorId });
         toast.success("Allocation updated.");
       } else {
-        await createSupplierAllocation({ tsd_id: selectedDivisionTsdId, supplier_id: selectedSupplierId, target_amount });
+        await createSupplierAllocation({
+          tsd_id: selectedDivisionTsdId,
+          supplier_id: selectedSupplierId,
+          target_amount,
+          supervisor_user_id: selectedSupervisorId,
+        });
         toast.success("Allocation saved.");
       }
       await reload();
@@ -323,6 +318,7 @@ export function useManagerTargets() {
     execOptions,
     divisionOptions,
     supplierOptions,
+    supervisorOptions,
 
     selectedExecutiveId,
     setSelectedExecutiveId,
@@ -332,6 +328,9 @@ export function useManagerTargets() {
 
     selectedSupplierId,
     setSelectedSupplierId,
+
+    selectedSupervisorId,
+    setSelectedSupervisorId,
 
     targetAmountInput,
     setTargetAmountInput,

@@ -1,28 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const DIRECTUS_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "").replace(/\/+$/, "");
-const DIRECTUS_TOKEN = process.env.DIRECTUS_STATIC_TOKEN || process.env.DIRECTUS_SERVICE_TOKEN || "";
+const DIRECTUS_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL || "").replace(/\/+$/, "");
+const DIRECTUS_TOKEN = process.env.DIRECTUS_STATIC_TOKEN || "";
 
 function requireEnv() {
   if (!DIRECTUS_BASE) return "NEXT_PUBLIC_API_BASE_URL is not set";
-  if (!DIRECTUS_TOKEN) return "DIRECTUS_STATIC_TOKEN (or DIRECTUS_SERVICE_TOKEN) is not set";
+  if (!DIRECTUS_TOKEN) return "DIRECTUS_STATIC_TOKEN is not set";
   return null;
 }
 
 function directusHeaders(extra?: Record<string, string>) {
-  const h: Record<string, string> = {
+  return {
     "Content-Type": "application/json",
+    Authorization: `Bearer ${DIRECTUS_TOKEN}`,
     ...(extra ?? {}),
   };
-  if (DIRECTUS_TOKEN) h.Authorization = `Bearer ${DIRECTUS_TOKEN}`;
-  return h;
 }
 
-async function fetchDirectusRaw(path: string, init?: RequestInit) {
+async function fetchDirectus<T>(path: string, init?: RequestInit): Promise<T> {
   const url = `${DIRECTUS_BASE}${path}`;
   const res = await fetch(url, { cache: "no-store", headers: directusHeaders(), ...(init ?? {}) });
 
@@ -31,262 +29,278 @@ async function fetchDirectusRaw(path: string, init?: RequestInit) {
   try {
     json = text ? JSON.parse(text) : null;
   } catch {
-    json = null;
+    // ignore
   }
 
   if (!res.ok) {
-    return {
-      ok: false as const,
-      status: res.status,
-      bodyText: text,
-      bodyJson: json,
-      url,
-    };
+    const msg = json?.errors?.[0]?.message || json?.error || json?.message || text || `Upstream failed (${res.status})`;
+    throw new Error(msg);
   }
 
-  return { ok: true as const, status: res.status, json, url };
+  return json as T;
 }
 
-function getAuthedUserIdMaybe(): number | null {
-  const _c = cookies();
-  void _c;
-  return null;
+function normalizeStatus(v: any) {
+  const s = String(v ?? "").trim().toUpperCase();
+  const allowed = new Set(["DRAFT", "SUBMITTED", "PENDING", "APPROVED", "REJECTED", "SET"]);
+  return (allowed.has(s) ? s : "SET") as any;
 }
 
-// ✅ Helpers for backend enforcement
-async function getDivisionTargetAmount(tsd_id: number): Promise<number> {
-  const res = await fetchDirectusRaw(`/items/target_setting_division/${tsd_id}?fields=id,target_amount`);
-  if (!res.ok) throw new Error("Failed to read division target.");
-  return Number(res.json?.data?.target_amount ?? 0);
+function dateOnly(v: any) {
+  const s = String(v ?? "").trim();
+  const m = s.match(/^(\d{4}-\d{2}-\d{2})/);
+  return m ? m[1] : null;
 }
 
-async function listSupplierAllocationsForDivision(tsd_id: number): Promise<Array<{ id: number; target_amount: number }>> {
-  const res = await fetchDirectusRaw(
-    `/items/target_setting_supplier?limit=-1&fields=id,target_amount&filter[tsd_id][_eq]=${encodeURIComponent(String(tsd_id))}`,
+async function resolveExecutiveContextByTsdId(tsd_id: number) {
+  const divRes = await fetchDirectus<{ data: any[] }>(
+    `/items/target_setting_division?filter[id][_eq]=${encodeURIComponent(String(tsd_id))}&limit=1`,
   );
-  if (!res.ok) throw new Error("Failed to read supplier allocations.");
-  const data = res.json?.data ?? [];
-  return (data as any[]).map((x) => ({ id: Number(x.id), target_amount: Number(x.target_amount) || 0 }));
+  const div = divRes.data?.[0];
+  if (!div) throw new Error("Division target (target_setting_division) not found.");
+
+  const tse_id = Number(div.tse_id);
+  if (!tse_id) throw new Error("Missing tse_id on target_setting_division.");
+
+  const execRes = await fetchDirectus<{ data: any[] }>(
+    `/items/target_setting_executive?filter[id][_eq]=${encodeURIComponent(String(tse_id))}&limit=1`,
+  );
+  const exec = execRes.data?.[0];
+  if (!exec) throw new Error("Executive target (target_setting_executive) not found.");
+
+  return {
+    exec,
+    tse_id,
+    fiscal_period: dateOnly(exec.fiscal_period),
+    status: normalizeStatus(exec.status),
+  };
 }
 
-function sumAllocations(rows: Array<{ id: number; target_amount: number }>) {
-  return rows.reduce((s, r) => s + (Number(r.target_amount) || 0), 0);
+async function findSupplierAllocation(tsd_id: number, supplier_id: number) {
+  const q =
+    `/items/target_setting_supplier?limit=1` +
+    `&filter[tsd_id][_eq]=${encodeURIComponent(String(tsd_id))}` +
+    `&filter[supplier_id][_eq]=${encodeURIComponent(String(supplier_id))}`;
+
+  const r = await fetchDirectus<{ data: any[] }>(q);
+  return r.data?.[0] ?? null;
 }
 
-/**
- * GET: returns raw datasets (NO VIEW TABLES) so frontend can JOIN.
- */
-export async function GET() {
-  const envErr = requireEnv();
-  if (envErr) return NextResponse.json({ error: envErr }, { status: 500 });
+async function findSupervisorRowsByTssId(tss_id: number) {
+  const q = `/items/target_setting_supervisor?limit=-1&filter[tss_id][_eq]=${encodeURIComponent(String(tss_id))}`;
+  const r = await fetchDirectus<{ data: any[] }>(q);
+  return r.data ?? [];
+}
 
-  const paths = {
-    executive: "/items/target_setting_executive?limit=-1",
-    divisionTargets: "/items/target_setting_division?limit=-1",
-    supplierTargets: "/items/target_setting_supplier?limit=-1",
-    divisions: "/items/division?limit=-1",
-    suppliers: "/items/suppliers?limit=-1&filter[supplier_type][_eq]=TRADE",
+async function upsertSupervisorRow(args: {
+  tss_id: number;
+  target_amount: number;
+  fiscal_period: string | null;
+  status: string;
+  supervisor_user_id?: number | null;
+}) {
+  const existing = await findSupervisorRowsByTssId(args.tss_id);
+
+  const payload: any = {
+    tss_id: args.tss_id,
+    target_amount: args.target_amount,
+    fiscal_period: args.fiscal_period,
+    status: args.status,
   };
 
-  const [a, b, c, d, e] = await Promise.all([
-    fetchDirectusRaw(paths.executive),
-    fetchDirectusRaw(paths.divisionTargets),
-    fetchDirectusRaw(paths.supplierTargets),
-    fetchDirectusRaw(paths.divisions),
-    fetchDirectusRaw(paths.suppliers),
-  ]);
-
-  const failures = [a, b, c, d, e].filter((x) => !x.ok) as Array<any>;
-  if (failures.length) {
-    const first = failures[0];
-    return NextResponse.json(
-      {
-        error: "Upstream request failed",
-        details: {
-          upstream_status: first.status,
-          upstream_url: first.url,
-          upstream_body: first.bodyJson ?? first.bodyText ?? "",
-        },
-      },
-      { status: 502 },
-    );
+  if (typeof args.supervisor_user_id !== "undefined") {
+    payload.supervisor_user_id = args.supervisor_user_id;
   }
 
-  return NextResponse.json({
-    ok: true,
-    data: {
-      target_setting_executive: (a as any).json?.data ?? [],
-      target_setting_division: (b as any).json?.data ?? [],
-      target_setting_supplier: (c as any).json?.data ?? [],
-      division: (d as any).json?.data ?? [],
-      suppliers: (e as any).json?.data ?? [],
-    },
-  });
-}
-
-/**
- * POST: Create supplier allocation
- * body: { tsd_id, supplier_id, target_amount }
- */
-export async function POST(req: NextRequest) {
-  const envErr = requireEnv();
-  if (envErr) return NextResponse.json({ error: envErr }, { status: 500 });
-
-  let body: any = null;
-  try {
-    body = await req.json();
-  } catch {
-    body = null;
+  if (existing.length > 0) {
+    const id = existing[0].id;
+    await fetchDirectus(`/items/target_setting_supervisor/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    });
+    return { id, mode: "update" as const };
   }
 
-  const tsd_id = Number(body?.tsd_id);
-  const supplier_id = Number(body?.supplier_id);
-  const target_amount = Number(body?.target_amount);
-
-  if (!tsd_id || !supplier_id || !Number.isFinite(target_amount) || target_amount <= 0) {
-    return NextResponse.json(
-      { error: "Invalid payload. Required: tsd_id, supplier_id, target_amount (> 0)." },
-      { status: 400 },
-    );
-  }
-
-  // ✅ BACKEND ENFORCEMENT: must not exceed division target remaining
-  try {
-    const divisionTarget = await getDivisionTargetAmount(tsd_id);
-    const existing = await listSupplierAllocationsForDivision(tsd_id);
-    const allocated = sumAllocations(existing);
-
-    const remaining = divisionTarget - allocated;
-    if (remaining <= 0) {
-      return NextResponse.json({ error: "Remaining is 0. You cannot allocate more for this division." }, { status: 400 });
-    }
-    if (target_amount > remaining) {
-      return NextResponse.json(
-        { error: `Cannot allocate more than remaining (${remaining}).` },
-        { status: 400 },
-      );
-    }
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message ?? "Validation failed." }, { status: 500 });
-  }
-
-  const created_by = getAuthedUserIdMaybe() ?? body?.created_by ?? null;
-
-  const payload: Record<string, any> = {
-    tsd_id,
-    supplier_id,
-    target_amount,
-  };
-  if (created_by != null) payload.created_by = Number(created_by);
-
-  const up = await fetchDirectusRaw(`/items/target_setting_supplier`, {
+  const created = await fetchDirectus<{ data: any }>(`/items/target_setting_supervisor`, {
     method: "POST",
     body: JSON.stringify(payload),
   });
 
-  if (!up.ok) {
-    return NextResponse.json(
-      {
-        error: "Upstream request failed",
-        details: { upstream_status: up.status, upstream_url: up.url, upstream_body: up.bodyJson ?? up.bodyText ?? "" },
-      },
-      { status: 502 },
-    );
-  }
-
-  return NextResponse.json({ ok: true, data: up.json?.data ?? up.json });
+  return { id: created?.data?.id ?? null, mode: "create" as const };
 }
 
-/**
- * PATCH: Update supplier allocation
- * body: { id, target_amount }
- */
-export async function PATCH(req: NextRequest) {
-  const envErr = requireEnv();
-  if (envErr) return NextResponse.json({ error: envErr }, { status: 500 });
-
-  let body: any = null;
+export async function GET() {
   try {
-    body = await req.json();
-  } catch {
-    body = null;
-  }
+    const envErr = requireEnv();
+    if (envErr) return NextResponse.json({ error: envErr }, { status: 500 });
 
-  const id = Number(body?.id);
-  const target_amount = Number(body?.target_amount);
+    const [exec, div, supp, supv, divisions, suppliers, users] = await Promise.all([
+      fetchDirectus<{ data: any[] }>(`/items/target_setting_executive?limit=-1`),
+      fetchDirectus<{ data: any[] }>(`/items/target_setting_division?limit=-1`),
+      fetchDirectus<{ data: any[] }>(`/items/target_setting_supplier?limit=-1`),
+      fetchDirectus<{ data: any[] }>(`/items/target_setting_supervisor?limit=-1`),
+      fetchDirectus<{ data: any[] }>(`/items/division?limit=-1`),
+      fetchDirectus<{ data: any[] }>(`/items/suppliers?limit=-1`),
+      fetchDirectus<{ data: any[] }>(`/items/user?limit=-1`),
+    ]);
 
-  if (!id || !Number.isFinite(target_amount) || target_amount <= 0) {
-    return NextResponse.json({ error: "Invalid payload. Required: id, target_amount (> 0)." }, { status: 400 });
-  }
-
-  // ✅ BACKEND ENFORCEMENT: update must not push total above division target
-  try {
-    const current = await fetchDirectusRaw(`/items/target_setting_supplier/${id}?fields=id,tsd_id,target_amount`);
-    if (!current.ok) {
-      return NextResponse.json({ error: "Failed to read current allocation." }, { status: 502 });
-    }
-
-    const tsd_id = Number(current.json?.data?.tsd_id);
-    if (!tsd_id) return NextResponse.json({ error: "Invalid current allocation (missing tsd_id)." }, { status: 400 });
-
-    const divisionTarget = await getDivisionTargetAmount(tsd_id);
-    const existing = await listSupplierAllocationsForDivision(tsd_id);
-
-    const allocatedWithoutThis = sumAllocations(existing.filter((x) => x.id !== id));
-    const newTotal = allocatedWithoutThis + target_amount;
-
-    if (newTotal > divisionTarget) {
-      const remaining = divisionTarget - allocatedWithoutThis;
-      return NextResponse.json(
-        { error: `Increase exceeds remaining (${remaining}).` },
-        { status: 400 },
-      );
-    }
+    return NextResponse.json({
+      target_setting_executive: exec.data ?? [],
+      target_setting_division: div.data ?? [],
+      target_setting_supplier: supp.data ?? [],
+      target_setting_supervisor: supv.data ?? [],
+      division: divisions.data ?? [],
+      suppliers: suppliers.data ?? [],
+      users: users.data ?? [],
+    });
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message ?? "Validation failed." }, { status: 500 });
+    return NextResponse.json({ error: e?.message ?? "Failed to load manager targets." }, { status: 500 });
   }
-
-  const up = await fetchDirectusRaw(`/items/target_setting_supplier/${id}`, {
-    method: "PATCH",
-    body: JSON.stringify({ target_amount }),
-  });
-
-  if (!up.ok) {
-    return NextResponse.json(
-      {
-        error: "Upstream request failed",
-        details: { upstream_status: up.status, upstream_url: up.url, upstream_body: up.bodyJson ?? up.bodyText ?? "" },
-      },
-      { status: 502 },
-    );
-  }
-
-  return NextResponse.json({ ok: true, data: up.json?.data ?? up.json });
 }
 
-/**
- * DELETE: /api/bia/target-setting/manager?id=123
- */
-export async function DELETE(req: NextRequest) {
-  const envErr = requireEnv();
-  if (envErr) return NextResponse.json({ error: envErr }, { status: 500 });
+export async function POST(req: NextRequest) {
+  try {
+    const envErr = requireEnv();
+    if (envErr) return NextResponse.json({ error: envErr }, { status: 500 });
 
-  const { searchParams } = new URL(req.url);
-  const id = Number(searchParams.get("id"));
+    const body = await req.json().catch(() => ({}));
+    const action = String(body?.action ?? "").toUpperCase();
+    if (action !== "UPSERT_SUPPLIER") return NextResponse.json({ error: "Invalid action." }, { status: 400 });
 
-  if (!id) return NextResponse.json({ error: "Missing id query param." }, { status: 400 });
+    const tsd_id = Number(body.tsd_id);
+    const supplier_id = Number(body.supplier_id);
+    const target_amount = Number(body.target_amount);
 
-  const up = await fetchDirectusRaw(`/items/target_setting_supplier/${id}`, { method: "DELETE" });
+    const supervisor_user_id =
+      body.supervisor_user_id === null || typeof body.supervisor_user_id === "undefined"
+        ? null
+        : Number(body.supervisor_user_id);
 
-  if (!up.ok) {
-    return NextResponse.json(
-      {
-        error: "Upstream request failed",
-        details: { upstream_status: up.status, upstream_url: up.url, upstream_body: up.bodyJson ?? up.bodyText ?? "" },
-      },
-      { status: 502 },
-    );
+    if (!tsd_id || !supplier_id || !Number.isFinite(target_amount) || target_amount <= 0) {
+      return NextResponse.json({ error: "Invalid payload." }, { status: 400 });
+    }
+
+    if (!supervisor_user_id || !Number.isFinite(supervisor_user_id)) {
+      return NextResponse.json({ error: "Please select Supervisor." }, { status: 400 });
+    }
+
+    // ✅ executive context (source of fiscal_period + status cascade)
+    const ctx = await resolveExecutiveContextByTsdId(tsd_id);
+
+    const existing = await findSupplierAllocation(tsd_id, supplier_id);
+
+    let tssId: number;
+
+    // ✅ also write status + fiscal_period into target_setting_supplier
+    const supplierPayload = {
+      target_amount,
+      fiscal_period: ctx.fiscal_period,
+      status: ctx.status,
+    };
+
+    if (existing) {
+      const patched = await fetchDirectus<{ data: any }>(`/items/target_setting_supplier/${existing.id}`, {
+        method: "PATCH",
+        body: JSON.stringify(supplierPayload),
+      });
+      tssId = Number(patched?.data?.id ?? existing.id);
+    } else {
+      const created = await fetchDirectus<{ data: any }>(`/items/target_setting_supplier`, {
+        method: "POST",
+        body: JSON.stringify({
+          tsd_id,
+          supplier_id,
+          ...supplierPayload,
+        }),
+      });
+      tssId = Number(created?.data?.id);
+    }
+
+    await upsertSupervisorRow({
+      tss_id: tssId,
+      target_amount,
+      fiscal_period: ctx.fiscal_period,
+      status: ctx.status,
+      supervisor_user_id,
+    });
+
+    return NextResponse.json({ ok: true });
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message ?? "Failed to save allocation." }, { status: 500 });
   }
+}
 
-  return NextResponse.json({ ok: true });
+export async function PATCH(req: NextRequest) {
+  try {
+    const envErr = requireEnv();
+    if (envErr) return NextResponse.json({ error: envErr }, { status: 500 });
+
+    const body = await req.json().catch(() => ({}));
+    const action = String(body?.action ?? "").toUpperCase();
+    if (action !== "UPDATE_SUPPLIER") return NextResponse.json({ error: "Invalid action." }, { status: 400 });
+
+    const id = Number(body.id); // target_setting_supplier.id
+    const target_amount = Number(body.target_amount);
+    const supervisor_user_id =
+      body.supervisor_user_id === null || typeof body.supervisor_user_id === "undefined"
+        ? undefined
+        : Number(body.supervisor_user_id);
+
+    if (!id || !Number.isFinite(target_amount) || target_amount <= 0) {
+      return NextResponse.json({ error: "Invalid payload." }, { status: 400 });
+    }
+
+    const tssRes = await fetchDirectus<{ data: any[] }>(
+      `/items/target_setting_supplier?filter[id][_eq]=${encodeURIComponent(String(id))}&limit=1`,
+    );
+    const tss = tssRes.data?.[0];
+    if (!tss) return NextResponse.json({ error: "Supplier allocation not found." }, { status: 404 });
+
+    const tsd_id = Number(tss.tsd_id);
+    const ctx = await resolveExecutiveContextByTsdId(tsd_id);
+
+    // ✅ also keep status/fiscal_period consistent on supplier
+    await fetchDirectus(`/items/target_setting_supplier/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        target_amount,
+        fiscal_period: ctx.fiscal_period,
+        status: ctx.status,
+      }),
+    });
+
+    await upsertSupervisorRow({
+      tss_id: id,
+      target_amount,
+      fiscal_period: ctx.fiscal_period,
+      status: ctx.status,
+      supervisor_user_id,
+    });
+
+    return NextResponse.json({ ok: true });
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message ?? "Failed to update allocation." }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const envErr = requireEnv();
+    if (envErr) return NextResponse.json({ error: envErr }, { status: 500 });
+
+    const { searchParams } = new URL(req.url);
+    const id = Number(searchParams.get("id"));
+    if (!id) return NextResponse.json({ error: "Missing id." }, { status: 400 });
+
+    const supRows = await findSupervisorRowsByTssId(id);
+    for (const r of supRows) {
+      await fetchDirectus(`/items/target_setting_supervisor/${r.id}`, { method: "DELETE" });
+    }
+
+    await fetchDirectus(`/items/target_setting_supplier/${id}`, { method: "DELETE" });
+
+    return NextResponse.json({ ok: true });
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message ?? "Failed to delete allocation." }, { status: 500 });
+  }
 }

@@ -25,6 +25,8 @@ export default function ManagerModule() {
 
   const supplierOptions = m.supplierOptions.map((x) => ({ id: x.id, label: x.name }));
 
+  const supervisorOptions = m.supervisorOptions.map((x) => ({ id: x.id, label: x.name }));
+
   const supplierNameById = React.useCallback(
     (id: number) => m.supplierOptions.find((x) => x.id === id)?.name ?? `Supplier #${id}`,
     [m.supplierOptions],
@@ -43,6 +45,7 @@ export default function ManagerModule() {
     m.refreshing ||
     !m.selectedDivisionTsdId ||
     !m.selectedSupplierId ||
+    !m.selectedSupervisorId ||
     (() => {
       const existing = m.supplierAllocationsForSelectedDivision.find(
         (x) => x.supplier_id === (m.selectedSupplierId ?? -1),
@@ -56,12 +59,15 @@ export default function ManagerModule() {
         fiscalOptions={fiscalOptions}
         divisionOptions={divisionOptions}
         supplierOptions={supplierOptions}
+        supervisorOptions={supervisorOptions}
         fiscalId={m.selectedExecutiveId}
         onFiscalChange={m.setSelectedExecutiveId}
         divisionTsdId={m.selectedDivisionTsdId}
         onDivisionChange={m.setSelectedDivisionTsdId}
         supplierId={m.selectedSupplierId}
         onSupplierChange={m.setSelectedSupplierId}
+        supervisorId={m.selectedSupervisorId}
+        onSupervisorChange={m.setSelectedSupervisorId}
         targetAmountInput={m.targetAmountInput}
         onTargetAmountChange={m.setTargetAmountInput}
         onSave={m.saveAllocation}
@@ -87,10 +93,8 @@ export default function ManagerModule() {
         </CardHeader>
 
         <CardContent className="pt-0">
-          {/* ✅ Line between the two title sections */}
           <Separator className="my-4" />
 
-          {/* Supplier Allocations title (below the line) */}
           <div className="mb-3">
             <div className="text-sm font-semibold">Supplier Allocations</div>
             <div className="text-xs text-muted-foreground">
@@ -98,7 +102,6 @@ export default function ManagerModule() {
             </div>
           </div>
 
-          {/* Table container */}
           <div className="rounded-md border bg-background">
             <div className="overflow-hidden rounded-md">
               <SupplierAllocationsTable

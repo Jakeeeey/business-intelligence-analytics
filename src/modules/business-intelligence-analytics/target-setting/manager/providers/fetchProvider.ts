@@ -1,75 +1,65 @@
-import type {
-  CreateSupplierAllocationDto,
-  ManagerBootstrapResponse,
-  TargetSettingSupplier,
-  UpdateSupplierAllocationDto,
-} from "../types";
+"use client";
 
-async function safeJson(res: Response) {
+import type { ManagerBootstrapResponse } from "../types";
+
+async function api<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(path, { cache: "no-store", ...(init ?? {}) });
   const text = await res.text().catch(() => "");
+  let json: any = null;
   try {
-    return text ? JSON.parse(text) : null;
+    json = text ? JSON.parse(text) : null;
   } catch {
-    return null;
+    // ignore
   }
-}
 
-function toErrorMessage(payload: any, fallback: string) {
-  // expected API error shape:
-  // { error: "...", details: { upstream_body, upstream_status, upstream_url } }
-  const msg = payload?.error || payload?.message || fallback;
-  const upstream = payload?.details?.upstream_body;
-  if (upstream?.errors?.[0]?.message) return upstream.errors[0].message;
-  if (typeof upstream === "string" && upstream.trim()) return `${msg}: ${upstream}`;
-  return msg;
+  if (!res.ok) {
+    const msg =
+      json?.error ||
+      json?.message ||
+      (typeof json === "string" ? json : null) ||
+      text ||
+      `Request failed (${res.status})`;
+    throw new Error(msg);
+  }
+
+  return (json as T) ?? ({} as T);
 }
 
 export async function bootstrapManagerTargets(): Promise<ManagerBootstrapResponse> {
-  const res = await fetch("/api/bia/target-setting/manager", { cache: "no-store" });
-  const json = await safeJson(res);
-
-  if (!res.ok) {
-    throw new Error(toErrorMessage(json, "Failed to load target setting data."));
-  }
-
-  return (json?.data ?? {}) as ManagerBootstrapResponse;
+  return api<ManagerBootstrapResponse>("/api/bia/target-setting/manager");
 }
 
-export async function createSupplierAllocation(dto: CreateSupplierAllocationDto): Promise<TargetSettingSupplier> {
-  const res = await fetch("/api/bia/target-setting/manager", {
+export async function createSupplierAllocation(payload: {
+  tsd_id: number;
+  supplier_id: number;
+  target_amount: number;
+  // optional for later when you add supervisor selection UI
+  supervisor_user_id?: number | null;
+}): Promise<{ ok: true }> {
+  await api("/api/bia/target-setting/manager", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(dto),
+    body: JSON.stringify({ action: "UPSERT_SUPPLIER", ...payload }),
   });
-  const json = await safeJson(res);
-
-  if (!res.ok) {
-    throw new Error(toErrorMessage(json, "Failed to create supplier allocation."));
-  }
-
-  return (json?.data ?? json) as TargetSettingSupplier;
+  return { ok: true };
 }
 
-export async function updateSupplierAllocation(dto: UpdateSupplierAllocationDto): Promise<TargetSettingSupplier> {
-  const res = await fetch("/api/bia/target-setting/manager", {
+export async function updateSupplierAllocation(payload: {
+  id: number; // tss id
+  target_amount: number;
+  supervisor_user_id?: number | null;
+}): Promise<{ ok: true }> {
+  await api("/api/bia/target-setting/manager", {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(dto),
+    body: JSON.stringify({ action: "UPDATE_SUPPLIER", ...payload }),
   });
-  const json = await safeJson(res);
-
-  if (!res.ok) {
-    throw new Error(toErrorMessage(json, "Failed to update supplier allocation."));
-  }
-
-  return (json?.data ?? json) as TargetSettingSupplier;
+  return { ok: true };
 }
 
-export async function deleteSupplierAllocation(id: number): Promise<void> {
-  const res = await fetch(`/api/bia/target-setting/manager?id=${encodeURIComponent(String(id))}`, { method: "DELETE" });
-  const json = await safeJson(res);
-
-  if (!res.ok) {
-    throw new Error(toErrorMessage(json, "Failed to delete supplier allocation."));
-  }
+export async function deleteSupplierAllocation(id: number): Promise<{ ok: true }> {
+  await api(`/api/bia/target-setting/manager?id=${encodeURIComponent(String(id))}`, {
+    method: "DELETE",
+  });
+  return { ok: true };
 }
