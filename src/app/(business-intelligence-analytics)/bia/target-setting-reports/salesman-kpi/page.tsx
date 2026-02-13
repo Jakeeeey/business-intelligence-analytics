@@ -6,13 +6,13 @@ import {
     BreadcrumbPage,
     BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { NavUser } from "../../_components/nav-user";
 
 import { cookies } from "next/headers";
-// Import the modernized KPI Module
+
+// ✅ Wire the module you asked for
 import {SalesmanKPIModule} from "@/modules/business-intelligence-analytics/target-setting-reports/salesman-kpi";
 
 export const runtime = "nodejs";
@@ -48,10 +48,18 @@ function buildHeaderUserFromToken(token: string | null | undefined) {
     const payload = token ? decodeJwtPayload(token) : null;
 
     const first = pickString(payload, [
-        "Firstname", "FirstName", "firstName", "firstname", "first_name",
+        "Firstname",
+        "FirstName",
+        "firstName",
+        "firstname",
+        "first_name",
     ]);
     const last = pickString(payload, [
-        "LastName", "Lastname", "lastName", "lastname", "last_name",
+        "LastName",
+        "Lastname",
+        "lastName",
+        "lastname",
+        "last_name",
     ]);
     const email = pickString(payload, ["email", "Email"]);
 
@@ -60,62 +68,60 @@ function buildHeaderUserFromToken(token: string | null | undefined) {
     return {
         name,
         email: email || "",
-        avatar: "/avatars/shadcn.jpg", // Note: Ensure your AvatarFallback handles the missing image
+        avatar: "/avatars/shadcn.jpg",
     };
 }
 
 export default async function Page() {
-    // Next.js: cookies() is async
+    // ✅ Next.js 16: cookies() is async
     const cookieStore = await cookies();
     const token = cookieStore.get(COOKIE_NAME)?.value ?? null;
 
     const headerUser = buildHeaderUserFromToken(token);
 
     return (
-        <div className="flex h-full min-h-0 flex-col bg-background">
-            {/* --- TOP STICKY HEADER --- */}
-            <header
-                className="
-                    sticky top-2 z-50 relative
-                    flex h-16 shrink-0 items-center justify-between
-                    border-b bg-background shadow-sm
-                    before:content-[''] before:absolute before:inset-x-0 before:-top-2 before:h-2 before:bg-background
-                "
-            >
-                <div className="flex h-full items-center gap-2 px-4">
-                    <SidebarTrigger className="-ml-1" />
+        // ✅ This fills the RIGHT column provided by SidebarInset (which is now fixed-height).
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+            {/* ✅ Topbar is fixed in place because ONLY <main> scrolls */}
+            <header className="relative z-10 flex h-14 shrink-0 items-center justify-between border-b shadow-sm bg-background sm:h-16 overflow-hidden">
+                <div className="flex h-full min-w-0 items-center gap-2 px-3 sm:px-4 overflow-hidden">
+                    <SidebarTrigger className="-ml-1 shrink-0" />
+
                     <Separator
                         orientation="vertical"
-                        className="mr-2 data-[orientation=vertical]:h-4"
+                        className="hidden sm:block mr-2 data-[orientation=vertical]:h-4 shrink-0"
                     />
-                    <Breadcrumb>
-                        <BreadcrumbList>
-                            <BreadcrumbItem className="hidden md:block">
-                                <BreadcrumbLink href="#">BIA</BreadcrumbLink>
-                            </BreadcrumbItem>
-                            <BreadcrumbSeparator className="hidden md:block" />
-                            <BreadcrumbItem className="hidden md:block">
-                                <BreadcrumbLink href="#">Target Setting Reports</BreadcrumbLink>
-                            </BreadcrumbItem>
-                            <BreadcrumbSeparator className="hidden md:block" />
-                            <BreadcrumbItem>
-                                <BreadcrumbPage>Salesman KPI</BreadcrumbPage>
-                            </BreadcrumbItem>
-                        </BreadcrumbList>
-                    </Breadcrumb>
+
+                    <div className="min-w-0 overflow-hidden">
+                        <Breadcrumb>
+                            <BreadcrumbList className="min-w-0 overflow-hidden">
+                                <BreadcrumbItem className="hidden md:block shrink-0">
+                                    <BreadcrumbLink href="#">BIA</BreadcrumbLink>
+                                </BreadcrumbItem>
+                                <BreadcrumbSeparator className="hidden md:block shrink-0" />
+                                <BreadcrumbItem className="hidden md:block shrink-0">
+                                    <BreadcrumbLink href="#">Target Setting Reports</BreadcrumbLink>
+                                </BreadcrumbItem>
+                                <BreadcrumbSeparator className="hidden md:block shrink-0" />
+                                <BreadcrumbItem className="min-w-0 overflow-hidden">
+                                    <BreadcrumbPage className="truncate max-w-[56vw] sm:max-w-[60vw] md:max-w-none">
+                                        Salesman KPIs
+                                    </BreadcrumbPage>
+                                </BreadcrumbItem>
+                            </BreadcrumbList>
+                        </Breadcrumb>
+                    </div>
                 </div>
 
-                <div className="flex h-full items-center px-4">
+                <div className="flex h-full items-center px-2 sm:px-4 shrink-0 max-w-[48vw] sm:max-w-none overflow-hidden">
                     <NavUser user={headerUser} />
                 </div>
             </header>
 
-            {/* --- MAIN ANALYTICS CONTENT --- */}
-            <ScrollArea className="min-h-0 flex-1">
-                <div className="p-4 lg:p-8">
-                    <SalesmanKPIModule />
-                </div>
-            </ScrollArea>
+            {/* ✅ Only content scrolls inside RIGHT column */}
+            <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-2 sm:p-4">
+                <SalesmanKPIModule />
+            </main>
         </div>
     );
 }

@@ -73,6 +73,8 @@ export async function POST(req: NextRequest) {
     const loginUrl = `${baseUrl.replace(/\/$/, "")}/auth/login`;
     const springPayload = { email, hashPassword };
 
+    console.log("[auth/login] Attempting login at:", loginUrl);
+
     let springRes: Response;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 12_000);
@@ -105,6 +107,9 @@ export async function POST(req: NextRequest) {
     }
 
     const raw = await springRes.text();
+    console.log("[auth/login] Upstream response status:", springRes.status);
+    console.log("[auth/login] Raw response length:", raw?.length);
+
     let data: any = null;
     try {
         data = raw ? JSON.parse(raw) : null;
@@ -125,7 +130,7 @@ export async function POST(req: NextRequest) {
 
     const token = pickToken(data);
     if (!token) {
-        console.error("[auth/login] Login OK but no token returned by upstream.");
+        console.error("[auth/login] Login OK but no token returned by upstream.", { dataKeys: data ? Object.keys(data) : null });
         return NextResponse.json(
             { ok: false, message: "Login succeeded but no token was returned." },
             { status: 502 }
