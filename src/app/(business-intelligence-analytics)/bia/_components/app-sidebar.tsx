@@ -8,10 +8,6 @@ import {
     BarChart3,
     Target,
     LineChart,
-
-    // ✅ L2 icons
-    UserCheck,
-    Boxes,
     BadgeCheck,
     UserCog,
     Briefcase,
@@ -22,6 +18,7 @@ import {
     ArrowLeftRight,
     Network,
     MapPinned,
+    Users,
 } from "lucide-react";
 
 import { NavMain } from "./nav-main";
@@ -41,92 +38,54 @@ import {
 const data = {
     navMain: [
         {
-            title: "Sales Report",
-            url: "/bia/sales-report",
+            title: "CRM",
+            url: "#",
             icon: BarChart3,
             items: [
                 {
-                    title: "Salesman Performance",
-                    url: "/bia/sales-report/salesman-performance",
-                    icon: UserCheck,
+                    title: "Target Settings",
+                    url: "#",
+                    icon: Target,
+                    items: [
+                        { title: "Target Approval", url: "/bia/target-setting/target-approval", icon: BadgeCheck },
+                        { title: "Executive", url: "/bia/target-setting/executive", icon: UserCog },
+                        { title: "Manager", url: "/bia/target-setting/manager", icon: Briefcase },
+                        { title: "Supervisor", url: "/bia/target-setting/supervisor", icon: UserRound },
+                    ],
                 },
                 {
-                    title: "Product Sales Performance",
-                    url: "/bia/sales-report/product-sales-performance",
-                    icon: Boxes,
-                },
-            ],
-        },
-        {
-            title: "Target Settings",
-            url: "#",
-            icon: Target,
-            items: [
-                {
-                    title: "Target Approval",
-                    url: "/bia/target-setting/target-approval",
-                    icon: BadgeCheck,
-                },
-                {
-                    title: "Executive",
-                    url: "/bia/target-setting/executive",
-                    icon: UserCog,
-                },
-                {
-                    title: "Manager",
-                    url: "/bia/target-setting/manager",
-                    icon: Briefcase,
-                },
-                {
-                    title: "Supervisor",
-                    url: "/bia/target-setting/supervisor",
-                    icon: UserRound,
-                },
-            ],
-        },
-        {
-            title: "Target Setting Reports",
-            url: "#",
-            icon: LineChart,
-            items: [
-                {
-                    title: "Executive Health",
-                    url: "/bia/target-setting-reports/executive-health",
-                    icon: HeartPulse,
-                },
-                {
-                    title: "Managerial / Supplier",
-                    url: "/bia/target-setting-reports/managerial-supplier",
-                    icon: Factory,
-                },
-                {
-                    title: "Salesman KPI",
-                    url: "/bia/target-setting-reports/salesman-kpi",
-                    icon: Gauge,
-                },
-                {
-                    title: "AR and Remittance",
-                    url: "/bia/target-setting-reports/ar-and-remittance",
-                    icon: ArrowLeftRight,
-                },
-                {
-                    title: "Channel",
-                    url: "/bia/target-setting-reports/channel",
-                    icon: Network,
-                },
-                {
-                    title: "Area",
-                    url: "/bia/target-setting-reports/area",
-                    icon: MapPinned,
+                    title: "Target Setting Reports",
+                    url: "#",
+                    icon: LineChart,
+                    items: [
+                        { title: "Executive Health", url: "/bia/target-setting-reports/executive-health", icon: HeartPulse },
+                        { title: "Managerial / Supplier", url: "/bia/target-setting-reports/managerial-supplier", icon: Factory },
+                        { title: "Salesman KPI", url: "/bia/target-setting-reports/salesman-kpi", icon: Gauge },
+                        { title: "AR and Remittance", url: "/bia/target-setting-reports/ar-and-remittance", icon: ArrowLeftRight },
+                        { title: "Channel", url: "/bia/target-setting-reports/channel", icon: Network },
+                        { title: "Area", url: "/bia/target-setting-reports/area", icon: MapPinned },
+                        { title: "SamG", url: "/bia/target-setting-reports/samg", icon: Users },
+                    ],
                 },
             ],
         },
     ],
 };
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export function AppSidebar({ className, ...props }: React.ComponentProps<typeof Sidebar>) {
     return (
-        <Sidebar {...props}>
+        <Sidebar
+            {...props}
+            className={cn(
+                // ✅ brighter border in dark mode (para kita)
+                "border-r border-sidebar-border/60 dark:border-white/20",
+
+                // ✅ premium depth (subtle ring + shadow)
+                "shadow-sm dark:shadow-[0_0_0_1px_rgba(255,255,255,0.10),0_16px_40px_-24px_rgba(0,0,0,0.9)]",
+
+                className
+            )}
+        >
             <SidebarHeader>
                 <SidebarMenu>
                     <SidebarMenuItem>
@@ -146,8 +105,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                                 <div className="grid flex-1 text-left text-sm leading-tight">
                                     <span className="truncate font-medium">VOS Web</span>
                                     <span className="truncate text-xs text-muted-foreground">
-                                        Business Intelligence and Analytics
-                                    </span>
+                    Business Intelligence and Analytics
+                  </span>
                                 </div>
                             </Link>
                         </SidebarMenuButton>

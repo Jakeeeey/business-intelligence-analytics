@@ -1,3 +1,4 @@
+/* src/app/globals.css */
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -5,12 +6,6 @@
 
 /* ============================================================
    DESIGN TOKENS (LIGHT)
-   - Slightly tinted app background for depth
-   - White cards/popovers for elevation
-   - Softer borders
-   - Blue primary (enterprise)
-   - Semantic status tokens (success/warn/info)
-   - Sidebar separated but still clean
 ============================================================ */
 :root {
   /* Core */
@@ -54,17 +49,14 @@
   --radius: 0.75rem;
 
   /* ===== Semantic tokens (LIGHT) ===== */
-  /* Success (Posted/Approved) */
   --success: 142 71% 45%;
   --success-foreground: 0 0% 100%;
   --success-bg: 142 71% 96%;
 
-  /* Warning (Pending/For review) */
   --warning: 38 92% 50%;
   --warning-foreground: 20 14% 4%;
   --warning-bg: 38 92% 95%;
 
-  /* Info (In progress/Processing) */
   --info: 199 89% 48%;
   --info-foreground: 0 0% 100%;
   --info-bg: 199 89% 95%;
@@ -85,11 +77,6 @@
 
 /* ============================================================
    DESIGN TOKENS (DARK)
-   - Deeper canvas
-   - Lifted cards
-   - Less “boxy” borders
-   - Blue primary (slightly brighter for visibility)
-   - Semantic tokens tuned for dark
 ============================================================ */
 .dark {
   /* Core */
@@ -146,7 +133,8 @@
   --sidebar-foreground: 240 5% 92%;
 
   --sidebar-primary: 224 76% 56%;
-  --sidebar-primary-foreground: 0 0% 100%;
+  /* ✅ UPDATED: make active sidebar foreground BLACK in dark mode */
+  --sidebar-primary-foreground: 0 0% 0%;
 
   --sidebar-accent: 240 5% 12.5%;
   --sidebar-accent-foreground: 240 5% 92%;
@@ -157,7 +145,6 @@
 
 /* ============================================================
    TAILWIND V4 TOKEN MAPPING
-   Enables: bg-background, text-foreground, border-border, etc.
 ============================================================ */
 @theme inline {
   --color-background: hsl(var(--background));
@@ -220,8 +207,6 @@
 
 /* ============================================================
    BASE STYLES
-   - Use Geist by default (do not force Arial)
-   - Consistent focus outlines + borders
 ============================================================ */
 @layer base {
   * {
@@ -230,20 +215,15 @@
 
   body {
     @apply bg-background text-foreground font-sans;
-    /* Geist is used via font-sans; keep fallbacks safe */
     font-family: var(--font-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, "Noto Sans",
     "Apple Color Emoji", "Segoe UI Emoji";
   }
 }
 
 /* ============================================================
-   DESIGN SYSTEM UTILITIES (HIGH ROI)
-   - Data-grid/table helpers
-   - Badge variants for status
-   - Density helpers (comfortable/compact)
+   DESIGN SYSTEM UTILITIES
 ============================================================ */
 @layer components {
-  /* ----- Data table / grid styling helpers ----- */
   .data-grid {
     @apply w-full overflow-hidden rounded-lg border bg-card text-card-foreground;
   }
@@ -268,12 +248,10 @@
     @apply bg-accent/60;
   }
 
-  /* Numeric alignment helper */
   .td-num {
     @apply text-right tabular-nums;
   }
 
-  /* ----- Density: use on containers or tables ----- */
   .density-comfortable .data-grid th,
   .density-comfortable .data-grid td {
     @apply py-3;
@@ -284,7 +262,6 @@
     @apply py-2;
   }
 
-  /* ----- Status badges (use with shadcn Badge component via className) ----- */
   .badge-neutral {
     @apply border bg-muted text-foreground;
   }
@@ -308,8 +285,6 @@
 
 /* ============================================================
    SMOOTH THEME TRANSITION (only when toggling)
-   - Fixes your old "5000s" bug
-   - Premium but fast
 ============================================================ */
 html.theme-switching,
 html.theme-switching * {
@@ -318,19 +293,9 @@ html.theme-switching * {
   transition-timing-function: ease;
 }
 
-/* Respect reduced motion */
 @media (prefers-reduced-motion: reduce) {
   html.theme-switching,
   html.theme-switching * {
     transition: none !important;
-  }
-}
-
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
   }
 }
