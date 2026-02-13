@@ -29,3 +29,19 @@ export interface SupplierMetric {
     totalSales: number;
     transactionCount: number;
 }
+
+export interface TargetSettingExecutive {
+    id: number;
+    target_amount: number;
+    fiscal_period: string;
+    status: "DRAFT" | "APPROVED" | "REJECTED";
+}
+
+export interface TargetSettingDivision {
+    id: number;
+    tse_id: number;
+    division_id: number;
+    target_amount: number;
+    fiscal_period: string;
+    status: "DRAFT" | "APPROVED" | "REJECTED";
+}

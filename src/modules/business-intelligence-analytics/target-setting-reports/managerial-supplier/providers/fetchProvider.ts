@@ -47,7 +47,7 @@ export const fetchManagerialData = async (startDate: string, endDate: string): P
         }
 
         const data = await response.json();
-        
+
         // Safety check to ensure we always return an array
         return Array.isArray(data) ? data : [];
 
@@ -58,5 +58,31 @@ export const fetchManagerialData = async (startDate: string, endDate: string): P
             console.error("Managerial Fetch Error:", error.message);
         }
         throw error; // Re-throw so the UI can show an error state if needed
+    }
+};
+
+/**
+ * Fetches dynamic targets for managerial supplier data.
+ */
+export const fetchDynamicTargets = async (startDate: string, endDate: string, divisionId?: number): Promise<any> => {
+    try {
+        const params = new URLSearchParams({ startDate, endDate });
+        if (divisionId) params.append("divisionId", String(divisionId));
+        const url = `/api/bia/target-setting-reports/managerial-supplier/targets?${params.toString()}`;
+
+        const response = await fetch(url, {
+            method: "GET",
+            headers: { "Content-Type": "application/json" },
+            cache: "no-store",
+        });
+
+        if (!response.ok) {
+            throw new Error(`API Request failed with status ${response.status}`);
+        }
+
+        return await response.json();
+    } catch (error: any) {
+        console.error("Fetch Targets Error:", error.message);
+        return { supplierTargets: [], salesmanTargets: [] };
     }
 };

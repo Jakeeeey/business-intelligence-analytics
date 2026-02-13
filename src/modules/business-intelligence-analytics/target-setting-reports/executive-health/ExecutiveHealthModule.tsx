@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useMemo, Suspense } from "react";
 import { useRouter } from "next/navigation"; 
 import { 
-    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList 
+    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList, Scatter, ComposedChart 
 } from 'recharts';
 import { 
     TrendingDown, TrendingUp, Loader2, Calendar, LayoutDashboard, ChevronRight, AlertCircle
@@ -16,16 +16,9 @@ import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 
-import { fetchExecutiveHealthData } from "./providers/fetchProvider";
-import { VSalesPerformanceDataDto } from "./types";
-
-const MONTHLY_TARGETS: Record<string, number> = {
-    "Food Division": 5000000,
-    "Non-Food Division": 3000000,
-    "Grains Division": 2000000,
-    "General Merchandise": 1000000,
-    "DEFAULT": 1000000
-};
+import { fetchExecutiveHealthData, fetchCompanyTargets, fetchDivisionTargets } from "./providers/fetchProvider";
+import { VSalesPerformanceDataDto, TargetSettingExecutive, TargetSettingDivision } from "./types";
+import { getDivisions } from "../../target-setting/executive/providers/fetchProvider";
 
 function ExecutiveHealthContent() {
     const router = useRouter();
@@ -37,6 +30,9 @@ function ExecutiveHealthContent() {
     const [fromMonth, setFromMonth] = useState(currentMonthStr);
     const [toMonth, setToMonth] = useState(currentMonthStr);
     const [rawData, setRawData] = useState<VSalesPerformanceDataDto[]>([]);
+    const [targets, setTargets] = useState<TargetSettingExecutive[]>([]);
+    const [allocations, setAllocations] = useState<TargetSettingDivision[]>([]);
+    const [divisions, setDivisions] = useState<{division_id: number, division_name: string}[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -46,8 +42,23 @@ function ExecutiveHealthContent() {
                 const start = format(startOfMonth(parseISO(fromMonth + "-01")), "yyyy-MM-dd");
                 const end = format(endOfMonth(parseISO(toMonth + "-01")), "yyyy-MM-dd");
                 if (start > end) return;
-                const data = await fetchExecutiveHealthData(start, end);
+
+                const [data, companyTargets, metadataDivs] = await Promise.all([
+                    fetchExecutiveHealthData(start, end),
+                    fetchCompanyTargets(start, end),
+                    getDivisions()
+                ]);
+
                 setRawData(data);
+                setTargets(companyTargets);
+                setDivisions(metadataDivs);
+
+                if (companyTargets.length > 0) {
+                    const divTargets = await fetchDivisionTargets(companyTargets.map(t => t.id));
+                    setAllocations(divTargets);
+                } else {
+                    setAllocations([]);
+                }
             } catch (err) { 
                 console.error("Executive Fetch Error:", err); 
             } finally { 
@@ -58,12 +69,9 @@ function ExecutiveHealthContent() {
     }, [fromMonth, toMonth]);
 
     const { companyHealth, divisionHealth } = useMemo(() => {
-        const start = parseISO(fromMonth + "-01");
-        const end = parseISO(toMonth + "-01");
-        const monthCount = Math.max(1, (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth()) + 1);
-
         let totalActual = 0;
-        let totalTarget = 0;
+        let totalTarget = targets.reduce((sum, t) => sum + (t.target_amount || 0), 0);
+        
         const divisionMap = new Map<string, any>();
 
         rawData.forEach(item => {
@@ -74,14 +82,23 @@ function ExecutiveHealthContent() {
             divisionMap.set(divName, current);
         });
 
+        // Add divisions that have targets but no sales yet
+        divisions.forEach(d => {
+            if (!divisionMap.has(d.division_name)) {
+                divisionMap.set(d.division_name, { name: d.division_name, sales: 0 });
+            }
+        });
+
         const processedDivisions = Array.from(divisionMap.values()).map(div => {
-            const baseTarget = MONTHLY_TARGETS[div.name] || MONTHLY_TARGETS["DEFAULT"];
-            const scaledTarget = baseTarget * monthCount;
-            totalTarget += scaledTarget;
+            const divId = divisions.find(d => d.division_name === div.name)?.division_id;
+            const divTarget = allocations
+                .filter(a => a.division_id === divId)
+                .reduce((sum, a) => sum + (a.target_amount || 0), 0);
+
             return {
                 ...div,
-                target: scaledTarget,
-                achievement: (div.sales / scaledTarget) * 100
+                target: divTarget,
+                achievement: divTarget > 0 ? (div.sales / divTarget) * 100 : 0
             };
         }).sort((a, b) => b.sales - a.sales);
 
@@ -94,7 +111,8 @@ function ExecutiveHealthContent() {
             },
             divisionHealth: processedDivisions
         };
-    }, [rawData, fromMonth, toMonth]);
+    }, [rawData, targets, allocations, divisions]);
+
 
     const formatPHP = (val: number) => new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 0 }).format(val);
     
@@ -186,7 +204,7 @@ function ExecutiveHealthContent() {
                     </CardHeader>
                     <CardContent className="h-[500px] pt-4">
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart 
+                            <ComposedChart 
                                 data={divisionHealth} 
                                 layout="vertical" 
                                 margin={{ left: 50, right: 80 }}
@@ -197,19 +215,51 @@ function ExecutiveHealthContent() {
                             >
                                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" strokeOpacity={0.5} />
                                 <XAxis type="number" hide />
-                                <YAxis dataKey="name" type="category" width={140} fontSize={11} tick={{ fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
+                                <YAxis dataKey="name" type="category" width={140} fontSize={11} tick={{ fill: 'hsl(var(--foreground))' }} axisLine={false} tickLine={false} />
                                 <Tooltip 
-                                    contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: 'var(--radius)', color: 'hsl(var(--popover-foreground))' }}
-                                    formatter={(v: any) => formatPHP(v)} 
+                                    contentStyle={{ 
+                                        backgroundColor: 'hsl(var(--popover))', 
+                                        border: '1px solid hsl(var(--border))', 
+                                        borderRadius: 'var(--radius)', 
+                                        color: 'hsl(var(--popover-foreground))',
+                                        boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'
+                                    }}
+                                    itemStyle={{ color: 'hsl(var(--popover-foreground))', fontWeight: 'bold' }}
+                                    labelStyle={{ color: 'hsl(var(--muted-foreground))', marginBottom: '4px', fontWeight: 'bold' }}
+                                    formatter={(v: any) => [formatPHP(v), "Actual"]} 
                                 />
-                                <Bar dataKey="sales" name="Actual" barSize={28} radius={[0, 6, 6, 0]} minPointSize={2}>
+                                <Bar dataKey="sales" name="Actual" barSize={22} radius={[0, 6, 6, 0]} minPointSize={2}>
                                     {divisionHealth.map((e, i) => (
                                         <Cell key={i} fill={e.sales >= e.target ? '#10b981' : '#f59e0b'} fillOpacity={0.9} />
                                     ))}
-                                    <LabelList dataKey="sales" position="right" formatter={(v: number) => formatShort(v)} style={{ fontSize: '12px', fontWeight: 'bold', fill: 'hsl(var(--foreground))' }} offset={10} />
+                                    <LabelList dataKey="sales" position="right" formatter={(v: number) => formatShort(v)} style={{ fontSize: '11px', fontWeight: 'bold', fill: 'hsl(var(--foreground))' }} offset={8} />
                                 </Bar>
-                                <Bar dataKey="target" name="Target" barSize={8} fill="hsl(var(--muted))" radius={[0, 6, 6, 0]} />
-                            </BarChart>
+                                <Bar 
+                                    dataKey="target" 
+                                    name="Target" 
+                                    barSize={14} 
+                                    fill="#38bdf8" 
+                                    stroke="#0ea5e9"
+                                    strokeWidth={1}
+                                    radius={[0, 4, 4, 0]} 
+                                />
+                                <Scatter 
+                                    dataKey="target" 
+                                    shape={(props: any) => {
+                                        const { cx, cy, payload } = props;
+                                        if (!payload || !payload.target) return <g />;
+                                        return (
+                                            <line 
+                                                x1={cx} y1={cy - 18} 
+                                                x2={cx} y2={cy + 18} 
+                                                stroke="hsl(var(--foreground))" 
+                                                strokeWidth={2}
+                                                strokeDasharray="3 3"
+                                            />
+                                        );
+                                    }} 
+                                />
+                            </ComposedChart>
                         </ResponsiveContainer>
                     </CardContent>
                 </Card>
@@ -238,7 +288,16 @@ function ExecutiveHealthContent() {
                                             {div.achievement.toFixed(0)}%
                                         </Badge>
                                     </div>
-                                    <Progress value={div.achievement} className="h-1.5" />
+                                    <div className="relative">
+                                        <Progress value={Math.min(div.achievement, 100)} className="h-1.5" />
+                                        {div.target > 0 && (
+                                            <div 
+                                                className="absolute top-0 bottom-0 w-0.5 bg-foreground border-x border-background z-10"
+                                                style={{ left: '100%' }}
+                                                title="Target"
+                                            />
+                                        )}
+                                    </div>
                                     <div className="flex justify-between mt-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
                                         <span>Act: {formatShort(div.sales)}</span>
                                         <span>Tgt: {formatShort(div.target)}</span>

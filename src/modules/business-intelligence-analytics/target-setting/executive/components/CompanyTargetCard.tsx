@@ -140,7 +140,7 @@ export function CompanyTargetCard({
                 <span>Period: {selectedPeriod ? format(new Date(selectedPeriod), "MMM yyyy") : 'N/A'}</span>
                 <span>Target: {currentTarget ? currency(currentTarget.target_amount) : 'Not Set'}</span>
             </div>
-            {currentTarget && status !== 'DRAFT' && (
+            {currentTarget && status === 'REJECTED' && (
                 <Button variant="ghost" size="sm" onClick={() => updateStatus('DRAFT')} className="h-6 text-[10px] text-gray-500 hover:text-primary">
                     Reopen to Draft
                 </Button>

@@ -37,10 +37,62 @@ async function proxy(req: NextRequest, { params }: { params: Promise<{ id: strin
   }
 
   const url = buildUpstreamUrl(req, DIRECTUS_COLLECTION);
+  const upstream = (UPSTREAM_BASE || "").replace(/\/+$/, "");
+  const authHeader = { "Authorization": `Bearer ${process.env.DIRECTUS_STATIC_TOKEN || ""}` };
 
   try {
     const method = req.method;
-    const body = ["GET", "HEAD"].includes(method) ? undefined : await req.arrayBuffer();
+    let body = ["GET", "HEAD"].includes(method) ? undefined : await req.arrayBuffer();
+
+    // Intercept PATCH requests to executive table to check for "Reopen to Draft" cascade
+    if (method === "PATCH" && !scope) {
+      const bodyText = body ? new TextDecoder().decode(body) : "{}";
+      const bodyJson = JSON.parse(bodyText);
+
+      // If status is being changed to DRAFT, cascade to all child tables
+      if (bodyJson.status === 'DRAFT') {
+        // First, get the executive target to find the fiscal_period
+        const execRes = await fetch(`${upstream}/items/target_setting_executive/${id}`, {
+          headers: authHeader,
+          cache: "no-store"
+        });
+        const execData = await execRes.json();
+        const fiscalPeriod = execData.data?.fiscal_period;
+
+        if (fiscalPeriod) {
+          // Cascade status update to all child tables for this fiscal period
+          const childCollections = [
+            'target_setting_division',
+            'target_setting_supplier',
+            'target_setting_supervisor',
+            'target_setting_salesman'
+          ];
+
+          await Promise.all(childCollections.map(async (collection) => {
+            // Fetch all records for this fiscal period
+            const listRes = await fetch(`${upstream}/items/${collection}?filter[fiscal_period][_eq]=${fiscalPeriod}&fields=id`, {
+              headers: authHeader,
+              cache: "no-store"
+            });
+            const { data: items } = await listRes.json();
+
+            if (items && items.length > 0) {
+              // Update each item to DRAFT
+              await Promise.all(items.map((item: any) =>
+                fetch(`${upstream}/items/${collection}/${item.id}`, {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json", ...authHeader },
+                  body: JSON.stringify({ status: 'DRAFT' })
+                })
+              ));
+            }
+          }));
+        }
+      }
+
+      // Re-encode the body for the original request
+      body = new TextEncoder().encode(bodyText).buffer as ArrayBuffer;
+    }
 
     const upstreamRes = await fetch(url.toString(), {
       method,
