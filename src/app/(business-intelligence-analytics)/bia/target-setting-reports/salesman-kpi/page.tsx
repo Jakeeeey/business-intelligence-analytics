@@ -1,4 +1,3 @@
-// src/app/(human-resource-management)/hrm/department/page.tsx
 import {
     Breadcrumb,
     BreadcrumbItem,
@@ -13,7 +12,8 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { NavUser } from "../../_components/nav-user";
 
 import { cookies } from "next/headers";
-import ComingSoon from "../../_components/ComingSoon"
+// Import the modernized KPI Module
+import {SalesmanKPIModule} from "@/modules/business-intelligence-analytics/target-setting-reports/salesman-kpi";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -48,18 +48,10 @@ function buildHeaderUserFromToken(token: string | null | undefined) {
     const payload = token ? decodeJwtPayload(token) : null;
 
     const first = pickString(payload, [
-        "Firstname",
-        "FirstName",
-        "firstName",
-        "firstname",
-        "first_name",
+        "Firstname", "FirstName", "firstName", "firstname", "first_name",
     ]);
     const last = pickString(payload, [
-        "LastName",
-        "Lastname",
-        "lastName",
-        "lastname",
-        "last_name",
+        "LastName", "Lastname", "lastName", "lastname", "last_name",
     ]);
     const email = pickString(payload, ["email", "Email"]);
 
@@ -68,26 +60,27 @@ function buildHeaderUserFromToken(token: string | null | undefined) {
     return {
         name,
         email: email || "",
-        avatar: "/avatars/shadcn.jpg",
+        avatar: "/avatars/shadcn.jpg", // Note: Ensure your AvatarFallback handles the missing image
     };
 }
 
 export default async function Page() {
-    // ✅ Next.js 16: cookies() is async
+    // Next.js: cookies() is async
     const cookieStore = await cookies();
     const token = cookieStore.get(COOKIE_NAME)?.value ?? null;
 
     const headerUser = buildHeaderUserFromToken(token);
 
     return (
-        <div className="flex h-full min-h-0 flex-col">
+        <div className="flex h-full min-h-0 flex-col bg-background">
+            {/* --- TOP STICKY HEADER --- */}
             <header
                 className="
-          sticky top-2 z-50 relative
-          flex h-16 shrink-0 items-center justify-between
-          border-b bg-background shadow-sm
-          before:content-[''] before:absolute before:inset-x-0 before:-top-2 before:h-2 before:bg-background
-        "
+                    sticky top-2 z-50 relative
+                    flex h-16 shrink-0 items-center justify-between
+                    border-b bg-background shadow-sm
+                    before:content-[''] before:absolute before:inset-x-0 before:-top-2 before:h-2 before:bg-background
+                "
             >
                 <div className="flex h-full items-center gap-2 px-4">
                     <SidebarTrigger className="-ml-1" />
@@ -99,6 +92,10 @@ export default async function Page() {
                         <BreadcrumbList>
                             <BreadcrumbItem className="hidden md:block">
                                 <BreadcrumbLink href="#">BIA</BreadcrumbLink>
+                            </BreadcrumbItem>
+                            <BreadcrumbSeparator className="hidden md:block" />
+                            <BreadcrumbItem className="hidden md:block">
+                                <BreadcrumbLink href="#">Target Setting Reports</BreadcrumbLink>
                             </BreadcrumbItem>
                             <BreadcrumbSeparator className="hidden md:block" />
                             <BreadcrumbItem>
@@ -113,9 +110,10 @@ export default async function Page() {
                 </div>
             </header>
 
+            {/* --- MAIN ANALYTICS CONTENT --- */}
             <ScrollArea className="min-h-0 flex-1">
-                <div className="p-4">
-                    <ComingSoon />
+                <div className="p-4 lg:p-8">
+                    <SalesmanKPIModule />
                 </div>
             </ScrollArea>
         </div>
