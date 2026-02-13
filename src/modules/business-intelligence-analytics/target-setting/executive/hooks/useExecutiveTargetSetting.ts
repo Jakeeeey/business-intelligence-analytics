@@ -21,6 +21,9 @@ import {
   getSupplierAllocations,
   getSalesmanAllocations,
   getDivisions,
+  getSuppliers,
+  getSalesmen,
+  getAllUsers,
   getTestUser
 } from "../providers/fetchProvider";
 import { toast } from "sonner";
@@ -33,17 +36,26 @@ export function useExecutiveTargetSetting() {
   const [supplierAllocations, setSupplierAllocations] = useState<any[]>([]);
   const [salesmanAllocations, setSalesmanAllocations] = useState<any[]>([]);
   const [divisions, setDivisions] = useState<Division[]>([]);
+  const [suppliersMetadata, setSuppliersMetadata] = useState<any[]>([]);
+  const [salesmenMetadata, setSalesmenMetadata] = useState<any[]>([]);
+  const [usersMetadata, setUsersMetadata] = useState<any[]>([]);
   const [currentUserId, setCurrentUserId] = useState<number>(1);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Initial Load: Divisions & User
+  // Initial Load: Metadata & User
   useEffect(() => {
     Promise.all([
       getDivisions(),
+      getSuppliers(),
+      getSalesmen(),
+      getAllUsers(),
       getTestUser()
     ])
-      .then(([divs, userId]) => {
+      .then(([divs, sups, sales, users, userId]) => {
         setDivisions(divs);
+        setSuppliersMetadata(sups);
+        setSalesmenMetadata(sales);
+        setUsersMetadata(users);
         setCurrentUserId(userId);
       })
       .catch(err => console.error("Failed to load metadata", err));
@@ -65,15 +77,32 @@ export function useExecutiveTargetSetting() {
             getSalesmanAllocations(undefined, selectedPeriod)
           ]);
 
-          // Manually join division names if api doesn't default join
-          const joinedAllocs = divAllocs.map(a => ({
+          // Manually join names
+          const joinedDivs = divAllocs.map(a => ({
             ...a,
             division_name: divisions.find(d => d.division_id === a.division_id)?.division_name
           }));
-          setAllocations(joinedAllocs);
-          setSupervisorAllocations(supAllocs);
-          setSupplierAllocations(subAllocs);
-          setSalesmanAllocations(saleAllocs);
+
+          const joinedSuppliers = subAllocs.map(a => ({
+            ...a,
+            supplier_name: suppliersMetadata.find(s => s.id === a.supplier_id)?.supplier_name || `Supplier #${a.supplier_id}`
+          }));
+
+          const joinedSupervisors = supAllocs.map(a => {
+            const u = usersMetadata.find(u => u.user_id === a.supervisor_user_id);
+            const name = u ? `${u.user_fname || ''} ${u.user_lname || ''}`.trim() : `User #${a.supervisor_user_id}`;
+            return { ...a, supervisor_name: name || `Supervisor #${a.supervisor_user_id}` };
+          });
+
+          const joinedSalesmen = saleAllocs.map(a => ({
+            ...a,
+            salesman_name: salesmenMetadata.find(s => s.id === a.salesman_id)?.salesman_name || `Salesman #${a.salesman_id}`
+          }));
+
+          setAllocations(joinedDivs);
+          setSupplierAllocations(joinedSuppliers);
+          setSupervisorAllocations(joinedSupervisors);
+          setSalesmanAllocations(joinedSalesmen);
         } else {
           setAllocations([]);
           setSupervisorAllocations([]);

@@ -38,6 +38,17 @@ export function DivisionAllocationCard({
   const [selectedDivision, setSelectedDivision] = useState<string>("");
   const [amount, setAmount] = useState<string>("");
 
+  const formatNumber = (val: string) => {
+    if (!val) return "";
+    const num = val.replace(/,/g, "");
+    if (isNaN(Number(num))) return val;
+    const parts = num.split(".");
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    return parts.join(".");
+  };
+
+  const unformatNumber = (val: string) => val.replace(/,/g, "");
+
   // Check if selected division already has an allocation
   const existingAllocation = useMemo(() => {
     if (!selectedDivision) return null;
@@ -47,26 +58,27 @@ export function DivisionAllocationCard({
   // Update amount when a division is selected or allocations change
   useEffect(() => {
     if (existingAllocation) {
-        setAmount(existingAllocation.target_amount.toString());
+        setAmount(formatNumber(existingAllocation.target_amount.toString()));
     } else {
         setAmount("");
     }
   }, [existingAllocation]);
 
   const handleAction = () => {
-    if (!selectedDivision || !amount || !companyTarget) return;
+    const rawValue = unformatNumber(amount);
+    if (!selectedDivision || !rawValue || !companyTarget) return;
 
     if (existingAllocation) {
         // Update
         onUpdateAllocation(existingAllocation.id, {
-            target_amount: parseFloat(amount)
+            target_amount: parseFloat(rawValue)
         });
     } else {
         // Add
         onAddAllocation({
             tse_id: companyTarget.id,
             division_id: parseInt(selectedDivision),
-            target_amount: parseFloat(amount),
+            target_amount: parseFloat(rawValue),
             fiscal_period: selectedPeriod,
             created_by: 0 // Overridden by hook
         });
@@ -102,7 +114,7 @@ export function DivisionAllocationCard({
             <p className="text-sm text-gray-500">Step 2: Allocate target to specific divisions.</p>
         </div>
         <div className="text-right">
-            <div className="text-sm font-medium text-gray-500">REMAINING</div>
+            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">REMAINING</div>
             <div className={`text-xl font-bold ${remainingBalance < 0 ? 'text-red-600' : 'text-primary'}`}>
                 {currency(remainingBalance)}
             </div>
@@ -134,10 +146,13 @@ export function DivisionAllocationCard({
             <div className="flex-1 space-y-2">
                 <label className="text-sm font-medium text-gray-700">SHARE AMOUNT</label>
                 <Input 
-                    type="number" 
+                    type="text" 
                     placeholder="0.00" 
                     value={amount} 
-                    onChange={(e) => setAmount(e.target.value)}
+                    onChange={(e) => {
+                        const val = e.target.value.replace(/[^0-9.]/g, "");
+                        setAmount(formatNumber(val));
+                    }}
                     disabled={!isEnabled}
                 />
             </div>
@@ -147,14 +162,14 @@ export function DivisionAllocationCard({
                     variant={existingAllocation ? "outline" : "secondary"} 
                     onClick={handleAction} 
                     className={existingAllocation ? "border-primary text-primary hover:bg-primary/5" : ""}
-                    disabled={isLoading || !selectedDivision || !amount || !isEnabled || (existingAllocation?.target_amount === parseFloat(amount))}
+                    disabled={isLoading || !selectedDivision || !amount || !isEnabled || (existingAllocation?.target_amount === parseFloat(unformatNumber(amount)))}
                 >
                     {existingAllocation ? "Update" : "Add"}
                     {!existingAllocation && <Plus className="ml-2 h-4 w-4" />}
                 </Button>
             </div>
         </div>
-        <div className="flex justify-between items-center text-xs text-gray-400 pt-2 border-t">
+        <div className="flex justify-between items-center text-xs text-gray-400 pt-2 border-t mt-4 min-h-[32px]">
             <span>Total Divisions: {divisions.length} </span>
             <span>Total Allocated: {currency(allocatedAmount)}</span>
         </div>

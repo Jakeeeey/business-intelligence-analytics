@@ -54,6 +54,10 @@ const data = {
             isActive: false,
             items: [
                 {
+                    title: "Target Approval",
+                    url: "/bia/target-setting/target-approval",
+                },
+                {
                     title: "Executive",
                     url: "/bia/target-setting/executive",
                 },

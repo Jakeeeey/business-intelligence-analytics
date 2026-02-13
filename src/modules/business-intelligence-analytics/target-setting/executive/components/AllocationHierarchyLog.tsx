@@ -50,13 +50,13 @@ export function AllocationHierarchyLog({
             </TableHeader>
             <TableBody>
                 {/* 1. Company Level */}
-                <TableRow className="bg-slate-50/80">
-                    <TableCell><Badge variant="outline" className="bg-slate-900 text-white border-slate-900">Executive</Badge></TableCell>
+                <TableRow className="bg-slate-50/80 dark:bg-slate-900/40">
+                    <TableCell><Badge variant="outline" className="bg-slate-900 text-white border-slate-900 dark:bg-slate-100 dark:text-slate-900 dark:border-slate-100">Executive</Badge></TableCell>
                     <TableCell className="font-bold">COMPANY WIDE</TableCell>
-                    <TableCell className="text-gray-500 text-xs">ROOT TARGET</TableCell>
+                    <TableCell className="text-gray-500 dark:text-gray-400 text-xs">ROOT TARGET</TableCell>
                     <TableCell className="text-right font-bold">{currency(companyTarget.target_amount)}</TableCell>
                     <TableCell>
-                        <Badge variant={companyTarget.status === 'APPROVED' ? 'default' : 'outline'} className={companyTarget.status === 'APPROVED' ? 'bg-green-600' : ''}>
+                        <Badge variant={companyTarget.status === 'APPROVED' ? 'default' : 'outline'} className={companyTarget.status === 'APPROVED' ? 'bg-green-600 dark:bg-green-700' : 'dark:text-gray-400'}>
                              {companyTarget.status || 'DRAFT'}
                         </Badge>
                     </TableCell>
@@ -69,18 +69,18 @@ export function AllocationHierarchyLog({
                     return (
                         <React.Fragment key={`div-group-${alloc.id}`}>
                             {/* Division Row */}
-                            <TableRow key={`div-${alloc.id}`} className="bg-blue-50/20">
+                            <TableRow key={`div-${alloc.id}`} className="bg-blue-50/20 dark:bg-blue-900/10">
                                 <TableCell className="pl-6">
                                     <div className="flex items-center gap-2">
-                                        <div className="w-2 h-2 rounded-full bg-blue-400" />
-                                        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Executive</Badge>
+                                        <div className="w-2 h-2 rounded-full bg-blue-400 dark:bg-blue-500" />
+                                        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800/50">Executive</Badge>
                                     </div>
                                 </TableCell>
                                 <TableCell className="font-medium">{alloc.division_name || `Division #${alloc.division_id}`}</TableCell>
-                                <TableCell className="text-blue-600 font-medium text-xs">DIVISION ALLOCATION</TableCell>
+                                <TableCell className="text-blue-600 dark:text-blue-400 font-medium text-xs">DIVISION ALLOCATION</TableCell>
                                 <TableCell className="text-right font-medium">{currency(alloc.target_amount)}</TableCell>
                                 <TableCell>
-                                    <Badge variant="outline" className="text-[10px] px-1.5 h-4 capitalize">{(alloc.status || 'DRAFT').toLowerCase()}</Badge>
+                                    <Badge variant="outline" className="text-[10px] px-1.5 h-4 capitalize dark:border-gray-700 dark:text-gray-400">{(alloc.status || 'DRAFT').toLowerCase()}</Badge>
                                 </TableCell>
                             </TableRow>
 
@@ -139,7 +139,7 @@ export function AllocationHierarchyLog({
                                                             <TableCell className="text-purple-600 text-[9px] uppercase">Final Allocation</TableCell>
                                                             <TableCell className="text-right text-[11px] font-medium">{currency(sale.target_amount)}</TableCell>
                                                             <TableCell>
-                                                                <Badge variant="outline" className="text-[8px] px-1 h-3 capitalize">{(sale.status || 'DRAFT').toLowerCase()}</Badge>
+                                                                <Badge variant="outline" className="text-[8px] px-1 h-3 capitalize dark:border-gray-700 dark:text-gray-500">{(sale.status || 'DRAFT').toLowerCase()}</Badge>
                                                             </TableCell>
                                                         </TableRow>
                                                     ))}

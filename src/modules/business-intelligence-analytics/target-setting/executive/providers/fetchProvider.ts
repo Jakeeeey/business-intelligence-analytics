@@ -123,3 +123,18 @@ export async function getDivisions(): Promise<Division[]> {
   const res = await http.get("/api/bia/metadata/divisions", { skipBaseUrl: true });
   return (res.data?.data ?? []) as Division[];
 }
+
+export async function getSuppliers(): Promise<any[]> {
+  const res = await http.get("/api/bia/metadata/suppliers", { skipBaseUrl: true });
+  return res.data?.data ?? [];
+}
+
+export async function getSalesmen(): Promise<any[]> {
+  const res = await http.get("/api/bia/metadata/salesmen", { skipBaseUrl: true });
+  return res.data?.data ?? [];
+}
+
+export async function getAllUsers(): Promise<any[]> {
+  const res = await http.get("/api/bia/metadata/users", { skipBaseUrl: true });
+  return res.data?.data ?? [];
+}
