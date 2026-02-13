@@ -19,3 +19,19 @@ export interface SalesmanSummary {
     achievement: number;
     variance: number;
 }
+
+export interface TargetSettingSalesman {
+    id: number;
+    ts_supervisor_id: number;
+    salesman_id: number;
+    supplier_id: number;
+    target_amount: number;
+    fiscal_period: string;
+}
+
+export interface TargetSettingResponse {
+    divisionTargets: any[];
+    supplierTargets: any[];
+    supervisorTargets: any[];
+    salesmanTargets: TargetSettingSalesman[];
+}

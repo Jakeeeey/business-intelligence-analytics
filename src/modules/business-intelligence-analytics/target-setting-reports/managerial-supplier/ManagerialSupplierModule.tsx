@@ -17,14 +17,24 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 
-import { fetchManagerialData } from "./providers/fetchProvider";
+import { fetchManagerialData, fetchDynamicTargets } from "./providers/fetchProvider";
 import { VSalesPerformanceDataDto } from "../executive-health/types"; 
 
-const SUPPLIER_TARGETS: Record<string, Record<string, number>> = {
-    "Dry Goods": {
-        "SKINTEC": 500000, 
-        "DEFAULT": 200000 
-    }
+// Custom component for the vertical dashed target line
+const CustomTargetLine = (props: any) => {
+    const { x, y, width, height, value } = props;
+    if (!value || value === 0) return null;
+    return (
+        <line 
+            x1={x + width} 
+            y1={y - 2} 
+            x2={x + width} 
+            y2={y + height + 2} 
+            stroke="white" 
+            strokeWidth={2} 
+            strokeDasharray="3 3" 
+        />
+    );
 };
 
 function ManagerialSupplierContent() {
@@ -40,6 +50,7 @@ function ManagerialSupplierContent() {
 
     const [loading, setLoading] = useState(true);
     const [rawData, setRawData] = useState<VSalesPerformanceDataDto[]>([]);
+    const [targets, setTargets] = useState<any>({ supplierTargets: [], salesmanTargets: [] });
 
     useEffect(() => {
         const load = async () => {
@@ -47,8 +58,14 @@ function ManagerialSupplierContent() {
             try {
                 const start = format(startOfMonth(parseISO(fromMonth + "-01")), "yyyy-MM-dd");
                 const end = format(endOfMonth(parseISO(toMonth + "-01")), "yyyy-MM-dd");
+                
                 const data = await fetchManagerialData(start, end);
                 setRawData(data);
+
+                // Scope targets to selected division
+                const divItem = data.find(d => d.divisionName === selectedDivision);
+                const targetData = await fetchDynamicTargets(start, end, divItem?.divisionId);
+                setTargets(targetData);
             } catch (err) { console.error(err); } finally { setLoading(false); }
         };
         load();
@@ -68,10 +85,25 @@ function ManagerialSupplierContent() {
             salesMap.set(item.supplierName, (salesMap.get(item.supplierName) || 0) + (item.netAmount || 0));
         });
 
-        const targets = SUPPLIER_TARGETS[selectedDivision] || { "DEFAULT": 200000 };
+        // 2. Map Dynamic Targets
         const perf = Array.from(salesMap.entries()).map(([name, sales]) => {
-            const target = (targets[name] || targets["DEFAULT"]) * months;
-            return { name, sales, target, achievement: (sales / target) * 100, status: sales >= target ? "HIT" : "MISS" };
+            const rawItem = filtered.find(d => d.supplierName === name);
+            const supplierId = rawItem?.supplierId;
+
+            // Find and sum targets for this supplier
+            const relevantTargets = targets.supplierTargets?.filter((t: any) => {
+                const targetDate = parseISO(t.fiscal_period);
+                return t.supplier_id === supplierId && targetDate >= start && targetDate <= end;
+            });
+            const target = relevantTargets?.reduce((sum: number, t: any) => sum + (t.target_amount || 0), 0) || 0;
+
+            return { 
+                name, 
+                sales, 
+                target, 
+                achievement: target > 0 ? (sales / target) * 100 : 0, 
+                status: target > 0 ? (sales >= target ? "HIT" : "MISS") : "SET" 
+            };
         }).sort((a, b) => b.sales - a.sales);
 
         const totalActual = perf.reduce((s, i) => s + i.sales, 0);
@@ -81,24 +113,53 @@ function ManagerialSupplierContent() {
             supplierPerformance: perf, 
             divisionSummary: { totalActual, totalTarget, achievement: totalTarget > 0 ? (totalActual / totalTarget) * 100 : 0 }
         };
-    }, [rawData, selectedDivision, fromMonth, toMonth]);
+    }, [rawData, selectedDivision, fromMonth, toMonth, targets]);
 
     // 2. Data Processing for Salesman (Specific to selected supplier)
     const salesmanBreakdown = useMemo(() => {
         if (!selectedSupplier) return [];
         
+        const start = parseISO(fromMonth + "-01");
+        const end = parseISO(toMonth + "-01");
+        
         const filtered = rawData.filter(d => d.supplierName === selectedSupplier);
-        const salesmanMap = new Map<string, number>();
+        const supplierId = filtered[0]?.supplierId;
+        
+        const salesmanMap = new Map<string, { sales: number, salesmanId: number }>();
 
         filtered.forEach(item => {
             const name = item.salesmanName || "Unknown Salesman";
-            salesmanMap.set(name, (salesmanMap.get(name) || 0) + (item.netAmount || 0));
+            const current = salesmanMap.get(name) || { sales: 0, salesmanId: item.salesmanId };
+            salesmanMap.set(name, { 
+                sales: current.sales + (item.netAmount || 0), 
+                salesmanId: item.salesmanId 
+            });
         });
 
         return Array.from(salesmanMap.entries())
-            .map(([name, sales]) => ({ name, sales }))
+            .map(([name, data]) => {
+                const relevantSalesmanTargets = targets.salesmanTargets?.filter((t: any) => {
+                    const targetDate = parseISO(t.fiscal_period);
+                    return (
+                        t.salesman_id === data.salesmanId && 
+                        t.supplier_id === supplierId &&
+                        targetDate >= start && 
+                        targetDate <= end
+                    );
+                });
+                
+                const target = relevantSalesmanTargets?.reduce((sum: number, t: any) => sum + (t.target_amount || 0), 0) || 0;
+                
+                return { 
+                    name, 
+                    sales: data.sales, 
+                    target,
+                    achievement: target > 0 ? (data.sales / target) * 100 : 0,
+                    status: target > 0 ? (data.sales >= target ? "HIT" : "MISS") : "SET" 
+                };
+            })
             .sort((a, b) => b.sales - a.sales);
-    }, [rawData, selectedSupplier]);
+    }, [rawData, selectedSupplier, targets]);
 
     const formatPHP = (val: number) => new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 0 }).format(val);
     const formatShort = (val: number) => {
@@ -173,6 +234,8 @@ function ManagerialSupplierContent() {
                                 data={selectedSupplier ? salesmanBreakdown.slice(0, 10) : supplierPerformance.slice(0, 10)} 
                                 layout="vertical" 
                                 margin={{ left: 50, right: 80 }}
+                                barGap="-100%"
+                                barCategoryGap="30%"
                                 onClick={(data) => {
                                     if (!selectedSupplier && data && data.activePayload) {
                                         setSelectedSupplier(data.activePayload[0].payload.name);
@@ -184,16 +247,20 @@ function ManagerialSupplierContent() {
                                 <XAxis type="number" hide />
                                 <YAxis type="category" dataKey="name" width={140} fontSize={11} tick={{ fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
                                 <Tooltip formatter={(v: any) => formatPHP(v)} cursor={{ fill: 'hsl(var(--muted)/0.2)' }} />
-                                <Bar dataKey="sales" barSize={24} radius={[0, 6, 6, 0]} minPointSize={2}>
+                                {/* Underlay Target Bar */}
+                                <Bar dataKey="target" barSize={32} fill="#3b82f6" fillOpacity={0.15} radius={[0, 6, 6, 0]}>
+                                    <LabelList dataKey="target" content={<CustomTargetLine />} />
+                                </Bar>
+                                {/* Overlay Sales Bar */}
+                                <Bar dataKey="sales" barSize={32} radius={[0, 6, 6, 0]} minPointSize={2}>
                                     {(selectedSupplier ? salesmanBreakdown : supplierPerformance).slice(0, 10).map((entry: any, index) => (
                                         <Cell 
                                             key={`cell-${index}`} 
                                             fill={selectedSupplier ? '#3b82f6' : (entry.sales < 0 ? 'hsl(var(--destructive))' : entry.sales >= entry.target ? '#10b981' : '#f59e0b')} 
                                         />
                                     ))}
-                                    <LabelList dataKey="sales" position="right" formatter={(v: number) => formatShort(v)} style={{ fontSize: '12px', fontWeight: '600', fill: 'hsl(var(--foreground))' }} offset={10} />
+                                    <LabelList dataKey="sales" position="right" formatter={(v: number) => formatShort(v)} style={{ fontSize: '12px', fontWeight: '700', fill: 'hsl(var(--foreground))' }} offset={14} />
                                 </Bar>
-                                {!selectedSupplier && <Bar dataKey="target" barSize={8} fill="hsl(var(--muted))" radius={[0, 6, 6, 0]} />}
                             </BarChart>
                         </ResponsiveContainer>
                     </CardContent>
@@ -222,10 +289,13 @@ function ManagerialSupplierContent() {
                                         {item.status && <Badge variant={item.status === "HIT" ? "default" : "destructive"}>{item.status}</Badge>}
                                         {selectedSupplier && <User2 className="h-4 w-4 text-primary" />}
                                     </div>
-                                    <Progress value={item.achievement || (item.sales / salesmanBreakdown[0].sales * 100)} className="h-1.5" />
+                                    <Progress value={item.achievement || 0} className="h-1.5" />
                                     <div className="flex justify-between mt-2 text-[11px] font-medium text-muted-foreground">
-                                        <span>Act: {formatShort(item.sales)}</span>
-                                        {item.achievement && <span className={item.achievement >= 100 ? "text-emerald-500" : "text-amber-500"}>{item.achievement.toFixed(1)}%</span>}
+                                        <div className="flex flex-col">
+                                            <span>Act: {formatShort(item.sales)}</span>
+                                            {item.target > 0 && <span>Tar: {formatShort(item.target)}</span>}
+                                        </div>
+                                        {item.achievement > 0 && <span className={item.achievement >= 100 ? "text-emerald-500" : "text-amber-500"}>{item.achievement.toFixed(1)}%</span>}
                                     </div>
                                 </div>
                             ))}

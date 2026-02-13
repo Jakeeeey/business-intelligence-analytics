@@ -40,7 +40,7 @@ export const fetchSalesmanData = async (startDate: string, endDate: string): Pro
         }
 
         const data = await response.json();
-        
+
         // Return empty array if data is null or undefined to prevent UI crashes
         return Array.isArray(data) ? data : [];
 
@@ -51,5 +51,30 @@ export const fetchSalesmanData = async (startDate: string, endDate: string): Pro
             console.error("Salesman Fetch Error:", error.message);
         }
         throw error;
+    }
+};
+
+/**
+ * Fetches dynamic targets for salesman data.
+ */
+export const fetchDynamicTargets = async (startDate: string, endDate: string): Promise<any> => {
+    try {
+        const params = new URLSearchParams({ startDate, endDate });
+        const url = `/api/bia/target-setting-reports/managerial-supplier/targets?${params.toString()}`;
+
+        const response = await fetch(url, {
+            method: "GET",
+            headers: { "Content-Type": "application/json" },
+            cache: "no-store",
+        });
+
+        if (!response.ok) {
+            throw new Error(`API Request failed with status ${response.status}`);
+        }
+
+        return await response.json();
+    } catch (error: any) {
+        console.error("Fetch Salesman Targets Error:", error.message);
+        return { supplierTargets: [], salesmanTargets: [] };
     }
 };
