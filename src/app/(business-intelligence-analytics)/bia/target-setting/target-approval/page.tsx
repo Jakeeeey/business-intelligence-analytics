@@ -1,10 +1,4 @@
-import ExecutiveTargetSettingModule from "@/modules/business-intelligence-analytics/target-setting/executive/ExecutiveTargetSettingModule";
-
-export const metadata = {
-  title: "Executive Target Setting | CRM BIA",
-  description: "Set Company and Division Targets",
-};
-
+import { TargetApprovalModule } from "@/modules/business-intelligence-analytics/target-setting/target-approval";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -18,6 +12,11 @@ import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { NavUser } from "../../_components/nav-user";
 import { cookies } from "next/headers";
+
+export const metadata = {
+  title: "Target Approval | CRM BIA",
+  description: "Review and approve target allocations",
+};
 
 const COOKIE_NAME = "vos_access_token";
 
@@ -61,7 +60,7 @@ function buildHeaderUserFromToken(token: string | null | undefined) {
   };
 }
 
-export default async function Page() {
+export default async function TargetApprovalPage() {
   const cookieStore = await cookies();
   const token = cookieStore.get(COOKIE_NAME)?.value ?? null;
   const headerUser = buildHeaderUserFromToken(token);
@@ -92,7 +91,7 @@ export default async function Page() {
                       </BreadcrumbItem>
                       <BreadcrumbSeparator className="hidden md:block" />
                       <BreadcrumbItem>
-                          <BreadcrumbPage>Executive</BreadcrumbPage>
+                          <BreadcrumbPage>Target Approval</BreadcrumbPage>
                       </BreadcrumbItem>
                   </BreadcrumbList>
               </Breadcrumb>
@@ -105,8 +104,8 @@ export default async function Page() {
 
       <ScrollArea className="min-h-0 flex-1">
         <div className="container mx-auto p-6">
-          <h1 className="text-2xl font-bold mb-6">Executive Target Setting</h1>
-          <ExecutiveTargetSettingModule />
+          <h1 className="text-2xl font-bold mb-6">Target Approval</h1>
+          <TargetApprovalModule />
         </div>
       </ScrollArea>
     </div>
