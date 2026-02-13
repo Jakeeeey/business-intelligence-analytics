@@ -13,24 +13,10 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 
-import { fetchSalesmanData } from "./providers/fetchProvider";
+import { fetchSalesmanData, fetchDynamicTargets } from "./providers/fetchProvider";
 import { VSalesPerformanceDataDto } from "../executive-health/types";
+import { TargetSettingSalesman } from "./types";
 
-// --- 1. CONFIGURATION: TARGETS PER SALESMAN PER SUPPLIER ---
-// In a real scenario, this would likely come from an API
-const SALESMAN_SUPPLIER_TARGETS: Record<string, Record<string, number>> = {
-    "SKINTEC": {
-        "Andrei Siapno": 150000,
-        "DEFAULT": 50000
-    },
-    "NABATI FOOD PHILIPPINES INC": {
-        "Andrei Siapno": 1000000,
-        "DEFAULT": 200000
-    },
-    "DEFAULT": {
-        "DEFAULT": 100000
-    }
-};
 
 type MetricType = "amount" | "achievement" | "count";
 
@@ -45,6 +31,7 @@ function SalesmanKPIContent() {
     const [activeMetric, setActiveMetric] = useState<MetricType>("amount");
     
     const [rawData, setRawData] = useState<VSalesPerformanceDataDto[]>([]);
+    const [targets, setTargets] = useState<TargetSettingSalesman[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -53,8 +40,14 @@ function SalesmanKPIContent() {
             try {
                 const start = format(startOfMonth(parseISO(fromMonth + "-01")), "yyyy-MM-dd");
                 const end = format(endOfMonth(parseISO(toMonth + "-01")), "yyyy-MM-dd");
-                const data = await fetchSalesmanData(start, end);
-                setRawData(data);
+                
+                const [salesData, targetData] = await Promise.all([
+                    fetchSalesmanData(start, end),
+                    fetchDynamicTargets(start, end)
+                ]);
+
+                setRawData(salesData);
+                setTargets(targetData.salesmanTargets || []);
             } catch (err) { console.error(err); } 
             finally { setLoading(false); }
         };
@@ -80,10 +73,20 @@ function SalesmanKPIContent() {
             supplierSet.add(sPly);
             supTotals.set(sPly, (supTotals.get(sPly) || 0) + amount);
 
-            // Get Target Configuration
-            const supConfig = SALESMAN_SUPPLIER_TARGETS[sPly] || SALESMAN_SUPPLIER_TARGETS["DEFAULT"];
-            const baseTarget = supConfig[sMan] || supConfig["DEFAULT"];
-            const scaledTarget = baseTarget * months;
+            const salesmanId = item.salesmanId;
+            const supplierId = item.supplierId;
+
+            // Get Target Configuration from dynamic targets
+            const relevantTargets = targets.filter(t => {
+                const targetDate = parseISO(t.fiscal_period);
+                return (
+                    t.salesman_id === salesmanId && 
+                    t.supplier_id === supplierId &&
+                    targetDate >= start && 
+                    targetDate <= end
+                );
+            });
+            const scaledTarget = relevantTargets.reduce((sum, t) => sum + (t.target_amount || 0), 0);
 
             // Individual Totals logic
             if (!sTotals.has(sMan)) sTotals.set(sMan, { amount: 0, target: 0, count: 0 });
@@ -209,7 +212,7 @@ function SalesmanKPIContent() {
                                             <td className="sticky left-0 z-40 bg-background/95 backdrop-blur-sm p-4 border-r border-b group-hover:bg-accent transition-all">
                                                 <div className="flex items-center gap-3">
                                                     <span className="text-[10px] font-mono text-muted-foreground w-4">{idx + 1}</span>
-                                                    <p className="font-bold text-sm tracking-tight truncate max-w-[160px]">{man}</p>
+                                                    <p className="font-bold text-sm tracking-tight truncate max-w-[160px] text-foreground">{man}</p>
                                                     {idx < 3 && <Trophy className={`h-3 w-3 ${idx === 0 ? "text-yellow-500" : "text-slate-400"}`} />}
                                                 </div>
                                             </td>
@@ -220,7 +223,15 @@ function SalesmanKPIContent() {
                                                         <span className="text-emerald-500">{formatShort(personalTotal.amount)}</span>
                                                         <span className={totalAchievement >= 100 ? "text-emerald-500" : "text-amber-500"}>{totalAchievement.toFixed(0)}%</span>
                                                     </div>
-                                                    <Progress value={totalAchievement} className="h-1" />
+                                                    <div className="relative">
+                                                        <Progress value={Math.min(totalAchievement, 100)} className="h-1" />
+                                                        {personalTotal.target > 0 && (
+                                                            <div 
+                                                                className="absolute top-0 bottom-0 w-0.5 bg-emerald-500 z-10"
+                                                                style={{ left: '100%' }}
+                                                            />
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </td>
 
@@ -272,7 +283,15 @@ function SalesmanKPIContent() {
                                                                                 <span>ACHIEVEMENT</span>
                                                                                 <span>{((amount/target)*100).toFixed(1)}%</span>
                                                                             </div>
-                                                                            <Progress value={(amount/target)*100} className="h-1" />
+                                                                            <div className="relative">
+                                                                                <Progress value={Math.min((amount/target)*100, 100)} className="h-1" />
+                                                                                {target > 0 && (
+                                                                                    <div 
+                                                                                        className="absolute top-0 bottom-0 w-0.5 bg-emerald-400 z-10"
+                                                                                        style={{ left: '100%' }}
+                                                                                    />
+                                                                                )}
+                                                                            </div>
                                                                         </div>
                                                                     </div>
                                                                 </TooltipContent>
