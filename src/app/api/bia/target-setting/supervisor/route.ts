@@ -162,7 +162,12 @@ async function enforceNotExceedSupplierTarget(args: {
   const targetRes = await getSupplierTargetAmount({ fiscalPeriod: args.fiscalPeriod, supplierId: args.supplierId });
   if (!targetRes.ok) {
     return NextResponse.json(
-      { error: "Unable to validate supplier target", upstream_status: targetRes.status, upstream_body: targetRes.error.json, upstream_url: targetRes.error.url },
+      {
+        error: "Unable to validate supplier target",
+        upstream_status: targetRes.status,
+        upstream_body: targetRes.error.json,
+        upstream_url: targetRes.error.url,
+      },
       { status: targetRes.status }
     );
   }
@@ -178,7 +183,12 @@ async function enforceNotExceedSupplierTarget(args: {
   const allocRes = await getExistingAllocations({ fiscalPeriod: args.fiscalPeriod, supplierId: args.supplierId });
   if (!allocRes.ok) {
     return NextResponse.json(
-      { error: "Unable to validate allocations", upstream_status: allocRes.status, upstream_body: allocRes.error.json, upstream_url: allocRes.error.url },
+      {
+        error: "Unable to validate allocations",
+        upstream_status: allocRes.status,
+        upstream_body: allocRes.error.json,
+        upstream_url: allocRes.error.url,
+      },
       { status: allocRes.status }
     );
   }
@@ -195,7 +205,12 @@ async function enforceNotExceedSupplierTarget(args: {
       {
         error: "Allocation exceeds supplier target",
         message: `Cannot exceed Supplier Target. Remaining available is ₱${remaining.toLocaleString("en-PH")}.`,
-        details: { supplier_target: supplierTarget, allocated_excluding_current: otherAllocated, attempted_amount: args.newAmount, attempted_total: newTotal },
+        details: {
+          supplier_target: supplierTarget,
+          allocated_excluding_current: otherAllocated,
+          attempted_amount: args.newAmount,
+          attempted_total: newTotal,
+        },
       },
       { status: 400 }
     );
@@ -217,7 +232,10 @@ async function handleSalesmenBySupervisor(req: NextRequest) {
 
   const spdRes = await upstreamJson(spdUrl.toString());
   if (!spdRes.ok) {
-    return NextResponse.json({ error: "Upstream request failed", upstream_status: spdRes.status, upstream_body: spdRes.json, upstream_url: spdRes.url }, { status: spdRes.status });
+    return NextResponse.json(
+      { error: "Upstream request failed", upstream_status: spdRes.status, upstream_body: spdRes.json, upstream_url: spdRes.url },
+      { status: spdRes.status }
+    );
   }
 
   const spdIds = Array.from(new Set((spdRes.json?.data ?? []).map((r: any) => Number(r.id)).filter(Boolean)));
@@ -231,7 +249,10 @@ async function handleSalesmenBySupervisor(req: NextRequest) {
 
   const spsRes = await upstreamJson(spsUrl.toString());
   if (!spsRes.ok) {
-    return NextResponse.json({ error: "Upstream request failed", upstream_status: spsRes.status, upstream_body: spsRes.json, upstream_url: spsRes.url }, { status: spsRes.status });
+    return NextResponse.json(
+      { error: "Upstream request failed", upstream_status: spsRes.status, upstream_body: spsRes.json, upstream_url: spsRes.url },
+      { status: spsRes.status }
+    );
   }
 
   const salesmanIds = Array.from(new Set((spsRes.json?.data ?? []).map((r: any) => Number(r.salesman_id)).filter(Boolean)));
@@ -244,7 +265,10 @@ async function handleSalesmenBySupervisor(req: NextRequest) {
 
   const smRes = await upstreamJson(smUrl.toString());
   if (!smRes.ok) {
-    return NextResponse.json({ error: "Upstream request failed", upstream_status: smRes.status, upstream_body: smRes.json, upstream_url: smRes.url }, { status: smRes.status });
+    return NextResponse.json(
+      { error: "Upstream request failed", upstream_status: smRes.status, upstream_body: smRes.json, upstream_url: smRes.url },
+      { status: smRes.status }
+    );
   }
 
   const data = (smRes.json?.data ?? []) as any[];
@@ -266,7 +290,10 @@ export async function GET(req: NextRequest) {
   if (resource === "ts_supplier") return proxy(req, `/items/target_setting_supplier`, "GET");
   if (resource === "allocations") return proxy(req, `/items/target_setting_salesman`, "GET");
 
-  // ✅ NEW resources for hierarchy log
+  // ✅ NEW: divisions master list (for mapping division_id -> division_name)
+  if (resource === "divisions") return proxy(req, `/items/division`, "GET");
+
+  // ✅ resources for hierarchy log
   if (resource === "ts_executive") return proxy(req, `/items/target_setting_executive`, "GET");
   if (resource === "ts_supplier_by_tsd") return proxy(req, `/items/target_setting_supplier`, "GET");
   if (resource === "ts_division") {

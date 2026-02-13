@@ -26,6 +26,8 @@ import {
   listExecutiveTargets,
   readDivisionTarget,
   listSupplierTargetsByTsd,
+  listDivisions,
+  type DivisionRow,
 } from "../providers/fetchProvider";
 
 function errMsg(e: any) {
@@ -39,11 +41,7 @@ function toNum(v: any) {
 
 /** ✅ Prevent "January 1970" by filtering invalid fiscal_period values */
 function isValidFiscalPeriod(v: any): v is string {
-  return (
-    typeof v === "string" &&
-    /^\d{4}-\d{2}-\d{2}$/.test(v) &&
-    !Number.isNaN(Date.parse(v))
-  );
+  return typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(v));
 }
 
 export function useSalesmanAllocation() {
@@ -53,6 +51,9 @@ export function useSalesmanAllocation() {
   const [salesmen, setSalesmen] = React.useState<SalesmanRow[]>([]);
   const [suppliers, setSuppliers] = React.useState<SupplierRow[]>([]);
   const [tsSuppliers, setTsSuppliers] = React.useState<TargetSettingSupplierRow[]>([]);
+
+  /** ✅ NEW: division master list */
+  const [divisions, setDivisions] = React.useState<DivisionRow[]>([]);
 
   const [fiscalPeriod, setFiscalPeriod] = React.useState<string>("");
   const [supplierId, setSupplierId] = React.useState<number | null>(null);
@@ -79,15 +80,19 @@ export function useSalesmanAllocation() {
     return map;
   }, [salesmen]);
 
+  /** ✅ NEW: division_id -> division row */
+  const divisionById = React.useMemo(() => {
+    const map: Record<number, DivisionRow> = {};
+    for (const d of divisions) map[Number(d.division_id)] = d;
+    return map;
+  }, [divisions]);
+
   const supplierTargetRow = React.useMemo(() => {
     if (!fiscalPeriod || supplierId == null) return null;
     return tsSuppliers.find((r) => r.fiscal_period === fiscalPeriod && r.supplier_id === supplierId) ?? null;
   }, [tsSuppliers, fiscalPeriod, supplierId]);
 
-  const supplierTargetAmount = React.useMemo(
-    () => toNum(supplierTargetRow?.target_amount),
-    [supplierTargetRow]
-  );
+  const supplierTargetAmount = React.useMemo(() => toNum(supplierTargetRow?.target_amount), [supplierTargetRow]);
 
   /** ✅ FIXED: only include valid YYYY-MM-DD fiscal periods */
   const fiscalOptions = React.useMemo(() => {
@@ -117,20 +122,22 @@ export function useSalesmanAllocation() {
   const refreshBase = React.useCallback(async () => {
     try {
       setLoading(true);
-      const [sm, sp, tss] = await Promise.all([
+      const [sm, sp, tss, divs] = await Promise.all([
         listSalesmen(),
         listSuppliers(),
         listTargetSettingSuppliers(),
+        listDivisions(), // ✅ NEW
       ]);
 
       setSalesmen(sm);
       setSuppliers(sp);
       setTsSuppliers(tss);
+      setDivisions(divs);
 
       /** ✅ FIXED: only compute options from valid fiscal_period strings */
-      const fps = Array.from(
-        new Set(tss.map((x) => x.fiscal_period).filter(isValidFiscalPeriod))
-      ).sort((a, b) => (a > b ? -1 : 1));
+      const fps = Array.from(new Set(tss.map((x) => x.fiscal_period).filter(isValidFiscalPeriod))).sort((a, b) =>
+        a > b ? -1 : 1
+      );
 
       if (fps.length && !fiscalPeriod) setFiscalPeriod(fps[0]);
     } catch (e) {
@@ -178,9 +185,7 @@ export function useSalesmanAllocation() {
     const newTotal = otherAllocated + params.newAmount;
     if (newTotal > supplierTargetAmount) {
       const remaining = supplierTargetAmount - otherAllocated;
-      toast.error(
-        `Cannot exceed Supplier Target. Remaining available is ₱${remaining.toLocaleString("en-PH")}.`
-      );
+      toast.error(`Cannot exceed Supplier Target. Remaining available is ₱${remaining.toLocaleString("en-PH")}.`);
       return false;
     }
     return true;
@@ -206,7 +211,7 @@ export function useSalesmanAllocation() {
 
       if (supplierTargetRow?.tsd_id) {
         tsdId = Number(supplierTargetRow.tsd_id);
-        division = await readDivisionTarget(tsdId);
+        division = await readDivisionTarget(tsdId); // target_setting_division row (by id)
       }
 
       // 3) Supplier allocations under the same division target (tsd_id)
@@ -225,9 +230,15 @@ export function useSalesmanAllocation() {
         });
       }
 
+      // ✅ FIX: show division_name from division master table
+      let divisionName: string | null = null;
+      if (division?.division_id != null) {
+        divisionName = divisionById[Number(division.division_id)]?.division_name ?? null;
+      }
+
       if (division?.id) {
-        const ctx = division?.division_name
-          ? String(division.division_name)
+        const ctx = divisionName
+          ? divisionName
           : division?.division_id != null
           ? `Division #${division.division_id}`
           : "Division Allocation";
@@ -241,15 +252,15 @@ export function useSalesmanAllocation() {
         });
       }
 
-      // Supplier rows: show all supplier allocations under that division target
+      // Supplier rows: prefix with division name
+      const divisionCtx = divisionName
+        ? divisionName
+        : division?.division_id != null
+        ? `Division #${division.division_id}`
+        : "Division";
+
       for (const s of supplierAllocations) {
         const name = supplierById[s.supplier_id]?.supplier_name ?? `Supplier #${s.supplier_id}`;
-        const divisionCtx =
-          division?.division_name
-            ? String(division.division_name)
-            : division?.division_id != null
-            ? `Division #${division.division_id}`
-            : "Division";
 
         out.push({
           key: `sup-${s.id}`,
@@ -267,7 +278,7 @@ export function useSalesmanAllocation() {
     } finally {
       setHierarchyLoading(false);
     }
-  }, [fiscalPeriod, supplierTargetRow?.tsd_id, supplierById]);
+  }, [fiscalPeriod, supplierTargetRow?.tsd_id, supplierById, supplierTargetRow, divisionById]);
 
   React.useEffect(() => {
     refreshHierarchy();

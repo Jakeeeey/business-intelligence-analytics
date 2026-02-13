@@ -10,6 +10,17 @@ import type {
   TargetSettingDivisionRow,
 } from "../types";
 
+/** ✅ NEW: division master row */
+export type DivisionRow = {
+  division_id: number;
+  division_name: string;
+  division_description?: string | null;
+  division_code?: string | null;
+  division_head?: string | null;
+  division_head_id?: number | null;
+  date_added?: string | null;
+};
+
 async function j<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, { ...init, cache: "no-store" });
   const data = await res.json().catch(() => ({}));
@@ -38,6 +49,12 @@ export async function listSuppliers(): Promise<SupplierRow[]> {
 
 export async function listTargetSettingSuppliers(): Promise<TargetSettingSupplierRow[]> {
   const r = await j<{ data: TargetSettingSupplierRow[] }>(`${BASE}?resource=ts_supplier&limit=-1`);
+  return r.data ?? [];
+}
+
+/** ✅ NEW: division master list (division table) */
+export async function listDivisions(): Promise<DivisionRow[]> {
+  const r = await j<{ data: DivisionRow[] }>(`${BASE}?resource=divisions&limit=-1`);
   return r.data ?? [];
 }
 
