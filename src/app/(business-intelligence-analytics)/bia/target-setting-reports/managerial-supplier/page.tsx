@@ -1,4 +1,3 @@
-// src/app/(human-resource-management)/hrm/department/page.tsx
 import {
     Breadcrumb,
     BreadcrumbItem,
@@ -13,7 +12,8 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { NavUser } from "../../_components/nav-user";
 
 import { cookies } from "next/headers";
-import ComingSoon from "../../_components/ComingSoon"
+// 1. IMPORT YOUR NEW MODULE
+import {ManagerialSupplierModule}   from "@/modules/business-intelligence-analytics/target-setting-reports/managerial-supplier";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -73,7 +73,6 @@ function buildHeaderUserFromToken(token: string | null | undefined) {
 }
 
 export default async function Page() {
-    // ✅ Next.js 16: cookies() is async
     const cookieStore = await cookies();
     const token = cookieStore.get(COOKIE_NAME)?.value ?? null;
 
@@ -101,6 +100,10 @@ export default async function Page() {
                                 <BreadcrumbLink href="#">BIA</BreadcrumbLink>
                             </BreadcrumbItem>
                             <BreadcrumbSeparator className="hidden md:block" />
+                            <BreadcrumbItem className="hidden md:block">
+                                <BreadcrumbLink href="#">Target Setting Reports</BreadcrumbLink>
+                            </BreadcrumbItem>
+                            <BreadcrumbSeparator className="hidden md:block" />
                             <BreadcrumbItem>
                                 <BreadcrumbPage>Managerial Supplier</BreadcrumbPage>
                             </BreadcrumbItem>
@@ -115,7 +118,7 @@ export default async function Page() {
 
             <ScrollArea className="min-h-0 flex-1">
                 <div className="p-4">
-                    <ComingSoon />
+                    <ManagerialSupplierModule />
                 </div>
             </ScrollArea>
         </div>
