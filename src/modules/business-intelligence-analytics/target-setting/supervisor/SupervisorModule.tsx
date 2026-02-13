@@ -36,6 +36,13 @@ export default function SupervisorModule() {
     s.setStatus("DRAFT");
   }
 
+  // ✅ pull the selected supplier target amount (for pills)
+  const selectedSupplierTargetAmount = React.useMemo(() => {
+    if (s.supplierId == null) return 0;
+    const hit = s.supplierOptions.find((x: any) => x.id === s.supplierId);
+    return Number(hit?.target_amount ?? 0);
+  }, [s.supplierId, s.supplierOptions]);
+
   return (
     <div className="space-y-6">
       <Card className="shadow-sm">
@@ -84,7 +91,7 @@ export default function SupervisorModule() {
                   <SelectValue placeholder="Select supplier" />
                 </SelectTrigger>
                 <SelectContent>
-                  {s.supplierOptions.map((opt) => (
+                  {s.supplierOptions.map((opt: any) => (
                     <SelectItem key={opt.id} value={String(opt.id)}>
                       {opt.label} (Target: {moneyPHP(opt.target_amount)})
                     </SelectItem>
@@ -93,7 +100,7 @@ export default function SupervisorModule() {
               </Select>
             </div>
 
-            {/* Salesman + Target Share side-by-side */}
+            {/* Salesman */}
             <div className="space-y-2">
               <Label>SELECT SALESMAN</Label>
               <Select
@@ -117,6 +124,7 @@ export default function SupervisorModule() {
               </Select>
             </div>
 
+            {/* Target share */}
             <div className="space-y-2">
               <Label>SALESMAN TARGET SHARE</Label>
               <Input
@@ -136,10 +144,11 @@ export default function SupervisorModule() {
         </CardContent>
       </Card>
 
-      {/* Table: only allocations for selected fiscal + supplier */}
+      {/* ✅ New table layout (replicates screenshot design) */}
       <AllocationTable
         fiscalPeriod={s.fiscalPeriod}
         supplierId={s.supplierId}
+        supplierTargetAmount={selectedSupplierTargetAmount}
         rows={s.rows}
         supplierById={s.supplierById}
         salesmanById={s.salesmanById}
