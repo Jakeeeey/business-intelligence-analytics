@@ -11,7 +11,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Pencil, Trash2 } from "lucide-react";
 
-import { StatusBadge } from "./ui";
+// ❌ removed StatusBadge usage
+// import { StatusBadge } from "./ui";
 
 function clampMoney(n: number) {
   if (!Number.isFinite(n)) return 0;
@@ -47,7 +48,7 @@ export function AllocationTable(props: {
   return (
     <Card className="shadow-sm">
       <CardContent className="p-0">
-        {/* Header row (same layout, updated texts) */}
+        {/* Header row */}
         <div className="px-6 pt-6 pb-4">
           <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
             <div className="space-y-1">
@@ -57,7 +58,7 @@ export function AllocationTable(props: {
               </div>
             </div>
 
-            {/* KPI pills (labels updated) */}
+            {/* KPI pills */}
             <div className="flex flex-wrap gap-2 md:justify-end">
               <Badge variant="secondary" className="rounded-full px-3 py-1">
                 Supplier Target: {moneyPHP(target)}
@@ -74,7 +75,7 @@ export function AllocationTable(props: {
 
         <Separator />
 
-        {/* Section header (same layout, updated texts) */}
+        {/* Section header */}
         <div className="px-6 py-4">
           <div className="space-y-1">
             <div className="text-sm font-semibold">Salesman Allocations</div>
@@ -121,8 +122,7 @@ export function AllocationTable(props: {
                             {sm?.salesman_code ? (
                               <span className="text-muted-foreground"> • {sm.salesman_code}</span>
                             ) : null}
-                            {"  "}•{"  "}
-                            <StatusBadge status={r.status} />
+                            {/* ✅ removed: • <StatusBadge status={r.status} /> */}
                           </span>
                         </div>
                       </TableCell>

@@ -1,52 +1,78 @@
-export type DirectusListResponse<T> = { data: T[] };
-export type DirectusItemResponse<T> = { data: T };
-
-export type StatusCode = "DRAFT" | "PENDING" | "APPROVED" | "REJECTED";
-
-export type TargetSettingSupplierRow = {
-  id: number;
-  tsd_id: number | null;
-  supplier_id: number;
-  fiscal_period: string; // "YYYY-MM-01"
-  target_amount: number;
-  status: StatusCode;
-  created_by: number | null;
-  created_at: string | null;
-};
-
-export type TargetSettingSalesmanRow = {
-  id: number;
-  ts_supervisor_id: number | null;
-  salesman_id: number;
-  supplier_id: number;
-  fiscal_period: string; // "YYYY-MM-01"
-  target_amount: number; // Salesman Target Share
-  status: StatusCode;
-  created_by: number | null;
-  created_at: string | null;
-};
-
-export type SalesmanRow = {
-  id: number;
-  salesman_name: string | null;
-  salesman_code: string | null;
-  isActive?: number | boolean | null;
-  division_id?: number | null;
-};
+export type StatusCode = "DRAFT" | "SUBMITTED" | "APPROVED" | "REJECTED" | string;
 
 export type SupplierRow = {
   id: number;
-  supplier_name?: string | null;
-  supplier_shortcut?: string | null;
-  supplier_type?: string | null;
-  isActive?: number | boolean | null;
-};
+  supplier_name: string;
+  supplier_type?: string;
+  isActive?: number | boolean;
+} & Record<string, unknown>;
+
+export type SalesmanRow = {
+  id: number;
+  salesman_name: string;
+  salesman_code?: string;
+  isActive?: number | boolean;
+  division_id?: number | null;
+} & Record<string, unknown>;
+
+export type TargetSettingSupplierRow = {
+  id: number;
+  fiscal_period: string; // "YYYY-MM-01"
+  supplier_id: number;
+  target_amount: number;
+  status: StatusCode;
+  tsd_id: number; // links to target_setting_division
+  created_at?: string | null;
+  created_by?: number | null;
+} & Record<string, unknown>;
+
+export type TargetSettingSalesmanRow = {
+  id: number;
+  fiscal_period: string; // "YYYY-MM-01"
+  supplier_id: number;
+  salesman_id: number;
+  target_amount: number;
+  status: StatusCode;
+
+  // IMPORTANT: In Directus this is M2O to target_setting_supervisor.id
+  ts_supervisor_id: number;
+
+  created_at?: string | null;
+  created_by?: number | null;
+} & Record<string, unknown>;
 
 export type UpsertSalesmanAllocationPayload = {
-  ts_supervisor_id: number | null; // (we keep it, but for now we save null)
-  salesman_id: number;
+  fiscal_period: string;
   supplier_id: number;
+  salesman_id: number;
+  target_amount: number;
+  status: StatusCode;
+  // server injects ts_supervisor_id
+};
+
+/* -------- Hierarchy log (NEW) -------- */
+export type TargetSettingExecutiveRow = {
+  id: number;
   fiscal_period: string;
   target_amount: number;
+  status: StatusCode;
+} & Record<string, unknown>;
+
+export type TargetSettingDivisionRow = {
+  id: number;
+  fiscal_period: string;
+  target_amount: number;
+  status: StatusCode;
+
+  // optional (depends on your schema)
+  division_id?: number | null;
+  division_name?: string | null;
+} & Record<string, unknown>;
+
+export type HierarchyLogRow = {
+  key: string;
+  creatorRole: "Executive" | "Div Manager";
+  context: string;
+  targetAmount: number;
   status: StatusCode;
 };

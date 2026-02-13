@@ -11,20 +11,20 @@ import { cn } from "@/lib/utils";
 function roleBadge(role: AllocationLogRow["creatorRole"]) {
   if (role === "Executive")
     return (
-      <Badge variant="outline" className="border-blue-200 text-blue-700">
+      <Badge variant="outline" className="border-blue-200 text-blue-700 dark:border-blue-500/30 dark:text-blue-300">
         Executive
       </Badge>
     );
 
   if (role === "Supervisor")
     return (
-      <Badge variant="outline" className="border-amber-200 text-amber-700">
+      <Badge variant="outline" className="border-amber-200 text-amber-700 dark:border-amber-500/30 dark:text-amber-300">
         Supervisor
       </Badge>
     );
 
   return (
-    <Badge variant="outline" className="border-purple-200 text-purple-700">
+    <Badge variant="outline" className="border-purple-200 text-purple-700 dark:border-purple-500/30 dark:text-purple-300">
       Div Manager
     </Badge>
   );
@@ -33,24 +33,54 @@ function roleBadge(role: AllocationLogRow["creatorRole"]) {
 function statusBadge(status: AllocationLogRow["status"]) {
   const s = String(status ?? "").trim().toUpperCase();
 
-  // ✅ Use real DB values
-  if (s === "APPROVED") return <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">APPROVED</Badge>;
-  if (s === "PENDING") return <Badge className="bg-amber-500 text-white hover:bg-amber-500">PENDING</Badge>;
-  if (s === "REJECTED") return <Badge className="bg-rose-600 text-white hover:bg-rose-600">REJECTED</Badge>;
+  // APPROVED: Light = blue pill w/ white text, Dark = near-black pill w/ white text
+  if (s === "APPROVED") {
+    return (
+      <Badge
+        variant="secondary"
+        className="rounded-full !bg-blue-600 !text-white dark:!bg-zinc-900 dark:!text-white"
+      >
+        APPROVED
+      </Badge>
+    );
+  }
 
-  // neutral statuses (most common)
-  if (s === "DRAFT") return <Badge variant="secondary">DRAFT</Badge>;
-  if (s === "SUBMITTED") return <Badge variant="secondary">SUBMITTED</Badge>;
-  if (s === "SET") return <Badge variant="secondary">SET</Badge>;
+  // Optional: keep same visual style but different label
+  if (s === "PENDING") {
+    return (
+      <Badge
+        variant="secondary"
+        className="rounded-full !bg-blue-600 !text-white dark:!bg-zinc-900 dark:!text-white"
+      >
+        PENDING
+      </Badge>
+    );
+  }
 
-  // fallback: still show whatever it is
-  return <Badge variant="secondary">{s || "—"}</Badge>;
+  if (s === "REJECTED") {
+    return (
+      <Badge
+        variant="secondary"
+        className="rounded-full !bg-blue-600 !text-white dark:!bg-zinc-900 dark:!text-white"
+      >
+        REJECTED
+      </Badge>
+    );
+  }
+
+  return (
+    <Badge
+      variant="secondary"
+      className="rounded-full !bg-blue-600 !text-white dark:!bg-zinc-900 dark:!text-white"
+    >
+      {s || "—"}
+    </Badge>
+  );
 }
 
-export default function AllocationLogTable(props: {
-  rows: AllocationLogRow[];
-  formatPeso: (n: number) => string;
-}) {
+
+
+export default function AllocationLogTable(props: { rows: AllocationLogRow[]; formatPeso: (n: number) => string }) {
   const { rows, formatPeso } = props;
 
   return (
