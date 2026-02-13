@@ -18,6 +18,7 @@ import {
     FolderKanban,
     MessagesSquare,
     Activity,
+    BarChart3,
     Sun,
     Moon,
     Monitor,
@@ -93,6 +94,7 @@ const POSITION_ACCESS: Record<Position, string[]> = {
         "arf",
         "comms",
         "pm-monitoring",
+        "bia",
     ],
     Admin: [
         "scm",
@@ -104,6 +106,7 @@ const POSITION_ACCESS: Record<Position, string[]> = {
         "arf",
         "comms",
         "pm-monitoring",
+        "bia",
     ],
     "SCM Staff": ["scm", "mfg"],
     "Finance Staff": ["finance"],
@@ -281,6 +284,27 @@ const SUBSYSTEMS: SubsystemItem[] = [
             { id: "inbox", title: "Inbox", status: "comingSoon" },
         ],
     },
+
+    // ✅ NEW: Business Intelligence & Analytics
+    {
+        id: "bia",
+        title: "Business Intelligence & Analytics",
+        subtitle: "Dashboards, KPIs, performance tracking, executive insights",
+        href: "/bia",
+        status: "active",
+        category: "Monitoring & Oversight",
+        icon: BarChart3,
+        tag: "BIA",
+        accentClass:
+            "bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 ring-1 ring-indigo-500/20",
+        submodules: [
+            { id: "dashboards", title: "Dashboards" },
+            { id: "kpis", title: "KPIs" },
+            { id: "insights", title: "Insights" },
+            { id: "exports", title: "Exports", status: "comingSoon" },
+        ],
+    },
+
     {
         id: "pm-monitoring",
         title: "PM Monitoring",
@@ -354,8 +378,8 @@ function DashboardFooter() {
                                 Internal
                             </Badge>
                             <span className="hidden sm:inline text-xs text-muted-foreground">
-                © {new Date().getFullYear()} Vertex Open Systems
-              </span>
+                                © {new Date().getFullYear()} Vertex Open Systems
+                            </span>
                         </div>
 
                         <div className="flex flex-wrap items-center gap-2">
@@ -372,8 +396,8 @@ function DashboardFooter() {
                             <Separator orientation="vertical" className="hidden h-5 sm:block" />
 
                             <span className="text-xs text-muted-foreground">
-                Build: <span className="font-medium text-foreground">V2</span>
-              </span>
+                                Build: <span className="font-medium text-foreground">V2</span>
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -415,16 +439,16 @@ function StatusBadge({ status }: { status: Status }) {
     if (status === "active") {
         return (
             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-700 ring-1 ring-emerald-500/20 dark:text-emerald-300">
-        <CheckCircle2 className="h-3.5 w-3.5" />
-        Active
-      </span>
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                Active
+            </span>
         );
     }
     return (
         <span className="inline-flex items-center gap-1 rounded-full bg-zinc-500/10 px-2 py-0.5 text-[11px] font-medium text-zinc-700 ring-1 ring-zinc-500/15 dark:text-zinc-200">
-      <Timer className="h-3.5 w-3.5" />
-      Coming Soon
-    </span>
+            <Timer className="h-3.5 w-3.5" />
+            Coming Soon
+        </span>
     );
 }
 
@@ -548,9 +572,9 @@ export default function ERPMainDashboard() {
 
                                     <div className="min-w-0">
                                         <div className="flex items-center gap-2">
-                      <span className={cn("font-semibold tracking-tight", isCompactHeader ? "text-base" : "text-lg sm:text-xl")}>
-                        VOS ERP
-                      </span>
+                                            <span className={cn("font-semibold tracking-tight", isCompactHeader ? "text-base" : "text-lg sm:text-xl")}>
+                                                VOS ERP
+                                            </span>
                                             <Badge variant="secondary" className="h-6 px-2 text-[12px]">
                                                 Internal
                                             </Badge>
@@ -635,8 +659,8 @@ export default function ERPMainDashboard() {
                                         <div className="flex flex-wrap items-center gap-2">
                                             <div className="text-sm font-semibold">{meta.title}</div>
                                             <span className="inline-flex items-center rounded-full bg-zinc-900/5 px-2.5 py-0.5 text-[11px] font-medium text-zinc-700 ring-1 ring-zinc-900/10 dark:bg-white/5 dark:text-zinc-200 dark:ring-white/10">
-                        {group.items.length} Subsystems
-                      </span>
+                                                {group.items.length} Subsystems
+                                            </span>
                                         </div>
                                         <div className="mt-1 text-xs text-muted-foreground">{meta.description}</div>
                                     </div>
@@ -698,8 +722,8 @@ function SubsystemTile({ subsystem }: { subsystem: SubsystemItem }) {
                         <div className="truncate text-sm font-semibold">{subsystem.title}</div>
                         {subsystem.tag ? (
                             <span className="inline-flex items-center rounded-full bg-zinc-900/5 px-2 py-0.5 text-[10px] font-semibold text-zinc-700 ring-1 ring-zinc-900/10 dark:bg-white/5 dark:text-zinc-200 dark:ring-white/10">
-                {subsystem.tag}
-              </span>
+                                {subsystem.tag}
+                            </span>
                         ) : null}
                     </div>
 
