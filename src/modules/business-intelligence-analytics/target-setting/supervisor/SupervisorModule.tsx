@@ -61,8 +61,8 @@ export default function SupervisorModule() {
               </div>
 
               <Button
-                className="md:mt-0"
-                variant="destructive"
+                className="cursor-pointer"
+                variant="default"
                 onClick={() => m.saveAllocation()}
                 disabled={!canSave || m.acting}
               >
