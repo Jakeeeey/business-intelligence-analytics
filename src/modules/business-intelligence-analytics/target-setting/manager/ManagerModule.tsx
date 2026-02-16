@@ -55,6 +55,9 @@ export default function ManagerModule() {
       const existing = m.supplierAllocationsForSelectedDivision.find(
         (x) => x.supplier_id === (m.selectedSupplierId ?? -1),
       );
+      if (m.selectedDivisionTarget && m.selectedDivisionTarget.status !== "DRAFT" && m.selectedDivisionTarget.status !== "REJECTED") {
+        return true;
+      }
       // Allow save if a matching supplier exists but with a different supervisor (new row)
       return !existing && m.totals.remaining <= 0;
     })();

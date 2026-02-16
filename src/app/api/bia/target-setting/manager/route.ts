@@ -200,6 +200,13 @@ export async function POST(req: NextRequest) {
       status: ctx.status,
     };
 
+    if (ctx.status !== "DRAFT" && ctx.status !== "REJECTED") {
+      return NextResponse.json(
+        { error: "Cannot create allocation because the Division Target is already approved/set." },
+        { status: 403 },
+      );
+    }
+
     // Always create a new target_setting_supplier row (1 supplier → many supervisors)
     const created = await fetchDirectus<{ data: any }>(`/items/target_setting_supplier`, {
       method: "POST",
@@ -254,6 +261,10 @@ export async function PATCH(req: NextRequest) {
     const tsd_id = Number(tss.tsd_id);
     const ctx = await resolveExecutiveContextByTsdId(tsd_id);
 
+    if (ctx.status !== "DRAFT" && ctx.status !== "REJECTED") {
+      return NextResponse.json({ error: "Cannot update target unless it is in DRAFT or REJECTED status." }, { status: 403 });
+    }
+
     await fetchDirectus(`/items/target_setting_supplier/${id}`, {
       method: "PATCH",
       body: JSON.stringify({
@@ -285,6 +296,17 @@ export async function DELETE(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const id = Number(searchParams.get("id"));
     if (!id) return NextResponse.json({ error: "Missing id." }, { status: 400 });
+
+    const tssRes = await fetchDirectus<{ data: any[] }>(
+      `/items/target_setting_supplier?filter[id][_eq]=${encodeURIComponent(String(id))}&limit=1`,
+    );
+    const tss = tssRes.data?.[0];
+    if (!tss) return NextResponse.json({ error: "Allocator not found." }, { status: 404 });
+
+    const status = normalizeStatus(tss.status);
+    if (status !== "DRAFT" && status !== "REJECTED") {
+      return NextResponse.json({ error: "Cannot delete target unless it is in DRAFT or REJECTED status." }, { status: 403 });
+    }
 
     const supRows = await findSupervisorRowsByTssId(id);
     for (const r of supRows) {

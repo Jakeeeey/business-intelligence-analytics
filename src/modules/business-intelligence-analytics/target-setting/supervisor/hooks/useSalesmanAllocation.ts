@@ -397,5 +397,7 @@ export function useSalesmanAllocation() {
     // NEW
     hierarchyLoading,
     hierarchyRows,
+    /** ✅ Exposed for UI status checks */
+    supplierTargetRow,
   };
 }

@@ -369,6 +369,24 @@ export async function POST(req: NextRequest) {
   });
   if (guard) return guard;
 
+  // Check if supplier target is DRAFT
+  const targetRes = await getSupplierTargetAmount({ fiscalPeriod: String(body.fiscal_period), supplierId: Number(body.supplier_id) });
+  if (targetRes.ok) {
+    // We need to fetch the status, getSupplierTargetAmount only returns amount.
+    // Let's use a new query or modify getSupplierTargetAmount.
+    // Actually, let's just do a direct fetch here to be safe and explicit.
+    const stUrl = new URL(`${UPSTREAM}/items/target_setting_supplier`);
+    stUrl.searchParams.set("limit", "1");
+    stUrl.searchParams.set("filter[fiscal_period][_eq]", String(body.fiscal_period));
+    stUrl.searchParams.set("filter[supplier_id][_eq]", String(body.supplier_id));
+    const stRes = await upstreamJson(stUrl.toString());
+    const st = (stRes.json?.data ?? [])?.[0];
+
+    if (st && st.status !== "DRAFT" && st.status !== "REJECTED") {
+      return NextResponse.json({ error: "Cannot create allocation because the Supplier Target is already approved/set." }, { status: 403 });
+    }
+  }
+
   const resolved = await resolveTsSupervisorId({ userId: sub, fiscalPeriod: String(body.fiscal_period) });
   if (!resolved.ok) return NextResponse.json(resolved.error, { status: resolved.status });
 
@@ -399,6 +417,14 @@ export async function PATCH(req: NextRequest) {
   });
   if (guard) return guard;
 
+  const allocRes = await getExistingAllocations({ fiscalPeriod: String(body.fiscal_period), supplierId: Number(body.supplier_id) });
+  if (allocRes.ok) {
+    const existing = (allocRes.rows as any[]).find((r) => Number(r.id) === Number(id));
+    if (existing && existing.status !== "DRAFT" && existing.status !== "REJECTED") {
+      return NextResponse.json({ error: "Cannot update target unless it is in DRAFT or REJECTED status." }, { status: 403 });
+    }
+  }
+
   const resolved = await resolveTsSupervisorId({ userId: sub, fiscalPeriod: String(body.fiscal_period) });
   if (!resolved.ok) return NextResponse.json(resolved.error, { status: resolved.status });
 
@@ -410,6 +436,13 @@ export async function DELETE(req: NextRequest) {
   const resource = req.nextUrl.searchParams.get("resource") || "";
   const id = req.nextUrl.searchParams.get("id");
   if (resource !== "allocations" || !id) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+
+  // Check status before delete
+  const url = new URL(`${UPSTREAM}/items/target_setting_salesman/${encodeURIComponent(id)}`);
+  const r = await upstreamJson(url.toString());
+  if (r.ok && r.json?.data?.status !== "DRAFT" && r.json?.data?.status !== "REJECTED") {
+    return NextResponse.json({ error: "Cannot delete target unless it is in DRAFT or REJECTED status." }, { status: 403 });
+  }
 
   return proxy(req, `/items/target_setting_salesman/${encodeURIComponent(id)}`, "DELETE");
 }
