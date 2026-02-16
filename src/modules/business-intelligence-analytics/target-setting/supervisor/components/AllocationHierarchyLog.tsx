@@ -1,89 +1,114 @@
 "use client";
 
-import * as React from "react";
-import type { HierarchyLogRow } from "../types";
-import { moneyPHP } from "../utils/format";
-
-import { Card, CardContent } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
+import React from "react";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import type {
+  TargetSettingSupplierRow,
+  TargetSettingSalesmanRow,
+} from "../types";
 
-function RolePill({ role }: { role: string }) {
-  const v = role.toLowerCase();
-  if (v.includes("executive")) return <Badge variant="secondary">Executive</Badge>;
-  return <Badge variant="outline">Div Manager</Badge>;
+interface AllocationHierarchyLogProps {
+  supplierTarget: TargetSettingSupplierRow | null; // The root context (Supplier)
+  salesmanAllocations: TargetSettingSalesmanRow[]; // The details (Salesman)
+  salesmanNameById: (id: number) => string;
 }
 
-function StatusPill({ status }: { status: string }) {
+export default function AllocationHierarchyLog({
+  supplierTarget,
+  salesmanAllocations = [],
+  salesmanNameById
+}: AllocationHierarchyLogProps) {
+  if (!supplierTarget) return null;
+
+  const currency = (amount: number) =>
+    new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(amount);
+
   return (
-    <Badge variant="secondary" className="rounded-full">
-      {String(status || "DRAFT").toUpperCase()}
-    </Badge>
-  );
-}
+    <Card className="w-full mt-6 shadow-sm">
+      <CardHeader>
+        <CardTitle>Allocation Hierarchy Log</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Hierarchy / Role</TableHead>
+              <TableHead>Context / Assigned To</TableHead>
+              <TableHead>Level Detail</TableHead>
+              <TableHead className="text-right">Amount</TableHead>
+              <TableHead>Status</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {/* 1. Supplier Level (Root) */}
+            <TableRow className="bg-green-50/20 dark:bg-green-900/10">
+              <TableCell>
+                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800/50">Supervisor</Badge>
+              </TableCell>
+              <TableCell className="font-bold uppercase">MY SUPPLIER TARGET</TableCell>
+              <TableCell className="text-green-600 dark:text-green-400 font-medium text-xs">ROOT TARGET</TableCell>
+              <TableCell className="text-right font-bold">{currency(Number(supplierTarget.target_amount))}</TableCell>
+              <TableCell>
+                <Badge variant="outline" className="text-[10px] px-1.5 h-4 capitalize dark:border-gray-700 dark:text-gray-400">{(supplierTarget.status || 'DRAFT').toLowerCase()}</Badge>
+              </TableCell>
+            </TableRow>
 
-export default function AllocationHierarchyLog(props: {
-  rows: HierarchyLogRow[];
-  loading?: boolean;
-}) {
-  return (
-    <Card className="shadow-sm">
-      <CardContent className="p-0">
-        <div className="px-6 pt-6 pb-4">
-          <div className="space-y-1">
-            <div className="text-lg font-semibold">Allocation Hierarchy Log</div>
-            <div className="text-sm text-muted-foreground">
-              Tracks how targets were assigned across Executive → Division → Supplier.
-            </div>
-          </div>
-        </div>
-
-        <Separator />
-
-        <div className="px-4 pb-6 pt-4">
-          <div className="rounded-lg border bg-background">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[180px]">Creator Role</TableHead>
-                  <TableHead>Context / Assigned To</TableHead>
-                  <TableHead className="text-right w-[180px]">Target Amount</TableHead>
-                  <TableHead className="text-right w-[120px]">Status</TableHead>
+            {/* 2. Salesman Rows */}
+            {salesmanAllocations.map(sale => {
+              return (
+                <TableRow key={`sale-${sale.id}`} className="hover:bg-gray-50/50">
+                  <TableCell className="pl-6">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-purple-400" />
+                      <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 text-[10px]">Salesman</Badge>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-sm font-medium">{salesmanNameById(sale.salesman_id)}</TableCell>
+                  <TableCell className="text-purple-600 text-[9px] uppercase font-medium">Final Allocation</TableCell>
+                  <TableCell className="text-right text-sm">{currency(Number(sale.target_amount))}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className="text-[10px] px-1.5 h-4 capitalize">{(sale.status || 'DRAFT').toLowerCase()}</Badge>
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
+              );
+            })}
 
-              <TableBody>
-                {props.loading ? (
-                  <TableRow>
-                    <TableCell colSpan={4} className="py-10 text-center text-sm text-muted-foreground">
-                      Loading hierarchy...
-                    </TableCell>
-                  </TableRow>
-                ) : props.rows.length ? (
-                  props.rows.map((r) => (
-                    <TableRow key={r.key}>
-                      <TableCell>
-                        <RolePill role={r.creatorRole} />
-                      </TableCell>
-                      <TableCell className="font-medium">{r.context}</TableCell>
-                      <TableCell className="text-right font-mono">{moneyPHP(r.targetAmount)}</TableCell>
-                      <TableCell className="text-right">
-                        <StatusPill status={r.status} />
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={4} className="py-10 text-center text-sm text-muted-foreground">
-                      No hierarchy log available for the selected period.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </div>
+            {salesmanAllocations.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center text-gray-400 py-8">
+                  No allocations found for this period.
+                </TableCell>
+              </TableRow>
+            )}
+
+            {/* Summary Box */}
+            <TableRow className="border-t-2 bg-slate-50/50">
+              <TableCell colSpan={5} className="py-6 px-8">
+                <div className="flex justify-between items-center w-full">
+                  <div className="flex gap-12">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Target</span>
+                      <span className="text-xl font-black text-slate-900">{currency(Number(supplierTarget.target_amount))}</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Allocated</span>
+                      <span className="text-xl font-black text-primary">{currency(salesmanAllocations.reduce((s, a) => s + Number(a.target_amount), 0))}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col items-end">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Remaining to Allocate</span>
+                    <span className={`text-2xl font-black ${(Number(supplierTarget.target_amount) - salesmanAllocations.reduce((s, a) => s + Number(a.target_amount), 0)) < 0 ? 'text-red-600' : 'text-slate-900'}`}>
+                      {currency(Number(supplierTarget.target_amount) - salesmanAllocations.reduce((s, a) => s + Number(a.target_amount), 0))}
+                    </span>
+                  </div>
+                </div>
+              </TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
       </CardContent>
     </Card>
   );

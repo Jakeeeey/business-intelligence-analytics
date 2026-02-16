@@ -276,6 +276,50 @@ async function handleSalesmenBySupervisor(req: NextRequest) {
   return NextResponse.json({ data }, { status: 200 });
 }
 
+/* ---------- Suppliers by supervisor (NEW) ---------- */
+async function handleSupervisorSuppliers(req: NextRequest) {
+  const token = req.cookies.get("vos_access_token")?.value ?? null;
+  const sub = getJwtSub(token);
+  if (!sub) return NextResponse.json({ data: [] }, { status: 200 });
+
+  // 1. Get assignments from target_setting_supervisor
+  const tssUrl = new URL(`${UPSTREAM}/items/target_setting_supervisor`);
+  tssUrl.searchParams.set("limit", "-1");
+  tssUrl.searchParams.set("fields", "id,tss_id");
+  tssUrl.searchParams.set("filter[supervisor_user_id][_eq]", sub);
+  tssUrl.searchParams.set("filter[status][_neq]", "ARCHIVED"); // optional safety
+
+  const tssRes = await upstreamJson(tssUrl.toString());
+  if (!tssRes.ok) {
+    return NextResponse.json(
+      { error: "Upstream request failed", upstream_status: tssRes.status, upstream_body: tssRes.json, upstream_url: tssRes.url },
+      { status: tssRes.status }
+    );
+  }
+
+  // 2. Extract Supplier Allocation IDs (tss_id points to target_setting_supplier.id)
+  const supplierAllocationIds = Array.from(new Set((tssRes.json?.data ?? []).map((r: any) => Number(r.tss_id)).filter((n: number) => Number.isFinite(n) && n > 0)));
+
+  if (!supplierAllocationIds.length) {
+    return NextResponse.json({ data: [] }, { status: 200 });
+  }
+
+  // 3. Fetch target_setting_supplier records
+  const tsSupplierUrl = new URL(`${UPSTREAM}/items/target_setting_supplier`);
+  tsSupplierUrl.searchParams.set("limit", "-1");
+  tsSupplierUrl.searchParams.set("filter[id][_in]", supplierAllocationIds.join(","));
+
+  const tsSupplierRes = await upstreamJson(tsSupplierUrl.toString());
+  if (!tsSupplierRes.ok) {
+    return NextResponse.json(
+      { error: "Upstream request failed", upstream_status: tsSupplierRes.status, upstream_body: tsSupplierRes.json, upstream_url: tsSupplierUrl.toString() },
+      { status: tsSupplierRes.status }
+    );
+  }
+
+  return NextResponse.json({ data: tsSupplierRes.json?.data ?? [] }, { status: 200 });
+}
+
 /* ---------------- ROUTES ---------------- */
 export async function GET(req: NextRequest) {
   const missing = requireUpstream();
@@ -287,7 +331,7 @@ export async function GET(req: NextRequest) {
   if (resource === "salesmen") return handleSalesmenBySupervisor(req);
 
   if (resource === "suppliers") return proxy(req, `/items/suppliers`, "GET");
-  if (resource === "ts_supplier") return proxy(req, `/items/target_setting_supplier`, "GET");
+  if (resource === "ts_supplier") return handleSupervisorSuppliers(req);
   if (resource === "allocations") return proxy(req, `/items/target_setting_salesman`, "GET");
 
   // ✅ NEW: divisions master list (for mapping division_id -> division_name)
@@ -325,6 +369,24 @@ export async function POST(req: NextRequest) {
   });
   if (guard) return guard;
 
+  // Check if supplier target is DRAFT
+  const targetRes = await getSupplierTargetAmount({ fiscalPeriod: String(body.fiscal_period), supplierId: Number(body.supplier_id) });
+  if (targetRes.ok) {
+    // We need to fetch the status, getSupplierTargetAmount only returns amount.
+    // Let's use a new query or modify getSupplierTargetAmount.
+    // Actually, let's just do a direct fetch here to be safe and explicit.
+    const stUrl = new URL(`${UPSTREAM}/items/target_setting_supplier`);
+    stUrl.searchParams.set("limit", "1");
+    stUrl.searchParams.set("filter[fiscal_period][_eq]", String(body.fiscal_period));
+    stUrl.searchParams.set("filter[supplier_id][_eq]", String(body.supplier_id));
+    const stRes = await upstreamJson(stUrl.toString());
+    const st = (stRes.json?.data ?? [])?.[0];
+
+    if (st && st.status !== "DRAFT" && st.status !== "REJECTED") {
+      return NextResponse.json({ error: "Cannot create allocation because the Supplier Target is already approved/set." }, { status: 403 });
+    }
+  }
+
   const resolved = await resolveTsSupervisorId({ userId: sub, fiscalPeriod: String(body.fiscal_period) });
   if (!resolved.ok) return NextResponse.json(resolved.error, { status: resolved.status });
 
@@ -355,6 +417,14 @@ export async function PATCH(req: NextRequest) {
   });
   if (guard) return guard;
 
+  const allocRes = await getExistingAllocations({ fiscalPeriod: String(body.fiscal_period), supplierId: Number(body.supplier_id) });
+  if (allocRes.ok) {
+    const existing = (allocRes.rows as any[]).find((r) => Number(r.id) === Number(id));
+    if (existing && existing.status !== "DRAFT" && existing.status !== "REJECTED") {
+      return NextResponse.json({ error: "Cannot update target unless it is in DRAFT or REJECTED status." }, { status: 403 });
+    }
+  }
+
   const resolved = await resolveTsSupervisorId({ userId: sub, fiscalPeriod: String(body.fiscal_period) });
   if (!resolved.ok) return NextResponse.json(resolved.error, { status: resolved.status });
 
@@ -366,6 +436,13 @@ export async function DELETE(req: NextRequest) {
   const resource = req.nextUrl.searchParams.get("resource") || "";
   const id = req.nextUrl.searchParams.get("id");
   if (resource !== "allocations" || !id) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+
+  // Check status before delete
+  const url = new URL(`${UPSTREAM}/items/target_setting_salesman/${encodeURIComponent(id)}`);
+  const r = await upstreamJson(url.toString());
+  if (r.ok && r.json?.data?.status !== "DRAFT" && r.json?.data?.status !== "REJECTED") {
+    return NextResponse.json({ error: "Cannot delete target unless it is in DRAFT or REJECTED status." }, { status: 403 });
+  }
 
   return proxy(req, `/items/target_setting_salesman/${encodeURIComponent(id)}`, "DELETE");
 }

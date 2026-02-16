@@ -192,40 +192,38 @@ export async function POST(req: NextRequest) {
 
     const ctx = await resolveExecutiveContextByTsdId(tsd_id);
 
-    const existing = await findSupplierAllocation(tsd_id, supplier_id);
-
-    let tssId: number;
-
     const supplierPayload = {
+      tsd_id,
+      supplier_id,
       target_amount,
       fiscal_period: ctx.fiscal_period,
       status: ctx.status,
     };
 
-    if (existing) {
-      const patched = await fetchDirectus<{ data: any }>(`/items/target_setting_supplier/${existing.id}`, {
-        method: "PATCH",
-        body: JSON.stringify(supplierPayload),
-      });
-      tssId = Number(patched?.data?.id ?? existing.id);
-    } else {
-      const created = await fetchDirectus<{ data: any }>(`/items/target_setting_supplier`, {
-        method: "POST",
-        body: JSON.stringify({
-          tsd_id,
-          supplier_id,
-          ...supplierPayload,
-        }),
-      });
-      tssId = Number(created?.data?.id);
+    if (ctx.status !== "DRAFT" && ctx.status !== "REJECTED") {
+      return NextResponse.json(
+        { error: "Cannot create allocation because the Division Target is already approved/set." },
+        { status: 403 },
+      );
     }
 
-    await upsertSupervisorRow({
-      tss_id: tssId,
-      target_amount,
-      fiscal_period: ctx.fiscal_period,
-      status: ctx.status,
-      supervisor_user_id,
+    // Always create a new target_setting_supplier row (1 supplier → many supervisors)
+    const created = await fetchDirectus<{ data: any }>(`/items/target_setting_supplier`, {
+      method: "POST",
+      body: JSON.stringify(supplierPayload),
+    });
+    const tssId = Number(created?.data?.id);
+
+    // Always create a new target_setting_supervisor row linked to this allocation
+    await fetchDirectus(`/items/target_setting_supervisor`, {
+      method: "POST",
+      body: JSON.stringify({
+        tss_id: tssId,
+        target_amount,
+        fiscal_period: ctx.fiscal_period,
+        status: ctx.status,
+        supervisor_user_id,
+      }),
     });
 
     return NextResponse.json({ ok: true });
@@ -263,6 +261,10 @@ export async function PATCH(req: NextRequest) {
     const tsd_id = Number(tss.tsd_id);
     const ctx = await resolveExecutiveContextByTsdId(tsd_id);
 
+    if (ctx.status !== "DRAFT" && ctx.status !== "REJECTED") {
+      return NextResponse.json({ error: "Cannot update target unless it is in DRAFT or REJECTED status." }, { status: 403 });
+    }
+
     await fetchDirectus(`/items/target_setting_supplier/${id}`, {
       method: "PATCH",
       body: JSON.stringify({
@@ -295,8 +297,32 @@ export async function DELETE(req: NextRequest) {
     const id = Number(searchParams.get("id"));
     if (!id) return NextResponse.json({ error: "Missing id." }, { status: 400 });
 
+    const tssRes = await fetchDirectus<{ data: any[] }>(
+      `/items/target_setting_supplier?filter[id][_eq]=${encodeURIComponent(String(id))}&limit=1`,
+    );
+    const tss = tssRes.data?.[0];
+    if (!tss) return NextResponse.json({ error: "Allocator not found." }, { status: 404 });
+
+    const status = normalizeStatus(tss.status);
+    if (status !== "DRAFT" && status !== "REJECTED") {
+      return NextResponse.json({ error: "Cannot delete target unless it is in DRAFT or REJECTED status." }, { status: 403 });
+    }
+
     const supRows = await findSupervisorRowsByTssId(id);
     for (const r of supRows) {
+      // Cascade delete: remove salesman allocations linked to this supervisor target
+      const childRes = await fetchDirectus<{ data: any[] }>(
+        `/items/target_setting_salesman?filter[ts_supervisor_id][_eq]=${r.id}&fields=id`
+      );
+      const childIds = (childRes.data ?? []).map((c) => c.id);
+
+      if (childIds.length > 0) {
+        await fetchDirectus(`/items/target_setting_salesman`, {
+          method: "DELETE",
+          body: JSON.stringify(childIds),
+        });
+      }
+
       await fetchDirectus(`/items/target_setting_supervisor/${r.id}`, { method: "DELETE" });
     }
 

@@ -5,7 +5,6 @@ import type { TargetSettingSalesmanRow, SupplierRow, SalesmanRow } from "../type
 import { moneyPHP, monthLabel } from "../utils/format";
 
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -39,12 +38,6 @@ export function AllocationTable(props: {
       ? props.supplierById[props.supplierId]?.supplier_name ?? `Supplier #${props.supplierId}`
       : "No supplier selected";
 
-  const target = clampMoney(Number(props.supplierTargetAmount ?? 0));
-  const allocated = clampMoney(
-    props.rows.reduce((sum, r) => sum + clampMoney(Number(r.target_amount ?? 0)), 0)
-  );
-  const remaining = clampMoney(target - allocated);
-
   return (
     <Card className="shadow-sm">
       <CardContent className="p-0">
@@ -59,17 +52,7 @@ export function AllocationTable(props: {
             </div>
 
             {/* KPI pills */}
-            <div className="flex flex-wrap gap-2 md:justify-end">
-              <Badge variant="secondary" className="rounded-full px-3 py-1">
-                Supplier Target: {moneyPHP(target)}
-              </Badge>
-              <Badge variant="secondary" className="rounded-full px-3 py-1">
-                Allocated: {moneyPHP(allocated)}
-              </Badge>
-              <Badge variant="destructive" className="rounded-full px-3 py-1">
-                Remaining: {moneyPHP(remaining)}
-              </Badge>
-            </div>
+
           </div>
         </div>
 
@@ -137,7 +120,7 @@ export function AllocationTable(props: {
                             variant="outline"
                             size="sm"
                             onClick={() => props.onEdit(r)}
-                            disabled={props.acting}
+                            disabled={props.acting || (r.status !== "DRAFT" && r.status !== "REJECTED")}
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
@@ -145,7 +128,7 @@ export function AllocationTable(props: {
                             variant="destructive"
                             size="sm"
                             onClick={() => props.onDelete(r.id)}
-                            disabled={props.acting}
+                            disabled={props.acting || (r.status !== "DRAFT" && r.status !== "REJECTED")}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
