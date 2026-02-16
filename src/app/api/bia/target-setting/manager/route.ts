@@ -310,6 +310,19 @@ export async function DELETE(req: NextRequest) {
 
     const supRows = await findSupervisorRowsByTssId(id);
     for (const r of supRows) {
+      // Cascade delete: remove salesman allocations linked to this supervisor target
+      const childRes = await fetchDirectus<{ data: any[] }>(
+        `/items/target_setting_salesman?filter[ts_supervisor_id][_eq]=${r.id}&fields=id`
+      );
+      const childIds = (childRes.data ?? []).map((c) => c.id);
+
+      if (childIds.length > 0) {
+        await fetchDirectus(`/items/target_setting_salesman`, {
+          method: "DELETE",
+          body: JSON.stringify(childIds),
+        });
+      }
+
       await fetchDirectus(`/items/target_setting_supervisor/${r.id}`, { method: "DELETE" });
     }
 
