@@ -5,8 +5,12 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
 import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
 } from "@/components/ui/select";
-import { SearchableSelect } from "@/components/ui/searchable-select";
 import { moneyPHP, monthLabel } from "../utils/format";
 
 type SupplierOption = { id: number; label: string; target_amount: number };
@@ -59,27 +63,44 @@ export default function SupervisorContextCard({
                 <div className="flex flex-col md:flex-row gap-4">
                     <div className="flex-1 space-y-2">
                         <Label className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Fiscal Period</Label>
-                        <SearchableSelect
+                        <Select
                             value={fiscalPeriod || ""}
                             onValueChange={onFiscalChange}
-                            options={fiscalOptions.map((fp) => ({ value: fp, label: monthLabel(fp) }))}
-                            placeholder="Select Period"
                             disabled={loading}
-                        />
+                        >
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select Period">
+                                    {fiscalPeriod ? monthLabel(fiscalPeriod) : "Select Period"}
+                                </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                                {fiscalOptions.map((fp) => (
+                                    <SelectItem key={fp} value={fp}>
+                                        {monthLabel(fp)}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
 
                     <div className="flex-1 space-y-2">
                         <Label className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Supplier</Label>
-                        <SearchableSelect
+                        <Select
                             value={supplierId ? String(supplierId) : ""}
                             onValueChange={(v) => onSupplierChange(Number(v))}
-                            options={supplierOptions.map((opt) => ({
-                                value: String(opt.id),
-                                label: `${opt.label} (Target: ${moneyPHP(opt.target_amount)})`
-                            }))}
-                            placeholder="Select Supplier"
                             disabled={loading || !fiscalPeriod}
-                        />
+                        >
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select Supplier" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {supplierOptions.map((opt) => (
+                                    <SelectItem key={opt.id} value={String(opt.id)}>
+                                        {opt.label} (Target: {moneyPHP(opt.target_amount)})
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
                 </div>
 

@@ -5,8 +5,12 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
 import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
 } from "@/components/ui/select";
-import { SearchableSelect } from "@/components/ui/searchable-select";
 import { formatPeso } from "../utils/format";
 
 type Option = { id: number; label: string };
@@ -62,24 +66,42 @@ export default function ManagerContextCard({
                 <div className="flex flex-col md:flex-row gap-4">
                     <div className="flex-1 space-y-2">
                         <Label className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Fiscal Period</Label>
-                        <SearchableSelect
+                        <Select
                             value={fiscalId ? String(fiscalId) : ""}
                             onValueChange={(v) => onFiscalChange(Number(v))}
-                            options={fiscalOptions.map((opt) => ({ value: String(opt.id), label: opt.label }))}
-                            placeholder="Select Period"
                             disabled={loading}
-                        />
+                        >
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select Period" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {fiscalOptions.map((opt) => (
+                                    <SelectItem key={opt.id} value={String(opt.id)}>
+                                        {opt.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
 
                     <div className="flex-1 space-y-2">
                         <Label className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Division</Label>
-                        <SearchableSelect
+                        <Select
                             value={divisionTsdId ? String(divisionTsdId) : ""}
                             onValueChange={(v) => onDivisionChange(Number(v))}
-                            options={divisionOptions.map((opt) => ({ value: String(opt.id), label: opt.label }))}
-                            placeholder="Select Division"
                             disabled={loading || !fiscalId}
-                        />
+                        >
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select Division" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {divisionOptions.map((opt) => (
+                                    <SelectItem key={opt.id} value={String(opt.id)}>
+                                        {opt.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
                 </div>
 

@@ -134,7 +134,7 @@ export async function GET() {
     const envErr = requireEnv();
     if (envErr) return NextResponse.json({ error: envErr }, { status: 500 });
 
-    const [exec, div, supp, supv, divisions, suppliers, users, supervisorPerDivision, divisionSalesHead] = await Promise.all([
+    const [exec, div, supp, supv, divisions, suppliers, users, supervisorPerDivision] = await Promise.all([
       fetchDirectus<{ data: any[] }>(`/items/target_setting_executive?limit=-1`),
       fetchDirectus<{ data: any[] }>(`/items/target_setting_division?limit=-1`),
       fetchDirectus<{ data: any[] }>(`/items/target_setting_supplier?limit=-1`),
@@ -145,8 +145,6 @@ export async function GET() {
 
       // ✅ new
       fetchDirectus<{ data: any[] }>(`/items/supervisor_per_division?limit=-1`),
-      // ✅ new: fetch division_sales_head for Manager / Division Head assignments
-      fetchDirectus<{ data: any[] }>(`/items/division_sales_head?limit=-1`),
     ]);
 
     return NextResponse.json({
@@ -160,7 +158,6 @@ export async function GET() {
 
       // ✅ new
       supervisor_per_division: supervisorPerDivision.data ?? [],
-      division_sales_head: divisionSalesHead.data ?? [],
     });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message ?? "Failed to load manager targets." }, { status: 500 });

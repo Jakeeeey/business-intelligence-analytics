@@ -6,8 +6,12 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
 } from "@/components/ui/select";
-import { SearchableSelect } from "@/components/ui/searchable-select";
 import { moneyPHP } from "../utils/format";
 import type { SalesmanRow } from "../types";
 
@@ -88,13 +92,22 @@ export default function SalesmanAllocationCard({
                     {/* Salesman */}
                     <div className="flex-1 space-y-2">
                         <Label className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Select Salesman</Label>
-                        <SearchableSelect
+                        <Select
                             value={salesmanId ? String(salesmanId) : ""}
                             onValueChange={(v) => onSalesmanChange(Number(v))}
-                            options={salesmen.map((opt) => ({ value: String(opt.id), label: opt.salesman_name ?? `Salesman #${opt.id}` }))}
-                            placeholder="Select Salesman"
                             disabled={loading || !supplierSelected}
-                        />
+                        >
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select Salesman" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {salesmen.map((opt) => (
+                                    <SelectItem key={opt.id} value={String(opt.id)}>
+                                        {opt.salesman_name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
 
                     {/* Amount */}
