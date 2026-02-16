@@ -6,12 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Plus, Loader2 } from "lucide-react";
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
 } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { formatPeso } from "../utils/format";
 
 type Option = { id: number; label: string };
@@ -97,43 +93,25 @@ export default function SupplierAllocationCard({
                     {/* Supplier */}
                     <div className="flex-1 space-y-2">
                         <Label className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Select Supplier</Label>
-                        <Select
+                        <SearchableSelect
                             value={supplierId ? String(supplierId) : ""}
                             onValueChange={(v) => onSupplierChange(Number(v))}
+                            options={supplierOptions.map((opt) => ({ value: String(opt.id), label: opt.label }))}
+                            placeholder="Select Supplier"
                             disabled={loading}
-                        >
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select Supplier" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {supplierOptions.map((opt) => (
-                                    <SelectItem key={opt.id} value={String(opt.id)}>
-                                        {opt.label}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                        />
                     </div>
 
                     {/* Supervisor */}
                     <div className="flex-1 space-y-2">
                         <Label className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Select Supervisor</Label>
-                        <Select
+                        <SearchableSelect
                             value={supervisorId ? String(supervisorId) : ""}
                             onValueChange={(v) => onSupervisorChange(Number(v))}
+                            options={supervisorOptions.map((opt) => ({ value: String(opt.id), label: opt.label }))}
+                            placeholder="Select Supervisor"
                             disabled={loading || !supplierId}
-                        >
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select Supervisor" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {supervisorOptions.map((opt) => (
-                                    <SelectItem key={opt.id} value={String(opt.id)}>
-                                        {opt.label}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                        />
                     </div>
 
                     {/* Amount */}
