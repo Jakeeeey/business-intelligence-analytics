@@ -9,6 +9,7 @@ import type {
   TargetSettingDivision,
   TargetSettingExecutive,
   TargetSettingSupplier,
+  TargetSettingSupervisor,
   UserRow,
   SupervisorPerDivisionRow,
 } from "../types";
@@ -175,6 +176,31 @@ export function useManagerTargets() {
     return (raw.target_setting_supplier ?? []).filter((x) => x.tsd_id === selectedDivisionTsdId);
   }, [raw, selectedDivisionTsdId]);
 
+  const supervisorAllocationsForSelectedDivision = React.useMemo<TargetSettingSupervisor[]>(() => {
+    if (!raw || !supplierAllocationsForSelectedDivision.length) return [];
+    const supplierIds = new Set(supplierAllocationsForSelectedDivision.map(s => s.id));
+    return (raw.target_setting_supervisor ?? []).filter(sv => supplierIds.has(sv.tss_id));
+  }, [raw, supplierAllocationsForSelectedDivision]);
+
+  const supervisorNamesByAllocationId = React.useCallback(
+    (supplierAllocationId: number): string => {
+      if (!raw) return "";
+      const supervisorRows = (raw.target_setting_supervisor ?? []).filter(
+        (sv) => sv.tss_id === supplierAllocationId,
+      );
+      if (supervisorRows.length === 0) return "—";
+      const users = raw.users ?? [];
+      return supervisorRows
+        .map((sv) => {
+          const u = users.find((usr) => usr.user_id === sv.supervisor_user_id);
+          if (!u) return `User #${sv.supervisor_user_id}`;
+          return fullName(u);
+        })
+        .join(", ");
+    },
+    [raw],
+  );
+
   const allocationLog = React.useMemo<AllocationLogRow[]>(() => {
     if (!raw || !selectedExecutiveId) return [];
 
@@ -300,7 +326,14 @@ export function useManagerTargets() {
       return toast.error("Supplier target share must be greater than 0.");
     }
 
-    const existing = supplierAllocationsForSelectedDivision.find((x) => x.supplier_id === selectedSupplierId);
+    const supervisorRows = raw?.target_setting_supervisor ?? [];
+    const existing = supplierAllocationsForSelectedDivision.find((x) => {
+      if (x.supplier_id !== selectedSupplierId) return false;
+      // Check if this allocation already has the same supervisor assigned
+      return supervisorRows.some(
+        (sv) => sv.tss_id === x.id && sv.supervisor_user_id === selectedSupervisorId,
+      );
+    });
 
     if (!existing) {
       if (totals.rawRemaining <= 0) return toast.error("Remaining is 0. You cannot allocate more for this division.");
@@ -345,6 +378,24 @@ export function useManagerTargets() {
     }
   }
 
+  function loadRowToForm(row: TargetSettingSupplier) {
+    setSelectedSupplierId(row.supplier_id);
+    setTargetAmountInput(String(row.target_amount));
+
+    // Find supervisor
+    if (raw) {
+      const supervisorRows = (raw.target_setting_supervisor ?? []).filter(
+        (sv) => sv.tss_id === row.id
+      );
+      if (supervisorRows.length > 0) {
+        // Take the first one (assuming 1:1 for edit context)
+        setSelectedSupervisorId(supervisorRows[0].supervisor_user_id);
+      } else {
+        setSelectedSupervisorId(null);
+      }
+    }
+  }
+
   return {
     loading,
     refreshing,
@@ -373,6 +424,8 @@ export function useManagerTargets() {
     selectedDivisionTarget,
 
     supplierAllocationsForSelectedDivision,
+    supervisorAllocationsForSelectedDivision,
+    supervisorNamesByAllocationId,
     allocationLog,
 
     totals,
@@ -380,6 +433,7 @@ export function useManagerTargets() {
 
     saveAllocation,
     removeAllocation,
+    loadRowToForm,
     reload,
   };
 }

@@ -240,8 +240,8 @@ export function useSalesmanAllocation() {
         const ctx = divisionName
           ? divisionName
           : division?.division_id != null
-          ? `Division #${division.division_id}`
-          : "Division Allocation";
+            ? `Division #${division.division_id}`
+            : "Division Allocation";
 
         out.push({
           key: `div-${division.id}`,
@@ -256,8 +256,8 @@ export function useSalesmanAllocation() {
       const divisionCtx = divisionName
         ? divisionName
         : division?.division_id != null
-        ? `Division #${division.division_id}`
-        : "Division";
+          ? `Division #${division.division_id}`
+          : "Division";
 
       for (const s of supplierAllocations) {
         const name = supplierById[s.supplier_id]?.supplier_name ?? `Supplier #${s.supplier_id}`;

@@ -105,6 +105,8 @@ export default function ManagerHeader(props: {
   targetAmountInput: string;
   onTargetAmountChange: (v: string) => void;
 
+  totalDivisionsTarget: string;
+
   onSave: () => void;
   savingDisabled?: boolean;
 }) {
@@ -127,6 +129,8 @@ export default function ManagerHeader(props: {
     targetAmountInput,
     onTargetAmountChange,
 
+    totalDivisionsTarget,
+
     onSave,
     savingDisabled,
   } = props;
@@ -140,20 +144,27 @@ export default function ManagerHeader(props: {
             <CardDescription>Step 2: Take Division Target and allocate it to specific Suppliers.</CardDescription>
           </div>
 
-          <Button
-            className="cursor-pointer"
-            variant="default"
-            onClick={() => {
-              if (savingDisabled) {
-                toast.error("Cannot save. Please check your inputs / remaining allocation.");
-                return;
-              }
-              onSave();
-            }}
-            disabled={savingDisabled}
-          >
-            Save Allocation
-          </Button>
+          <div className="flex items-center gap-3">
+            <div className="rounded-md border bg-muted/40 px-4 py-2 text-center">
+              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Total Divisions Target</div>
+              <div className="text-sm font-semibold">{totalDivisionsTarget}</div>
+            </div>
+
+            <Button
+              className="cursor-pointer"
+              variant="default"
+              onClick={() => {
+                if (savingDisabled) {
+                  toast.error("Cannot save. Please check your inputs / remaining allocation.");
+                  return;
+                }
+                onSave();
+              }}
+              disabled={savingDisabled}
+            >
+              Save Allocation
+            </Button>
+          </div>
         </div>
       </CardHeader>
 

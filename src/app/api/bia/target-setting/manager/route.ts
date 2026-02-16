@@ -192,40 +192,31 @@ export async function POST(req: NextRequest) {
 
     const ctx = await resolveExecutiveContextByTsdId(tsd_id);
 
-    const existing = await findSupplierAllocation(tsd_id, supplier_id);
-
-    let tssId: number;
-
     const supplierPayload = {
+      tsd_id,
+      supplier_id,
       target_amount,
       fiscal_period: ctx.fiscal_period,
       status: ctx.status,
     };
 
-    if (existing) {
-      const patched = await fetchDirectus<{ data: any }>(`/items/target_setting_supplier/${existing.id}`, {
-        method: "PATCH",
-        body: JSON.stringify(supplierPayload),
-      });
-      tssId = Number(patched?.data?.id ?? existing.id);
-    } else {
-      const created = await fetchDirectus<{ data: any }>(`/items/target_setting_supplier`, {
-        method: "POST",
-        body: JSON.stringify({
-          tsd_id,
-          supplier_id,
-          ...supplierPayload,
-        }),
-      });
-      tssId = Number(created?.data?.id);
-    }
+    // Always create a new target_setting_supplier row (1 supplier → many supervisors)
+    const created = await fetchDirectus<{ data: any }>(`/items/target_setting_supplier`, {
+      method: "POST",
+      body: JSON.stringify(supplierPayload),
+    });
+    const tssId = Number(created?.data?.id);
 
-    await upsertSupervisorRow({
-      tss_id: tssId,
-      target_amount,
-      fiscal_period: ctx.fiscal_period,
-      status: ctx.status,
-      supervisor_user_id,
+    // Always create a new target_setting_supervisor row linked to this allocation
+    await fetchDirectus(`/items/target_setting_supervisor`, {
+      method: "POST",
+      body: JSON.stringify({
+        tss_id: tssId,
+        target_amount,
+        fiscal_period: ctx.fiscal_period,
+        status: ctx.status,
+        supervisor_user_id,
+      }),
     });
 
     return NextResponse.json({ ok: true });
