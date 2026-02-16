@@ -1,3 +1,4 @@
+//src/modules/business-intelligence-analytics/target-setting/manager/components/SupplierAllocationCard.tsx
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";

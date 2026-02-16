@@ -1,3 +1,4 @@
+//src/modules/business-intelligence-analytics/target-setting/manager/components/AllocationLogTable.tsx
 "use client";
 
 import * as React from "react";
