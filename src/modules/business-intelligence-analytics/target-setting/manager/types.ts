@@ -104,5 +104,14 @@ export type ManagerBootstrapResponse = {
   users: UserRow[];
 
   // ✅ added
+  // ✅ added
   supervisor_per_division: SupervisorPerDivisionRow[];
+  division_sales_head: DivisionSalesHeadRow[];
+};
+
+export type DivisionSalesHeadRow = {
+  id: number;
+  division_id: number;
+  user_id: number;
+  is_deleted: number; // 0 or 1
 };

@@ -109,6 +109,25 @@ export function useManagerTargets() {
 
   const divisionOptions = React.useMemo<DivisionOption[]>(() => {
     if (!raw || !selectedExecutiveId) return [];
+
+    // --- Hardcoded User Detection (Temporary until Auth Context is available) ---
+    // Finding Andrei Siapno
+    const currentUser = (raw.users ?? []).find(
+      (u) =>
+        (u.user_fname?.trim().toLowerCase() === "andrei" && u.user_lname?.trim().toLowerCase() === "siapno")
+    );
+
+    // Get mapped divisions for this user
+    let allowedDivisionIds = new Set<number>();
+    if (currentUser) {
+      // Switch from supervisor_per_division to division_sales_head for Managers
+      const dsh = raw.division_sales_head ?? [];
+      dsh
+        .filter((r) => r.user_id === currentUser.user_id && isNotDeleted(r.is_deleted))
+        .forEach((r) => allowedDivisionIds.add(r.division_id));
+    }
+    // --------------------------------------------------------------------------
+
     const divTargets = (raw.target_setting_division ?? []).filter((x) => x.tse_id === selectedExecutiveId);
     const divisions = raw.division ?? [];
 
@@ -116,7 +135,14 @@ export function useManagerTargets() {
       .map((tsd) => {
         const d = divisions.find((z) => z.division_id === tsd.division_id);
         const divisionName = d?.division_name ?? `Division #${tsd.division_id}`;
-        return { tsd, divisionName };
+        return { tsd, divisionName, divisionId: tsd.division_id };
+      })
+      // FILTER: Only show divisions assigned to the user
+      .filter((item) => {
+        // If user is not found or has no assignments, show nothing (strict)
+        // Or remove this block to show ALL if user not found (legacy behavior)
+        if (!currentUser) return false;
+        return allowedDivisionIds.has(item.divisionId);
       })
       .sort((a, b) => a.divisionName.localeCompare(b.divisionName));
   }, [raw, selectedExecutiveId]);
