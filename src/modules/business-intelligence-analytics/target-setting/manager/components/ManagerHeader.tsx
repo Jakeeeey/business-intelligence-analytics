@@ -142,6 +142,7 @@ export default function ManagerHeader(props: {
 
           <Button
             className="cursor-pointer"
+            variant="default"
             onClick={() => {
               if (savingDisabled) {
                 toast.error("Cannot save. Please check your inputs / remaining allocation.");
