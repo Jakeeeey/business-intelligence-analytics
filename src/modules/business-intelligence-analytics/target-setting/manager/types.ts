@@ -1,3 +1,4 @@
+// src/modules/business-intelligence-analytics/target-setting/manager/types.ts
 export type TargetStatus = "DRAFT" | "SUBMITTED" | "PENDING" | "APPROVED" | "REJECTED" | "SET";
 
 export type AllocationCreatorRole = "Executive" | "Manager" | "Supervisor";
@@ -29,7 +30,6 @@ export type TargetSettingDivision = {
   created_by: number | null;
   created_at: string | null;
 
-  // optional: if your Directus collection later adds these
   fiscal_period?: string | null;
   status?: TargetStatus | null;
 };
@@ -78,22 +78,28 @@ export type UserRow = {
   is_deleted?: any;
 };
 
-/**
- * ✅ New table for supervisor mapping by division
- * /items/supervisor_per_division
- */
 export type SupervisorPerDivisionRow = {
   id: number;
   division_id: number;
   supervisor_id: number; // maps to user.user_id
-  is_deleted: number; // 0/1
+  is_deleted: number; // 0/1 (may come back as Buffer)
   created_at: string | null;
   created_by: number | null;
   updated_at: string | null;
   updated_by: number | null;
 };
 
+export type DivisionSalesHeadRow = {
+  id: number;
+  division_id: number;
+  user_id: number;
+  is_deleted: number; // 0 or 1 (may come back as Buffer)
+};
+
 export type ManagerBootstrapResponse = {
+  // ✅ NEW: server returns logged in user id
+  current_user_id: number | null;
+
   target_setting_executive: TargetSettingExecutive[];
   target_setting_division: TargetSettingDivision[];
   target_setting_supplier: TargetSettingSupplier[];
@@ -103,15 +109,6 @@ export type ManagerBootstrapResponse = {
   suppliers: SupplierRow[];
   users: UserRow[];
 
-  // ✅ added
-  // ✅ added
   supervisor_per_division: SupervisorPerDivisionRow[];
   division_sales_head: DivisionSalesHeadRow[];
-};
-
-export type DivisionSalesHeadRow = {
-  id: number;
-  division_id: number;
-  user_id: number;
-  is_deleted: number; // 0 or 1
 };

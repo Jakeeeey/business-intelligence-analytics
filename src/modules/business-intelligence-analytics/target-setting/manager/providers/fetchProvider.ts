@@ -1,3 +1,4 @@
+//src/modules/business-intelligence-analytics/target-setting/manager/providers/fetchProvider.ts
 "use client";
 
 import type { ManagerBootstrapResponse } from "../types";

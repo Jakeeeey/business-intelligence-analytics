@@ -1,3 +1,4 @@
+//src/modules/business-intelligence-analytics/target-setting/manager/ManagerModule.tsx
 "use client";
 
 import * as React from "react";
@@ -37,6 +38,11 @@ export default function ManagerModule() {
     return m.formatPeso(total);
   }, [m.divisionOptions, m.formatPeso]);
 
+  const isReadOnly = React.useMemo(() => {
+    const status = m.selectedDivisionTarget?.status?.toUpperCase();
+    return !!status && status !== "DRAFT";
+  }, [m.selectedDivisionTarget]);
+
   if (m.loading) {
     return (
       <div className="space-y-4">
@@ -52,12 +58,10 @@ export default function ManagerModule() {
     !m.selectedSupplierId ||
     !m.selectedSupervisorId ||
     (() => {
+      if (isReadOnly) return true;
       const existing = m.supplierAllocationsForSelectedDivision.find(
         (x) => x.supplier_id === (m.selectedSupplierId ?? -1),
       );
-      if (m.selectedDivisionTarget && m.selectedDivisionTarget.status !== "DRAFT" && m.selectedDivisionTarget.status !== "REJECTED") {
-        return true;
-      }
       // Allow save if a matching supplier exists but with a different supervisor (new row)
       return !existing && m.totals.remaining <= 0;
     })();
@@ -75,6 +79,7 @@ export default function ManagerModule() {
           onDivisionChange={m.setSelectedDivisionTsdId}
           totalDivisionsTarget={totalDivisionsTarget}
           loading={m.refreshing}
+          status={m.selectedDivisionTarget?.status ?? undefined}
         />
 
         {/* Step 2: Allocation (Supplier & Supervisor) */}
@@ -89,6 +94,7 @@ export default function ManagerModule() {
           onTargetAmountChange={m.setTargetAmountInput}
           onSave={m.saveAllocation}
           saveDisabled={saveDisabled}
+          isReadOnly={isReadOnly}
           loading={m.refreshing}
           allocatedAmount={m.totals.allocatedToSuppliers}
           remainingBalance={m.totals.remaining}

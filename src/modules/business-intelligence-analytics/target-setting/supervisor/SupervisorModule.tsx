@@ -21,8 +21,13 @@ export default function SupervisorModule() {
   const m = useSalesmanAllocation();
 
   const allocated = React.useMemo(() => {
-    return m.rows.reduce((sum, r) => sum + toNum(r.target_amount), 0);
-  }, [m.rows]);
+    return m.rows.reduce((sum, r) => {
+      // If we are editing this row, don't count it towards "allocated" for the sake of the remaining balance display
+      // because the input itself will be the "new" value.
+      if (m.editingId && r.id === m.editingId) return sum;
+      return sum + toNum(r.target_amount);
+    }, 0);
+  }, [m.rows, m.editingId]);
 
   const remaining = (m.supplierTargetAmount || 0) - allocated;
 

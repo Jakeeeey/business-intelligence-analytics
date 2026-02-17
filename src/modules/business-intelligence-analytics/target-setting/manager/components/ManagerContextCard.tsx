@@ -1,3 +1,4 @@
+//src/modules/business-intelligence-analytics/target-setting/manager/components/ManagerContextCard.tsx
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -23,6 +24,7 @@ interface ManagerContextCardProps {
 
     loading?: boolean;
     totalDivisionsTarget: string;
+    status?: string;
 }
 
 export default function ManagerContextCard({
@@ -33,11 +35,30 @@ export default function ManagerContextCard({
     divisionTsdId,
     onDivisionChange,
     loading,
-    totalDivisionsTarget
+    totalDivisionsTarget,
+    status
 }: ManagerContextCardProps) {
 
     // Current division target amount (if selected)
     const currentDivisionTarget = divisionOptions.find(d => d.id === divisionTsdId)?.label.match(/Target: (₱[\d,.]+)/)?.[1] || "—";
+
+    const getStatusBadge = (status?: string) => {
+        const s = status?.toUpperCase();
+        switch (s) {
+            case "DRAFT":
+                return <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200 mt-1">Draft</Badge>;
+            case "APPROVED":
+            case "SET":
+                return <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200 mt-1">Approved</Badge>;
+            case "REJECTED":
+                return <Badge variant="outline" className="bg-red-100 text-red-800 border-red-200 mt-1">Rejected</Badge>;
+            case "SUBMITTED":
+            case "PENDING":
+                return <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-200 mt-1">Pending Review</Badge>;
+            default:
+                return <Badge variant="outline" className="bg-gray-100 text-gray-800 border-gray-200 mt-1">{status || "Inactive"}</Badge>;
+        }
+    };
 
     return (
         <Card className="w-full relative overflow-hidden h-full">
@@ -54,7 +75,7 @@ export default function ManagerContextCard({
                 </div>
                 <div className="text-right">
                     <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Context Status</div>
-                    <Badge variant="outline" className="bg-gray-100 text-gray-800 border-gray-200 mt-1">Active</Badge>
+                    {getStatusBadge(status)}
                 </div>
             </CardHeader>
 

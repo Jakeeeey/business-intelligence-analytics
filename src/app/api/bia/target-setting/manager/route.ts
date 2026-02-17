@@ -1,3 +1,4 @@
+// src/app/api/bia/target-setting/manager/route.ts
 import { NextRequest, NextResponse } from "next/server";
 
 export const runtime = "nodejs";
@@ -33,7 +34,12 @@ async function fetchDirectus<T>(path: string, init?: RequestInit): Promise<T> {
   }
 
   if (!res.ok) {
-    const msg = json?.errors?.[0]?.message || json?.error || json?.message || text || `Upstream failed (${res.status})`;
+    const msg =
+      json?.errors?.[0]?.message ||
+      json?.error ||
+      json?.message ||
+      text ||
+      `Upstream failed (${res.status})`;
     throw new Error(msg);
   }
 
@@ -51,6 +57,29 @@ function dateOnly(v: any) {
   const m = s.match(/^(\d{4}-\d{2}-\d{2})/);
   return m ? m[1] : null;
 }
+
+/* ---------------- JWT decode (payload only) ---------------- */
+function base64UrlDecode(input: string) {
+  const pad = "=".repeat((4 - (input.length % 4)) % 4);
+  const base64 = (input + pad).replace(/-/g, "+").replace(/_/g, "/");
+  return Buffer.from(base64, "base64").toString("utf8");
+}
+
+function getJwtSub(token: string | null) {
+  if (!token) return null;
+  const parts = token.split(".");
+  if (parts.length < 2) return null;
+  try {
+    const payload = JSON.parse(base64UrlDecode(parts[1]));
+    const sub = payload?.sub;
+    if (sub == null) return null;
+    const n = Number(sub);
+    return Number.isFinite(n) ? n : null;
+  } catch {
+    return null;
+  }
+}
+/* ---------------------------------------------------------- */
 
 async function resolveExecutiveContextByTsdId(tsd_id: number) {
   const divRes = await fetchDirectus<{ data: any[] }>(
@@ -76,18 +105,10 @@ async function resolveExecutiveContextByTsdId(tsd_id: number) {
   };
 }
 
-async function findSupplierAllocation(tsd_id: number, supplier_id: number) {
-  const q =
-    `/items/target_setting_supplier?limit=1` +
-    `&filter[tsd_id][_eq]=${encodeURIComponent(String(tsd_id))}` +
-    `&filter[supplier_id][_eq]=${encodeURIComponent(String(supplier_id))}`;
-
-  const r = await fetchDirectus<{ data: any[] }>(q);
-  return r.data?.[0] ?? null;
-}
-
 async function findSupervisorRowsByTssId(tss_id: number) {
-  const q = `/items/target_setting_supervisor?limit=-1&filter[tss_id][_eq]=${encodeURIComponent(String(tss_id))}`;
+  const q =
+    `/items/target_setting_supervisor?limit=-1` +
+    `&filter[tss_id][_eq]=${encodeURIComponent(String(tss_id))}`;
   const r = await fetchDirectus<{ data: any[] }>(q);
   return r.data ?? [];
 }
@@ -129,12 +150,26 @@ async function upsertSupervisorRow(args: {
   return { id: created?.data?.id ?? null, mode: "create" as const };
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     const envErr = requireEnv();
     if (envErr) return NextResponse.json({ error: envErr }, { status: 500 });
 
-    const [exec, div, supp, supv, divisions, suppliers, users, supervisorPerDivision, divisionSalesHead] = await Promise.all([
+    // ✅ Logged-in user id from cookie JWT
+    const token = req.cookies.get("vos_access_token")?.value ?? null;
+    const current_user_id = getJwtSub(token);
+
+    const [
+      exec,
+      div,
+      supp,
+      supv,
+      divisions,
+      suppliers,
+      users,
+      supervisorPerDivision,
+      divisionSalesHead,
+    ] = await Promise.all([
       fetchDirectus<{ data: any[] }>(`/items/target_setting_executive?limit=-1`),
       fetchDirectus<{ data: any[] }>(`/items/target_setting_division?limit=-1`),
       fetchDirectus<{ data: any[] }>(`/items/target_setting_supplier?limit=-1`),
@@ -145,11 +180,14 @@ export async function GET() {
 
       // ✅ new
       fetchDirectus<{ data: any[] }>(`/items/supervisor_per_division?limit=-1`),
-      // ✅ new: fetch division_sales_head for Manager / Division Head assignments
+
+      // ✅ Manager division mapping
       fetchDirectus<{ data: any[] }>(`/items/division_sales_head?limit=-1`),
     ]);
 
     return NextResponse.json({
+      current_user_id, // ✅ add this so frontend can filter by the real logged-in user
+
       target_setting_executive: exec.data ?? [],
       target_setting_division: div.data ?? [],
       target_setting_supplier: supp.data ?? [],
@@ -158,7 +196,6 @@ export async function GET() {
       suppliers: suppliers.data ?? [],
       users: users.data ?? [],
 
-      // ✅ new
       supervisor_per_division: supervisorPerDivision.data ?? [],
       division_sales_head: divisionSalesHead.data ?? [],
     });
@@ -203,9 +240,9 @@ export async function POST(req: NextRequest) {
       status: ctx.status,
     };
 
-    if (ctx.status !== "DRAFT" && ctx.status !== "REJECTED") {
+    if (ctx.status !== "DRAFT") {
       return NextResponse.json(
-        { error: "Cannot create allocation because the Division Target is already approved/set." },
+        { error: "Cannot create allocation because the Division Target is already approved, set, or rejected." },
         { status: 403 },
       );
     }
@@ -264,8 +301,11 @@ export async function PATCH(req: NextRequest) {
     const tsd_id = Number(tss.tsd_id);
     const ctx = await resolveExecutiveContextByTsdId(tsd_id);
 
-    if (ctx.status !== "DRAFT" && ctx.status !== "REJECTED") {
-      return NextResponse.json({ error: "Cannot update target unless it is in DRAFT or REJECTED status." }, { status: 403 });
+    if (ctx.status !== "DRAFT") {
+      return NextResponse.json(
+        { error: "Cannot update target unless it is in DRAFT status." },
+        { status: 403 },
+      );
     }
 
     await fetchDirectus(`/items/target_setting_supplier/${id}`, {
@@ -307,15 +347,18 @@ export async function DELETE(req: NextRequest) {
     if (!tss) return NextResponse.json({ error: "Allocator not found." }, { status: 404 });
 
     const status = normalizeStatus(tss.status);
-    if (status !== "DRAFT" && status !== "REJECTED") {
-      return NextResponse.json({ error: "Cannot delete target unless it is in DRAFT or REJECTED status." }, { status: 403 });
+    if (status !== "DRAFT") {
+      return NextResponse.json(
+        { error: "Cannot delete target unless it is in DRAFT status." },
+        { status: 403 },
+      );
     }
 
     const supRows = await findSupervisorRowsByTssId(id);
     for (const r of supRows) {
       // Cascade delete: remove salesman allocations linked to this supervisor target
       const childRes = await fetchDirectus<{ data: any[] }>(
-        `/items/target_setting_salesman?filter[ts_supervisor_id][_eq]=${r.id}&fields=id`
+        `/items/target_setting_salesman?filter[ts_supervisor_id][_eq]=${r.id}&fields=id`,
       );
       const childIds = (childRes.data ?? []).map((c) => c.id);
 

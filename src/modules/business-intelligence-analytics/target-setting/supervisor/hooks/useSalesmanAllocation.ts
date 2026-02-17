@@ -61,6 +61,7 @@ export function useSalesmanAllocation() {
 
   const [salesmanTargetAmount, setSalesmanTargetAmount] = React.useState<string>("");
   const [status, setStatus] = React.useState<StatusCode>("DRAFT");
+  const [editingId, setEditingId] = React.useState<number | null>(null);
 
   const [rows, setRows] = React.useState<TargetSettingSalesmanRow[]>([]);
 
@@ -284,7 +285,7 @@ export function useSalesmanAllocation() {
     refreshHierarchy();
   }, [refreshHierarchy]);
 
-  async function saveAllocation(editingId?: number) {
+  async function saveAllocation() {
     if (!fiscalPeriod) return toast.error("Fiscal Period is required.");
     if (supplierId == null) return toast.error("Supplier is required.");
     if (salesmanId == null) return toast.error("Salesman is required.");
@@ -292,7 +293,16 @@ export function useSalesmanAllocation() {
     const amt = Number(salesmanTargetAmount);
     if (!Number.isFinite(amt) || amt < 0) return toast.error("Enter a valid Salesman Target Share.");
 
-    if (!validateNotExceedSupplierTarget({ newAmount: amt, editingId })) return;
+    // 1) Find the "effective" ID we are updating. 
+    // It's either the one we explicitly clicked "Edit" on (editingId state),
+    // OR one that exists for this specific combination.
+    const existing = rows.find(
+      (x) => x.fiscal_period === fiscalPeriod && x.supplier_id === supplierId && x.salesman_id === salesmanId
+    );
+    const activeEditingId = editingId ?? existing?.id;
+
+    // 2) Validate using that ID
+    if (!validateNotExceedSupplierTarget({ newAmount: amt, editingId: activeEditingId ?? undefined })) return;
 
     const payload: UpsertSalesmanAllocationPayload = {
       fiscal_period: fiscalPeriod,
@@ -305,24 +315,17 @@ export function useSalesmanAllocation() {
     try {
       setActing(true);
 
-      if (editingId) {
-        await updateSalesmanAllocation(editingId, payload);
-        toast.success("Allocation updated.");
+      if (activeEditingId) {
+        await updateSalesmanAllocation(activeEditingId, payload);
+        toast.success(editingId ? "Allocation updated." : "Allocation updated (existing).");
       } else {
-        const existing = rows.find(
-          (x) => x.fiscal_period === fiscalPeriod && x.supplier_id === supplierId && x.salesman_id === salesmanId
-        );
-
-        if (existing) {
-          if (!validateNotExceedSupplierTarget({ newAmount: amt, editingId: existing.id })) return;
-          await updateSalesmanAllocation(existing.id, payload);
-          toast.success("Allocation updated (existing).");
-        } else {
-          await createSalesmanAllocation(payload);
-          toast.success("Allocation created.");
-        }
+        await createSalesmanAllocation(payload);
+        toast.success("Allocation created.");
       }
 
+      setSalesmanId(null);
+      setSalesmanTargetAmount("");
+      setEditingId(null);
       await refreshRows();
     } catch (e) {
       toast.error(errMsg(e));
@@ -336,6 +339,11 @@ export function useSalesmanAllocation() {
       setActing(true);
       await deleteSalesmanAllocation(id);
       toast.success("Allocation deleted.");
+      if (id === editingId) {
+        setSalesmanId(null);
+        setSalesmanTargetAmount("");
+        setEditingId(null);
+      }
       await refreshRows();
     } catch (e) {
       toast.error(errMsg(e));
@@ -345,6 +353,7 @@ export function useSalesmanAllocation() {
   }
 
   function loadRowToForm(r: TargetSettingSalesmanRow) {
+    setEditingId(r.id);
     setSalesmanId(r.salesman_id);
     setSalesmanTargetAmount(String(r.target_amount ?? ""));
     setStatus("DRAFT");
@@ -352,6 +361,7 @@ export function useSalesmanAllocation() {
 
   React.useEffect(() => {
     setSupplierId(null);
+    setEditingId(null);
     setRows([]);
   }, [fiscalPeriod]);
 
@@ -385,6 +395,7 @@ export function useSalesmanAllocation() {
     setStatus,
 
     rows,
+    editingId,
     refreshRows,
 
     supplierById,

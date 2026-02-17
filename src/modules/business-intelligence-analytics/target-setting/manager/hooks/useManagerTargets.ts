@@ -1,3 +1,4 @@
+// src/modules/business-intelligence-analytics/target-setting/manager/hooks/useManagerTargets.ts
 "use client";
 
 import * as React from "react";
@@ -65,13 +66,29 @@ function normalizeStatus(v: any): AllocationLogRow["status"] {
 }
 
 function fullName(u: UserRow) {
-  const parts = [u.user_fname, u.user_mname, u.user_lname].map((x) => String(x ?? "").trim()).filter(Boolean);
+  const parts = [u.user_fname, u.user_mname, u.user_lname]
+    .map((x) => String(x ?? "").trim())
+    .filter(Boolean);
   return parts.join(" ").trim() || `User #${u.user_id}`;
 }
 
+/**
+ * ✅ FIX: Buffer-safe is_deleted check.
+ * Directus sometimes returns:
+ * { type: "Buffer", data: [0|1] }
+ */
 function isNotDeleted(v: any) {
+  if (v && typeof v === "object") {
+    const maybeBuf = v as any;
+    if (maybeBuf.type === "Buffer" && Array.isArray(maybeBuf.data)) {
+      const b = Number(maybeBuf.data?.[0] ?? 0);
+      return b === 0;
+    }
+  }
+
   if (typeof v === "number") return v === 0;
   if (typeof v === "boolean") return !v;
+
   const s = String(v ?? "").trim().toLowerCase();
   if (!s) return true;
   return s === "0" || s === "false";
@@ -107,26 +124,24 @@ export function useManagerTargets() {
     return (raw.target_setting_executive ?? []).find((x) => x.id === selectedExecutiveId) ?? null;
   }, [raw, selectedExecutiveId]);
 
+  /**
+   * ✅ FIX: Use real logged-in user id from API:
+   * raw.current_user_id
+   * and allow Buffer-safe is_deleted filtering.
+   */
   const divisionOptions = React.useMemo<DivisionOption[]>(() => {
     if (!raw || !selectedExecutiveId) return [];
 
-    // --- Hardcoded User Detection (Temporary until Auth Context is available) ---
-    // Finding Andrei Siapno
-    const currentUser = (raw.users ?? []).find(
-      (u) =>
-        (u.user_fname?.trim().toLowerCase() === "andrei" && u.user_lname?.trim().toLowerCase() === "siapno")
-    );
+    const currentUserId = raw.current_user_id;
 
-    // Get mapped divisions for this user
-    let allowedDivisionIds = new Set<number>();
-    if (currentUser) {
-      // Switch from supervisor_per_division to division_sales_head for Managers
+    const allowedDivisionIds = new Set<number>();
+    if (currentUserId) {
       const dsh = raw.division_sales_head ?? [];
       dsh
-        .filter((r) => r.user_id === currentUser.user_id && isNotDeleted(r.is_deleted))
-        .forEach((r) => allowedDivisionIds.add(r.division_id));
+        .filter((r) => Number(r.user_id) === Number(currentUserId))
+        .filter((r: any) => isNotDeleted((r as any).is_deleted))
+        .forEach((r) => allowedDivisionIds.add(Number(r.division_id)));
     }
-    // --------------------------------------------------------------------------
 
     const divTargets = (raw.target_setting_division ?? []).filter((x) => x.tse_id === selectedExecutiveId);
     const divisions = raw.division ?? [];
@@ -135,16 +150,15 @@ export function useManagerTargets() {
       .map((tsd) => {
         const d = divisions.find((z) => z.division_id === tsd.division_id);
         const divisionName = d?.division_name ?? `Division #${tsd.division_id}`;
-        return { tsd, divisionName, divisionId: tsd.division_id };
+        return { tsd, divisionName, divisionId: tsd.division_id } as any;
       })
-      // FILTER: Only show divisions assigned to the user
-      .filter((item) => {
-        // If user is not found or has no assignments, show nothing (strict)
-        // Or remove this block to show ALL if user not found (legacy behavior)
-        if (!currentUser) return false;
-        return allowedDivisionIds.has(item.divisionId);
+      .filter((item: any) => {
+        // strict only when we have current user
+        if (currentUserId) return allowedDivisionIds.has(Number(item.divisionId));
+        // fallback if no cookie/auth
+        return true;
       })
-      .sort((a, b) => a.divisionName.localeCompare(b.divisionName));
+      .sort((a: any, b: any) => a.divisionName.localeCompare(b.divisionName));
   }, [raw, selectedExecutiveId]);
 
   const selectedDivisionTarget = React.useMemo<TargetSettingDivision | null>(() => {
@@ -204,16 +218,14 @@ export function useManagerTargets() {
 
   const supervisorAllocationsForSelectedDivision = React.useMemo<TargetSettingSupervisor[]>(() => {
     if (!raw || !supplierAllocationsForSelectedDivision.length) return [];
-    const supplierIds = new Set(supplierAllocationsForSelectedDivision.map(s => s.id));
-    return (raw.target_setting_supervisor ?? []).filter(sv => supplierIds.has(sv.tss_id));
+    const supplierIds = new Set(supplierAllocationsForSelectedDivision.map((s) => s.id));
+    return (raw.target_setting_supervisor ?? []).filter((sv) => supplierIds.has(sv.tss_id));
   }, [raw, supplierAllocationsForSelectedDivision]);
 
   const supervisorNamesByAllocationId = React.useCallback(
     (supplierAllocationId: number): string => {
       if (!raw) return "";
-      const supervisorRows = (raw.target_setting_supervisor ?? []).filter(
-        (sv) => sv.tss_id === supplierAllocationId,
-      );
+      const supervisorRows = (raw.target_setting_supervisor ?? []).filter((sv) => sv.tss_id === supplierAllocationId);
       if (supervisorRows.length === 0) return "—";
       const users = raw.users ?? [];
       return supervisorRows
@@ -293,10 +305,7 @@ export function useManagerTargets() {
 
   const totals = React.useMemo(() => {
     const divisionTarget = selectedDivisionTarget?.target_amount ?? 0;
-    const allocatedToSuppliers = supplierAllocationsForSelectedDivision.reduce(
-      (sum, x) => sum + (Number(x.target_amount) || 0),
-      0,
-    );
+    const allocatedToSuppliers = supplierAllocationsForSelectedDivision.reduce((sum, x) => sum + (Number(x.target_amount) || 0), 0);
     const rawRemaining = divisionTarget - allocatedToSuppliers;
     const remaining = Math.max(0, rawRemaining);
     return { divisionTarget, allocatedToSuppliers, rawRemaining, remaining };
@@ -355,16 +364,12 @@ export function useManagerTargets() {
     const supervisorRows = raw?.target_setting_supervisor ?? [];
     const existing = supplierAllocationsForSelectedDivision.find((x) => {
       if (x.supplier_id !== selectedSupplierId) return false;
-      // Check if this allocation already has the same supervisor assigned
-      return supervisorRows.some(
-        (sv) => sv.tss_id === x.id && sv.supervisor_user_id === selectedSupervisorId,
-      );
+      return supervisorRows.some((sv) => sv.tss_id === x.id && sv.supervisor_user_id === selectedSupervisorId);
     });
 
     if (!existing) {
       if (totals.rawRemaining <= 0) return toast.error("Remaining is 0. You cannot allocate more for this division.");
-      if (target_amount > totals.remaining)
-        return toast.error(`Cannot allocate more than remaining (${formatPeso(totals.remaining)}).`);
+      if (target_amount > totals.remaining) return toast.error(`Cannot allocate more than remaining (${formatPeso(totals.remaining)}).`);
     } else {
       const prev = Number(existing.target_amount) || 0;
       const delta = target_amount - prev;
@@ -408,13 +413,9 @@ export function useManagerTargets() {
     setSelectedSupplierId(row.supplier_id);
     setTargetAmountInput(String(row.target_amount));
 
-    // Find supervisor
     if (raw) {
-      const supervisorRows = (raw.target_setting_supervisor ?? []).filter(
-        (sv) => sv.tss_id === row.id
-      );
+      const supervisorRows = (raw.target_setting_supervisor ?? []).filter((sv) => sv.tss_id === row.id);
       if (supervisorRows.length > 0) {
-        // Take the first one (assuming 1:1 for edit context)
         setSelectedSupervisorId(supervisorRows[0].supervisor_user_id);
       } else {
         setSelectedSupervisorId(null);

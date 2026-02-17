@@ -1,3 +1,4 @@
+//src/modules/business-intelligence-analytics/target-setting/manager/components/SupplierAllocationCard.tsx
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -27,6 +28,7 @@ interface SupplierAllocationCardProps {
 
     onSave: () => void;
     saveDisabled?: boolean;
+    isReadOnly?: boolean;
     loading?: boolean;
 
     allocatedAmount: number;
@@ -53,6 +55,7 @@ export default function SupplierAllocationCard({
     onTargetAmountChange,
     onSave,
     saveDisabled,
+    isReadOnly,
     loading,
     allocatedAmount,
     remainingBalance
@@ -98,7 +101,7 @@ export default function SupplierAllocationCard({
                             onValueChange={(v) => onSupplierChange(Number(v))}
                             options={supplierOptions.map((opt) => ({ value: String(opt.id), label: opt.label }))}
                             placeholder="Select Supplier"
-                            disabled={loading}
+                            disabled={loading || isReadOnly}
                         />
                     </div>
 
@@ -110,7 +113,7 @@ export default function SupplierAllocationCard({
                             onValueChange={(v) => onSupervisorChange(Number(v))}
                             options={supervisorOptions.map((opt) => ({ value: String(opt.id), label: opt.label }))}
                             placeholder="Select Supervisor"
-                            disabled={loading || !supplierId}
+                            disabled={loading || !supplierId || isReadOnly}
                         />
                     </div>
 
@@ -121,7 +124,7 @@ export default function SupplierAllocationCard({
                             placeholder="0.00"
                             value={formatInputValue(targetAmountInput)}
                             onChange={handleAmountChange}
-                            disabled={loading}
+                            disabled={loading || isReadOnly}
                             type="text"
                             inputMode="decimal"
                         />
