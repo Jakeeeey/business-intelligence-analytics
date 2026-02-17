@@ -41,6 +41,7 @@ export function useTargetApproval() {
   const [supervisorAllocations, setSupervisorAllocations] = useState<any[]>([]);
   const [supplierAllocations, setSupplierAllocations] = useState<any[]>([]);
   const [salesmanAllocations, setSalesmanAllocations] = useState<any[]>([]);
+  const [historicalTargets, setHistoricalTargets] = useState<TargetSettingExecutive[]>([]);
   const [metadata, setMetadata] = useState<any>({
     divisions: [],
     suppliers: [],
@@ -84,20 +85,35 @@ export function useTargetApproval() {
         // 2. Fetch Hierarchy
         const [divs, sups, supps, sales] = await Promise.all([
           getDivisionAllocations(target.id),
-          getSupervisorAllocations(target.id),
-          getSupplierAllocations(target.id),
-          getSalesmanAllocations(target.id)
+          getSupervisorAllocations(undefined, selectedPeriod),
+          getSupplierAllocations(undefined, selectedPeriod),
+          getSalesmanAllocations(undefined, selectedPeriod)
         ]);
 
         setAllocations(divs);
         setSupervisorAllocations(sups);
         setSupplierAllocations(supps);
         setSalesmanAllocations(sales);
+
+        // 3. Fetch Historical Targets for Trend (Last 6 Months)
+        try {
+          const startDate = format(startOfMonth(new Date(new Date(selectedPeriod).setMonth(new Date(selectedPeriod).getMonth() - 5))), "yyyy-MM-01");
+          const filter = JSON.stringify({ fiscal_period: { _between: [startDate, selectedPeriod] } });
+          const histUrl = `/api/bia/target-setting/executive?filter=${filter}&sort=fiscal_period`;
+          const histRes = await fetch(histUrl, { cache: "no-store" });
+          if (histRes.ok) {
+            const histData = await histRes.json();
+            setHistoricalTargets(Array.isArray(histData?.data) ? histData.data : []);
+          }
+        } catch (e) {
+          console.error("Failed to fetch historical targets", e);
+        }
       } else {
         setAllocations([]);
         setSupervisorAllocations([]);
         setSupplierAllocations([]);
         setSalesmanAllocations([]);
+        setHistoricalTargets([]);
       }
     } catch (error) {
       console.error("Failed to load approval data", error);
@@ -149,8 +165,10 @@ export function useTargetApproval() {
     supervisorAllocations,
     supplierAllocations,
     salesmanAllocations,
+    historicalTargets,
     metadata,
     approvalRecord: myVote || null,
+    myVote: myVote || null,
     approve: () => handleAction('APPROVED'),
     reject: () => handleAction('REJECTED'),
     refresh: loadData

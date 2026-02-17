@@ -8,6 +8,7 @@ import type { TargetApprovalRecord, TargetStatus } from "../types";
 
 interface ApprovalActionCardProps {
   approvalRecord: TargetApprovalRecord | null;
+  myVote: any;
   allVotes: any[];
   totalApprovers: number;
   onApprove: () => void;
@@ -19,6 +20,7 @@ interface ApprovalActionCardProps {
 
 export function ApprovalActionCard({ 
   approvalRecord,
+  myVote,
   allVotes,
   totalApprovers,
   onApprove, 
@@ -38,6 +40,9 @@ export function ApprovalActionCard({
     }
     if (approvedCount >= totalApprovers && totalApprovers > 0) {
       return <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/40 border-green-200 dark:border-green-800/50 py-1 px-3">APPROVED BY ALL</Badge>;
+    }
+    if (status === 'DRAFT') {
+      return <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 border-blue-200 dark:border-blue-800/50 py-1 px-3">WAITING FOR APPROVAL</Badge>;
     }
     return <Badge variant="outline" className="bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300 border-gray-200 dark:border-gray-700 py-1 px-3 uppercase">{status} (PENDING)</Badge>;
   };
@@ -80,7 +85,7 @@ export function ApprovalActionCard({
           <Button 
             variant="outline"
             className="flex-1 h-12 border-red-200 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 font-bold transition-all"
-            disabled={isLoading || !hasTarget || status === 'REJECTED' || isRejected}
+            disabled={isLoading || !hasTarget || status === 'REJECTED' || isRejected || myVote?.status === 'APPROVED'}
             onClick={onReject}
           >
             <XCircle className="mr-2 h-5 w-5" />

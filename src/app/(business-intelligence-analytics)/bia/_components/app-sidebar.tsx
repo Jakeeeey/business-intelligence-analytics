@@ -28,6 +28,7 @@ import {
     Timer,
     Percent,
     Truck,
+    History, // Added History icon
 } from "lucide-react";
 
 import { NavMain } from "./nav-main";
@@ -82,6 +83,7 @@ const data = {
                         { title: "AR and Remittance", url: "/bia/target-setting-reports/ar-and-remittance", icon: ArrowLeftRight },
                         { title: "Channel", url: "/bia/target-setting-reports/channel", icon: Network },
                         { title: "Area", url: "/bia/target-setting-reports/area", icon: MapPinned },
+                        { title: "Audit Trail", url: "/bia/target-setting/ts-audit-trail", icon: History },
                     ],
                 },
             ],

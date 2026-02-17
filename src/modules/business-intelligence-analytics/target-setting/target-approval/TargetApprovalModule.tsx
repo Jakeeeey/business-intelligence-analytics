@@ -5,6 +5,9 @@ import { PeriodSelectorCard } from "./components/PeriodSelectorCard";
 import { ApprovalActionCard } from "./components/ApprovalActionCard";
 import { ReadonlyCompanyTargetCard } from "./components/ReadonlyCompanyTargetCard";
 import { AllocationHierarchyLog } from "../executive/components/AllocationHierarchyLog";
+import { TargetHealthMetrics } from "./components/TargetHealthMetrics";
+import { TargetApprovalCharts } from "./components/TargetApprovalCharts";
+import { TargetSankeyChart } from "./components/TargetSankeyChart";
 import { Loader2 } from "lucide-react";
 import { useMemo } from "react";
 
@@ -14,6 +17,7 @@ export default function TargetApprovalModule() {
     setSelectedPeriod,
     executiveTarget,
     approvalRecord,
+    myVote,
     allVotes,
     totalApprovers,
     isApprover,
@@ -22,6 +26,7 @@ export default function TargetApprovalModule() {
     supervisorAllocations,
     supplierAllocations,
     salesmanAllocations,
+    historicalTargets,
     metadata,
     approve,
     reject
@@ -59,6 +64,12 @@ export default function TargetApprovalModule() {
     }));
   }, [salesmanAllocations, metadata.salesmen]);
 
+  const totalAllocated = useMemo(() => {
+    return allocations.reduce((sum, a) => sum + (a.target_amount || 0), 0);
+  }, [allocations]);
+
+  const approvalCount = allVotes.filter(v => v.status === 'APPROVED').length;
+
   return (
     <div className="space-y-6">
       {/* Configuration & Action Row */}
@@ -70,6 +81,7 @@ export default function TargetApprovalModule() {
         />
         <ApprovalActionCard 
           approvalRecord={approvalRecord}
+          myVote={myVote}
           allVotes={allVotes}
           totalApprovers={totalApprovers}
           onApprove={approve}
@@ -80,7 +92,33 @@ export default function TargetApprovalModule() {
         />
       </div>
 
-      {/* Main Target Display */}
+      {/* NEW: Target Health Metrics Strip */}
+      <TargetHealthMetrics 
+        totalTarget={executiveTarget?.target_amount || 0}
+        totalAllocated={totalAllocated}
+        approvalCount={approvalCount}
+        totalApprovers={totalApprovers}
+        isLoading={isLoading}
+      />
+
+      {/* NEW: Visual Breakdowns */}
+      <TargetApprovalCharts 
+        allocations={joinedAllocations}
+        historicalTargets={historicalTargets}
+        isLoading={isLoading}
+      />
+
+      {/* NEW: Sankey Hierarchy Flow */}
+      <TargetSankeyChart 
+        companyTarget={executiveTarget}
+        allocations={joinedAllocations}
+        supplierAllocations={joinedSupplierAllocations}
+        supervisorAllocations={joinedSupervisorAllocations}
+        salesmanAllocations={joinedSalesmanAllocations}
+        isLoading={isLoading}
+      />
+
+      {/* Main Target Display (Read-only) */}
       <ReadonlyCompanyTargetCard 
         target={executiveTarget}
         isLoading={isLoading}
