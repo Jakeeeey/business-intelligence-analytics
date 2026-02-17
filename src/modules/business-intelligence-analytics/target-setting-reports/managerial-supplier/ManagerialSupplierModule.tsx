@@ -181,9 +181,21 @@ function ManagerialSupplierContent() {
             });
         });
 
+        console.log('[Managerial Supplier] Salesman Breakdown Debug:', {
+            selectedSupplier,
+            supplierId,
+            salesmanCount: salesmanMap.size,
+            allTargets: targets.salesmanTargets,
+            supervisorTargets: targets.supervisorTargets,
+            supplierTargets: targets.supplierTargets,
+            fromMonth,
+            toMonth
+        });
+
         return Array.from(salesmanMap.entries())
             .map(([name, data]) => {
-                const relevantSalesmanTargets = targets.salesmanTargets?.filter((t: any) => {
+                // Primary lookup: use denormalized supplier_id
+                let relevantSalesmanTargets = targets.salesmanTargets?.filter((t: any) => {
                     const targetDate = parseISO(t.fiscal_period);
                     return (
                         t.salesman_id === data.salesmanId && 
@@ -193,7 +205,31 @@ function ManagerialSupplierContent() {
                     );
                 });
                 
+                // Fallback: Use hierarchy if supplier_id is missing
+                if (!relevantSalesmanTargets || relevantSalesmanTargets.length === 0) {
+                    relevantSalesmanTargets = targets.salesmanTargets?.filter((t: any) => {
+                        const targetDate = parseISO(t.fiscal_period);
+                        if (t.salesman_id !== data.salesmanId || targetDate < start || targetDate > end) {
+                            return false;
+                        }
+                        
+                        // Find supervisor target via ts_supervisor_id
+                        const supervisorTarget = targets.supervisorTargets?.find((sv: any) => sv.id === t.ts_supervisor_id);
+                        if (!supervisorTarget) return false;
+                        
+                        // Find supplier target via tss_id
+                        const supplierTarget = targets.supplierTargets?.find((sp: any) => sp.id === supervisorTarget.tss_id);
+                        return supplierTarget?.supplier_id === supplierId;
+                    });
+                }
+                
                 const target = relevantSalesmanTargets?.reduce((sum: number, t: any) => sum + (t.target_amount || 0), 0) || 0;
+                
+                console.log(`[Salesman] ${name} (ID: ${data.salesmanId}):`, {
+                    sales: data.sales,
+                    target,
+                    matchedTargets: relevantSalesmanTargets?.length || 0
+                });
                 
                 return { 
                     name, 
@@ -204,7 +240,7 @@ function ManagerialSupplierContent() {
                 };
             })
             .sort((a, b) => b.sales - a.sales);
-    }, [rawData, selectedSupplier, targets]);
+    }, [rawData, selectedSupplier, targets, fromMonth, toMonth]);
 
     const formatPHP = (val: number) => new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 0 }).format(val);
     const formatShort = (val: number) => {
@@ -325,12 +361,11 @@ function ManagerialSupplierContent() {
                                 <Bar dataKey="target" name="Target" barSize={32} fill="#3b82f6" fillOpacity={0.15} radius={[0, 6, 6, 0]}>
                                     <LabelList dataKey="target" content={<CustomTargetLine />} />
                                 </Bar>
-                                {/* Overlay Sales Bar */}
                                 <Bar dataKey="sales" name="Actual" barSize={32} radius={[0, 6, 6, 0]} minPointSize={2}>
                                     {(selectedSupplier ? salesmanBreakdown : supplierPerformance).slice(0, 10).map((entry: any, index) => (
                                         <Cell 
                                             key={`cell-${index}`} 
-                                            fill={selectedSupplier ? '#3b82f6' : (entry.sales < 0 ? 'hsl(var(--destructive))' : entry.sales >= entry.target ? '#10b981' : '#f59e0b')} 
+                                            fill={entry.sales < 0 ? 'hsl(var(--destructive))' : entry.sales >= entry.target ? '#10b981' : '#f59e0b'} 
                                         />
                                     ))}
                                     <LabelList dataKey="sales" position="right" formatter={(v: number) => formatShort(v)} style={{ fontSize: '12px', fontWeight: '700', fill: 'hsl(var(--foreground))' }} offset={14} />

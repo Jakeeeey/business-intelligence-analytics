@@ -47,6 +47,12 @@ function SalesmanKPIContent() {
                     fetchDynamicTargets(start, end)
                 ]);
 
+                console.log('[Salesman KPI] Fetched targets:', {
+                    count: targetData.salesmanTargets?.length || 0,
+                    sample: targetData.salesmanTargets?.[0],
+                    dateRange: { start, end }
+                });
+
                 setRawData(salesData);
                 setTargets(targetData.salesmanTargets || []);
             } catch (err) { console.error(err); } 
@@ -86,13 +92,24 @@ function SalesmanKPIContent() {
             const relevantTargets = targets.filter(t => {
                 const targetDate = parseISO(t.fiscal_period);
                 return (
-                    t.salesman_id === salesmanId && 
-                    t.supplier_id === supplierId &&
+                    Number(t.salesman_id) === Number(salesmanId) && 
+                    Number(t.supplier_id) === Number(supplierId) &&
                     targetDate >= start && 
                     targetDate <= end
                 );
             });
             const scaledTarget = relevantTargets.reduce((sum, t) => sum + (t.target_amount || 0), 0);
+            
+            // Debug logging for target matching
+            if (relevantTargets.length > 0) {
+                console.log(`[Target Match] ${sMan} + ${sPly}:`, {
+                    salesmanId,
+                    supplierId,
+                    matchedTargets: relevantTargets.length,
+                    totalTarget: scaledTarget,
+                    fiscalPeriods: relevantTargets.map(t => t.fiscal_period)
+                });
+            }
 
             // Individual Totals logic
             if (!sTotals.has(sMan)) sTotals.set(sMan, { amount: 0, target: 0, count: 0 });
@@ -321,7 +338,11 @@ function SalesmanKPIContent() {
                                                                             </div>
                                                                             <div>
                                                                                 <p className="text-[8px] uppercase font-bold text-muted-foreground">Quota</p>
-                                                                                <p className="text-sm font-mono font-bold text-emerald-400">{formatPHP(target)}</p>
+                                                                                <p className="text-sm font-mono font-bold text-emerald-400">
+                                                                                    {target > 0 ? formatPHP(target) : (
+                                                                                        <span className="text-muted-foreground/50 text-xs italic">No target set</span>
+                                                                                    )}
+                                                                                </p>
                                                                             </div>
                                                                         </div>
                                                                         <div className="space-y-1">
