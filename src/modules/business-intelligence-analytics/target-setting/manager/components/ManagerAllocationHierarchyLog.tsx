@@ -1,3 +1,4 @@
+//src/modules/business-intelligence-analytics/target-setting/manager/components/ManagerAllocationHierarchyLog.tsx
 "use client";
 
 import React from "react";

@@ -130,7 +130,7 @@ function toNum(v: any) {
 async function getSupplierTargetAmount(params: { fiscalPeriod: string; supplierId: number }) {
   const url = new URL(`${UPSTREAM}/items/target_setting_supplier`);
   url.searchParams.set("limit", "-1");
-  url.searchParams.set("fields", "id,fiscal_period,supplier_id,target_amount");
+  url.searchParams.set("fields", "id,fiscal_period,supplier_id,target_amount,status");
   url.searchParams.set("filter[fiscal_period][_eq]", params.fiscalPeriod);
   url.searchParams.set("filter[supplier_id][_eq]", String(params.supplierId));
   url.searchParams.set("sort", "-id");
@@ -138,13 +138,13 @@ async function getSupplierTargetAmount(params: { fiscalPeriod: string; supplierI
   const r = await upstreamJson(url.toString());
   if (!r.ok) return { ok: false as const, status: r.status, error: r };
   const hit = (r.json?.data ?? [])?.[0];
-  return { ok: true as const, amount: toNum(hit?.target_amount ?? 0) };
+  return { ok: true as const, amount: toNum(hit?.target_amount ?? 0), status: hit?.status ?? "DRAFT" };
 }
 
 async function getExistingAllocations(params: { fiscalPeriod: string; supplierId: number }) {
   const url = new URL(`${UPSTREAM}/items/target_setting_salesman`);
   url.searchParams.set("limit", "-1");
-  url.searchParams.set("fields", "id,target_amount,fiscal_period,supplier_id");
+  url.searchParams.set("fields", "id,target_amount,fiscal_period,supplier_id,status");
   url.searchParams.set("filter[fiscal_period][_eq]", params.fiscalPeriod);
   url.searchParams.set("filter[supplier_id][_eq]", String(params.supplierId));
 
@@ -372,17 +372,7 @@ export async function POST(req: NextRequest) {
   // Check if supplier target is DRAFT
   const targetRes = await getSupplierTargetAmount({ fiscalPeriod: String(body.fiscal_period), supplierId: Number(body.supplier_id) });
   if (targetRes.ok) {
-    // We need to fetch the status, getSupplierTargetAmount only returns amount.
-    // Let's use a new query or modify getSupplierTargetAmount.
-    // Actually, let's just do a direct fetch here to be safe and explicit.
-    const stUrl = new URL(`${UPSTREAM}/items/target_setting_supplier`);
-    stUrl.searchParams.set("limit", "1");
-    stUrl.searchParams.set("filter[fiscal_period][_eq]", String(body.fiscal_period));
-    stUrl.searchParams.set("filter[supplier_id][_eq]", String(body.supplier_id));
-    const stRes = await upstreamJson(stUrl.toString());
-    const st = (stRes.json?.data ?? [])?.[0];
-
-    if (st && st.status !== "DRAFT" && st.status !== "REJECTED") {
+    if (targetRes.status !== "DRAFT" && targetRes.status !== "REJECTED") {
       return NextResponse.json({ error: "Cannot create allocation because the Supplier Target is already approved/set." }, { status: 403 });
     }
   }
