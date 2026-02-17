@@ -240,9 +240,9 @@ export async function POST(req: NextRequest) {
       status: ctx.status,
     };
 
-    if (ctx.status !== "DRAFT" && ctx.status !== "REJECTED") {
+    if (ctx.status !== "DRAFT") {
       return NextResponse.json(
-        { error: "Cannot create allocation because the Division Target is already approved/set." },
+        { error: "Cannot create allocation because the Division Target is already approved, set, or rejected." },
         { status: 403 },
       );
     }
@@ -301,9 +301,9 @@ export async function PATCH(req: NextRequest) {
     const tsd_id = Number(tss.tsd_id);
     const ctx = await resolveExecutiveContextByTsdId(tsd_id);
 
-    if (ctx.status !== "DRAFT" && ctx.status !== "REJECTED") {
+    if (ctx.status !== "DRAFT") {
       return NextResponse.json(
-        { error: "Cannot update target unless it is in DRAFT or REJECTED status." },
+        { error: "Cannot update target unless it is in DRAFT status." },
         { status: 403 },
       );
     }
@@ -347,9 +347,9 @@ export async function DELETE(req: NextRequest) {
     if (!tss) return NextResponse.json({ error: "Allocator not found." }, { status: 404 });
 
     const status = normalizeStatus(tss.status);
-    if (status !== "DRAFT" && status !== "REJECTED") {
+    if (status !== "DRAFT") {
       return NextResponse.json(
-        { error: "Cannot delete target unless it is in DRAFT or REJECTED status." },
+        { error: "Cannot delete target unless it is in DRAFT status." },
         { status: 403 },
       );
     }

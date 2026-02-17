@@ -56,7 +56,7 @@ export default function SupplierAllocationsTable(props: {
                     size="sm"
                     className="h-8 w-8 p-0"
                     onClick={() => onEdit(r)}
-                    disabled={disabled || (r.status !== "DRAFT" && r.status !== "REJECTED")}
+                    disabled={disabled || r.status?.toUpperCase() !== "DRAFT"}
                   >
                     <Pencil className="h-4 w-4" />
                     <span className="sr-only">Edit</span>
@@ -66,7 +66,7 @@ export default function SupplierAllocationsTable(props: {
                     size="sm"
                     className="h-8 w-8 p-0"
                     onClick={() => onDelete(r.id)}
-                    disabled={disabled || (r.status !== "DRAFT" && r.status !== "REJECTED")}
+                    disabled={disabled || r.status?.toUpperCase() !== "DRAFT"}
                   >
                     <Trash2 className="h-4 w-4" />
                     <span className="sr-only">Delete</span>
