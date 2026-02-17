@@ -60,7 +60,70 @@ async function proxy(req: NextRequest, { params }: { params: Promise<{ id: strin
         const fiscalPeriod = execData.data?.fiscal_period;
 
         if (fiscalPeriod) {
-          // Cascade status update to all child tables for this fiscal period
+          // STEP 1: Create audit trail snapshot BEFORE any deletions
+          try {
+            const auditRes = await fetch(`${req.nextUrl.origin}/api/bia/target-setting/audit-trail`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": req.headers.get("authorization") || ""
+              },
+              body: JSON.stringify({
+                fiscal_period: fiscalPeriod,
+                trigger_event: "REOPEN_TO_DRAFT",
+                user_id: bodyJson.user_updated || null,
+                notes: "Target reopened to DRAFT status - preserving approval history"
+              })
+            });
+
+            if (!auditRes.ok) {
+              console.error("Failed to create audit snapshot:", await auditRes.text());
+              // Continue anyway - don't block the reopen operation
+            } else {
+              const auditData = await auditRes.json();
+              console.log("Audit snapshot created:", auditData.summary);
+            }
+          } catch (auditError) {
+            console.error("Audit trail creation error:", auditError);
+            // Continue anyway - don't block the reopen operation
+          }
+
+          // STEP 2: Delete all approval records for this fiscal period
+          // STEP 2: Delete all approval records for this fiscal period
+          try {
+            // 2.1 Fetch IDs to delete
+            const approvalsListRes = await fetch(
+              `${upstream}/items/target_setting_approvals?filter[target_period][_eq]=${fiscalPeriod}&fields=id`,
+              { headers: authHeader, cache: "no-store" }
+            );
+            const { data: approvalsToDelete } = await approvalsListRes.json();
+
+            if (approvalsToDelete && approvalsToDelete.length > 0) {
+              const idsToDelete = approvalsToDelete.map((a: any) => a.id);
+
+              // 2.2 Bulk delete by IDs
+              const deleteApprovalsRes = await fetch(
+                `${upstream}/items/target_setting_approvals`,
+                {
+                  method: "DELETE",
+                  headers: { "Content-Type": "application/json", ...authHeader },
+                  body: JSON.stringify(idsToDelete)
+                }
+              );
+
+              if (deleteApprovalsRes.ok) {
+                console.log(`Deleted ${idsToDelete.length} approval records for fiscal period: ${fiscalPeriod}`);
+              } else {
+                console.error("Failed to delete approval records:", await deleteApprovalsRes.text());
+              }
+            } else {
+              console.log(`No approval records found to delete for fiscal period: ${fiscalPeriod}`);
+            }
+          } catch (deleteError) {
+            console.error("Error deleting approval records:", deleteError);
+          }
+
+          // STEP 3: Cascade status update to all child tables for this fiscal period
           const childCollections = [
             'target_setting_division',
             'target_setting_supplier',

@@ -22,11 +22,13 @@ function decodeJwtPayload(token: string): any | null {
 async function getApproverByUserId(userId: string) {
   const upstream = (UPSTREAM_BASE || "").replace(/\/+$/, "");
   const url = `${upstream}/items/target_setting_approver?filter[approver_id][_eq]=${userId}&filter[is_deleted][_eq]=0`;
+
   const res = await fetch(url, {
     headers: { "Authorization": `Bearer ${process.env.DIRECTUS_STATIC_TOKEN || ""}` },
     cache: "no-store"
   });
   const json = await res.json();
+
   return json.data?.[0] || null;
 }
 
@@ -41,6 +43,7 @@ export async function GET(req: NextRequest) {
     if (path === "auth/check") {
       const cookieStore = await cookies();
       const token = cookieStore.get("vos_access_token")?.value;
+
       if (!token) return NextResponse.json({ isApprover: false, approver: null, totalApprovers: 0 });
 
       const payload = decodeJwtPayload(token);
@@ -167,6 +170,39 @@ export async function POST(req: NextRequest) {
       // 4. Status Propagation
       // We only update the hierarchy if we've reached a terminal state (APPROVED or REJECTED)
       if (finalStatus !== 'DRAFT') {
+        // Create audit snapshot if status is APPROVED or REJECTED
+        if (finalStatus === 'APPROVED' || finalStatus === 'REJECTED') {
+          try {
+            const triggerEvent = finalStatus === 'APPROVED' ? 'APPROVAL' : 'REJECTION';
+            const notes = finalStatus === 'APPROVED'
+              ? "Target successfully approved by quorum"
+              : "Target rejected by a member of the quorum";
+
+            const auditRes = await fetch(`${req.nextUrl.origin}/api/bia/target-setting/audit-trail`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": req.headers.get("authorization") || ""
+              },
+              body: JSON.stringify({
+                fiscal_period: target_period,
+                trigger_event: triggerEvent,
+                user_id: approver_id,
+                notes: notes
+              })
+            });
+
+            if (!auditRes.ok) {
+              console.error(`Failed to create audit snapshot on ${triggerEvent}:`, await auditRes.text());
+            } else {
+              const auditData = await auditRes.json();
+              console.log(`Audit snapshot created on ${triggerEvent}:`, auditData.summary);
+            }
+          } catch (auditError) {
+            console.error(`Audit trail creation error on ${finalStatus}:`, auditError);
+          }
+        }
+
         const collections = [
           'target_setting_executive',
           'target_setting_division',
