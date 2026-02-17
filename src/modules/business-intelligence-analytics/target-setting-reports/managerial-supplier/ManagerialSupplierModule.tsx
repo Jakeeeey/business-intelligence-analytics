@@ -50,6 +50,7 @@ function ManagerialSupplierContent() {
 
     const [loading, setLoading] = useState(true);
     const [rawData, setRawData] = useState<VSalesPerformanceDataDto[]>([]);
+    const [allDivisions, setAllDivisions] = useState<any[]>([]);
     const [targets, setTargets] = useState<any>({ 
         divisionTargets: [], 
         supplierTargets: [], 
@@ -57,26 +58,55 @@ function ManagerialSupplierContent() {
         salesmanTargets: [] 
     });
 
+    // 1. Fetch Metadata and Actuals
     useEffect(() => {
-        const load = async () => {
+        const loadActuals = async () => {
             setLoading(true);
             try {
                 const start = format(startOfMonth(parseISO(fromMonth + "-01")), "yyyy-MM-dd");
                 const end = format(endOfMonth(parseISO(toMonth + "-01")), "yyyy-MM-dd");
-                
                 const data = await fetchManagerialData(start, end);
                 setRawData(data);
-
-                // Scope targets to selected division
-                const divItem = data.find(d => d.divisionName === selectedDivision);
-                const targetData = await fetchDynamicTargets(start, end, divItem?.divisionId);
-                setTargets(targetData);
+                
+                // Also fetch all divisions metadata for robust ID lookup
+                const metaRes = await fetch("/api/bia/metadata/divisions");
+                const metaData = await metaRes.json();
+                setAllDivisions(metaData.data || []);
             } catch (err) { console.error(err); } finally { setLoading(false); }
         };
-        load();
+        loadActuals();
     }, [fromMonth, toMonth]);
 
-    const divisions = useMemo(() => Array.from(new Set(rawData.map(d => d.divisionName))).sort(), [rawData]);
+    // 2. Fetch Targets (Depends on Period AND Selected Division)
+    useEffect(() => {
+        const loadTargets = async () => {
+            const start = format(startOfMonth(parseISO(fromMonth + "-01")), "yyyy-MM-dd");
+            const end = format(endOfMonth(parseISO(toMonth + "-01")), "yyyy-MM-dd");
+            
+            // Robust lookup for divisionId: use metadata first, fallback to rawData
+            const divFromMeta = allDivisions.find(d => d.division_name === selectedDivision);
+            const divFromData = rawData.find(d => d.divisionName === selectedDivision);
+            const divisionId = divFromMeta?.division_id || divFromData?.divisionId;
+
+            try {
+                const targetData = await fetchDynamicTargets(start, end, divisionId);
+                setTargets(targetData);
+            } catch (err) { console.error(err); }
+        };
+        
+        // Only fetch targets if we have from/to month (and preferably after divisions metadata is loaded)
+        if (fromMonth && toMonth) {
+            loadTargets();
+        }
+    }, [fromMonth, toMonth, selectedDivision, allDivisions]);
+
+    // Use metadata for division list if available, otherwise fallback to rawData
+    const divisions = useMemo(() => {
+        if (allDivisions.length > 0) {
+            return Array.from(new Set(allDivisions.map(d => d.division_name))).sort() as string[];
+        }
+        return Array.from(new Set(rawData.map(d => d.divisionName))).sort();
+    }, [rawData, allDivisions]);
 
     // 1. Data Processing for Suppliers
     const { supplierPerformance, divisionSummary } = useMemo(() => {
@@ -287,13 +317,16 @@ function ManagerialSupplierContent() {
                                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" strokeOpacity={0.5} />
                                 <XAxis type="number" hide />
                                 <YAxis type="category" dataKey="name" width={140} fontSize={11} tick={{ fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
-                                <Tooltip formatter={(v: any) => formatPHP(v)} cursor={{ fill: 'hsl(var(--muted)/0.2)' }} />
+                                    <Tooltip 
+                                        cursor={{ fill: 'transparent' }} 
+                                        formatter={(v: any, name: string) => [formatPHP(v), name]}
+                                    />
                                 {/* Underlay Target Bar */}
-                                <Bar dataKey="target" barSize={32} fill="#3b82f6" fillOpacity={0.15} radius={[0, 6, 6, 0]}>
+                                <Bar dataKey="target" name="Target" barSize={32} fill="#3b82f6" fillOpacity={0.15} radius={[0, 6, 6, 0]}>
                                     <LabelList dataKey="target" content={<CustomTargetLine />} />
                                 </Bar>
                                 {/* Overlay Sales Bar */}
-                                <Bar dataKey="sales" barSize={32} radius={[0, 6, 6, 0]} minPointSize={2}>
+                                <Bar dataKey="sales" name="Actual" barSize={32} radius={[0, 6, 6, 0]} minPointSize={2}>
                                     {(selectedSupplier ? salesmanBreakdown : supplierPerformance).slice(0, 10).map((entry: any, index) => (
                                         <Cell 
                                             key={`cell-${index}`} 
