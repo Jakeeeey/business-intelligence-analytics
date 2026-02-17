@@ -1,14 +1,4 @@
-
 import { VSalesPerformanceDataDto } from "../../executive-health/types";
-import { TargetSettingSalesman } from "../types";
-
-export interface CustomerBreakdownItem {
-    customerName: string;
-    totalAmount: number;
-    paidAmount: number;
-    unpaidAmount: number;
-    invoiceCount: number;
-}
 
 /**
  * Fetches raw sales data for salesman performance analysis.
@@ -16,89 +6,75 @@ export interface CustomerBreakdownItem {
  * salesmanName and netAmount fields.
  */
 export const fetchSalesmanData = async (startDate: string, endDate: string): Promise<VSalesPerformanceDataDto[]> => {
-    try {
-        const params = new URLSearchParams({
-            startDate,
-            endDate,
-            _t: new Date().getTime().toString() // Cache Buster to force fresh data
-        });
+  try {
+    const params = new URLSearchParams({
+      startDate,
+      endDate,
+      _t: new Date().getTime().toString() // Cache Buster to force fresh data
+    });
 
-        const url = `/api/bia/target-setting-reports/salesman-kpi?${params.toString()}`;
+    const url = `/api/bia/target-setting-reports/salesman-kpi?${params.toString()}`;
 
-        console.log(`[Salesman Fetch] Requesting: ${startDate} to ${endDate}`);
+    console.log(`[Salesman Fetch] Requesting: ${startDate} to ${endDate}`);
 
-        // Set a 15-second timeout to prevent hanging on 502/504 errors
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000);
+    // Set a 15-second timeout to prevent hanging on 502/504 errors
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-        const response = await fetch(url, {
-            method: "GET",
-            headers: { "Content-Type": "application/json" },
-            cache: "no-store",
-            signal: controller.signal
-        });
+    const response = await fetch(url, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      cache: "no-store",
+      signal: controller.signal
+    });
 
-        clearTimeout(timeoutId);
+    clearTimeout(timeoutId);
 
-        if (response.status === 401) {
-            console.error("Unauthorized: Session may have expired.");
-            return [];
-        }
-
-        if (!response.ok) {
-            throw new Error(`API error: ${response.status} ${response.statusText}`);
-        }
-
-        const data = await response.json();
-
-        // Return empty array if data is null or undefined to prevent UI crashes
-        return Array.isArray(data) ? data : [];
-
-    } catch (error: any) {
-        if (error.name === 'AbortError') {
-            console.error("Salesman Fetch: The request timed out.");
-        } else {
-            console.error("Salesman Fetch Error:", error.message);
-        }
-        throw error;
+    if (response.status === 401) {
+      console.error("Unauthorized: Session may have expired.");
+      return [];
     }
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+
+    // Return empty array if data is null or undefined to prevent UI crashes
+    return Array.isArray(data) ? data : [];
+
+  } catch (error: any) {
+    if (error.name === 'AbortError') {
+      console.error("Salesman Fetch: The request timed out.");
+    } else {
+      console.error("Salesman Fetch Error:", error.message);
+    }
+    throw error;
+  }
 };
 
 /**
  * Fetches dynamic targets for salesman data.
  */
 export const fetchDynamicTargets = async (startDate: string, endDate: string): Promise<any> => {
-    try {
-        const params = new URLSearchParams({ startDate, endDate });
-        const url = `/api/bia/target-setting-reports/managerial-supplier/targets?${params.toString()}`;
+  try {
+    const params = new URLSearchParams({ startDate, endDate });
+    const url = `/api/bia/target-setting-reports/managerial-supplier/targets?${params.toString()}`;
 
-        const response = await fetch(url, {
-            method: "GET",
-            headers: { "Content-Type": "application/json" },
-            cache: "no-store",
-        });
+    const response = await fetch(url, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      cache: "no-store",
+    });
 
-        if (!response.ok) {
-            throw new Error(`API Request failed with status ${response.status}`);
-        }
-
-        return await response.json();
-    } catch (error: any) {
-        console.error("Fetch Salesman Targets Error:", error.message);
-        return { supplierTargets: [], salesmanTargets: [] };
+    if (!response.ok) {
+      throw new Error(`API Request failed with status ${response.status}`);
     }
+
+    return await response.json();
+  } catch (error: any) {
+    console.error("Fetch Salesman Targets Error:", error.message);
+    return { supplierTargets: [], salesmanTargets: [] };
+  }
 };
-
-/**
- * Fetches customer breakdown for a specific salesman and supplier.
- */
-export async function fetchCustomerBreakdown(salesmanId: number, supplierId: number, start: string, end: string): Promise<CustomerBreakdownItem[]> {
-    try {
-        const res = await fetch(`/api/bia/target-setting-reports/salesman-kpi/customer-breakdown?salesmanId=${salesmanId}&supplierId=${supplierId || ''}&from=${start}&to=${end}`);
-        if (!res.ok) throw new Error("Failed");
-        return await res.json();
-    } catch (e) {
-        console.error(e);
-        return [];
-    }
-}

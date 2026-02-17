@@ -50,7 +50,12 @@ function ManagerialSupplierContent() {
 
     const [loading, setLoading] = useState(true);
     const [rawData, setRawData] = useState<VSalesPerformanceDataDto[]>([]);
-    const [targets, setTargets] = useState<any>({ supplierTargets: [], salesmanTargets: [] });
+    const [targets, setTargets] = useState<any>({ 
+        divisionTargets: [], 
+        supplierTargets: [], 
+        supervisorTargets: [], 
+        salesmanTargets: [] 
+    });
 
     useEffect(() => {
         const load = async () => {
@@ -107,11 +112,21 @@ function ManagerialSupplierContent() {
         }).sort((a, b) => b.sales - a.sales);
 
         const totalActual = perf.reduce((s, i) => s + i.sales, 0);
-        const totalTarget = perf.reduce((s, i) => s + i.target, 0);
+        
+        // Sum from target_setting_division
+        const totalDivisionTarget = targets.divisionTargets?.reduce((sum: number, t: any) => sum + (t.target_amount || 0), 0) || 0;
+        
+        // Sum from target_setting_supplier
+        const totalSupplierTarget = perf.reduce((s, i) => s + i.target, 0);
 
         return { 
             supplierPerformance: perf, 
-            divisionSummary: { totalActual, totalTarget, achievement: totalTarget > 0 ? (totalActual / totalTarget) * 100 : 0 }
+            divisionSummary: { 
+                totalActual, 
+                totalDivisionTarget, 
+                totalSupplierTarget,
+                achievement: totalDivisionTarget > 0 ? (totalActual / totalDivisionTarget) * 100 : 0 
+            }
         };
     }, [rawData, selectedDivision, fromMonth, toMonth, targets]);
 
@@ -205,12 +220,38 @@ function ManagerialSupplierContent() {
             </div>
 
             {/* --- METRIC STRIP --- */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <Card className="border-primary/20"><CardContent className="p-4"><p className="text-xs font-semibold text-primary uppercase">Actual</p><p className="text-2xl font-bold">{formatPHP(divisionSummary.totalActual)}</p></CardContent></Card>
-                <Card><CardContent className="p-4"><p className="text-xs font-semibold text-muted-foreground uppercase">Target</p><p className="text-2xl font-bold">{formatPHP(divisionSummary.totalTarget)}</p></CardContent></Card>
-                <Card><CardContent className="p-4"><p className="text-xs font-semibold text-muted-foreground uppercase">Achievement</p><p className="text-2xl font-bold">{divisionSummary.achievement.toFixed(1)}%</p></CardContent></Card>
-                <Card className={divisionSummary.totalActual > divisionSummary.totalTarget ? "border-emerald-500/50" : "border-destructive/50"}>
-                    <CardContent className="p-4"><p className="text-xs font-semibold uppercase opacity-70">Gap</p><p className="text-2xl font-bold">{formatPHP(divisionSummary.totalActual - divisionSummary.totalTarget)}</p></CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <Card className="border-primary/20 bg-primary/5">
+                    <CardContent className="p-4">
+                        <p className="text-xs font-semibold text-primary uppercase">Actual Sales</p>
+                        <p className="text-2xl font-bold">{formatPHP(divisionSummary.totalActual)}</p>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardContent className="p-4">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase">Div. Target</p>
+                        <p className="text-2xl font-bold">{formatPHP(divisionSummary.totalDivisionTarget)}</p>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardContent className="p-4">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase">Supp. Allocated</p>
+                        <p className="text-2xl font-bold">{formatPHP(divisionSummary.totalSupplierTarget)}</p>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardContent className="p-4">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase">Achievement</p>
+                        <p className="text-2xl font-bold">{divisionSummary.achievement.toFixed(1)}%</p>
+                    </CardContent>
+                </Card>
+                <Card className={divisionSummary.totalActual > divisionSummary.totalDivisionTarget ? "border-emerald-500/50 bg-emerald-500/5" : "border-destructive/50 bg-destructive/5"}>
+                    <CardContent className="p-4">
+                        <p className="text-xs font-semibold uppercase opacity-70">Gap (Div)</p>
+                        <p className="text-2xl font-bold text-foreground">
+                            {formatPHP(divisionSummary.totalActual - divisionSummary.totalDivisionTarget)}
+                        </p>
+                    </CardContent>
                 </Card>
             </div>
 

@@ -19,7 +19,7 @@ import { TargetSettingSalesman } from "./types";
 import { CustomerBreakdownModal } from "./components/CustomerBreakdownModal";
 
 
-type MetricType = "amount" | "achievement" | "market_penetration";
+type MetricType = "amount" | "achievement" | "count";
 
 function SalesmanKPIContent() {
     const searchParams = useSearchParams();
@@ -30,15 +30,6 @@ function SalesmanKPIContent() {
     const [toMonth, setToMonth] = useState(searchParams.get("to") || currentMonthStr);
     const [searchTerm, setSearchTerm] = useState("");
     const [activeMetric, setActiveMetric] = useState<MetricType>("amount");
-    const [selectedDivision, setSelectedDivision] = useState<string>("All");
-
-    const [modalState, setModalState] = useState<{
-        isOpen: boolean;
-        salesmanId: number;
-        salesmanName: string;
-        supplierId: number;
-        supplierName: string;
-    }>({ isOpen: false, salesmanId: 0, salesmanName: "", supplierId: 0, supplierName: "" });
     
     const [rawData, setRawData] = useState<VSalesPerformanceDataDto[]>([]);
     const [targets, setTargets] = useState<TargetSettingSalesman[]>([]);
@@ -65,26 +56,25 @@ function SalesmanKPIContent() {
     }, [fromMonth, toMonth]);
 
     const { matrix, salesmen, suppliers, maxAmount, totalsMap, supplierTotals } = useMemo(() => {
-        const dataMap = new Map<string, Map<string, { amount: number; uniqueCustomers: Set<number>; target: number }>>();
-        const sTotals = new Map<string, { amount: number; target: number; uniqueCustomers: Set<number> }>();
+        const dataMap = new Map<string, Map<string, { amount: number; count: number; target: number }>>();
+        const sTotals = new Map<string, { amount: number; target: number; count: number }>();
         const supTotals = new Map<string, number>();
         const supplierSet = new Set<string>();
-        const divisionSet = new Set<string>();
+        
+        // Track unique customers
+        const uniqueCustomersMap = new Map<string, Map<string, Set<string>>>();
+        const salesmanUniqueCustomers = new Map<string, Set<string>>();
+
         let highAmt = 0;
 
         const start = parseISO(fromMonth + "-01");
         const end = parseISO(toMonth + "-01");
-        const months = Math.max(1, (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth()) + 1);
 
         rawData.forEach(item => {
-            // Division Filter
-            if (item.divisionName) divisionSet.add(item.divisionName);
-            if (selectedDivision !== "All" && item.divisionName !== selectedDivision) return;
-
             const sMan = item.salesmanName || "Unassigned";
             const sPly = item.supplierName || "Other";
             const amount = item.netAmount || 0;
-            const custId = item.customerId || 0; // Fallback if missing, but should be present
+            const customer = item.storeName || "Unknown";
 
             supplierSet.add(sPly);
             supTotals.set(sPly, (supTotals.get(sPly) || 0) + amount);
@@ -105,23 +95,39 @@ function SalesmanKPIContent() {
             const scaledTarget = relevantTargets.reduce((sum, t) => sum + (t.target_amount || 0), 0);
 
             // Individual Totals logic
-            if (!sTotals.has(sMan)) sTotals.set(sMan, { amount: 0, target: 0, uniqueCustomers: new Set() });
+            if (!sTotals.has(sMan)) sTotals.set(sMan, { amount: 0, target: 0, count: 0 });
+            if (!salesmanUniqueCustomers.has(sMan)) salesmanUniqueCustomers.set(sMan, new Set());
+
             const sTot = sTotals.get(sMan)!;
             sTot.amount += amount;
-            if (custId) sTot.uniqueCustomers.add(custId);
+            salesmanUniqueCustomers.get(sMan)!.add(customer);
             
             // Logic: Only add to target once per salesman/supplier pairing
             if (!dataMap.has(sMan)) dataMap.set(sMan, new Map());
+            if (!uniqueCustomersMap.has(sMan)) uniqueCustomersMap.set(sMan, new Map());
+
             if (!dataMap.get(sMan)!.has(sPly)) {
                 sTot.target += scaledTarget;
-                dataMap.get(sMan)!.set(sPly, { amount: 0, uniqueCustomers: new Set(), target: scaledTarget });
+                dataMap.get(sMan)!.set(sPly, { amount: 0, count: 0, target: scaledTarget });
+                uniqueCustomersMap.get(sMan)!.set(sPly, new Set());
             }
 
             const cell = dataMap.get(sMan)!.get(sPly)!;
             cell.amount += amount;
-            if (custId) cell.uniqueCustomers.add(custId);
+            uniqueCustomersMap.get(sMan)!.get(sPly)!.add(customer);
             
             if (cell.amount > highAmt) highAmt = cell.amount;
+        });
+
+        // Finalize counts
+        dataMap.forEach((supMap, sMan) => {
+            supMap.forEach((cell, sPly) => {
+                cell.count = uniqueCustomersMap.get(sMan)?.get(sPly)?.size || 0;
+            });
+        });
+
+        sTotals.forEach((tot, sMan) => {
+            tot.count = salesmanUniqueCustomers.get(sMan)?.size || 0;
         });
 
         const sortedSalesmen = Array.from(sTotals.entries())
@@ -135,10 +141,9 @@ function SalesmanKPIContent() {
             suppliers: Array.from(supplierSet).sort(),
             maxAmount: highAmt,
             totalsMap: sTotals,
-            supplierTotals: supTotals,
-            divisions: Array.from(divisionSet).sort()
+            supplierTotals: supTotals
         };
-    }, [rawData, searchTerm, fromMonth, toMonth, selectedDivision]);
+    }, [rawData, targets, searchTerm, fromMonth, toMonth]);
 
     const formatPHP = (val: number) => new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 0 }).format(val);
     const formatShort = (val: number) => {
@@ -164,6 +169,28 @@ function SalesmanKPIContent() {
         return "bg-primary/20 text-primary";
     };
 
+    const [modalData, setModalData] = useState<{ isOpen: boolean; salesman: string; supplier: string; data: VSalesPerformanceDataDto[] }>({
+        isOpen: false,
+        salesman: "",
+        supplier: "",
+        data: []
+    });
+
+    const handleCellClick = (salesman: string, supplier: string) => {
+        const salesmanId = rawData.find(d => d.salesmanName === salesman)?.salesmanId;
+        const filtered = rawData.filter(d => 
+            (d.salesmanName === salesman || (salesmanId && d.salesmanId === salesmanId)) && 
+            d.supplierName === supplier
+        );
+        
+        setModalData({
+            isOpen: true,
+            salesman,
+            supplier,
+            data: filtered
+        });
+    };
+
     return (
         <div className="space-y-6 p-2 bg-background text-foreground">
             {/* --- HEADER --- */}
@@ -180,23 +207,9 @@ function SalesmanKPIContent() {
                         <TabsList className="bg-card border h-10">
                             <TabsTrigger value="amount" className="gap-2"><Coins className="h-4 w-4" /> Value</TabsTrigger>
                             <TabsTrigger value="achievement" className="gap-2"><TargetIcon className="h-4 w-4" /> % Target</TabsTrigger>
-                            <TabsTrigger value="market_penetration" className="gap-2"><Hash className="h-4 w-4" /> Market Pen.</TabsTrigger>
+                            <TabsTrigger value="count" className="gap-2"><Hash className="h-4 w-4" /> Market Penetration</TabsTrigger>
                         </TabsList>
                     </Tabs>
-
-                    <div>
-                         <select 
-                            className="h-10 rounded-md border border-input bg-card px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                            value={selectedDivision}
-                            onChange={(e) => setSelectedDivision(e.target.value)}
-                        >
-                            <option value="All">All Divisions</option>
-                            {/* We use specific divisions if available, otherwise just what's in data */}
-                            {matrix && Array.from(new Set(rawData.map(d => d.divisionName).filter(Boolean))).sort().map(div => (
-                                <option key={div} value={div}>{div}</option>
-                            ))}
-                        </select>
-                    </div>
                     
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -236,7 +249,7 @@ function SalesmanKPIContent() {
                             <tbody>
                                 {salesmen.map((man, idx) => {
                                     const personalTotal = totalsMap.get(man)!;
-                                    const totalAchievement = (personalTotal.amount / personalTotal.target) * 100;
+                                    const totalAchievement = personalTotal.target > 0 ? (personalTotal.amount / personalTotal.target) * 100 : 0;
 
                                     return (
                                         <tr key={man} className="group">
@@ -274,40 +287,17 @@ function SalesmanKPIContent() {
                                                 // Value to display inside the cell
                                                 let displayVal = "";
                                                 if (amount > 0) {
-                                                    if (activeMetric === "achievement") displayVal = `${((amount/target)*100).toFixed(0)}%`;
-                                                    else if (activeMetric === "market_penetration") displayVal = cell!.uniqueCustomers.size.toString();
+                                                    if (activeMetric === "achievement") displayVal = target > 0 ? `${((amount/target)*100).toFixed(0)}%` : "N/A";
+                                                    else if (activeMetric === "count") displayVal = cell!.count.toString();
                                                     else displayVal = formatShort(amount);
                                                 }
 
                                                 return (
-                                                    <td key={`${man}-${sup}`} className="p-0.5 border-b border-r">
+                                                    <td key={`${man}-${sup}`} className="p-0.5 border-b border-r" onClick={() => handleCellClick(man, sup)}>
                                                         <TooltipProvider>
                                                             <Tooltip>
                                                                 <TooltipTrigger asChild>
-                                                                    <div 
-                                                                        className={`w-full h-12 flex items-center justify-center text-[10px] rounded-[2px] transition-all duration-300 hover:scale-[1.1] hover:z-50 cursor-crosshair ${getHeatColor(amount, target)}`}
-                                                                        onClick={() => {
-                                                                            // Ideally we need supplierId. Since we don't have it explicitly stored in the map keys (keys are names),
-                                                                            // we can find it from rawData or just pass 0 if we want to rely on name (though API prefers ID).
-                                                                            // Let's find a raw item that matches this supplier to get the ID.
-                                                                            const rawItem = rawData.find(d => d.supplierName === sup);
-                                                                            const supId = rawItem?.supplierId || 0;
-                                                                            
-                                                                            // Also need salesmanId.
-                                                                            const rawMan = rawData.find(d => d.salesmanName === man);
-                                                                            const sId = rawMan?.salesmanId || 0;
-
-                                                                            if (sId) {
-                                                                                setModalState({
-                                                                                    isOpen: true,
-                                                                                    salesmanId: sId,
-                                                                                    salesmanName: man,
-                                                                                    supplierId: supId,
-                                                                                    supplierName: sup
-                                                                                });
-                                                                            }
-                                                                        }}
-                                                                    >
+                                                                    <div className={`w-full h-12 flex items-center justify-center text-[10px] rounded-[2px] transition-all duration-300 hover:scale-[1.1] hover:z-50 cursor-pointer ${getHeatColor(amount, target)}`}>
                                                                         {displayVal}
                                                                     </div>
                                                                 </TooltipTrigger>
@@ -318,9 +308,11 @@ function SalesmanKPIContent() {
                                                                                 <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">{sup}</p>
                                                                                 <p className="text-sm font-bold">{man}</p>
                                                                             </div>
-                                                                            <Badge variant={amount >= target ? "default" : "destructive"}>
-                                                                                {amount >= target ? "HIT" : "MISS"}
-                                                                            </Badge>
+                                                                            {target > 0 && (
+                                                                                <Badge variant={amount >= target ? "default" : "destructive"}>
+                                                                                    {amount >= target ? "HIT" : "MISS"}
+                                                                                </Badge>
+                                                                            )}
                                                                         </div>
                                                                         <div className="grid grid-cols-2 gap-4 border-t border-white/10 pt-2">
                                                                             <div>
@@ -335,10 +327,10 @@ function SalesmanKPIContent() {
                                                                         <div className="space-y-1">
                                                                             <div className="flex justify-between text-[10px] font-bold">
                                                                                 <span>ACHIEVEMENT</span>
-                                                                                <span>{((amount/target)*100).toFixed(1)}%</span>
+                                                                                <span>{target > 0 ? ((amount/target)*100).toFixed(1) : 0}%</span>
                                                                             </div>
                                                                             <div className="relative">
-                                                                                <Progress value={Math.min((amount/target)*100, 100)} className="h-1" />
+                                                                                <Progress value={Math.min(target > 0 ? (amount/target)*100 : 0, 100)} className="h-1" />
                                                                                 {target > 0 && (
                                                                                     <div 
                                                                                         className="absolute top-0 bottom-0 w-0.5 bg-emerald-400 z-10"
@@ -346,6 +338,9 @@ function SalesmanKPIContent() {
                                                                                     />
                                                                                 )}
                                                                             </div>
+                                                                        </div>
+                                                                        <div className="mt-2 text-[10px] text-muted-foreground italic flex items-center gap-1">
+                                                                            <Search className="h-3 w-3" /> Click to view customer breakdown
                                                                         </div>
                                                                     </div>
                                                                 </TooltipContent>
@@ -364,17 +359,13 @@ function SalesmanKPIContent() {
                 </ScrollArea>
             </Card>
 
-            <CustomerBreakdownModal 
-                isOpen={modalState.isOpen}
-                onClose={() => setModalState(prev => ({ ...prev, isOpen: false }))}
-                salesmanId={modalState.salesmanId}
-                salesmanName={modalState.salesmanName}
-                supplierId={modalState.supplierId}
-                supplierName={modalState.supplierName}
-                dateRange={{ 
-                    start: format(startOfMonth(parseISO(fromMonth + "-01")), "yyyy-MM-dd"), 
-                    end: format(endOfMonth(parseISO(toMonth + "-01")), "yyyy-MM-dd") 
-                }}
+            <CustomerBreakdownModal
+                isOpen={modalData.isOpen}
+                onClose={() => setModalData(prev => ({ ...prev, isOpen: false }))}
+                data={modalData.data}
+                salesmanName={modalData.salesman}
+                supplierName={modalData.supplier}
+                periodLabel={`${fromMonth} to ${toMonth}`}
             />
         </div>
     );

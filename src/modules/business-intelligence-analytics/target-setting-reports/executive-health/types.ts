@@ -12,7 +12,7 @@ export interface VSalesPerformanceDataDto {
     // Data
     transactionDate: string; // Java LocalDate becomes a "YYYY-MM-DD" string
     netAmount: number;       // Java Double becomes number
-    customerId: number;      // Added for Market Penetration (Unique Customer Count)
+    storeName?: string;      // Added for customer breakdown
 }
 
 // Keep your helper interfaces
