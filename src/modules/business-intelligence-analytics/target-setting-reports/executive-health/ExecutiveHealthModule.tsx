@@ -226,7 +226,7 @@ function ExecutiveHealthContent() {
                                     }}
                                     itemStyle={{ color: 'hsl(var(--popover-foreground))', fontWeight: 'bold' }}
                                     labelStyle={{ color: 'hsl(var(--muted-foreground))', marginBottom: '4px', fontWeight: 'bold' }}
-                                    formatter={(v: any) => [formatPHP(v), "Actual"]} 
+                                    formatter={(v: any, name: string) => [formatPHP(v), name]} 
                                 />
                                 <Bar dataKey="sales" name="Actual" barSize={22} radius={[0, 6, 6, 0]} minPointSize={2}>
                                     {divisionHealth.map((e, i) => (
@@ -245,6 +245,7 @@ function ExecutiveHealthContent() {
                                 />
                                 <Scatter 
                                     dataKey="target" 
+                                    tooltipType="none"
                                     shape={(props: any) => {
                                         const { cx, cy, payload } = props;
                                         if (!payload || !payload.target) return <g />;
