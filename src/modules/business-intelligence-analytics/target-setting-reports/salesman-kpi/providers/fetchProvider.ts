@@ -1,4 +1,14 @@
+
 import { VSalesPerformanceDataDto } from "../../executive-health/types";
+import { TargetSettingSalesman } from "../types";
+
+export interface CustomerBreakdownItem {
+    customerName: string;
+    totalAmount: number;
+    paidAmount: number;
+    unpaidAmount: number;
+    invoiceCount: number;
+}
 
 /**
  * Fetches raw sales data for salesman performance analysis.
@@ -13,7 +23,7 @@ export const fetchSalesmanData = async (startDate: string, endDate: string): Pro
             _t: new Date().getTime().toString() // Cache Buster to force fresh data
         });
 
-        const url = `/api/bia/target-setting-reports/managerial-supplier?${params.toString()}`;
+        const url = `/api/bia/target-setting-reports/salesman-kpi?${params.toString()}`;
 
         console.log(`[Salesman Fetch] Requesting: ${startDate} to ${endDate}`);
 
@@ -78,3 +88,17 @@ export const fetchDynamicTargets = async (startDate: string, endDate: string): P
         return { supplierTargets: [], salesmanTargets: [] };
     }
 };
+
+/**
+ * Fetches customer breakdown for a specific salesman and supplier.
+ */
+export async function fetchCustomerBreakdown(salesmanId: number, supplierId: number, start: string, end: string): Promise<CustomerBreakdownItem[]> {
+    try {
+        const res = await fetch(`/api/bia/target-setting-reports/salesman-kpi/customer-breakdown?salesmanId=${salesmanId}&supplierId=${supplierId || ''}&from=${start}&to=${end}`);
+        if (!res.ok) throw new Error("Failed");
+        return await res.json();
+    } catch (e) {
+        console.error(e);
+        return [];
+    }
+}
