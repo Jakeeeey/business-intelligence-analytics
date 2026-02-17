@@ -19,12 +19,21 @@ export default function ManagerModule() {
 
   const fiscalOptions = m.execOptions.map((x) => ({ id: x.id, label: x.label }));
 
-  const divisionOptions = m.divisionOptions.map((x) => ({
-    id: x.tsd.id,
-    label: `${x.divisionName} (Target: ${m.formatPeso(x.tsd.target_amount)})`,
-  }));
+  const divisionOptions = m.divisionOptions.map((x) => {
+    const status = x.tsd.status?.toUpperCase();
+    const statusLabel = status ? ` [${status}]` : "";
+    return {
+      id: x.tsd.id,
+      label: `${x.divisionName}${statusLabel} (Target: ${m.formatPeso(x.tsd.target_amount)})`,
+    };
+  });
 
-  const supplierOptions = m.supplierOptions.map((x) => ({ id: x.id, label: x.name }));
+  const supplierOptions = m.supplierOptions.map((x) => ({ 
+    id: x.id, 
+    label: m.supplierAllocationsForSelectedDivision.some(a => a.supplier_id === x.id) 
+      ? `${x.name} (Set)` 
+      : x.name 
+  }));
 
   const supervisorOptions = m.supervisorOptions.map((x) => ({ id: x.id, label: x.name }));
 

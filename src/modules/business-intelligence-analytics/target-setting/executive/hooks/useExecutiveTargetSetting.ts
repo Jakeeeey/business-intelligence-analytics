@@ -52,7 +52,7 @@ export function useExecutiveTargetSetting() {
       getTestUser()
     ])
       .then(([divs, sups, sales, users, userId]) => {
-        setDivisions(divs);
+        setDivisions(divs.sort((a, b) => a.division_name.localeCompare(b.division_name)));
         setSuppliersMetadata(sups);
         setSalesmenMetadata(sales);
         setUsersMetadata(users);

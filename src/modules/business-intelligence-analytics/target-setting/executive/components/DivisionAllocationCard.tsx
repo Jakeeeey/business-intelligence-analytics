@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -129,16 +129,35 @@ export function DivisionAllocationCard({
                         <SelectValue placeholder="Select Division" />
                     </SelectTrigger>
                     <SelectContent>
-                        {divisions.map(div => (
-                            <SelectItem key={div.division_id} value={div.division_id.toString()}>
-                                <div className="flex items-center justify-between w-full gap-2">
-                                    <span>{div.division_name}</span>
-                                    {allocations.some(a => a.division_id === div.division_id) && (
-                                        <Badge variant="outline" className="text-[10px] py-0 h-4 bg-blue-50 text-blue-600 border-blue-200">Set</Badge>
-                                    )}
-                                </div>
-                            </SelectItem>
-                        ))}
+                        {divisions.filter(d => !allocations.some(a => a.division_id === d.division_id)).length > 0 && (
+                            <SelectGroup>
+                                <SelectLabel className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-2 py-1.5">To be Allocated</SelectLabel>
+                                {divisions
+                                    .filter(div => !allocations.some(a => a.division_id === div.division_id))
+                                    .map(div => (
+                                        <SelectItem key={div.division_id} value={div.division_id.toString()}>
+                                            {div.division_name}
+                                        </SelectItem>
+                                    ))
+                                }
+                            </SelectGroup>
+                        )}
+                        {divisions.filter(d => allocations.some(a => a.division_id === d.division_id)).length > 0 && (
+                            <SelectGroup>
+                                <SelectLabel className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-2 py-1.5 border-t mt-2">Already Allocated</SelectLabel>
+                                {divisions
+                                    .filter(div => allocations.some(a => a.division_id === div.division_id))
+                                    .map(div => (
+                                        <SelectItem key={div.division_id} value={div.division_id.toString()}>
+                                            <div className="flex items-center justify-between w-full gap-2">
+                                                <span>{div.division_name}</span>
+                                                <Badge variant="outline" className="text-[10px] py-0 h-4 bg-blue-50 text-blue-600 border-blue-200">Set</Badge>
+                                            </div>
+                                        </SelectItem>
+                                    ))
+                                }
+                            </SelectGroup>
+                        )}
                     </SelectContent>
                 </Select>
             </div>
