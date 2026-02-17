@@ -372,8 +372,8 @@ export async function POST(req: NextRequest) {
   // Check if supplier target is DRAFT
   const targetRes = await getSupplierTargetAmount({ fiscalPeriod: String(body.fiscal_period), supplierId: Number(body.supplier_id) });
   if (targetRes.ok) {
-    if (targetRes.status !== "DRAFT" && targetRes.status !== "REJECTED") {
-      return NextResponse.json({ error: "Cannot create allocation because the Supplier Target is already approved/set." }, { status: 403 });
+    if (targetRes.status !== "DRAFT") {
+      return NextResponse.json({ error: "Cannot create allocation because the Supplier Target is already approved or rejected." }, { status: 403 });
     }
   }
 
@@ -410,8 +410,8 @@ export async function PATCH(req: NextRequest) {
   const allocRes = await getExistingAllocations({ fiscalPeriod: String(body.fiscal_period), supplierId: Number(body.supplier_id) });
   if (allocRes.ok) {
     const existing = (allocRes.rows as any[]).find((r) => Number(r.id) === Number(id));
-    if (existing && existing.status !== "DRAFT" && existing.status !== "REJECTED") {
-      return NextResponse.json({ error: "Cannot update target unless it is in DRAFT or REJECTED status." }, { status: 403 });
+    if (existing && existing.status !== "DRAFT") {
+      return NextResponse.json({ error: "Cannot update target unless it is in DRAFT status." }, { status: 403 });
     }
   }
 
@@ -430,8 +430,8 @@ export async function DELETE(req: NextRequest) {
   // Check status before delete
   const url = new URL(`${UPSTREAM}/items/target_setting_salesman/${encodeURIComponent(id)}`);
   const r = await upstreamJson(url.toString());
-  if (r.ok && r.json?.data?.status !== "DRAFT" && r.json?.data?.status !== "REJECTED") {
-    return NextResponse.json({ error: "Cannot delete target unless it is in DRAFT or REJECTED status." }, { status: 403 });
+  if (r.ok && r.json?.data?.status !== "DRAFT") {
+    return NextResponse.json({ error: "Cannot delete target unless it is in DRAFT status." }, { status: 403 });
   }
 
   return proxy(req, `/items/target_setting_salesman/${encodeURIComponent(id)}`, "DELETE");

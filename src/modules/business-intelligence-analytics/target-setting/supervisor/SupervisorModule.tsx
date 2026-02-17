@@ -37,7 +37,7 @@ export default function SupervisorModule() {
     m.salesmanId != null &&
     String(m.salesmanTargetAmount ?? "").trim() !== "" &&
     toNum(m.salesmanTargetAmount) >= 0 &&
-    (m.supplierTargetRow?.status === "DRAFT" || m.supplierTargetRow?.status === "REJECTED");
+    m.supplierTargetRow?.status === "DRAFT";
 
   return (
     <div className="space-y-6">
