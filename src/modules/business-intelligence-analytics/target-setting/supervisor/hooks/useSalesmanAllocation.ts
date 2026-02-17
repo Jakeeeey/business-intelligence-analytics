@@ -293,6 +293,10 @@ export function useSalesmanAllocation() {
     const amt = Number(salesmanTargetAmount);
     if (!Number.isFinite(amt) || amt < 0) return toast.error("Enter a valid Salesman Target Share.");
 
+    if (supplierTargetRow?.status !== "DRAFT") {
+      return toast.error("Cannot save allocation because the Supplier Target is not in DRAFT status.");
+    }
+
     // 1) Find the "effective" ID we are updating. 
     // It's either the one we explicitly clicked "Edit" on (editingId state),
     // OR one that exists for this specific combination.
