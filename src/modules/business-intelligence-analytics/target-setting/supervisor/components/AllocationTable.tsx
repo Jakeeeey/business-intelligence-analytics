@@ -120,7 +120,7 @@ export function AllocationTable(props: {
                             variant="outline"
                             size="sm"
                             onClick={() => props.onEdit(r)}
-                            disabled={props.acting || (r.status !== "DRAFT" && r.status !== "REJECTED")}
+                            disabled={props.acting || r.status !== "DRAFT"}
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
@@ -128,7 +128,7 @@ export function AllocationTable(props: {
                             variant="destructive"
                             size="sm"
                             onClick={() => props.onDelete(r.id)}
-                            disabled={props.acting || (r.status !== "DRAFT" && r.status !== "REJECTED")}
+                            disabled={props.acting || r.status !== "DRAFT"}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
