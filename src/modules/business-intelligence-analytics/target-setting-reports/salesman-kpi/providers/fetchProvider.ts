@@ -72,7 +72,15 @@ export const fetchDynamicTargets = async (startDate: string, endDate: string): P
       throw new Error(`API Request failed with status ${response.status}`);
     }
 
-    return await response.json();
+    const result = await response.json();
+
+    console.log('[Fetch Targets] Response:', {
+      salesmanTargetsCount: result.salesmanTargets?.length || 0,
+      supplierTargetsCount: result.supplierTargets?.length || 0,
+      sampleSalesmanTarget: result.salesmanTargets?.[0]
+    });
+
+    return result;
   } catch (error: any) {
     console.error("Fetch Salesman Targets Error:", error.message);
     return { supplierTargets: [], salesmanTargets: [] };
