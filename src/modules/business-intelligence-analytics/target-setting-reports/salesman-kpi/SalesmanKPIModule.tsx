@@ -224,7 +224,7 @@ function SalesmanKPIContent() {
                         <TabsList className="bg-card border h-10">
                             <TabsTrigger value="amount" className="gap-2"><Coins className="h-4 w-4" /> Value</TabsTrigger>
                             <TabsTrigger value="achievement" className="gap-2"><TargetIcon className="h-4 w-4" /> % Target</TabsTrigger>
-                            <TabsTrigger value="count" className="gap-2"><Hash className="h-4 w-4" /> Market Penetration</TabsTrigger>
+                            <TabsTrigger value="count" className="gap-2"><Hash className="h-4 w-4" /> Buying Accounts</TabsTrigger>
                         </TabsList>
                     </Tabs>
                     
