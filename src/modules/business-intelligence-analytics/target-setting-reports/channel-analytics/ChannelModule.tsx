@@ -2,15 +2,21 @@
 
 import React, { useEffect, useState, useMemo, Suspense } from "react";
 import { format, startOfMonth, endOfMonth, parseISO } from "date-fns";
-import { Loader2, Calendar, Store, Package, User, ShoppingCart, TrendingUp } from "lucide-react";
+import {
+    Loader2, Calendar, Store, Package, User, ShoppingCart,
+    Search, ArrowUpRight
+} from "lucide-react";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 
-// Assuming standard fetcher location
+// Removed ScrollArea import to use native scrolling
 import { fetchChannelDrilldownData } from "./providers/fetchProvider";
 import { ChannelDrilldownDto } from "./types";
 
@@ -23,6 +29,10 @@ function ChannelMatrixContent() {
     const [fromMonth, setFromMonth] = useState(currentMonthStr);
     const [toMonth, setToMonth] = useState(currentMonthStr);
     const [selectedDivision, setSelectedDivision] = useState<string>("All");
+
+    // --- MODAL STATE ---
+    const [selectedChannel, setSelectedChannel] = useState<any | null>(null);
+    const [modalSearch, setModalSearch] = useState("");
 
     const [rawData, setRawData] = useState<ChannelDrilldownDto[]>([]);
     const [loading, setLoading] = useState(true);
@@ -43,7 +53,7 @@ function ChannelMatrixContent() {
 
     const uniqueDivisions = useMemo(() => ["All", ...Array.from(new Set(rawData.map(d => d.divisionName || "Unassigned"))).sort()], [rawData]);
 
-    // 🧠 THE EXECUTIVE SUMMARY ENGINE (Aggregates only the Top Performers)
+    // 🧠 AGGREGATION ENGINE
     const { channelCards, grandTotal } = useMemo(() => {
         let total = 0;
         const channels = new Map<string, {
@@ -74,19 +84,55 @@ function ChannelMatrixContent() {
             ch.salesmen.set(man, (ch.salesmen.get(man) || 0) + item.netAmount);
         });
 
-        // Map and sort everything to only return the Top N entities per channel
         const sortedCards = Array.from(channels.entries())
             .sort((a, b) => b[1].total - a[1].total)
             .map(([name, data]) => ({
                 name,
                 total: data.total,
-                topStores: Array.from(data.stores.entries()).sort((a, b) => b[1] - a[1]).slice(0, 5), // Top 5
-                topSuppliers: Array.from(data.suppliers.entries()).sort((a, b) => b[1] - a[1]).slice(0, 3), // Top 3
-                topSalesmen: Array.from(data.salesmen.entries()).sort((a, b) => b[1] - a[1]).slice(0, 3) // Top 3
+                allStores: Array.from(data.stores.entries()).sort((a, b) => b[1] - a[1]),
+                allSuppliers: Array.from(data.suppliers.entries()).sort((a, b) => b[1] - a[1]),
+                allSalesmen: Array.from(data.salesmen.entries()).sort((a, b) => b[1] - a[1])
             }));
 
         return { channelCards: sortedCards, grandTotal: total };
     }, [rawData, selectedDivision]);
+
+    // Helper to render lists inside the modal
+    const renderModalList = (items: [string, number][], icon: React.ReactNode, type: string) => {
+        const filteredItems = items.filter(([name]) => name.toLowerCase().includes(modalSearch.toLowerCase()));
+
+        return (
+            <div className="space-y-2 pb-10"> {/* Added pb-10 for bottom spacing */}
+                {filteredItems.length === 0 ? (
+                    <div className="text-center py-20 text-muted-foreground">No {type.toLowerCase()} found matching "{modalSearch}"</div>
+                ) : (
+                    filteredItems.map(([name, amt], idx) => {
+                        const share = (amt / selectedChannel.total) * 100;
+                        return (
+                            <div key={name} className="flex flex-col p-4 hover:bg-muted/30 rounded-xl transition-all border border-transparent hover:border-border/50 group">
+                                <div className="flex justify-between items-center mb-2">
+                                    <div className="flex items-center gap-4 overflow-hidden">
+                                        <Badge variant="outline" className="h-6 w-6 rounded-full p-0 flex items-center justify-center text-xs shrink-0 text-muted-foreground font-mono group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+                                            {idx + 1}
+                                        </Badge>
+                                        <div className="flex items-center gap-3 truncate">
+                                            {icon}
+                                            <span className="font-bold text-base truncate text-foreground/80 group-hover:text-foreground transition-colors">{name}</span>
+                                        </div>
+                                    </div>
+                                    <span className="font-mono font-black text-base text-foreground">{formatPHP(amt)}</span>
+                                </div>
+                                <div className="flex items-center gap-4 pl-10">
+                                    <Progress value={share} className="h-2 bg-muted flex-1" />
+                                    <span className="text-xs font-medium text-muted-foreground w-10 text-right shrink-0">{share.toFixed(1)}%</span>
+                                </div>
+                            </div>
+                        );
+                    })
+                )}
+            </div>
+        );
+    };
 
     return (
         <div className="space-y-6 bg-background text-foreground min-h-screen pb-10">
@@ -118,29 +164,33 @@ function ChannelMatrixContent() {
                 <div className="flex justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-amber-500" /></div>
             ) : (
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                    {/* The Channel Cards */}
                     {channelCards.map((channel) => {
                         const channelShare = (channel.total / grandTotal) * 100;
-
                         return (
-                            <Card key={channel.name} className="border-muted/40 shadow-xl bg-card/40 flex flex-col overflow-hidden">
-                                {/* Header */}
-                                <div className="bg-amber-500/10 p-5 border-b border-amber-500/20 flex justify-between items-center">
+                            <Card
+                                key={channel.name}
+                                className="border-muted/40 shadow-xl bg-card/40 flex flex-col overflow-hidden group cursor-pointer hover:border-amber-500/30 hover:shadow-2xl transition-all duration-300"
+                                onClick={() => {
+                                    setModalSearch("");
+                                    setSelectedChannel(channel);
+                                }}
+                            >
+                                <div className="bg-amber-500/10 p-5 border-b border-amber-500/20 flex justify-between items-center group-hover:bg-amber-500/15 transition-colors">
                                     <div>
-                                        <CardTitle className="text-xl font-black uppercase tracking-tight text-amber-500">{channel.name}</CardTitle>
+                                        <CardTitle className="text-xl font-black uppercase tracking-tight text-amber-500 flex items-center gap-2">
+                                            {channel.name} <ArrowUpRight className="h-4 w-4 opacity-50" />
+                                        </CardTitle>
                                         <p className="text-xs text-muted-foreground font-bold mt-1">{channelShare.toFixed(1)}% of Total Revenue</p>
                                     </div>
                                     <div className="text-2xl font-black text-foreground">{formatPHP(channel.total)}</div>
                                 </div>
-
                                 <CardContent className="p-0 grid grid-cols-1 sm:grid-cols-2">
-                                    {/* Left Column: Top Stores */}
                                     <div className="p-5 border-r border-border/50 bg-background/50">
                                         <div className="flex items-center gap-2 mb-4 text-xs font-bold text-muted-foreground uppercase tracking-widest">
-                                            <ShoppingCart className="h-4 w-4 text-foreground" /> Top 5 Stores
+                                            <ShoppingCart className="h-4 w-4 text-foreground" /> Top Stores
                                         </div>
                                         <div className="space-y-4">
-                                            {channel.topStores.map(([store, amt]) => {
+                                            {channel.allStores.slice(0, 5).map(([store, amt]) => {
                                                 const share = (amt / channel.total) * 100;
                                                 return (
                                                     <div key={store}>
@@ -154,17 +204,13 @@ function ChannelMatrixContent() {
                                             })}
                                         </div>
                                     </div>
-
-                                    {/* Right Column: Top Suppliers & Salesmen */}
                                     <div className="p-5 flex flex-col">
-
-                                        {/* Suppliers */}
                                         <div className="flex-1">
                                             <div className="flex items-center gap-2 mb-3 text-xs font-bold text-muted-foreground uppercase tracking-widest">
                                                 <Package className="h-4 w-4 text-blue-500" /> Top Suppliers
                                             </div>
                                             <div className="space-y-2">
-                                                {channel.topSuppliers.map(([sup, amt], idx) => (
+                                                {channel.allSuppliers.slice(0, 3).map(([sup, amt], idx) => (
                                                     <div key={sup} className="flex justify-between items-center text-xs p-1.5 rounded bg-muted/20">
                                                         <span className="font-medium truncate"><span className="text-muted-foreground mr-1">{idx+1}.</span>{sup}</span>
                                                         <span className="font-mono font-bold text-blue-500/90">{formatPHP(amt)}</span>
@@ -172,16 +218,13 @@ function ChannelMatrixContent() {
                                                 ))}
                                             </div>
                                         </div>
-
                                         <Separator className="my-4" />
-
-                                        {/* Salesmen */}
                                         <div className="flex-1">
                                             <div className="flex items-center gap-2 mb-3 text-xs font-bold text-muted-foreground uppercase tracking-widest">
                                                 <User className="h-4 w-4 text-emerald-500" /> Top Reps
                                             </div>
                                             <div className="space-y-2">
-                                                {channel.topSalesmen.map(([man, amt], idx) => (
+                                                {channel.allSalesmen.slice(0, 3).map(([man, amt], idx) => (
                                                     <div key={man} className="flex justify-between items-center text-xs p-1.5 rounded bg-muted/20">
                                                         <span className="font-medium truncate"><span className="text-muted-foreground mr-1">{idx+1}.</span>{man}</span>
                                                         <span className="font-mono font-bold text-emerald-500/90">{formatPHP(amt)}</span>
@@ -189,7 +232,6 @@ function ChannelMatrixContent() {
                                                 ))}
                                             </div>
                                         </div>
-
                                     </div>
                                 </CardContent>
                             </Card>
@@ -197,6 +239,76 @@ function ChannelMatrixContent() {
                     })}
                 </div>
             )}
+
+            {/* --- MEGA MODAL (Fixed Scrolling) --- */}
+            <Dialog open={!!selectedChannel} onOpenChange={(open) => !open && setSelectedChannel(null)}>
+                {/* 1. FORCE FIXED HEIGHT: h-[90vh] */}
+                <DialogContent className="max-w-[95vw] md:max-w-7xl w-full h-[90vh] flex flex-col p-0 gap-0 overflow-hidden border-amber-500/20 shadow-2xl">
+
+                    {/* Header (Shrink 0 to never compress) */}
+                    <div className="bg-amber-500/10 p-6 lg:p-8 border-b border-amber-500/20 shrink-0 flex justify-between items-start">
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <Badge variant="outline" className="text-amber-600 border-amber-500/30 bg-amber-500/10 uppercase tracking-widest text-xs font-bold">
+                                    Channel Analysis
+                                </Badge>
+                                <span className="text-sm text-muted-foreground font-mono font-medium">{selectedDivision}</span>
+                            </div>
+                            <DialogTitle className="text-4xl lg:text-5xl font-black uppercase text-amber-500 tracking-tighter mt-3 flex items-center gap-3">
+                                <Store className="h-8 w-8 lg:h-10 lg:w-10" />
+                                {selectedChannel?.name}
+                            </DialogTitle>
+                            <DialogDescription className="text-foreground/80 font-medium mt-2 text-lg">
+                                Deep dive into store performance and key contributors.
+                            </DialogDescription>
+                        </div>
+                        <div className="text-right hidden sm:block">
+                            <div className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-1">Total Revenue</div>
+                            <div className="text-5xl font-black text-foreground tracking-tight">{selectedChannel && formatPHP(selectedChannel.total)}</div>
+                        </div>
+                    </div>
+
+                    {/* Content Container (Flex-1 to take remaining space, min-h-0 to allow internal scrolling) */}
+                    <div className="flex-1 flex flex-col min-h-0 bg-background">
+                        <Tabs defaultValue="stores" className="flex-1 flex flex-col min-h-0">
+
+                            {/* Tabs Toolbar (Shrink 0) */}
+                            <div className="flex items-center justify-between px-6 py-4 border-b border-border/50 shrink-0 gap-4 bg-muted/20">
+                                <TabsList className="grid w-full max-w-[400px] grid-cols-3">
+                                    <TabsTrigger value="stores">Stores</TabsTrigger>
+                                    <TabsTrigger value="suppliers">Suppliers</TabsTrigger>
+                                    <TabsTrigger value="salesmen">Sales Reps</TabsTrigger>
+                                </TabsList>
+                                <div className="relative w-full max-w-sm">
+                                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                                    <Input
+                                        placeholder="Search list..."
+                                        className="pl-9 h-9 bg-background border-muted-foreground/20 focus-visible:ring-amber-500"
+                                        value={modalSearch}
+                                        onChange={(e) => setModalSearch(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* 2. THE SCROLL FIX: Native overflow-y-auto on a flex-1 container */}
+                            {selectedChannel && (
+                                <div className="flex-1 overflow-y-auto p-6 lg:p-8 min-h-0">
+                                    <TabsContent value="stores" className="mt-0 max-w-5xl mx-auto">
+                                        {renderModalList(selectedChannel.allStores, <ShoppingCart className="h-5 w-5 text-muted-foreground" />, "Stores")}
+                                    </TabsContent>
+                                    <TabsContent value="suppliers" className="mt-0 max-w-5xl mx-auto">
+                                        {renderModalList(selectedChannel.allSuppliers, <Package className="h-5 w-5 text-blue-500" />, "Suppliers")}
+                                    </TabsContent>
+                                    <TabsContent value="salesmen" className="mt-0 max-w-5xl mx-auto">
+                                        {renderModalList(selectedChannel.allSalesmen, <User className="h-5 w-5 text-emerald-500" />, "Representatives")}
+                                    </TabsContent>
+                                </div>
+                            )}
+                        </Tabs>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
         </div>
     );
 }
