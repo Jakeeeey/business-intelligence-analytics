@@ -1,11 +1,11 @@
 "use client";
 
 import React, { useEffect, useState, useMemo, Suspense } from "react";
-import { 
-    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList 
+import {
+    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList
 } from 'recharts';
-import { 
-    Filter, TrendingDown, TrendingUp, Loader2, Calendar, ChevronRight, User2, ArrowLeft
+import {
+    Filter, Loader2, Calendar, ChevronRight, User2, ArrowLeft
 } from "lucide-react";
 import { format, startOfMonth, endOfMonth, parseISO } from "date-fns";
 import { useSearchParams } from "next/navigation";
@@ -18,21 +18,21 @@ import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 
 import { fetchManagerialData, fetchDynamicTargets } from "./providers/fetchProvider";
-import { VSalesPerformanceDataDto } from "../executive-health/types"; 
+import { VSalesPerformanceDataDto } from "../executive-health/types";
 
 // Custom component for the vertical dashed target line
 const CustomTargetLine = (props: any) => {
     const { x, y, width, height, value } = props;
     if (!value || value === 0) return null;
     return (
-        <line 
-            x1={x + width} 
-            y1={y - 2} 
-            x2={x + width} 
-            y2={y + height + 2} 
-            stroke="white" 
-            strokeWidth={2} 
-            strokeDasharray="3 3" 
+        <line
+            x1={x + width}
+            y1={y - 2}
+            x2={x + width}
+            y2={y + height + 2}
+            stroke="white"
+            strokeWidth={2}
+            strokeDasharray="3 3"
         />
     );
 };
@@ -44,8 +44,8 @@ function ManagerialSupplierContent() {
     const [fromMonth, setFromMonth] = useState(searchParams.get("from") || `${currentYear}-01`);
     const [toMonth, setToMonth] = useState(searchParams.get("to") || format(new Date(), "yyyy-MM"));
     const [selectedDivision, setSelectedDivision] = useState<string>(searchParams.get("division") || "Dry Goods");
-    
-    // NEW: State for Drill-down
+
+    // Drill-down State
     const [selectedSupplier, setSelectedSupplier] = useState<string | null>(null);
 
     const [loading, setLoading] = useState(true);
@@ -58,7 +58,7 @@ function ManagerialSupplierContent() {
         salesmanTargets: [] 
     });
 
-    // 1. Fetch Metadata and Actuals
+    // 1. Fetch Data
     useEffect(() => {
         const loadActuals = async () => {
             setLoading(true);
@@ -108,11 +108,12 @@ function ManagerialSupplierContent() {
         return Array.from(new Set(rawData.map(d => d.divisionName))).sort();
     }, [rawData, allDivisions]);
 
-    // 1. Data Processing for Suppliers
+    // 2. Data Processing for Suppliers (Level 1)
     const { supplierPerformance, divisionSummary } = useMemo(() => {
         const start = parseISO(fromMonth + "-01");
         const end = parseISO(toMonth + "-01");
-        const months = Math.max(1, (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth()) + 1);
+
+        // Filter by Division
         const filtered = rawData.filter(d => d.divisionName === selectedDivision);
 
         const salesMap = new Map<string, number>();
@@ -120,7 +121,7 @@ function ManagerialSupplierContent() {
             salesMap.set(item.supplierName, (salesMap.get(item.supplierName) || 0) + (item.netAmount || 0));
         });
 
-        // 2. Map Dynamic Targets
+        // Map Dynamic Targets
         const perf = Array.from(salesMap.entries()).map(([name, sales]) => {
             const rawItem = filtered.find(d => d.supplierName === name);
             const supplierId = rawItem?.supplierId;
@@ -132,12 +133,12 @@ function ManagerialSupplierContent() {
             });
             const target = relevantTargets?.reduce((sum: number, t: any) => sum + (t.target_amount || 0), 0) || 0;
 
-            return { 
-                name, 
-                sales, 
-                target, 
-                achievement: target > 0 ? (sales / target) * 100 : 0, 
-                status: target > 0 ? (sales >= target ? "HIT" : "MISS") : "SET" 
+            return {
+                name,
+                sales,
+                target,
+                achievement: target > 0 ? (sales / target) * 100 : 0,
+                status: target > 0 ? (sales >= target ? "HIT" : "MISS") : "SET"
             };
         }).sort((a, b) => b.sales - a.sales);
 
@@ -149,35 +150,36 @@ function ManagerialSupplierContent() {
         // Sum from target_setting_supplier
         const totalSupplierTarget = perf.reduce((s, i) => s + i.target, 0);
 
-        return { 
-            supplierPerformance: perf, 
-            divisionSummary: { 
-                totalActual, 
-                totalDivisionTarget, 
-                totalSupplierTarget,
-                achievement: totalDivisionTarget > 0 ? (totalActual / totalDivisionTarget) * 100 : 0 
-            }
+        return {
+            supplierPerformance: perf,
+            divisionSummary: { totalActual, totalTarget, achievement: totalTarget > 0 ? (totalActual / totalTarget) * 100 : 0 }
         };
     }, [rawData, selectedDivision, fromMonth, toMonth, targets]);
 
-    // 2. Data Processing for Salesman (Specific to selected supplier)
+    // 3. Data Processing for Salesman (Level 2 - Drill Down)
+    // ✅ FIX APPLIED HERE: Added divisionName check to filter
     const salesmanBreakdown = useMemo(() => {
         if (!selectedSupplier) return [];
-        
+
         const start = parseISO(fromMonth + "-01");
         const end = parseISO(toMonth + "-01");
-        
-        const filtered = rawData.filter(d => d.supplierName === selectedSupplier);
+
+        // ✅ CRITICAL FIX: Ensure we only get salesmen for the ACTIVE Division
+        const filtered = rawData.filter(d =>
+            d.supplierName === selectedSupplier &&
+            d.divisionName === selectedDivision
+        );
+
         const supplierId = filtered[0]?.supplierId;
-        
+
         const salesmanMap = new Map<string, { sales: number, salesmanId: number }>();
 
         filtered.forEach(item => {
             const name = item.salesmanName || "Unknown Salesman";
             const current = salesmanMap.get(name) || { sales: 0, salesmanId: item.salesmanId };
-            salesmanMap.set(name, { 
-                sales: current.sales + (item.netAmount || 0), 
-                salesmanId: item.salesmanId 
+            salesmanMap.set(name, {
+                sales: current.sales + (item.netAmount || 0),
+                salesmanId: item.salesmanId
             });
         });
 
@@ -198,49 +200,25 @@ function ManagerialSupplierContent() {
                 let relevantSalesmanTargets = targets.salesmanTargets?.filter((t: any) => {
                     const targetDate = parseISO(t.fiscal_period);
                     return (
-                        t.salesman_id === data.salesmanId && 
+                        t.salesman_id === data.salesmanId &&
                         t.supplier_id === supplierId &&
-                        targetDate >= start && 
+                        targetDate >= start &&
                         targetDate <= end
                     );
                 });
-                
-                // Fallback: Use hierarchy if supplier_id is missing
-                if (!relevantSalesmanTargets || relevantSalesmanTargets.length === 0) {
-                    relevantSalesmanTargets = targets.salesmanTargets?.filter((t: any) => {
-                        const targetDate = parseISO(t.fiscal_period);
-                        if (t.salesman_id !== data.salesmanId || targetDate < start || targetDate > end) {
-                            return false;
-                        }
-                        
-                        // Find supervisor target via ts_supervisor_id
-                        const supervisorTarget = targets.supervisorTargets?.find((sv: any) => sv.id === t.ts_supervisor_id);
-                        if (!supervisorTarget) return false;
-                        
-                        // Find supplier target via tss_id
-                        const supplierTarget = targets.supplierTargets?.find((sp: any) => sp.id === supervisorTarget.tss_id);
-                        return supplierTarget?.supplier_id === supplierId;
-                    });
-                }
-                
+
                 const target = relevantSalesmanTargets?.reduce((sum: number, t: any) => sum + (t.target_amount || 0), 0) || 0;
-                
-                console.log(`[Salesman] ${name} (ID: ${data.salesmanId}):`, {
+
+                return {
+                    name,
                     sales: data.sales,
                     target,
-                    matchedTargets: relevantSalesmanTargets?.length || 0
-                });
-                
-                return { 
-                    name, 
-                    sales: data.sales, 
-                    target,
                     achievement: target > 0 ? (data.sales / target) * 100 : 0,
-                    status: target > 0 ? (data.sales >= target ? "HIT" : "MISS") : "SET" 
+                    status: target > 0 ? (data.sales >= target ? "HIT" : "MISS") : "SET"
                 };
             })
             .sort((a, b) => b.sales - a.sales);
-    }, [rawData, selectedSupplier, targets, fromMonth, toMonth]);
+    }, [rawData, selectedSupplier, targets, selectedDivision]); // 👈 Added selectedDivision dependency
 
     const formatPHP = (val: number) => new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 0 }).format(val);
     const formatShort = (val: number) => {
@@ -257,8 +235,8 @@ function ManagerialSupplierContent() {
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                 <div>
                     <div className="flex items-center gap-2 text-muted-foreground mb-1 text-sm">
-                        <span>BIA</span> <ChevronRight className="h-3 w-3" /> 
-                        <span>Reports</span> <ChevronRight className="h-3 w-3" /> 
+                        <span>BIA</span> <ChevronRight className="h-3 w-3" />
+                        <span>Reports</span> <ChevronRight className="h-3 w-3" />
                         <span className="text-foreground font-medium">Supplier Analytics</span>
                     </div>
                     <h2 className="text-3xl font-bold tracking-tight">Managerial Dashboard</h2>
@@ -273,7 +251,10 @@ function ManagerialSupplierContent() {
                     </div>
                     <div className="flex items-center gap-2 px-2">
                         <Filter className="h-4 w-4 text-muted-foreground" />
-                        <Select value={selectedDivision} onValueChange={setSelectedDivision}>
+                        <Select value={selectedDivision} onValueChange={(val) => {
+                            setSelectedDivision(val);
+                            setSelectedSupplier(null); // Reset drilldown on division change
+                        }}>
                             <SelectTrigger className="w-[160px] h-8 border-none bg-transparent shadow-none text-sm font-medium">
                                 <SelectValue />
                             </SelectTrigger>
@@ -337,9 +318,9 @@ function ManagerialSupplierContent() {
                     </CardHeader>
                     <CardContent className="h-[550px] pt-4">
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart 
-                                data={selectedSupplier ? salesmanBreakdown.slice(0, 10) : supplierPerformance.slice(0, 10)} 
-                                layout="vertical" 
+                            <BarChart
+                                data={selectedSupplier ? salesmanBreakdown.slice(0, 10) : supplierPerformance.slice(0, 10)}
+                                layout="vertical"
                                 margin={{ left: 50, right: 80 }}
                                 barGap="-100%"
                                 barCategoryGap="30%"
@@ -363,9 +344,9 @@ function ManagerialSupplierContent() {
                                 </Bar>
                                 <Bar dataKey="sales" name="Actual" barSize={32} radius={[0, 6, 6, 0]} minPointSize={2}>
                                     {(selectedSupplier ? salesmanBreakdown : supplierPerformance).slice(0, 10).map((entry: any, index) => (
-                                        <Cell 
-                                            key={`cell-${index}`} 
-                                            fill={entry.sales < 0 ? 'hsl(var(--destructive))' : entry.sales >= entry.target ? '#10b981' : '#f59e0b'} 
+                                        <Cell
+                                            key={`cell-${index}`}
+                                            fill={selectedSupplier ? '#3b82f6' : (entry.sales < 0 ? 'hsl(var(--destructive))' : entry.sales >= entry.target ? '#10b981' : '#f59e0b')}
                                         />
                                     ))}
                                     <LabelList dataKey="sales" position="right" formatter={(v: number) => formatShort(v)} style={{ fontSize: '12px', fontWeight: '700', fill: 'hsl(var(--foreground))' }} offset={14} />
@@ -383,8 +364,8 @@ function ManagerialSupplierContent() {
                     <CardContent className="p-0">
                         <div className="max-h-[550px] overflow-y-auto px-6 pb-6 space-y-4">
                             {(selectedSupplier ? salesmanBreakdown : supplierPerformance).map((item: any, i) => (
-                                <div 
-                                    key={i} 
+                                <div
+                                    key={i}
                                     className={`group p-4 rounded-xl border border-transparent hover:border-border hover:bg-muted/50 transition-all ${!selectedSupplier ? 'cursor-pointer' : ''}`}
                                     onClick={() => !selectedSupplier && setSelectedSupplier(item.name)}
                                 >

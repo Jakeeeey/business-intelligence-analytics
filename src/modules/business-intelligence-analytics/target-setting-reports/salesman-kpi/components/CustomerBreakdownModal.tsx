@@ -33,13 +33,13 @@ interface CustomerBreakdownModalProps {
 }
 
 export function CustomerBreakdownModal({
-    isOpen,
-    onClose,
-    data,
-    salesmanName,
-    supplierName,
-    periodLabel
-}: CustomerBreakdownModalProps) {
+                                           isOpen,
+                                           onClose,
+                                           data,
+                                           salesmanName,
+                                           supplierName,
+                                           periodLabel
+                                       }: CustomerBreakdownModalProps) {
     const [searchTerm, setSearchTerm] = useState("");
 
     const { customerMetrics, totalSales, uniqueCustomers } = useMemo(() => {
