@@ -50,63 +50,29 @@ function ManagerialSupplierContent() {
 
     const [loading, setLoading] = useState(true);
     const [rawData, setRawData] = useState<VSalesPerformanceDataDto[]>([]);
-    const [allDivisions, setAllDivisions] = useState<any[]>([]);
-    const [targets, setTargets] = useState<any>({ 
-        divisionTargets: [], 
-        supplierTargets: [], 
-        supervisorTargets: [], 
-        salesmanTargets: [] 
-    });
+    const [targets, setTargets] = useState<any>({ supplierTargets: [], salesmanTargets: [] });
 
     // 1. Fetch Data
     useEffect(() => {
-        const loadActuals = async () => {
+        const load = async () => {
             setLoading(true);
             try {
                 const start = format(startOfMonth(parseISO(fromMonth + "-01")), "yyyy-MM-dd");
                 const end = format(endOfMonth(parseISO(toMonth + "-01")), "yyyy-MM-dd");
+
                 const data = await fetchManagerialData(start, end);
                 setRawData(data);
-                
-                // Also fetch all divisions metadata for robust ID lookup
-                const metaRes = await fetch("/api/bia/metadata/divisions");
-                const metaData = await metaRes.json();
-                setAllDivisions(metaData.data || []);
+
+                // Scope targets to selected division
+                const divItem = data.find(d => d.divisionName === selectedDivision);
+                const targetData = await fetchDynamicTargets(start, end, divItem?.divisionId);
+                setTargets(targetData);
             } catch (err) { console.error(err); } finally { setLoading(false); }
         };
-        loadActuals();
+        load();
     }, [fromMonth, toMonth]);
 
-    // 2. Fetch Targets (Depends on Period AND Selected Division)
-    useEffect(() => {
-        const loadTargets = async () => {
-            const start = format(startOfMonth(parseISO(fromMonth + "-01")), "yyyy-MM-dd");
-            const end = format(endOfMonth(parseISO(toMonth + "-01")), "yyyy-MM-dd");
-            
-            // Robust lookup for divisionId: use metadata first, fallback to rawData
-            const divFromMeta = allDivisions.find(d => d.division_name === selectedDivision);
-            const divFromData = rawData.find(d => d.divisionName === selectedDivision);
-            const divisionId = divFromMeta?.division_id || divFromData?.divisionId;
-
-            try {
-                const targetData = await fetchDynamicTargets(start, end, divisionId);
-                setTargets(targetData);
-            } catch (err) { console.error(err); }
-        };
-        
-        // Only fetch targets if we have from/to month (and preferably after divisions metadata is loaded)
-        if (fromMonth && toMonth) {
-            loadTargets();
-        }
-    }, [fromMonth, toMonth, selectedDivision, allDivisions]);
-
-    // Use metadata for division list if available, otherwise fallback to rawData
-    const divisions = useMemo(() => {
-        if (allDivisions.length > 0) {
-            return Array.from(new Set(allDivisions.map(d => d.division_name))).sort() as string[];
-        }
-        return Array.from(new Set(rawData.map(d => d.divisionName))).sort();
-    }, [rawData, allDivisions]);
+    const divisions = useMemo(() => Array.from(new Set(rawData.map(d => d.divisionName))).sort(), [rawData]);
 
     // 2. Data Processing for Suppliers (Level 1)
     const { supplierPerformance, divisionSummary } = useMemo(() => {
@@ -143,12 +109,7 @@ function ManagerialSupplierContent() {
         }).sort((a, b) => b.sales - a.sales);
 
         const totalActual = perf.reduce((s, i) => s + i.sales, 0);
-        
-        // Sum from target_setting_division
-        const totalDivisionTarget = targets.divisionTargets?.reduce((sum: number, t: any) => sum + (t.target_amount || 0), 0) || 0;
-        
-        // Sum from target_setting_supplier
-        const totalSupplierTarget = perf.reduce((s, i) => s + i.target, 0);
+        const totalTarget = perf.reduce((s, i) => s + i.target, 0);
 
         return {
             supplierPerformance: perf,
@@ -183,21 +144,9 @@ function ManagerialSupplierContent() {
             });
         });
 
-        console.log('[Managerial Supplier] Salesman Breakdown Debug:', {
-            selectedSupplier,
-            supplierId,
-            salesmanCount: salesmanMap.size,
-            allTargets: targets.salesmanTargets,
-            supervisorTargets: targets.supervisorTargets,
-            supplierTargets: targets.supplierTargets,
-            fromMonth,
-            toMonth
-        });
-
         return Array.from(salesmanMap.entries())
             .map(([name, data]) => {
-                // Primary lookup: use denormalized supplier_id
-                let relevantSalesmanTargets = targets.salesmanTargets?.filter((t: any) => {
+                const relevantSalesmanTargets = targets.salesmanTargets?.filter((t: any) => {
                     const targetDate = parseISO(t.fiscal_period);
                     return (
                         t.salesman_id === data.salesmanId &&
@@ -267,38 +216,12 @@ function ManagerialSupplierContent() {
             </div>
 
             {/* --- METRIC STRIP --- */}
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                <Card className="border-primary/20 bg-primary/5">
-                    <CardContent className="p-4">
-                        <p className="text-xs font-semibold text-primary uppercase">Actual Sales</p>
-                        <p className="text-2xl font-bold">{formatPHP(divisionSummary.totalActual)}</p>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="p-4">
-                        <p className="text-xs font-semibold text-muted-foreground uppercase">Div. Target</p>
-                        <p className="text-2xl font-bold">{formatPHP(divisionSummary.totalDivisionTarget)}</p>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="p-4">
-                        <p className="text-xs font-semibold text-muted-foreground uppercase">Supp. Allocated</p>
-                        <p className="text-2xl font-bold">{formatPHP(divisionSummary.totalSupplierTarget)}</p>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="p-4">
-                        <p className="text-xs font-semibold text-muted-foreground uppercase">Achievement</p>
-                        <p className="text-2xl font-bold">{divisionSummary.achievement.toFixed(1)}%</p>
-                    </CardContent>
-                </Card>
-                <Card className={divisionSummary.totalActual > divisionSummary.totalDivisionTarget ? "border-emerald-500/50 bg-emerald-500/5" : "border-destructive/50 bg-destructive/5"}>
-                    <CardContent className="p-4">
-                        <p className="text-xs font-semibold uppercase opacity-70">Gap (Div)</p>
-                        <p className="text-2xl font-bold text-foreground">
-                            {formatPHP(divisionSummary.totalActual - divisionSummary.totalDivisionTarget)}
-                        </p>
-                    </CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <Card className="border-primary/20"><CardContent className="p-4"><p className="text-xs font-semibold text-primary uppercase">Actual</p><p className="text-2xl font-bold">{formatPHP(divisionSummary.totalActual)}</p></CardContent></Card>
+                <Card><CardContent className="p-4"><p className="text-xs font-semibold text-muted-foreground uppercase">Target</p><p className="text-2xl font-bold">{formatPHP(divisionSummary.totalTarget)}</p></CardContent></Card>
+                <Card><CardContent className="p-4"><p className="text-xs font-semibold text-muted-foreground uppercase">Achievement</p><p className="text-2xl font-bold">{divisionSummary.achievement.toFixed(1)}%</p></CardContent></Card>
+                <Card className={divisionSummary.totalActual > divisionSummary.totalTarget ? "border-emerald-500/50" : "border-destructive/50"}>
+                    <CardContent className="p-4"><p className="text-xs font-semibold uppercase opacity-70">Gap</p><p className="text-2xl font-bold">{formatPHP(divisionSummary.totalActual - divisionSummary.totalTarget)}</p></CardContent>
                 </Card>
             </div>
 
@@ -334,15 +257,13 @@ function ManagerialSupplierContent() {
                                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" strokeOpacity={0.5} />
                                 <XAxis type="number" hide />
                                 <YAxis type="category" dataKey="name" width={140} fontSize={11} tick={{ fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
-                                    <Tooltip 
-                                        cursor={{ fill: 'transparent' }} 
-                                        formatter={(v: any, name: string) => [formatPHP(v), name]}
-                                    />
+                                <Tooltip formatter={(v: any) => formatPHP(v)} cursor={{ fill: 'hsl(var(--muted)/0.2)' }} />
                                 {/* Underlay Target Bar */}
-                                <Bar dataKey="target" name="Target" barSize={32} fill="#3b82f6" fillOpacity={0.15} radius={[0, 6, 6, 0]}>
+                                <Bar dataKey="target" barSize={32} fill="#3b82f6" fillOpacity={0.15} radius={[0, 6, 6, 0]}>
                                     <LabelList dataKey="target" content={<CustomTargetLine />} />
                                 </Bar>
-                                <Bar dataKey="sales" name="Actual" barSize={32} radius={[0, 6, 6, 0]} minPointSize={2}>
+                                {/* Overlay Sales Bar */}
+                                <Bar dataKey="sales" barSize={32} radius={[0, 6, 6, 0]} minPointSize={2}>
                                     {(selectedSupplier ? salesmanBreakdown : supplierPerformance).slice(0, 10).map((entry: any, index) => (
                                         <Cell
                                             key={`cell-${index}`}
