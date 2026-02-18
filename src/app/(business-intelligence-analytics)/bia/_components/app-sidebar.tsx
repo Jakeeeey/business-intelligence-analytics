@@ -118,8 +118,8 @@ const data = {
                     url: "#",
                     icon: Truck,
                     items: [
-                        { title: "Lead Time Variance", url: "/bia/scm/supplier-reliability/lead-time-variance", icon: Timer },
-                        { title: "Fulfillment Rate", url: "/bia/scm/supplier-reliability/fulfillment-rate", icon: Percent },
+                        { title: "Lead Time Variance", url: "/bia/scm/supplier-reliability-scorecard/lead-time-variance", icon: Timer },
+                        { title: "Fulfillment Rate", url: "/bia/scm/supplier-reliability-scorecard/fulfillment-rate", icon: Percent },
                     ],
                 },
             ],
