@@ -1,54 +1,58 @@
 "use client";
 
 import React, { useMemo } from "react";
-import { Filter, Calendar, ChevronRight } from "lucide-react";
 
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/new-data-table";
-import { ColumnDef } from "@tanstack/react-table";
 
+import { parse } from "date-fns";
 import { useScmFilters } from "@/modules/business-intelligence-analytics/scm/providers/ScmFilterProvider";
 import { useFulfillmentRate } from "./hooks/useFulfillmentRate";
 import FulfillmentRateSkeleton from "@/app/(business-intelligence-analytics)/bia/_components/FulfillmentRateSkeleton";
 
 // Sub-components
-import { FulfillmentRateMetrics } from "./components/cards/FulfillmentRateMetrics";
+import { FulfillmentRateMetrics } from "./components/cards/FulfillmentRateMetricsCard";
 import { FulfillmentRateChart } from "./components/charts/FulfillmentRateChart";
+import { columns } from "./components/data-table/Columns";
+import { ScmAdvancedFilters } from "@/modules/business-intelligence-analytics/scm/components/filters/ScmAdvancedFilters";
 
 export default function FulfillmentRatePage() {
-  const {
-    fromMonth,
-    setFromMonth,
-    toMonth,
-    setToMonth,
-    selectedSupplier,
-    setSelectedSupplier,
-  } = useScmFilters();
+  const { dateRange, setDateRange, selectedSupplier, setSelectedSupplier } =
+    useScmFilters();
 
   const { data, isLoading } = useFulfillmentRate();
 
+  // Derives the full list of suppliers from the date-filtered data
   const suppliers = useMemo(() => {
     const set = new Set(data.map((d) => d.supplierName));
     return Array.from(set).sort();
   }, [data]);
 
+  // Local filtering by supplier and date
+  const filteredData = useMemo(() => {
+    let result = data;
+
+    if (selectedSupplier !== "all") {
+      result = result.filter((d) => d.supplierName === selectedSupplier);
+    }
+
+    if (dateRange?.from || dateRange?.to) {
+      result = result.filter((d) => {
+        try {
+          const poDate = parse(d.poDate, "yyyy-MM-dd", new Date());
+          const isAfterFrom = !dateRange.from || poDate >= dateRange.from;
+          const isBeforeTo = !dateRange.to || poDate <= dateRange.to;
+          return isAfterFrom && isBeforeTo;
+        } catch {
+          return true;
+        }
+      });
+    }
+
+    return result;
+  }, [data, selectedSupplier, dateRange]);
+
   const metrics = useMemo(() => {
-    if (data.length === 0)
+    if (filteredData.length === 0)
       return {
         avgFulfillmentRate: 0,
         suppliersBelow95Count: 0,
@@ -57,23 +61,33 @@ export default function FulfillmentRatePage() {
         totalFulfillmentPct: 0,
       };
 
-    const totalFulfillment = data.reduce(
-      (acc, curr) => acc + curr.fulfillmentPct,
+    const poFulfillmentRates = filteredData.map((d) =>
+      d.totalOrderedQty > 0
+        ? (d.totalReceivedQty / d.totalOrderedQty) * 100
+        : 0,
+    );
+
+    const totalFulfillment = poFulfillmentRates.reduce(
+      (acc, curr) => acc + curr,
       0,
     );
-    const avgFulfillmentRate = totalFulfillment / data.length;
+    const avgFulfillmentRate = totalFulfillment / filteredData.length;
 
     const supplierStats = new Map<
       string,
       { totalPct: number; count: number }
     >();
-    data.forEach((d) => {
+    filteredData.forEach((d) => {
       const current = supplierStats.get(d.supplierName) || {
         totalPct: 0,
         count: 0,
       };
+      const poRate =
+        d.totalOrderedQty > 0
+          ? (d.totalReceivedQty / d.totalOrderedQty) * 100
+          : 0;
       supplierStats.set(d.supplierName, {
-        totalPct: current.totalPct + d.fulfillmentPct,
+        totalPct: current.totalPct + poRate,
         count: current.count + 1,
       });
     });
@@ -87,20 +101,24 @@ export default function FulfillmentRatePage() {
       avgFulfillmentRate,
       suppliersBelow95Count: below95Count,
       totalSuppliers: supplierStats.size,
-      totalPOs: data.length,
+      totalPOs: filteredData.length,
       totalFulfillmentPct: avgFulfillmentRate,
     };
-  }, [data]);
+  }, [filteredData]);
 
   const chartData = useMemo(() => {
     const supplierMap = new Map<string, { totalPct: number; count: number }>();
-    data.forEach((d) => {
+    filteredData.forEach((d) => {
       const current = supplierMap.get(d.supplierName) || {
         totalPct: 0,
         count: 0,
       };
+      const poRate =
+        d.totalOrderedQty > 0
+          ? (d.totalReceivedQty / d.totalOrderedQty) * 100
+          : 0;
       supplierMap.set(d.supplierName, {
-        totalPct: current.totalPct + d.fulfillmentPct,
+        totalPct: current.totalPct + poRate,
         count: current.count + 1,
       });
     });
@@ -111,7 +129,7 @@ export default function FulfillmentRatePage() {
         fulfillmentRate: val.totalPct / val.count,
       }))
       .sort((a, b) => a.fulfillmentRate - b.fulfillmentRate);
-  }, [data]);
+  }, [filteredData]);
 
   const tableData = useMemo(() => {
     const supplierMap = new Map<
@@ -120,27 +138,33 @@ export default function FulfillmentRatePage() {
         totalPOs: number;
         totalOrdered: number;
         totalReceived: number;
-        totalFulfillment: number;
+        totalFulfillmentPct: number;
       }
     >();
 
-    data.forEach((d) => {
+    filteredData.forEach((d) => {
       const current = supplierMap.get(d.supplierName) || {
         totalPOs: 0,
         totalOrdered: 0,
         totalReceived: 0,
-        totalFulfillment: 0,
+        totalFulfillmentPct: 0,
       };
+
+      const poRate =
+        d.totalOrderedQty > 0
+          ? (d.totalReceivedQty / d.totalOrderedQty) * 100
+          : 0;
+
       supplierMap.set(d.supplierName, {
         totalPOs: current.totalPOs + 1,
         totalOrdered: current.totalOrdered + d.totalOrderedQty,
         totalReceived: current.totalReceived + d.totalReceivedQty,
-        totalFulfillment: current.totalFulfillment + d.fulfillmentPct,
+        totalFulfillmentPct: current.totalFulfillmentPct + poRate,
       });
     });
 
     return Array.from(supplierMap.entries()).map(([name, val]) => {
-      const rate = val.totalFulfillment / val.totalPOs;
+      const rate = val.totalFulfillmentPct / val.totalPOs;
       const shortfall = val.totalOrdered - val.totalReceived;
       return {
         supplierName: name,
@@ -152,71 +176,7 @@ export default function FulfillmentRatePage() {
         status: rate >= 95 ? "Good" : "Below Target",
       };
     });
-  }, [data]);
-
-  const columns: ColumnDef<any>[] = [
-    {
-      accessorKey: "supplierName",
-      header: "Supplier Name",
-      cell: ({ row }) => (
-        <span className="font-medium">{row.original.supplierName}</span>
-      ),
-    },
-    {
-      accessorKey: "totalPOs",
-      header: "Total POs",
-    },
-    {
-      accessorKey: "fulfillmentRate",
-      header: "Fulfillment Rate",
-      cell: ({ row }) => (
-        <span
-          className={
-            row.original.fulfillmentRate < 95
-              ? "text-destructive font-bold"
-              : "text-emerald-600 font-bold"
-          }
-        >
-          {row.original.fulfillmentRate.toFixed(1)}%
-        </span>
-      ),
-    },
-    {
-      accessorKey: "totalOrdered",
-      header: "Total Ordered",
-      cell: ({ row }) => row.original.totalOrdered.toLocaleString(),
-    },
-    {
-      accessorKey: "totalReceived",
-      header: "Total Received",
-      cell: ({ row }) => row.original.totalReceived.toLocaleString(),
-    },
-    {
-      accessorKey: "shortfall",
-      header: "Shortfall",
-      cell: ({ row }) => (
-        <span className={row.original.shortfall > 0 ? "text-destructive" : ""}>
-          {row.original.shortfall.toLocaleString()}
-        </span>
-      ),
-    },
-    {
-      accessorKey: "status",
-      header: "Status",
-      cell: ({ row }) => (
-        <Badge
-          variant={row.original.status === "Good" ? "outline" : "destructive"}
-          className={
-            row.original.status === "Good"
-              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-              : ""
-          }
-        >
-          {row.original.status}
-        </Badge>
-      ),
-    },
-  ];
+  }, [filteredData]);
 
   if (isLoading) return <FulfillmentRateSkeleton />;
 
@@ -229,63 +189,18 @@ export default function FulfillmentRatePage() {
           </h2>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 bg-card border rounded-xl p-2 shadow-sm">
-          <div className="flex items-center gap-2 px-2 border-r">
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-            <Input
-              type="month"
-              value={fromMonth}
-              onChange={(e) => setFromMonth(e.target.value)}
-              className="w-32 border-none h-8 text-sm focus-visible:ring-0"
-            />
-            <span className="text-muted-foreground text-xs">-</span>
-            <Input
-              type="month"
-              value={toMonth}
-              onChange={(e) => setToMonth(e.target.value)}
-              className="w-32 border-none h-8 text-sm focus-visible:ring-0"
-            />
-          </div>
-          <div className="flex items-center gap-2 px-2">
-            <Filter className="h-4 w-4 text-muted-foreground" />
-            <Select
-              value={selectedSupplier}
-              onValueChange={setSelectedSupplier}
-            >
-              <SelectTrigger className="w-[180px] h-8 border-none shadow-none text-sm font-medium">
-                <SelectValue placeholder="Select Supplier" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Suppliers</SelectItem>
-                {suppliers.map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {s}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
+        <ScmAdvancedFilters suppliers={suppliers} />
       </div>
 
       <FulfillmentRateMetrics metrics={metrics} />
-
       <FulfillmentRateChart data={chartData} />
 
-      <Card className="shadow-sm border-none bg-transparent">
-        <CardHeader className="px-0">
-          <CardTitle>Detailed Fulfillment Performance</CardTitle>
-          <CardDescription>
-            Complete metrics for all suppliers in selected period
-          </CardDescription>
-        </CardHeader>
-        <DataTable
-          columns={columns}
-          data={tableData}
-          searchKey="supplierName"
-          isLoading={isLoading}
-        />
-      </Card>
+      <DataTable
+        columns={columns}
+        data={tableData}
+        searchKey="supplierName"
+        isLoading={isLoading}
+      />
     </div>
   );
 }

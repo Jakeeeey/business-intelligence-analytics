@@ -32,7 +32,9 @@ The module uses the existing user session for authentication:
 
 Shared filtering is handled by `ScmFilterProvider.tsx`, located in `src/modules/business-intelligence-analytics/scm/providers/`.
 
-- Supported Filters: `fromMonth`, `toMonth`, `selectedSupplier`.
+- **Component**: Uses `ScmDateRangePicker.tsx` (Shadcn-based calendar).
+- **Format**: Syncs `from` and `to` dates as `yyyy-MM-dd` strings in the URL.
+- **Provider**: Exposes `dateRange` object and `setDateRange` setter.
 
 ## UI Components
 
