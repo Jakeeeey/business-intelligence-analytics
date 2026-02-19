@@ -89,7 +89,8 @@ export function useExecutiveTargetSetting() {
           }));
 
           const joinedSupervisors = supAllocs.map(a => {
-            const u = usersMetadata.find(u => u.user_id === a.supervisor_user_id);
+            // Use loose comparison for ID match
+            const u = usersMetadata.find(u => String(u.user_id) === String(a.supervisor_user_id));
             const name = u ? `${u.user_fname || ''} ${u.user_lname || ''}`.trim() : `User #${a.supervisor_user_id}`;
             return { ...a, supervisor_name: name || `Supervisor #${a.supervisor_user_id}` };
           });
