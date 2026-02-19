@@ -77,7 +77,7 @@ export function FnsDistributionTab({ summary }: FnsDistributionTabProps) {
             <div className="flex flex-col gap-4 justify-center">
                 {/* Fast Movers — Green */}
                 <Card className="border-l-4 border-l-green-500">
-                    <CardContent className="flex items-center justify-between py-4 px-5">
+                    <CardContent className="flex items-center justify-between">
                         <div>
                             <h3 className="text-lg font-semibold text-green-700 dark:text-green-400">
                                 Fast Movers
@@ -100,7 +100,7 @@ export function FnsDistributionTab({ summary }: FnsDistributionTabProps) {
 
                 {/* Normal Movers — Blue */}
                 <Card className="border-l-4 border-l-blue-500">
-                    <CardContent className="flex items-center justify-between py-4 px-5">
+                    <CardContent className="flex items-center justify-between">
                         <div>
                             <h3 className="text-lg font-semibold text-blue-700 dark:text-blue-400">
                                 Normal Movers
@@ -123,7 +123,7 @@ export function FnsDistributionTab({ summary }: FnsDistributionTabProps) {
 
                 {/* Slow Movers — Red */}
                 <Card className="border-l-4 border-l-red-500">
-                    <CardContent className="flex items-center justify-between py-4 px-5">
+                    <CardContent className="flex items-center justify-between">
                         <div>
                             <h3 className="text-lg font-semibold text-red-700 dark:text-red-400">
                                 Slow Movers
