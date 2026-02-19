@@ -4,18 +4,10 @@
 import * as React from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import type { FnsSummary } from "../types";
 
-/**
- * Semantic color tokens from shadcn's CSS variable system.
- * Using hsl() references that map to the project's theme.
- */
-const PIE_COLORS = [
-    "hsl(var(--chart-2))", // green-ish for Fast
-    "hsl(var(--chart-1))", // blue-ish for Normal
-    "hsl(var(--chart-5))", // red-ish for Slow
-];
+/** Pie chart fill colors that work on both light and dark backgrounds */
+const PIE_COLORS = ["#22c55e", "#3b82f6", "#ef4444"]; // green-500, blue-500, red-500
 
 interface FnsDistributionTabProps {
     summary: FnsSummary;
@@ -77,13 +69,17 @@ export function FnsDistributionTab({ summary }: FnsDistributionTabProps) {
                 )}
             </div>
 
-            {/* ── KPI Cards ────────────────────────────────────── */}
+            {/* ── KPI Cards ───────────────────────────────────────
+                 Uses border-l for category color accent.
+                 Card bg stays as default bg-card (theme-aware).
+                 Badges use inline style to guarantee contrast in
+                 both light and dark mode without fighting shadcn. */}
             <div className="flex flex-col gap-4 justify-center">
-                {/* Fast Movers */}
-                <Card>
+                {/* Fast Movers — Green */}
+                <Card className="border-l-4 border-l-green-500">
                     <CardContent className="flex items-center justify-between py-4 px-5">
                         <div>
-                            <h3 className="text-lg font-semibold text-primary">
+                            <h3 className="text-lg font-semibold text-green-700 dark:text-green-400">
                                 Fast Movers
                             </h3>
                             <p className="text-sm text-muted-foreground">
@@ -93,17 +89,20 @@ export function FnsDistributionTab({ summary }: FnsDistributionTabProps) {
                                 Store in easily accessible locations for fast picking
                             </p>
                         </div>
-                        <Badge variant="default">
+                        <span
+                            className="inline-flex items-center rounded-full px-3 py-1 text-xs font-bold"
+                            style={{ backgroundColor: "#16a34a", color: "#ffffff" }}
+                        >
                             {fastCount} SKUs
-                        </Badge>
+                        </span>
                     </CardContent>
                 </Card>
 
-                {/* Normal Movers */}
-                <Card>
+                {/* Normal Movers — Blue */}
+                <Card className="border-l-4 border-l-blue-500">
                     <CardContent className="flex items-center justify-between py-4 px-5">
                         <div>
-                            <h3 className="text-lg font-semibold text-primary">
+                            <h3 className="text-lg font-semibold text-blue-700 dark:text-blue-400">
                                 Normal Movers
                             </h3>
                             <p className="text-sm text-muted-foreground">
@@ -113,17 +112,20 @@ export function FnsDistributionTab({ summary }: FnsDistributionTabProps) {
                                 Standard storage with balanced accessibility
                             </p>
                         </div>
-                        <Badge variant="secondary">
+                        <span
+                            className="inline-flex items-center rounded-full px-3 py-1 text-xs font-bold"
+                            style={{ backgroundColor: "#2563eb", color: "#ffffff" }}
+                        >
                             {normalCount} SKUs
-                        </Badge>
+                        </span>
                     </CardContent>
                 </Card>
 
-                {/* Slow Movers */}
-                <Card>
+                {/* Slow Movers — Red */}
+                <Card className="border-l-4 border-l-red-500">
                     <CardContent className="flex items-center justify-between py-4 px-5">
                         <div>
-                            <h3 className="text-lg font-semibold text-primary">
+                            <h3 className="text-lg font-semibold text-red-700 dark:text-red-400">
                                 Slow Movers
                             </h3>
                             <p className="text-sm text-muted-foreground">
@@ -133,9 +135,12 @@ export function FnsDistributionTab({ summary }: FnsDistributionTabProps) {
                                 Consider remote storage or inventory reduction
                             </p>
                         </div>
-                        <Badge variant="outline">
+                        <span
+                            className="inline-flex items-center rounded-full px-3 py-1 text-xs font-bold"
+                            style={{ backgroundColor: "#dc2626", color: "#ffffff" }}
+                        >
                             {slowCount} SKUs
-                        </Badge>
+                        </span>
                     </CardContent>
                 </Card>
             </div>

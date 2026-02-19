@@ -7,16 +7,6 @@ import { DataTable } from "@/components/ui/new-data-table";
 import { ColumnDef } from "@tanstack/react-table";
 import type { FnsEnrichedRow } from "../types";
 
-/**
- * Map FNS class to shadcn Badge variant.
- * No hardcoded colors — relies entirely on shadcn's variant system.
- */
-const FNS_BADGE_VARIANT: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
-    F: "default",
-    N: "secondary",
-    S: "destructive",
-};
-
 const FNS_LABELS: Record<string, string> = {
     F: "Fast",
     N: "Normal",
@@ -28,10 +18,10 @@ const FNS_LABELS: Record<string, string> = {
  * Columns: Rank, SKU, Product Name, Supplier, Pick Count, Category.
  *
  * All columns have `enableHiding: false` so the "View" column toggle
- * dropdown does not appear (revision #5: remove redundant View filter).
+ * dropdown does not appear.
  *
- * Rank uses the row index (+ 1) instead of the pre-computed rank,
- * so each tab's ranking restarts from 1 independently (revision #4).
+ * Rank uses the row index (+ 1) so each tab's ranking restarts
+ * from 1 independently.
  */
 const columns: ColumnDef<FnsEnrichedRow>[] = [
     {
@@ -84,8 +74,25 @@ const columns: ColumnDef<FnsEnrichedRow>[] = [
         enableHiding: false,
         cell: ({ row }) => {
             const cls = row.original.fnsClass;
+
+            // Inline styles guarantee badge contrast in both light & dark mode
+            const badgeColors: Record<string, { bg: string; text: string; border: string }> = {
+                F: { bg: "#dcfce7", text: "#15803d", border: "#86efac" }, // green tones
+                N: { bg: "#dbeafe", text: "#1d4ed8", border: "#93c5fd" }, // blue tones
+                S: { bg: "#fee2e2", text: "#b91c1c", border: "#fca5a5" }, // red tones
+            };
+
+            const colors = badgeColors[cls] || badgeColors.S;
+
             return (
-                <Badge variant={FNS_BADGE_VARIANT[cls] || "outline"}>
+                <Badge
+                    variant="outline"
+                    style={{
+                        backgroundColor: colors.bg,
+                        color: colors.text,
+                        borderColor: colors.border,
+                    }}
+                >
                     {FNS_LABELS[cls] || cls}
                 </Badge>
             );

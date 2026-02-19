@@ -211,7 +211,7 @@ export default function FnsAnalysisModule() {
                 <TabsContent value="fast">
                     <Card className="shadow-sm">
                         <CardHeader>
-                            <CardTitle>
+                            <CardTitle className="text-green-700 dark:text-green-400">
                                 Fast Movers
                             </CardTitle>
                             <CardDescription>
@@ -228,7 +228,7 @@ export default function FnsAnalysisModule() {
                 <TabsContent value="normal">
                     <Card className="shadow-sm">
                         <CardHeader>
-                            <CardTitle>
+                            <CardTitle className="text-blue-700 dark:text-blue-400">
                                 Normal Movers
                             </CardTitle>
                             <CardDescription>
@@ -245,7 +245,7 @@ export default function FnsAnalysisModule() {
                 <TabsContent value="slow">
                     <Card className="shadow-sm">
                         <CardHeader>
-                            <CardTitle>
+                            <CardTitle className="text-red-700 dark:text-red-400">
                                 Slow Movers
                             </CardTitle>
                             <CardDescription>
