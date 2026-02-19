@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
+import { format } from "date-fns";
 import { FulfillmentRatePo } from "../types/fulfillment-rate.schema";
 import { fetchFulfillmentRateData } from "../services/fulfillment-rate";
 import { useScmFilters } from "@/modules/business-intelligence-analytics/scm/providers/ScmFilterProvider";
 
 export function useFulfillmentRate() {
-  const { fromMonth, toMonth, selectedSupplier } = useScmFilters();
+  const { dateRange } = useScmFilters();
   const [data, setData] = useState<FulfillmentRatePo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -13,13 +14,19 @@ export function useFulfillmentRate() {
     setIsLoading(true);
     setError(null);
     try {
+      const fromFormatted = dateRange?.from
+        ? format(dateRange.from, "yyyy-MM-dd")
+        : "";
+      const toFormatted = dateRange?.to
+        ? format(dateRange.to, "yyyy-MM-dd")
+        : "";
+
+      // We only filter by date on the server to keep the full supplier list available for local switching
       const params: Record<string, string> = {
-        from: fromMonth,
-        to: toMonth,
+        from: fromFormatted,
+        to: toFormatted,
       };
-      if (selectedSupplier !== "all") {
-        params.supplier = selectedSupplier;
-      }
+
       const result = await fetchFulfillmentRateData(params);
       setData(result);
     } catch (err: any) {
@@ -27,7 +34,7 @@ export function useFulfillmentRate() {
     } finally {
       setIsLoading(false);
     }
-  }, [fromMonth, toMonth, selectedSupplier]);
+  }, [dateRange]); // Removed selectedSupplier as a dependency for the API call
 
   useEffect(() => {
     refresh();

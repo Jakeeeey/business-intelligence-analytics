@@ -1,15 +1,14 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
-import { format, startOfMonth } from "date-fns";
+import React, { createContext, useContext, useMemo } from "react";
+import { format, parse, startOfYear } from "date-fns";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import { DateRange } from "react-day-picker";
 
 interface ScmFilterContextType {
-  fromMonth: string;
-  toMonth: string;
+  dateRange: DateRange | undefined;
+  setDateRange: (range: DateRange | undefined) => void;
   selectedSupplier: string;
-  setFromMonth: (val: string) => void;
-  setToMonth: (val: string) => void;
   setSelectedSupplier: (val: string) => void;
 }
 
@@ -22,27 +21,53 @@ export function ScmFilterProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
-  const currentYear = new Date().getFullYear();
-  const fromMonth = searchParams.get("from") || `${currentYear}-01`;
-  const toMonth = searchParams.get("to") || format(new Date(), "yyyy-MM");
+  // Parse from URL or default to start of year -> now
+  const fromStr = searchParams.get("from");
+  const toStr = searchParams.get("to");
+
+  const dateRange = useMemo(() => {
+    try {
+      return {
+        from: fromStr
+          ? parse(fromStr, "yyyy-MM-dd", new Date())
+          : startOfYear(new Date()),
+        to: toStr ? parse(toStr, "yyyy-MM-dd", new Date()) : new Date(),
+      };
+    } catch {
+      return {
+        from: startOfYear(new Date()),
+        to: new Date(),
+      };
+    }
+  }, [fromStr, toStr]);
+
   const selectedSupplier = searchParams.get("supplier") || "all";
 
-  const updateFilters = (updates: Record<string, string>) => {
+  const updateFilters = (updates: Record<string, string | undefined>) => {
     const params = new URLSearchParams(searchParams.toString());
     Object.entries(updates).forEach(([key, value]) => {
-      params.set(key, value);
+      if (value) {
+        params.set(key, value);
+      } else {
+        params.delete(key);
+      }
     });
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  };
+
+  const setDateRange = (range: DateRange | undefined) => {
+    updateFilters({
+      from: range?.from ? format(range.from, "yyyy-MM-dd") : undefined,
+      to: range?.to ? format(range.to, "yyyy-MM-dd") : undefined,
+    });
   };
 
   return (
     <ScmFilterContext.Provider
       value={{
-        fromMonth,
-        toMonth,
+        dateRange,
+        setDateRange,
         selectedSupplier,
-        setFromMonth: (val) => updateFilters({ from: val }),
-        setToMonth: (val) => updateFilters({ to: val }),
         setSelectedSupplier: (val) => updateFilters({ supplier: val }),
       }}
     >
