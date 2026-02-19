@@ -33,13 +33,13 @@ interface CustomerBreakdownModalProps {
 }
 
 export function CustomerBreakdownModal({
-    isOpen,
-    onClose,
-    data,
-    salesmanName,
-    supplierName,
-    periodLabel
-}: CustomerBreakdownModalProps) {
+                                           isOpen,
+                                           onClose,
+                                           data,
+                                           salesmanName,
+                                           supplierName,
+                                           periodLabel
+                                       }: CustomerBreakdownModalProps) {
     const [searchTerm, setSearchTerm] = useState("");
 
     const { customerMetrics, totalSales, uniqueCustomers } = useMemo(() => {
@@ -65,7 +65,7 @@ export function CustomerBreakdownModal({
         };
     }, [data]);
 
-    const filteredCustomers = customerMetrics.filter(c => 
+    const filteredCustomers = customerMetrics.filter(c =>
         c.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
@@ -73,8 +73,8 @@ export function CustomerBreakdownModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="max-w-6xl w-full max-h-[85vh] flex flex-col bg-background/95 backdrop-blur-xl border-border/40 shadow-2xl">
-                <DialogHeader className="border-b border-border/40 pb-4">
+            <DialogContent className="sm:max-w-[95vw] w-full h-[94vh] flex flex-col overflow-hidden bg-background/95 backdrop-blur-xl border-border/40 shadow-2xl p-6">
+                <DialogHeader className="border-b border-border/40 pb-4 flex-shrink-0">
                     <div className="flex justify-between items-start pr-8">
                         <div>
                             <div className="flex items-center gap-2 text-muted-foreground text-xs uppercase tracking-[0.2em] font-bold mb-1">
@@ -97,7 +97,7 @@ export function CustomerBreakdownModal({
                     </div>
                 </DialogHeader>
 
-                <div className="grid grid-cols-2 gap-4 my-4">
+                <div className="grid grid-cols-2 gap-4 my-4 flex-shrink-0">
                     <Card className="bg-card/30 border-muted/40 shadow-sm backdrop-blur-sm">
                         <CardHeader className="py-3 px-4">
                             <CardTitle className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Total Sales</CardTitle>
@@ -121,7 +121,7 @@ export function CustomerBreakdownModal({
                     </Card>
                 </div>
 
-                <div className="flex items-center gap-2 mb-4 bg-muted/10 p-1 rounded-lg border border-border/40">
+                <div className="flex items-center gap-2 mb-4 bg-muted/10 p-1 rounded-lg border border-border/40 flex-shrink-0">
                     <Search className="h-4 w-4 text-muted-foreground ml-2" />
                     <Input
                         placeholder="FILTER CUSTOMERS..."
@@ -131,7 +131,7 @@ export function CustomerBreakdownModal({
                     />
                 </div>
 
-                <ScrollArea className="flex-1 border border-border/40 rounded-xl bg-card/10">
+                <ScrollArea className="flex-1 min-h-0 h-full border border-border/40 rounded-xl bg-card/10">
                     <Table>
                         <TableHeader className="bg-muted/30 sticky top-0 z-10 backdrop-blur-sm">
                             <TableRow className="hover:bg-transparent border-b border-border/40">
@@ -160,8 +160,8 @@ export function CustomerBreakdownModal({
                                                 <div className="flex flex-col items-end gap-1">
                                                     <span className="text-[9px] font-mono text-muted-foreground">{contribution.toFixed(1)}%</span>
                                                     <div className="w-full h-1 bg-muted/20 rounded-full overflow-hidden">
-                                                        <div 
-                                                            className="h-full bg-emerald-500/80" 
+                                                        <div
+                                                            className="h-full bg-emerald-500/80"
                                                             style={{ width: `${Math.min(contribution, 100)}%` }}
                                                         />
                                                     </div>
@@ -180,8 +180,8 @@ export function CustomerBreakdownModal({
                         </TableBody>
                     </Table>
                 </ScrollArea>
-                
-                <div className="mt-4 flex justify-between items-center text-[10px] uppercase font-bold text-muted-foreground">
+
+                <div className="mt-4 flex justify-between items-center text-[10px] uppercase font-bold text-muted-foreground flex-shrink-0">
                     <span>Generated via BIA</span>
                     <span>Showing top {filteredCustomers.length} records</span>
                 </div>
