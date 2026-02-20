@@ -67,7 +67,7 @@ export function LocationTab({ locationRevenue, filteredData }: LocationTabProps)
   const [sortBy, setSortBy] = React.useState<"location" | "revenue" | "transactions" | "avg">("revenue");
   const [sortOrder, setSortOrder] = React.useState<"asc" | "desc">("desc");
   const [currentPage, setCurrentPage] = React.useState(1);
-  const [itemsPerPage] = React.useState(10);
+  const [itemsPerPage, setItemsPerPage] = React.useState(10);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("en-US", {
@@ -495,8 +495,26 @@ export function LocationTab({ locationRevenue, filteredData }: LocationTabProps)
             </Table>
           </div>
           <div className="flex items-center justify-between px-2 py-4">
-            <div className="text-sm text-muted-foreground">
-              Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredLocations.length)} of {filteredLocations.length} locations
+            <div className="flex items-center gap-4">
+              <div className="text-sm text-muted-foreground">
+                Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredLocations.length)} of {filteredLocations.length} locations
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-muted-foreground">Show:</label>
+                <select
+                  className="h-8 rounded-md border border-input bg-background px-3 py-1 text-sm"
+                  value={itemsPerPage}
+                  onChange={(e) => {
+                    setItemsPerPage(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                >
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+              </div>
             </div>
             <div className="flex gap-1">
               <Button

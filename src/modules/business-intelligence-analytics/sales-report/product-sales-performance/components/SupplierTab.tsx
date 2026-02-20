@@ -196,7 +196,15 @@ export function SupplierTab({ supplierPerformance, topSuppliers }: SupplierTabPr
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={sortedTopSuppliers}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
+                <XAxis 
+                  dataKey="name" 
+                  angle={-45} 
+                  textAnchor="end" 
+                  height={120}
+                  interval={0}
+                  tick={{ fontSize: 11 }}
+                  style={{ whiteSpace: 'normal', wordWrap: 'break-word' }}
+                />
                 <YAxis tickFormatter={(value) => formatCurrency(value)} />
                 <ChartTooltip
                   content={

@@ -40,6 +40,59 @@ export function Filters(props: FiltersProps) {
     uniqueProvinces,
   } = props;
 
+  // Search states for each filter
+  const [supplierSearch, setSupplierSearch] = React.useState("");
+  const [productSearch, setProductSearch] = React.useState("");
+  const [citySearch, setCitySearch] = React.useState("");
+  const [provinceSearch, setProvinceSearch] = React.useState("");
+
+  // Group items by first word
+  const groupItems = (items: string[]) => {
+    const groups = new Map<string, string[]>();
+
+    items.forEach((item) => {
+      const firstWord = item.split(" ")[0];
+      if (!groups.has(firstWord)) {
+        groups.set(firstWord, []);
+      }
+      groups.get(firstWord)!.push(item);
+    });
+
+    return groups;
+  };
+
+  // Filter and group suppliers
+  // const filteredGroupedSuppliers = React.useMemo(() => {
+  //   const filtered = supplierSearch
+  //     ? uniqueSuppliers.filter((s) => s.toLowerCase().includes(supplierSearch.toLowerCase()))
+  //     : uniqueSuppliers;
+  //   return groupItems(filtered);
+  // }, [uniqueSuppliers, supplierSearch]);
+
+  // Filter and group products
+  const filteredGroupedProducts = React.useMemo(() => {
+    const filtered = productSearch
+      ? uniqueProducts.filter((p) => p.toLowerCase().includes(productSearch.toLowerCase()))
+      : uniqueProducts;
+    return groupItems(filtered);
+  }, [uniqueProducts, productSearch]);
+
+  // Filter and group cities
+  const filteredGroupedCities = React.useMemo(() => {
+    const filtered = citySearch
+      ? uniqueCities.filter((c) => c.toLowerCase().includes(citySearch.toLowerCase()))
+      : uniqueCities;
+    return groupItems(filtered);
+  }, [uniqueCities, citySearch]);
+
+  // Filter and group provinces
+  const filteredGroupedProvinces = React.useMemo(() => {
+    const filtered = provinceSearch
+      ? uniqueProvinces.filter((p) => p.toLowerCase().includes(provinceSearch.toLowerCase()))
+      : uniqueProvinces;
+    return groupItems(filtered);
+  }, [uniqueProvinces, provinceSearch]);
+
   // Auto-load data when date range changes
   React.useEffect(() => {
     onLoad();
@@ -62,6 +115,27 @@ export function Filters(props: FiltersProps) {
     field: keyof Pick<ProductPerformanceFilters, "suppliers" | "products" | "cities" | "provinces">
   ) => {
     onChange({ ...filters, [field]: [] });
+  };
+
+  // Handle group selection (select all items in a group)
+  const handleGroupSelect = (
+    field: keyof Pick<ProductPerformanceFilters, "suppliers" | "products" | "cities" | "provinces">,
+    items: string[],
+    checked: boolean
+  ) => {
+    const currentValues = filters[field] || [];
+    let newValues: string[];
+    
+    if (checked) {
+      // Add all items from the group that aren't already selected
+      const itemsToAdd = items.filter((item) => !currentValues.includes(item));
+      newValues = [...currentValues, ...itemsToAdd];
+    } else {
+      // Remove all items from the group
+      newValues = currentValues.filter((v) => !items.includes(v));
+    }
+    
+    onChange({ ...filters, [field]: newValues });
   };
 
   return (
@@ -198,7 +272,15 @@ export function Filters(props: FiltersProps) {
                       : "All Suppliers"}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-64 p-0" align="start">
+                <PopoverContent className="w-80 p-0" align="start">
+                  <div className="p-2 border-b">
+                    <Input
+                      placeholder="Search suppliers..."
+                      value={supplierSearch}
+                      onChange={(e) => setSupplierSearch(e.target.value)}
+                      className="h-8"
+                    />
+                  </div>
                   <ScrollArea className="h-64">
                     <div className="p-4 space-y-2">
                       {uniqueSuppliers.map((supplier) => (
@@ -216,6 +298,27 @@ export function Filters(props: FiltersProps) {
                           >
                             {supplier}
                           </label>
+                          {/* <div className="p-2 space-y-1">
+                      {Array.from(filteredGroupedSuppliers.entries()).map(([group, items]) => (
+                        <div key={group}>
+                          <div className="font-semibold text-sm px-2 py-1 text-primary">{group}</div>
+                          {items.map((supplier) => (
+                            <div key={supplier} className="flex items-center space-x-2 px-4 py-1 hover:bg-muted rounded">
+                              <Checkbox
+                                id={`supplier-${supplier}`}
+                                checked={filters.suppliers.includes(supplier)}
+                                onCheckedChange={(checked) =>
+                                  handleMultiSelectChange("suppliers", supplier, !!checked)
+                                }
+                              />
+                              <label
+                                htmlFor={`supplier-${supplier}`}
+                                className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
+                              >
+                                {supplier}
+                              </label>
+                            </div>
+                          ))} */}
                         </div>
                       ))}
                     </div>
@@ -245,26 +348,63 @@ export function Filters(props: FiltersProps) {
                       : "All Products"}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-64 p-0" align="start">
+                <PopoverContent className="w-80 p-0" align="start">
+                  <div className="p-2 border-b">
+                    <Input
+                      placeholder="Search products..."
+                      value={productSearch}
+                      onChange={(e) => setProductSearch(e.target.value)}
+                      className="h-8"
+                    />
+                  </div>
                   <ScrollArea className="h-64">
-                    <div className="p-4 space-y-2">
-                      {uniqueProducts.map((product) => (
-                        <div key={product} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`product-${product}`}
-                            checked={filters.products.includes(product)}
-                            onCheckedChange={(checked) =>
-                              handleMultiSelectChange("products", product, !!checked)
-                            }
-                          />
-                          <label
-                            htmlFor={`product-${product}`}
-                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                          >
-                            {product}
-                          </label>
+                    <div className="p-2 space-y-1">
+                      {Array.from(filteredGroupedProducts.entries()).map(([group, items]) => {
+                        const allSelected = items.every((item) => filters.products.includes(item));
+                        const someSelected = items.some((item) => filters.products.includes(item));
+                        
+                        return (
+                          <div key={group}>
+                            <div className="flex items-center space-x-2 px-2 py-1 hover:bg-muted rounded cursor-pointer">
+                              <Checkbox
+                                id={`product-group-${group}`}
+                                checked={allSelected}
+                                ref={(el) => {
+                                  if (el) {
+                                    el.indeterminate = someSelected && !allSelected;
+                                  }
+                                }}
+                                onCheckedChange={(checked) =>
+                                  handleGroupSelect("products", items, !!checked)
+                                }
+                              />
+                              <label
+                                htmlFor={`product-group-${group}`}
+                                className="font-semibold text-sm text-primary cursor-pointer flex-1"
+                              >
+                                {group} ({items.length})
+                              </label>
+                            </div>
+                            {items.map((product) => (
+                            <div key={product} className="flex items-center space-x-2 px-4 py-1 hover:bg-muted rounded">
+                              <Checkbox
+                                id={`product-${product}`}
+                                checked={filters.products.includes(product)}
+                                onCheckedChange={(checked) =>
+                                  handleMultiSelectChange("products", product, !!checked)
+                                }
+                              />
+                              <label
+                                htmlFor={`product-${product}`}
+                                className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
+                              >
+                                {product}
+                              </label>
+                            </div>
+                          ))}
                         </div>
-                      ))}
+                      );
+                      })}
                     </div>
                   </ScrollArea>
                 </PopoverContent>
@@ -294,26 +434,44 @@ export function Filters(props: FiltersProps) {
                       : "All Cities"}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-64 p-0" align="start">
+                <PopoverContent className="w-80 p-0" align="start">
+                  <div className="p-2 border-b">
+                    <Input
+                      placeholder="Search cities..."
+                      value={citySearch}
+                      onChange={(e) => setCitySearch(e.target.value)}
+                      className="h-8"
+                    />
+                  </div>
                   <ScrollArea className="h-64">
-                    <div className="p-4 space-y-2">
-                      {uniqueCities.map((city) => (
-                        <div key={city} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`city-${city}`}
-                            checked={filters.cities.includes(city)}
-                            onCheckedChange={(checked) =>
-                              handleMultiSelectChange("cities", city, !!checked)
-                            }
-                          />
-                          <label
-                            htmlFor={`city-${city}`}
-                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                          >
-                            {city}
-                          </label>
-                        </div>
-                      ))}
+                    <div className="p-2 space-y-1">
+                      {Array.from(filteredGroupedCities.entries()).map(([group, items]) => {
+                        const allSelected = items.every((item) => filters.cities.includes(item));
+                        const someSelected = items.some((item) => filters.cities.includes(item));
+                        
+                        return (
+                          <div key={group}>
+                            
+                            {items.map((city) => (
+                              <div key={city} className="flex items-center space-x-2 px-4 py-1 hover:bg-muted rounded">
+                                <Checkbox
+                                  id={`city-${city}`}
+                                  checked={filters.cities.includes(city)}
+                                  onCheckedChange={(checked) =>
+                                    handleMultiSelectChange("cities", city, !!checked)
+                                  }
+                                />
+                                <label
+                                  htmlFor={`city-${city}`}
+                                  className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
+                                >
+                                  {city}
+                                </label>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })}
                     </div>
                   </ScrollArea>
                 </PopoverContent>
@@ -340,26 +498,43 @@ export function Filters(props: FiltersProps) {
                       : "All Provinces"}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-64 p-0" align="start">
+                <PopoverContent className="w-80 p-0" align="start">
+                  <div className="p-2 border-b">
+                    <Input
+                      placeholder="Search provinces..."
+                      value={provinceSearch}
+                      onChange={(e) => setProvinceSearch(e.target.value)}
+                      className="h-8"
+                    />
+                  </div>
                   <ScrollArea className="h-64">
-                    <div className="p-4 space-y-2">
-                      {uniqueProvinces.map((province) => (
-                        <div key={province} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`province-${province}`}
-                            checked={filters.provinces.includes(province)}
-                            onCheckedChange={(checked) =>
-                              handleMultiSelectChange("provinces", province, !!checked)
-                            }
-                          />
-                          <label
-                            htmlFor={`province-${province}`}
-                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                          >
-                            {province}
-                          </label>
-                        </div>
-                      ))}
+                    <div className="p-2 space-y-1">
+                      {Array.from(filteredGroupedProvinces.entries()).map(([group, items]) => {
+                        const allSelected = items.every((item) => filters.provinces.includes(item));
+                        const someSelected = items.some((item) => filters.provinces.includes(item));
+                        
+                        return (
+                          <div key={group}>
+                            {items.map((province) => (
+                              <div key={province} className="flex items-center space-x-2 px-4 py-1 hover:bg-muted rounded">
+                                <Checkbox
+                                  id={`province-${province}`}
+                                  checked={filters.provinces.includes(province)}
+                                  onCheckedChange={(checked) =>
+                                    handleMultiSelectChange("provinces", province, !!checked)
+                                  }
+                                />
+                                <label
+                                  htmlFor={`province-${province}`}
+                                  className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
+                                >
+                                  {province}
+                                </label>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })}
                     </div>
                   </ScrollArea>
                 </PopoverContent>
