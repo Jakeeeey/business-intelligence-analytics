@@ -370,7 +370,7 @@ export function ProductTab({ topProducts, productTrends, filteredData }: Product
                   <CardTitle>Top 5 Products - Sales Trend</CardTitle>
                   <CardDescription>Revenue performance over time</CardDescription>
                 </div>
-                <Button
+                {/* <Button
                   variant="outline"
                   size="sm"
                   onClick={() => {
@@ -386,7 +386,7 @@ export function ProductTab({ topProducts, productTrends, filteredData }: Product
                 >
                   <Download className="mr-2 h-4 w-4" />
                   Export CSV
-                </Button>
+                </Button> */}
               </div>
               <div className="flex flex-wrap gap-2">
                 <Button
@@ -588,7 +588,7 @@ export function ProductTab({ topProducts, productTrends, filteredData }: Product
                 {filteredProducts.length} products found
               </CardDescription>
             </div>
-            <Button
+            {/* <Button
               variant="outline"
               size="sm"
               onClick={() =>
@@ -606,7 +606,7 @@ export function ProductTab({ topProducts, productTrends, filteredData }: Product
             >
               <Download className="mr-2 h-4 w-4" />
               Export CSV
-            </Button>
+            </Button> */}
           </div>
         </CardHeader>
         <CardContent>

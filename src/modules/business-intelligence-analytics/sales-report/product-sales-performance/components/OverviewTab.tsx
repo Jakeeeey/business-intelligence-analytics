@@ -102,14 +102,14 @@ export function OverviewTab({ revenueByPeriod, topProducts, topSuppliers }: Over
               <CardTitle>Revenue Trend Over Time</CardTitle>
               <CardDescription>Monthly revenue performance</CardDescription>
             </div>
-            <Button
+            {/* <Button
               variant="outline"
               size="sm"
               onClick={() => exportToCSV(revenueByPeriod, "revenue-trend.csv")}
             >
               <Download className="mr-2 h-4 w-4" />
               Export CSV
-            </Button>
+            </Button> */}
           </div>
         </CardHeader>
         <CardContent>
@@ -161,7 +161,7 @@ export function OverviewTab({ revenueByPeriod, topProducts, topSuppliers }: Over
                 <CardTitle>Top 10 Products by Revenue</CardTitle>
                 <CardDescription>Highest performing products</CardDescription>
               </div>
-              <Button
+              {/* <Button
                 variant="outline"
                 size="sm"
                 onClick={() =>
@@ -177,7 +177,7 @@ export function OverviewTab({ revenueByPeriod, topProducts, topSuppliers }: Over
               >
                 <Download className="mr-2 h-4 w-4" />
                 CSV
-              </Button>
+              </Button> */}
             </div>
           </CardHeader>
           <CardContent>
@@ -221,7 +221,7 @@ export function OverviewTab({ revenueByPeriod, topProducts, topSuppliers }: Over
                 <CardTitle>Top 10 Suppliers by Revenue</CardTitle>
                 <CardDescription>Leading supplier partnerships</CardDescription>
               </div>
-              <Button
+              {/* <Button
                 variant="outline"
                 size="sm"
                 onClick={() =>
@@ -237,7 +237,7 @@ export function OverviewTab({ revenueByPeriod, topProducts, topSuppliers }: Over
               >
                 <Download className="mr-2 h-4 w-4" />
                 CSV
-              </Button>
+              </Button> */}
             </div>
           </CardHeader>
           <CardContent>

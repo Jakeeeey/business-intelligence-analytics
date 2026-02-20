@@ -163,7 +163,7 @@ const getProductColor = (index: number) => chartColors[index % chartColors.lengt
               <CardTitle>Top 10 Suppliers by Revenue</CardTitle>
               <CardDescription>Supplier revenue comparison</CardDescription>
             </div>
-            <Button
+            {/* <Button
               variant="outline"
               size="sm"
               onClick={() =>
@@ -180,7 +180,7 @@ const getProductColor = (index: number) => chartColors[index % chartColors.lengt
             >
               <Download className="mr-2 h-4 w-4" />
               Export CSV
-            </Button>
+            </Button> */}
           </div>
         </CardHeader>
         <CardContent>
@@ -248,7 +248,7 @@ const getProductColor = (index: number) => chartColors[index % chartColors.lengt
                   {filteredSuppliers.length} suppliers with product breakdown
                 </CardDescription>
               </div>
-              <Button
+              {/* <Button
                 variant="outline"
                 size="sm"
                 onClick={() => {
@@ -265,7 +265,7 @@ const getProductColor = (index: number) => chartColors[index % chartColors.lengt
               >
                 <Download className="mr-2 h-4 w-4" />
                 Export All
-              </Button>
+              </Button> */}
             </div>
             <div className="flex flex-wrap gap-2">
               <Button
