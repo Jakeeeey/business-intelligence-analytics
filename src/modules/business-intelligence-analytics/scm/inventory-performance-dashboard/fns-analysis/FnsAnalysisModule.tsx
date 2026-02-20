@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { RefreshCw, Calendar, Filter } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -12,18 +12,11 @@ import {
     CardTitle,
     CardDescription,
 } from "@/components/ui/card";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
 import { useScmFilters } from "@/modules/business-intelligence-analytics/scm/providers/ScmFilterProvider";
+import { ScmAdvancedFilters } from "@/modules/business-intelligence-analytics/scm/components/filters/ScmAdvancedFilters";
 import { useFnsAnalysis } from "./hooks/useFnsAnalysis";
 import { FnsDistributionTab } from "./components/FnsDistributionTab";
 import { FnsDataTable } from "./components/FnsDataTable";
@@ -31,18 +24,11 @@ import type { FnsEnrichedRow } from "./types";
 
 /**
  * Main orchestrator for the FNS Analysis module.
- * Integrates with the shared SCM filter context for date range and supplier.
+ * Uses the shared ScmAdvancedFilters component for date range and supplier.
  * Renders 4 tabs: Distribution, Fast, Normal, Slow.
  */
 export default function FnsAnalysisModule() {
-    const {
-        fromMonth,
-        setFromMonth,
-        toMonth,
-        setToMonth,
-        selectedSupplier,
-        setSelectedSupplier,
-    } = useScmFilters();
+    const { selectedSupplier } = useScmFilters();
 
     const { data, summary, isLoading, error, refresh } = useFnsAnalysis();
 
@@ -53,7 +39,7 @@ export default function FnsAnalysisModule() {
         return Array.from(set).sort();
     }, [data]);
 
-    // ── Client-side filtering (supplier only; date/branch are server-side) ──
+    // ── Client-side filtering (supplier only; date is via ScmAdvancedFilters) ──
     const filtered = React.useMemo(() => {
         if (selectedSupplier === "all") return data;
         return data.filter((d) => d.supplierName === selectedSupplier);
@@ -114,7 +100,7 @@ export default function FnsAnalysisModule() {
 
     return (
         <div className="space-y-6 p-4 md:p-8 pt-6">
-            {/* ── Page Header + Filter Bar ─────────────────────────────── */}
+            {/* ── Page Header + Shared Filter Bar ─────────────────────── */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h2 className="text-3xl font-bold tracking-tight">
@@ -125,56 +111,7 @@ export default function FnsAnalysisModule() {
                     </p>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-3 bg-card border rounded-xl p-2 shadow-sm">
-                    {/* Date Range */}
-                    <div className="flex items-center gap-2 px-2 border-r">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <Input
-                            type="month"
-                            value={fromMonth}
-                            onChange={(e) => setFromMonth(e.target.value)}
-                            className="w-32 border-none h-8 text-sm focus-visible:ring-0"
-                        />
-                        <span className="text-muted-foreground text-xs">-</span>
-                        <Input
-                            type="month"
-                            value={toMonth}
-                            onChange={(e) => setToMonth(e.target.value)}
-                            className="w-32 border-none h-8 text-sm focus-visible:ring-0"
-                        />
-                    </div>
-
-                    {/* Supplier */}
-                    <div className="flex items-center gap-2 px-2">
-                        <Filter className="h-4 w-4 text-muted-foreground" />
-                        <Select
-                            value={selectedSupplier}
-                            onValueChange={setSelectedSupplier}
-                        >
-                            <SelectTrigger className="w-[180px] h-8 border-none shadow-none text-sm font-medium">
-                                <SelectValue placeholder="Select Supplier" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All Suppliers</SelectItem>
-                                {suppliers.map((s) => (
-                                    <SelectItem key={s} value={s}>
-                                        {s}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-
-                    {/* Refresh */}
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={refresh}
-                        className="h-8 w-8"
-                    >
-                        <RefreshCw className="h-4 w-4" />
-                    </Button>
-                </div>
+                <ScmAdvancedFilters suppliers={suppliers} />
             </div>
 
             {/* ── Tabs: Distribution / Fast / Normal / Slow ────────────── */}
