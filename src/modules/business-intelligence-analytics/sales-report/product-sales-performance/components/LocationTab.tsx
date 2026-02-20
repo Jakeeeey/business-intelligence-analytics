@@ -5,7 +5,7 @@ import * as React from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Download, Search, MapPin } from "lucide-react";
+import { Download, Search, MapPin, ArrowUpDown } from "lucide-react";
 import type { LocationRevenue, ProductSaleRecord } from "../types";
 import {
   ChartContainer,
@@ -64,12 +64,17 @@ type LocationTabProps = {
 export function LocationTab({ locationRevenue, filteredData }: LocationTabProps) {
   const [searchTerm, setSearchTerm] = React.useState("");
   const [selectedLocation, setSelectedLocation] = React.useState<string | null>(null);
+  const [sortBy, setSortBy] = React.useState<"location" | "revenue" | "transactions" | "avg">("revenue");
+  const [sortOrder, setSortOrder] = React.useState<"asc" | "desc">("desc");
+  const [currentPage, setCurrentPage] = React.useState(1);
+  const [itemsPerPage] = React.useState(10);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
       currency: "PHP",
-      minimumFractionDigits: 0,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     }).format(value);
   };
 
@@ -92,11 +97,38 @@ export function LocationTab({ locationRevenue, filteredData }: LocationTabProps)
   };
 
   const filteredLocations = React.useMemo(() => {
-    if (!searchTerm) return locationRevenue;
-    return locationRevenue.filter((loc) =>
-      loc.location.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [locationRevenue, searchTerm]);
+    let locations = searchTerm
+      ? locationRevenue.filter((loc) => loc.location.toLowerCase().includes(searchTerm.toLowerCase()))
+      : [...locationRevenue];
+
+    // Sort locations
+    locations.sort((a, b) => {
+      let comparison = 0;
+      if (sortBy === "location") {
+        comparison = a.location.localeCompare(b.location);
+      } else if (sortBy === "revenue") {
+        comparison = a.revenue - b.revenue;
+      } else if (sortBy === "transactions") {
+        comparison = a.transactions - b.transactions;
+      } else if (sortBy === "avg") {
+        comparison = a.revenue / a.transactions - b.revenue / b.transactions;
+      }
+      return sortOrder === "asc" ? comparison : -comparison;
+    });
+
+    return locations;
+  }, [locationRevenue, searchTerm, sortBy, sortOrder]);
+
+  // Pagination
+  const totalPages = Math.ceil(filteredLocations.length / itemsPerPage);
+  const paginatedLocations = React.useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredLocations.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredLocations, currentPage, itemsPerPage]);
+
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, sortBy, sortOrder]);
 
   // Get top products for selected location
   const topProductsForLocation = React.useMemo(() => {
@@ -361,22 +393,84 @@ export function LocationTab({ locationRevenue, filteredData }: LocationTabProps)
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-15">Rank</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead className="text-right">Revenue</TableHead>
-                  <TableHead className="text-right">Transactions</TableHead>
-                  <TableHead className="text-right">Avg/Transaction</TableHead>
+                  <TableHead>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        if (sortBy === "location") {
+                          setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+                        } else {
+                          setSortBy("location");
+                          setSortOrder("asc");
+                        }
+                      }}
+                      className="h-8"
+                    >
+                      Location <ArrowUpDown className="ml-2 h-4 w-4" />
+                    </Button>
+                  </TableHead>
+                  <TableHead className="text-right">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        if (sortBy === "revenue") {
+                          setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+                        } else {
+                          setSortBy("revenue");
+                          setSortOrder("desc");
+                        }
+                      }}
+                      className="h-8"
+                    >
+                      Revenue <ArrowUpDown className="ml-2 h-4 w-4" />
+                    </Button>
+                  </TableHead>
+                  <TableHead className="text-right">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        if (sortBy === "transactions") {
+                          setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+                        } else {
+                          setSortBy("transactions");
+                          setSortOrder("desc");
+                        }
+                      }}
+                      className="h-8"
+                    >
+                      Transactions <ArrowUpDown className="ml-2 h-4 w-4" />
+                    </Button>
+                  </TableHead>
+                  <TableHead className="text-right">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        if (sortBy === "avg") {
+                          setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+                        } else {
+                          setSortBy("avg");
+                          setSortOrder("desc");
+                        }
+                      }}
+                      className="h-8"
+                    >
+                      Avg/Transaction <ArrowUpDown className="ml-2 h-4 w-4" />
+                    </Button>
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredLocations.length > 0 ? (
-                  filteredLocations.map((location, index) => (
+                {paginatedLocations.length > 0 ? (
+                  paginatedLocations.map((location) => (
                     <TableRow
                       key={location.location}
                       className="cursor-pointer hover:bg-muted/50"
                       onClick={() => setSelectedLocation(location.location)}
                     >
-                      <TableCell className="font-medium">{index + 1}</TableCell>
                       <TableCell className="flex items-center gap-2">
                         <MapPin className="h-4 w-4 text-muted-foreground" />
                         {location.location}
@@ -392,13 +486,58 @@ export function LocationTab({ locationRevenue, filteredData }: LocationTabProps)
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center">
+                    <TableCell colSpan={4} className="h-24 text-center">
                       No locations found
                     </TableCell>
                   </TableRow>
                 )}
               </TableBody>
             </Table>
+          </div>
+          <div className="flex items-center justify-between px-2 py-4">
+            <div className="text-sm text-muted-foreground">
+              Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredLocations.length)} of {filteredLocations.length} locations
+            </div>
+            <div className="flex gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </Button>
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                let pageNum;
+                if (totalPages <= 5) {
+                  pageNum = i + 1;
+                } else if (currentPage <= 3) {
+                  pageNum = i + 1;
+                } else if (currentPage >= totalPages - 2) {
+                  pageNum = totalPages - 4 + i;
+                } else {
+                  pageNum = currentPage - 2 + i;
+                }
+                return (
+                  <Button
+                    key={pageNum}
+                    variant={currentPage === pageNum ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCurrentPage(pageNum)}
+                  >
+                    {pageNum}
+                  </Button>
+                );
+              })}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
+              >
+                Next
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

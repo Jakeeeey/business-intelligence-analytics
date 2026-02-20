@@ -5,7 +5,7 @@ import * as React from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Download, Search, ChevronDown, ChevronUp } from "lucide-react";
+import { Download, Search, ChevronDown, ChevronUp, ArrowUpDown } from "lucide-react";
 import type { SupplierPerformance, TopItem } from "../types";
 import {
   ChartContainer,
@@ -69,12 +69,16 @@ type SupplierTabProps = {
 export function SupplierTab({ supplierPerformance, topSuppliers }: SupplierTabProps) {
   const [searchTerm, setSearchTerm] = React.useState("");
   const [expandedSuppliers, setExpandedSuppliers] = React.useState<Set<string>>(new Set());
+  const [sortBy, setSortBy] = React.useState<"revenue" | "products" | "name">("revenue");
+  const [sortOrder, setSortOrder] = React.useState<"asc" | "desc">("desc");
+  const [productSortBy, setProductSortBy] = React.useState<"revenue" | "percentage">("revenue");
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
       currency: "PHP",
-      minimumFractionDigits: 0,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     }).format(value);
   };
 
@@ -97,11 +101,25 @@ export function SupplierTab({ supplierPerformance, topSuppliers }: SupplierTabPr
   };
 
   const filteredSuppliers = React.useMemo(() => {
-    if (!searchTerm) return supplierPerformance;
-    return supplierPerformance.filter((s) =>
-      s.supplier.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [supplierPerformance, searchTerm]);
+    let suppliers = searchTerm
+      ? supplierPerformance.filter((s) => s.supplier.toLowerCase().includes(searchTerm.toLowerCase()))
+      : [...supplierPerformance];
+
+    // Sort suppliers
+    suppliers.sort((a, b) => {
+      let comparison = 0;
+      if (sortBy === "revenue") {
+        comparison = a.revenue - b.revenue;
+      } else if (sortBy === "products") {
+        comparison = a.products.length - b.products.length;
+      } else if (sortBy === "name") {
+        comparison = a.supplier.localeCompare(b.supplier);
+      }
+      return sortOrder === "asc" ? comparison : -comparison;
+    });
+
+    return suppliers;
+  }, [supplierPerformance, searchTerm, sortBy, sortOrder]);
 
   const toggleSupplier = (supplier: string) => {
     setExpandedSuppliers((prev) => {
@@ -115,23 +133,28 @@ export function SupplierTab({ supplierPerformance, topSuppliers }: SupplierTabPr
     });
   };
 
+  // Sort top suppliers chart based on current sort
+  const sortedTopSuppliers = React.useMemo(() => {
+    const suppliers = [...topSuppliers];
+
+    suppliers.sort((a, b) => {
+      let comparison = 0;
+      if (sortBy === "revenue") {
+        comparison = a.revenue - b.revenue;
+      } else if (sortBy === "products") {
+        // topSuppliers doesn't have products array, so just sort by revenue
+        comparison = a.revenue - b.revenue;
+      } else if (sortBy === "name") {
+        comparison = a.name.localeCompare(b.name);
+      }
+      return sortOrder === "asc" ? comparison : -comparison;
+    });
+
+    return suppliers.slice(0, 10);
+  }, [topSuppliers, sortBy, sortOrder]);
+
   return (
     <div className="space-y-4">
-      {/* Search Bar */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Search suppliers..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Top Suppliers Chart */}
       <Card>
         <CardHeader>
@@ -171,7 +194,7 @@ export function SupplierTab({ supplierPerformance, topSuppliers }: SupplierTabPr
             className="h-87.5 w-full"
           >
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={topSuppliers.slice(0, 10)}>
+              <BarChart data={sortedTopSuppliers}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
                 <YAxis tickFormatter={(value) => formatCurrency(value)} />
@@ -183,7 +206,7 @@ export function SupplierTab({ supplierPerformance, topSuppliers }: SupplierTabPr
                   }
                 />
                 <Bar dataKey="revenue" radius={[4, 4, 0, 0]}>
-                  {topSuppliers.slice(0, 10).map((entry, index) => (
+                  {sortedTopSuppliers.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={chartColors[index % chartColors.length]} />
                   ))}
                 </Bar>
@@ -192,35 +215,96 @@ export function SupplierTab({ supplierPerformance, topSuppliers }: SupplierTabPr
           </ChartContainer>
         </CardContent>
       </Card>
-
+      {/* Search Bar */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search suppliers..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+        </CardContent>
+      </Card>
       {/* Supplier Performance with Product Breakdown */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Supplier Performance Details</CardTitle>
-              <CardDescription>
-                {filteredSuppliers.length} suppliers with product breakdown
-              </CardDescription>
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Supplier Performance Details</CardTitle>
+                <CardDescription>
+                  {filteredSuppliers.length} suppliers with product breakdown
+                </CardDescription>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const flatData = filteredSuppliers.flatMap((s) =>
+                    s.products.map((p) => ({
+                      supplier: s.supplier,
+                      product: p.name,
+                      productRevenue: p.revenue,
+                      supplierTotalRevenue: s.revenue,
+                    }))
+                  );
+                  exportToCSV(flatData, "supplier-products.csv");
+                }}
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Export All
+              </Button>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                const flatData = filteredSuppliers.flatMap((s) =>
-                  s.products.map((p) => ({
-                    supplier: s.supplier,
-                    product: p.name,
-                    productRevenue: p.revenue,
-                    supplierTotalRevenue: s.revenue,
-                  }))
-                );
-                exportToCSV(flatData, "supplier-products.csv");
-              }}
-            >
-              <Download className="mr-2 h-4 w-4" />
-              Export All
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant={sortBy === "revenue" ? "default" : "outline"}
+                size="sm"
+                onClick={() => {
+                  if (sortBy === "revenue") {
+                    setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+                  } else {
+                    setSortBy("revenue");
+                    setSortOrder("desc");
+                  }
+                }}
+              >
+                Sort by Revenue <ArrowUpDown className="ml-2 h-4 w-4" />
+              </Button>
+              <Button
+                variant={sortBy === "products" ? "default" : "outline"}
+                size="sm"
+                onClick={() => {
+                  if (sortBy === "products") {
+                    setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+                  } else {
+                    setSortBy("products");
+                    setSortOrder("desc");
+                  }
+                }}
+              >
+                Sort by # Products <ArrowUpDown className="ml-2 h-4 w-4" />
+              </Button>
+              <Button
+                variant={sortBy === "name" ? "default" : "outline"}
+                size="sm"
+                onClick={() => {
+                  if (sortBy === "name") {
+                    setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+                  } else {
+                    setSortBy("name");
+                    setSortOrder("asc");
+                  }
+                }}
+              >
+                Sort by Name <ArrowUpDown className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+          <div>
           </div>
         </CardHeader>
         <CardContent>
@@ -263,6 +347,22 @@ export function SupplierTab({ supplierPerformance, topSuppliers }: SupplierTabPr
                     </CollapsibleTrigger>
                     <CollapsibleContent>
                       <CardContent className="border-t pt-4">
+                        {/* <div className="mb-3 flex gap-2">
+                          <Button
+                            variant={productSortBy === "revenue" ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setProductSortBy("revenue")}
+                          >
+                            Sort by Revenue
+                          </Button>
+                          <Button
+                            variant={productSortBy === "percentage" ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setProductSortBy("percentage")}
+                          >
+                            Sort by %
+                          </Button>
+                        </div> */}
                         <div className="rounded-md border">
                           <Table>
                             <TableHeader>
@@ -273,17 +373,27 @@ export function SupplierTab({ supplierPerformance, topSuppliers }: SupplierTabPr
                               </TableRow>
                             </TableHeader>
                             <TableBody>
-                              {supplier.products.map((product) => (
-                                <TableRow key={product.name}>
-                                  <TableCell>{product.name}</TableCell>
-                                  <TableCell className="text-right">
-                                    {formatCurrency(product.revenue)}
-                                  </TableCell>
-                                  <TableCell className="text-right">
-                                    {((product.revenue / supplier.revenue) * 100).toFixed(1)}%
-                                  </TableCell>
-                                </TableRow>
-                              ))}
+                              {[...supplier.products]
+                                .sort((a, b) => {
+                                  if (productSortBy === "revenue") {
+                                    return b.revenue - a.revenue;
+                                  } else {
+                                    const percentA = (a.revenue / supplier.revenue) * 100;
+                                    const percentB = (b.revenue / supplier.revenue) * 100;
+                                    return percentB - percentA;
+                                  }
+                                })
+                                .map((product) => (
+                                  <TableRow key={product.name}>
+                                    <TableCell>{product.name}</TableCell>
+                                    <TableCell className="text-right">
+                                      {formatCurrency(product.revenue)}
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                      {((product.revenue / supplier.revenue) * 100).toFixed(1)}%
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
                             </TableBody>
                           </Table>
                         </div>

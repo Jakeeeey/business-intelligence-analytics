@@ -62,7 +62,8 @@ export function OverviewTab({ revenueByPeriod, topProducts, topSuppliers }: Over
     return new Intl.NumberFormat("en-US", {
       style: "currency",
       currency: "PHP",
-      minimumFractionDigits: 0,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     }).format(value);
   };
 

@@ -3,7 +3,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { ProductPerformanceKpis } from "../types";
-import { DollarSign, ShoppingCart, TrendingUp, Award, Package } from "lucide-react";
+import { DollarSign, ShoppingCart, TrendingUp, Award, Package,PhilippinePeso } from "lucide-react";
 
 type KPICardsProps = {
   kpis: ProductPerformanceKpis;
@@ -15,6 +15,7 @@ export function KPICards({ kpis }: KPICardsProps) {
       style: "currency",
       currency: "PHP",
       minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     }).format(value);
   };
 
@@ -27,7 +28,7 @@ export function KPICards({ kpis }: KPICardsProps) {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-          <DollarSign className="h-4 w-4 text-muted-foreground" />
+          <PhilippinePeso className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{formatCurrency(kpis.totalRevenue)}</div>
