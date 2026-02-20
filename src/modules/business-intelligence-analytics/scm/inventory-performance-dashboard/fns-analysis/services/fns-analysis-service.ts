@@ -1,4 +1,4 @@
-// src/modules/business-intelligence-analytics/scm/inventory-performance-dashboard/fns-analysis/providers/fetchProvider.ts
+// src/modules/.../fns-analysis/services/fns-analysis-service.ts
 import type { FnsAnalysisResponse } from "../types";
 
 /**
@@ -19,7 +19,8 @@ async function http<T>(url: string): Promise<T> {
 
 /**
  * Fetches the enriched FNS analysis data from our local API route.
- * The route handles Spring Boot auth + Directus enrichment internally.
+ * The route proxies to Spring Boot with auth and returns ranked,
+ * classified inventory rows plus KPI summary thresholds.
  */
 export async function getFnsAnalysisData(): Promise<FnsAnalysisResponse> {
     return http<FnsAnalysisResponse>(

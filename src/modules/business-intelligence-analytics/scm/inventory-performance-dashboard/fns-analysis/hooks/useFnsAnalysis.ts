@@ -5,7 +5,7 @@ import * as React from "react";
 import { toast } from "sonner";
 
 import type { FnsEnrichedRow, FnsSummary } from "../types";
-import { getFnsAnalysisData } from "../providers/fetchProvider";
+import { getFnsAnalysisData } from "../services/fns-analysis-service";
 
 /**
  * Hook that manages FNS analysis state: data fetching, loading, errors.

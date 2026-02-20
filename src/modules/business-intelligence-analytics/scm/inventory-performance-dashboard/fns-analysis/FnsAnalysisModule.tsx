@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, AlertCircle } from "lucide-react";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -20,7 +20,6 @@ import { ScmAdvancedFilters } from "@/modules/business-intelligence-analytics/sc
 import { useFnsAnalysis } from "./hooks/useFnsAnalysis";
 import { FnsDistributionTab } from "./components/FnsDistributionTab";
 import { FnsDataTable } from "./components/FnsDataTable";
-import type { FnsEnrichedRow } from "./types";
 
 /**
  * Main orchestrator for the FNS Analysis module.
@@ -84,11 +83,12 @@ export default function FnsAnalysisModule() {
     // ── Loading skeleton ───────────────────────────────────────────
     if (isLoading) {
         return (
-            <div className="space-y-6 p-4 md:p-8 pt-6">
+            <div className="space-y-6 p-4 md:p-8 pt-6 animate-in fade-in duration-500">
                 <div className="flex items-center justify-between">
                     <Skeleton className="h-9 w-64" />
                     <Skeleton className="h-10 w-96" />
                 </div>
+                <Skeleton className="h-10 w-full max-w-2xl rounded-md" />
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <Skeleton className="h-80 rounded-xl" />
                     <div className="flex flex-col gap-4">
@@ -104,24 +104,26 @@ export default function FnsAnalysisModule() {
     // ── Visible error state ──────────────────────────────────────────
     if (error) {
         return (
-            <div className="space-y-6 p-4 md:p-8 pt-6">
-                <h2 className="text-3xl font-bold tracking-tight">FNS Analysis</h2>
-                <div className="rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/30 p-6">
-                    <h3 className="text-lg font-semibold text-red-700 dark:text-red-400 mb-2">
-                        Failed to load FNS data
-                    </h3>
-                    <p className="text-sm text-red-600 dark:text-red-300 mb-4">{error}</p>
-                    <Button variant="outline" size="sm" onClick={refresh}>
-                        <RefreshCw className="h-4 w-4 mr-2" />
-                        Retry
-                    </Button>
-                </div>
+            <div className="flex h-[60vh] items-center justify-center p-4 animate-in fade-in duration-500">
+                <Card className="max-w-md w-full border-destructive/20 bg-destructive/5">
+                    <CardContent className="pt-6 flex flex-col items-center text-center gap-4">
+                        <AlertCircle className="h-12 w-12 text-destructive" />
+                        <div>
+                            <h3 className="text-lg font-bold text-destructive">Failed to load FNS data</h3>
+                            <p className="text-sm text-muted-foreground mt-1">{error}</p>
+                        </div>
+                        <Button variant="outline" size="sm" onClick={refresh}>
+                            <RefreshCw className="h-4 w-4 mr-2" />
+                            Retry
+                        </Button>
+                    </CardContent>
+                </Card>
             </div>
         );
     }
 
     return (
-        <div className="space-y-6 p-4 md:p-8 pt-6">
+        <div className="space-y-6 p-4 md:p-8 pt-6 animate-in fade-in duration-700">
             {/* ── Page Header + Shared Filter Bar ─────────────────────── */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>

@@ -4,9 +4,10 @@
 import * as React from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import type { FnsSummary } from "../types";
 
-/** Fixed color map — each category always gets its designated color */
+/** Fixed color map — each FNS category always gets its designated color */
 const FNS_COLORS: Record<string, string> = {
     Fast: "#22c55e",   // green-500
     Normal: "#3b82f6", // blue-500
@@ -18,7 +19,7 @@ interface FnsDistributionTabProps {
 }
 
 /**
- * Distribution tab: pie chart showing F/N/S breakdown
+ * Distribution tab: donut chart showing F/N/S breakdown
  * alongside three KPI summary cards (Fast, Normal, Slow movers).
  */
 export function FnsDistributionTab({ summary }: FnsDistributionTabProps) {
@@ -34,7 +35,7 @@ export function FnsDistributionTab({ summary }: FnsDistributionTabProps) {
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* ── Pie Chart ────────────────────────────────────── */}
+            {/* ── Donut Chart ────────────────────────────────────── */}
             <div className="flex items-center justify-center min-h-[320px]">
                 {totalCount === 0 ? (
                     <p className="text-muted-foreground text-sm">No data available</p>
@@ -48,11 +49,14 @@ export function FnsDistributionTab({ summary }: FnsDistributionTabProps) {
                                 cx="50%"
                                 cy="50%"
                                 outerRadius={120}
-                                innerRadius={0}
+                                innerRadius={60}
+                                paddingAngle={3}
                                 label={({ name, value }) =>
                                     `${name} (${value}): ${pct(value)}%`
                                 }
                                 labelLine
+                                animationBegin={0}
+                                animationDuration={1200}
                             >
                                 {chartData.map((entry) => (
                                     <Cell
@@ -63,10 +67,18 @@ export function FnsDistributionTab({ summary }: FnsDistributionTabProps) {
                                 ))}
                             </Pie>
                             <Tooltip
-                                formatter={(value: number, name: string) => [
-                                    `${value} SKUs (${pct(value)}%)`,
-                                    name,
-                                ]}
+                                content={({ active, payload }) => {
+                                    if (active && payload && payload.length) {
+                                        const data = payload[0].payload;
+                                        return (
+                                            <div className="bg-background border rounded-lg p-2 shadow-lg text-xs leading-relaxed">
+                                                <p className="font-bold mb-1">{data.name} Movers</p>
+                                                <p className="text-primary">{data.value} SKUs ({pct(data.value)}%)</p>
+                                            </div>
+                                        );
+                                    }
+                                    return null;
+                                }}
                             />
                         </PieChart>
                     </ResponsiveContainer>
@@ -76,8 +88,8 @@ export function FnsDistributionTab({ summary }: FnsDistributionTabProps) {
             {/* ── KPI Cards ───────────────────────────────────────
                  Uses border-l for category color accent.
                  Card bg stays as default bg-card (theme-aware).
-                 Badges use inline style to guarantee contrast in
-                 both light and dark mode without fighting shadcn. */}
+                 Badges use shadcn <Badge> with inline style for
+                 guaranteed contrast in both light and dark mode. */}
             <div className="flex flex-col gap-4 justify-center">
                 {/* Fast Movers — Green */}
                 <Card className="border-l-4 border-l-green-500">
@@ -93,12 +105,12 @@ export function FnsDistributionTab({ summary }: FnsDistributionTabProps) {
                                 Store in easily accessible locations for fast picking
                             </p>
                         </div>
-                        <span
-                            className="inline-flex items-center rounded-full px-3 py-1 text-xs font-bold"
-                            style={{ backgroundColor: "#16a34a", color: "#ffffff" }}
+                        <Badge
+                            variant="outline"
+                            style={{ backgroundColor: "#16a34a", color: "#ffffff", borderColor: "#16a34a" }}
                         >
                             {fastCount} SKUs
-                        </span>
+                        </Badge>
                     </CardContent>
                 </Card>
 
@@ -116,12 +128,12 @@ export function FnsDistributionTab({ summary }: FnsDistributionTabProps) {
                                 Standard storage with balanced accessibility
                             </p>
                         </div>
-                        <span
-                            className="inline-flex items-center rounded-full px-3 py-1 text-xs font-bold"
-                            style={{ backgroundColor: "#2563eb", color: "#ffffff" }}
+                        <Badge
+                            variant="outline"
+                            style={{ backgroundColor: "#2563eb", color: "#ffffff", borderColor: "#2563eb" }}
                         >
                             {normalCount} SKUs
-                        </span>
+                        </Badge>
                     </CardContent>
                 </Card>
 
@@ -139,12 +151,12 @@ export function FnsDistributionTab({ summary }: FnsDistributionTabProps) {
                                 Consider remote storage or inventory reduction
                             </p>
                         </div>
-                        <span
-                            className="inline-flex items-center rounded-full px-3 py-1 text-xs font-bold"
-                            style={{ backgroundColor: "#dc2626", color: "#ffffff" }}
+                        <Badge
+                            variant="outline"
+                            style={{ backgroundColor: "#dc2626", color: "#ffffff", borderColor: "#dc2626" }}
                         >
                             {slowCount} SKUs
-                        </span>
+                        </Badge>
                     </CardContent>
                 </Card>
             </div>
