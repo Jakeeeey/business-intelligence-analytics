@@ -5,7 +5,7 @@ import * as React from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Download, Search, ArrowUpDown } from "lucide-react";
+import { Download, Search, ArrowUpDown, ChevronRight, ChevronDown } from "lucide-react";
 import type { TopItem, ProductTrend, ProductSaleRecord } from "../types";
 import {
   ChartContainer,
@@ -45,6 +45,9 @@ export function ProductTab({ topProducts, productTrends, filteredData }: Product
   const [currentPage, setCurrentPage] = React.useState(1);
   const [itemsPerPage, setItemsPerPage] = React.useState(10);
   const [timePeriod, setTimePeriod] = React.useState<"daily" | "weekly" | "bi-weekly" | "monthly" | "bi-monthly" | "quarterly" | "semi-annually" | "yearly">("monthly");
+  const [expandedProducts, setExpandedProducts] = React.useState<Set<string>>(new Set());
+  const [expandedSuppliers, setExpandedSuppliers] = React.useState<Set<string>>(new Set());
+  const [supplierPeriodSort, setSupplierPeriodSort] = React.useState<Map<string, { sortBy: "period" | "revenue" | "transactions" | "avg"; sortOrder: "asc" | "desc" }>>(new Map());
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("en-US", {
@@ -71,6 +74,147 @@ export function ProductTab({ topProducts, productTrends, filteredData }: Product
     link.download = filename;
     link.click();
     URL.revokeObjectURL(url);
+  };
+
+  const toggleProduct = (productName: string) => {
+    setExpandedProducts((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(productName)) {
+        newSet.delete(productName);
+      } else {
+        newSet.add(productName);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleSupplier = (supplierKey: string, event: React.MouseEvent) => {
+    event.stopPropagation();
+    setExpandedSuppliers((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(supplierKey)) {
+        newSet.delete(supplierKey);
+      } else {
+        newSet.add(supplierKey);
+      }
+      return newSet;
+    });
+  };
+
+  const getSupplierTimePeriodData = (
+    productName: string,
+    supplierName: string,
+    sortBy: "period" | "revenue" | "transactions" | "avg" = "period",
+    sortOrder: "asc" | "desc" = "desc"
+  ) => {
+    const dataMap = new Map<string, { revenue: number; transactions: number }>();
+
+    filteredData
+      .filter((record) => record.productName === productName && record.supplier === supplierName)
+      .forEach((record) => {
+        const date = new Date(record.date);
+        let key = "";
+
+        if (timePeriod === "daily") {
+          key = record.date.split("T")[0];
+        } else if (timePeriod === "weekly") {
+          const weekStart = new Date(date);
+          weekStart.setDate(date.getDate() - date.getDay());
+          key = weekStart.toISOString().split("T")[0];
+        } else if (timePeriod === "bi-weekly") {
+          const weekNum = Math.floor(date.getDate() / 14);
+          key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-W${weekNum}`;
+        } else if (timePeriod === "monthly") {
+          key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+        } else if (timePeriod === "bi-monthly") {
+          const biMonth = Math.floor(date.getMonth() / 2);
+          key = `${date.getFullYear()}-Q${biMonth + 1}`;
+        } else if (timePeriod === "quarterly") {
+          const quarter = Math.floor(date.getMonth() / 3);
+          key = `${date.getFullYear()}-Q${quarter + 1}`;
+        } else if (timePeriod === "semi-annually") {
+          const half = Math.floor(date.getMonth() / 6);
+          key = `${date.getFullYear()}-H${half + 1}`;
+        } else if (timePeriod === "yearly") {
+          key = `${date.getFullYear()}`;
+        }
+
+        const existing = dataMap.get(key) || { revenue: 0, transactions: 0 };
+        dataMap.set(key, {
+          revenue: existing.revenue + record.amount,
+          transactions: existing.transactions + 1,
+        });
+      });
+
+    return Array.from(dataMap.entries())
+      .map(([period, data]) => ({ period, revenue: data.revenue, transactions: data.transactions }))
+      .sort((a, b) => {
+        let comparison = 0;
+        
+        if (sortBy === "period") {
+          const getDateValue = (dateStr: string) => {
+            if (timePeriod === "daily" || timePeriod === "weekly") {
+              return new Date(dateStr).getTime();
+            } else if (timePeriod === "monthly") {
+              return new Date(dateStr + "-01").getTime();
+            } else if (timePeriod === "bi-weekly") {
+              const match = dateStr.match(/(\d{4})-(\d{2})-W(\d+)/);
+              if (match) {
+                const [, year, month, week] = match;
+                return new Date(parseInt(year), parseInt(month) - 1, parseInt(week) * 14 + 1).getTime();
+              }
+            } else if (timePeriod === "bi-monthly" || timePeriod === "quarterly") {
+              const match = dateStr.match(/(\d{4})-Q(\d+)/);
+              if (match) {
+                const [, year, quarter] = match;
+                const month = (parseInt(quarter) - 1) * (timePeriod === "bi-monthly" ? 2 : 3);
+                return new Date(parseInt(year), month, 1).getTime();
+              }
+            } else if (timePeriod === "semi-annually") {
+              const match = dateStr.match(/(\d{4})-H(\d+)/);
+              if (match) {
+                const [, year, half] = match;
+                const month = (parseInt(half) - 1) * 6;
+                return new Date(parseInt(year), month, 1).getTime();
+              }
+            } else if (timePeriod === "yearly") {
+              return new Date(parseInt(dateStr), 0, 1).getTime();
+            }
+            return 0;
+          };
+          comparison = getDateValue(a.period) - getDateValue(b.period);
+        } else if (sortBy === "revenue") {
+          comparison = a.revenue - b.revenue;
+        } else if (sortBy === "transactions") {
+          comparison = a.transactions - b.transactions;
+        } else if (sortBy === "avg") {
+          comparison = (a.revenue / a.transactions) - (b.revenue / b.transactions);
+        }
+        
+        return sortOrder === "asc" ? comparison : -comparison;
+      });
+  };
+
+  const getProductSuppliers = (productName: string) => {
+    const supplierMap = new Map<string, { revenue: number; transactions: number }>();
+
+    filteredData
+      .filter((record) => record.productName === productName)
+      .forEach((record) => {
+        const existing = supplierMap.get(record.supplier) || { revenue: 0, transactions: 0 };
+        supplierMap.set(record.supplier, {
+          revenue: existing.revenue + record.amount,
+          transactions: existing.transactions + 1,
+        });
+      });
+
+    return Array.from(supplierMap.entries())
+      .map(([supplier, data]) => ({
+        supplier,
+        revenue: data.revenue,
+        transactions: data.transactions,
+      }))
+      .sort((a, b) => b.revenue - a.revenue);
   };
 
   const filteredProducts = React.useMemo(() => {
@@ -181,7 +325,7 @@ export function ProductTab({ topProducts, productTrends, filteredData }: Product
             }
             return 0;
           };
-          
+
           return getDateValue(a.date) - getDateValue(b.date);
         });
 
@@ -248,56 +392,88 @@ export function ProductTab({ topProducts, productTrends, filteredData }: Product
                 <Button
                   variant={timePeriod === "daily" ? "default" : "outline"}
                   size="sm"
-                  onClick={() => setTimePeriod("daily")}
+                  onClick={() => {
+                    setTimePeriod("daily");
+                    setCurrentPage(1);
+                    setExpandedSuppliers(new Set());
+                  }}
                 >
                   Daily
                 </Button>
                 <Button
                   variant={timePeriod === "weekly" ? "default" : "outline"}
                   size="sm"
-                  onClick={() => setTimePeriod("weekly")}
+                  onClick={() => {
+                    setTimePeriod("weekly");
+                    setCurrentPage(1);
+                    setExpandedSuppliers(new Set());
+                  }}
                 >
                   Weekly
                 </Button>
                 <Button
                   variant={timePeriod === "bi-weekly" ? "default" : "outline"}
                   size="sm"
-                  onClick={() => setTimePeriod("bi-weekly")}
+                  onClick={() => {
+                    setTimePeriod("bi-weekly");
+                    setCurrentPage(1);
+                    setExpandedSuppliers(new Set());
+                  }}
                 >
                   Bi-Weekly
                 </Button>
                 <Button
                   variant={timePeriod === "monthly" ? "default" : "outline"}
                   size="sm"
-                  onClick={() => setTimePeriod("monthly")}
+                  onClick={() => {
+                    setTimePeriod("monthly");
+                    setCurrentPage(1);
+                    setExpandedSuppliers(new Set());
+                  }}
                 >
                   Monthly
                 </Button>
                 <Button
                   variant={timePeriod === "bi-monthly" ? "default" : "outline"}
                   size="sm"
-                  onClick={() => setTimePeriod("bi-monthly")}
+                  onClick={() => {
+                    setTimePeriod("bi-monthly");
+                    setCurrentPage(1);
+                    setExpandedSuppliers(new Set());
+                  }}
                 >
                   Bi-Monthly
                 </Button>
                 <Button
                   variant={timePeriod === "quarterly" ? "default" : "outline"}
                   size="sm"
-                  onClick={() => setTimePeriod("quarterly")}
+                  onClick={() => {
+                    setTimePeriod("quarterly");
+                    setCurrentPage(1);
+                    setExpandedSuppliers(new Set());
+                  }}
                 >
                   Quarterly
                 </Button>
                 <Button
                   variant={timePeriod === "semi-annually" ? "default" : "outline"}
                   size="sm"
-                  onClick={() => setTimePeriod("semi-annually")}
+                  onClick={() => {
+                    setTimePeriod("semi-annually");
+                    setCurrentPage(1);
+                    setExpandedSuppliers(new Set());
+                  }}
                 >
                   Semi-Annually
                 </Button>
                 <Button
                   variant={timePeriod === "yearly" ? "default" : "outline"}
                   size="sm"
-                  onClick={() => setTimePeriod("yearly")}
+                  onClick={() => {
+                    setTimePeriod("yearly");
+                    setCurrentPage(1);
+                    setExpandedSuppliers(new Set());
+                  }}
                 >
                   Yearly
                 </Button>
@@ -421,7 +597,7 @@ export function ProductTab({ topProducts, productTrends, filteredData }: Product
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-15">Rank</TableHead>
+                  {/* <TableHead className="w-15">Rank</TableHead> */}
                   <TableHead>Product Name</TableHead>
                   <TableHead className="text-right">
                     <Button
@@ -478,19 +654,192 @@ export function ProductTab({ topProducts, productTrends, filteredData }: Product
               </TableHeader>
               <TableBody>
                 {paginatedProducts.length > 0 ? (
-                  paginatedProducts.map((product, index) => (
-                    <TableRow key={product.name}>
-                      <TableCell className="font-medium">{(currentPage - 1) * itemsPerPage + index + 1}</TableCell>
-                      <TableCell>{product.name}</TableCell>
-                      <TableCell className="text-right">
-                        {formatCurrency(product.revenue)}
-                      </TableCell>
-                      <TableCell className="text-right">{product.count}</TableCell>
-                      <TableCell className="text-right">
-                        {formatCurrency(product.revenue / product.count)}
-                      </TableCell>
-                    </TableRow>
-                  ))
+                  paginatedProducts.map((product, index) => {
+                    const isExpanded = expandedProducts.has(product.name);
+                    const suppliers = isExpanded ? getProductSuppliers(product.name) : [];
+                    const getProductColor = (index: number) => chartColors[index % chartColors.length];
+                    return (
+                      <React.Fragment key={product.name}>
+                        <TableRow className="cursor-pointer hover:bg-muted/50" onClick={() => toggleProduct(product.name)}>
+                          {/* <TableCell className="font-medium">{(currentPage - 1) * itemsPerPage + index + 1}</TableCell> */}
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              {isExpanded ? (
+                                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                              ) : (
+                                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                              )}
+                              <span
+                                className="font-medium"
+                                style={{ color: getProductColor(index) }}
+                              >
+                                {product.name}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {formatCurrency(product.revenue)}
+                          </TableCell>
+                          <TableCell className="text-right">{product.count}</TableCell>
+                          <TableCell className="text-right">
+                            {formatCurrency(product.revenue / product.count)}
+                          </TableCell>
+                        </TableRow>
+                        {isExpanded && suppliers.length > 0 && (
+                          <TableRow>
+                            <TableCell colSpan={5} className="bg-muted/30 p-0">
+                              <div className="px-12 py-4">
+                                {/* <div className="text-sm font-semibold mb-3 text-muted-foreground">Suppliers for {product.name}</div> */}
+                                <div className="rounded-md border bg-background">
+                                  <Table>
+                                    <TableHeader>
+                                      <TableRow>
+                                        {/* <TableHead className="w-12">#</TableHead> */}
+                                        <TableHead>Supplier Name</TableHead>
+                                        <TableHead className="text-right">Revenue</TableHead>
+                                        <TableHead className="text-right">Transactions</TableHead>
+                                        <TableHead className="text-right">Avg/Transaction</TableHead>
+                                      </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                      {suppliers.map((supplier, idx) => {
+                                        const supplierKey = `${product.name}-${supplier.supplier}`;
+                                        const isSupplierExpanded = expandedSuppliers.has(supplierKey);
+                                        const sortState = supplierPeriodSort.get(supplierKey) || { sortBy: "period", sortOrder: "desc" };
+                                        const timePeriodData = isSupplierExpanded ? getSupplierTimePeriodData(product.name, supplier.supplier, sortState.sortBy, sortState.sortOrder) : [];
+                                        
+                                        const handlePeriodSort = (column: "period" | "revenue" | "transactions" | "avg") => {
+                                          const newSortState = new Map(supplierPeriodSort);
+                                          const currentSort = sortState;
+                                          
+                                          if (currentSort.sortBy === column) {
+                                            newSortState.set(supplierKey, {
+                                              sortBy: column,
+                                              sortOrder: currentSort.sortOrder === "asc" ? "desc" : "asc"
+                                            });
+                                          } else {
+                                            newSortState.set(supplierKey, {
+                                              sortBy: column,
+                                              sortOrder: "desc"
+                                            });
+                                          }
+                                          setSupplierPeriodSort(newSortState);
+                                        };
+                                        
+                                        return (
+                                          <React.Fragment key={supplier.supplier}>
+                                            <TableRow 
+                                              className="cursor-pointer hover:bg-muted/50"
+                                              onClick={(e) => toggleSupplier(supplierKey, e)}
+                                            >
+                                              <TableCell>
+                                                <div className="flex items-center gap-2">
+                                                  {isSupplierExpanded ? (
+                                                    <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                                                  ) : (
+                                                    <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                                                  )}
+                                                  <span>{supplier.supplier}</span>
+                                                </div>
+                                              </TableCell>
+                                              <TableCell className="text-right">{formatCurrency(supplier.revenue)}</TableCell>
+                                              <TableCell className="text-right">{supplier.transactions}</TableCell>
+                                              <TableCell className="text-right">{formatCurrency(supplier.revenue / supplier.transactions)}</TableCell>
+                                            </TableRow>
+                                            {isSupplierExpanded && timePeriodData.length > 0 && (
+                                              <TableRow>
+                                                <TableCell colSpan={4} className="bg-muted/20 p-0">
+                                                  <div className="px-8 py-3" onClick={(e) => e.stopPropagation()}>
+                                                    <div className="text-xs font-semibold mb-2 text-muted-foreground">
+                                                      Revenue by {timePeriod.charAt(0).toUpperCase() + timePeriod.slice(1)} Period
+                                                    </div>
+                                                    <div className="rounded-md border bg-background">
+                                                      <Table>
+                                                        <TableHeader>
+                                                          <TableRow>
+                                                            <TableHead className="text-xs">
+                                                              <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={(e) => {
+                                                                  e.stopPropagation();
+                                                                  handlePeriodSort("period");
+                                                                }}
+                                                                className="h-6 px-2 text-xs"
+                                                              >
+                                                                Period <ArrowUpDown className="ml-1 h-3 w-3" />
+                                                              </Button>
+                                                            </TableHead>
+                                                            <TableHead className="text-right text-xs">
+                                                              <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={(e) => {
+                                                                  e.stopPropagation();
+                                                                  handlePeriodSort("revenue");
+                                                                }}
+                                                                className="h-6 px-2 text-xs"
+                                                              >
+                                                                Revenue <ArrowUpDown className="ml-1 h-3 w-3" />
+                                                              </Button>
+                                                            </TableHead>
+                                                            <TableHead className="text-right text-xs">
+                                                              <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={(e) => {
+                                                                  e.stopPropagation();
+                                                                  handlePeriodSort("transactions");
+                                                                }}
+                                                                className="h-6 px-2 text-xs"
+                                                              >
+                                                                Transactions <ArrowUpDown className="ml-1 h-3 w-3" />
+                                                              </Button>
+                                                            </TableHead>
+                                                            <TableHead className="text-right text-xs">
+                                                              <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={(e) => {
+                                                                  e.stopPropagation();
+                                                                  handlePeriodSort("avg");
+                                                                }}
+                                                                className="h-6 px-2 text-xs"
+                                                              >
+                                                                Avg/Transaction <ArrowUpDown className="ml-1 h-3 w-3" />
+                                                              </Button>
+                                                            </TableHead>
+                                                          </TableRow>
+                                                        </TableHeader>
+                                                        <TableBody>
+                                                          {timePeriodData.map((data) => (
+                                                            <TableRow key={data.period}>
+                                                              <TableCell className="text-xs">{data.period}</TableCell>
+                                                              <TableCell className="text-right text-xs">{formatCurrency(data.revenue)}</TableCell>
+                                                              <TableCell className="text-right text-xs">{data.transactions}</TableCell>
+                                                              <TableCell className="text-right text-xs">{formatCurrency(data.revenue / data.transactions)}</TableCell>
+                                                            </TableRow>
+                                                          ))}
+                                                        </TableBody>
+                                                      </Table>
+                                                    </div>
+                                                  </div>
+                                                </TableCell>
+                                              </TableRow>
+                                            )}
+                                          </React.Fragment>
+                                        );
+                                      })}
+                                    </TableBody>
+                                  </Table>
+                                </div>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </React.Fragment>
+                    );
+                  })
                 ) : (
                   <TableRow>
                     <TableCell colSpan={5} className="h-24 text-center">
