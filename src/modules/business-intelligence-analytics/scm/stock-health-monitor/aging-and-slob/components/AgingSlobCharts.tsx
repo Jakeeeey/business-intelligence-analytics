@@ -54,8 +54,13 @@ export function AgingSlobCharts({ data }: AgingSlobChartsProps) {
               ))}
             </Pie>
             <Tooltip 
-              contentStyle={{ borderRadius: '8px', border: '1px solid hsl(var(--border))' }}
-              itemStyle={{ fontSize: '12px' }}
+              contentStyle={{ 
+                borderRadius: '8px', 
+                border: '1px solid hsl(var(--border))',
+                backgroundColor: 'hsl(var(--popover))',
+                color: 'hsl(var(--popover-foreground))'
+              }}
+              itemStyle={{ fontSize: '12px', color: 'hsl(var(--popover-foreground))' }}
             />
           </PieChart>
         </ResponsiveContainer>

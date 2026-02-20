@@ -25,6 +25,7 @@ export function useFulfillmentRate() {
       const params: Record<string, string> = {
         from: fromFormatted,
         to: toFormatted,
+        limit: "-1",
       };
 
       const result = await fetchFulfillmentRateData(params);

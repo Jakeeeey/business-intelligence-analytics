@@ -59,6 +59,7 @@ const data = {
                     items: [
                         { title: "Salesman Performance", url: "/bia/sales-report/salesman-performance", icon: BadgeCheck },
                         { title: "Product Sales Performance", url: "/bia/sales-report/product-sales-performance", icon: UserCog },
+                        { title: "Product Returns Performance", url: "/bia/sales-report/product-returns-performance", icon: UserCog },
                     ],
                 },
                 {

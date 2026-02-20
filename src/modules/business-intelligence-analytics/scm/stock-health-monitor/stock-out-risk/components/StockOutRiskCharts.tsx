@@ -77,8 +77,13 @@ export function StockOutRiskCharts({ data }: StockOutRiskChartsProps) {
                 ))}
               </Pie>
               <Tooltip 
-                contentStyle={{ borderRadius: '8px', border: '1px solid hsl(var(--border))' }}
-                itemStyle={{ fontSize: '12px' }}
+                contentStyle={{ 
+                  borderRadius: '8px', 
+                  border: '1px solid hsl(var(--border))',
+                  backgroundColor: 'hsl(var(--popover))',
+                  color: 'hsl(var(--popover-foreground))'
+                }}
+                itemStyle={{ fontSize: '12px', color: 'hsl(var(--popover-foreground))' }}
               />
             </PieChart>
           </ResponsiveContainer>
@@ -108,18 +113,26 @@ export function StockOutRiskCharts({ data }: StockOutRiskChartsProps) {
               <XAxis 
                 dataKey="range" 
                 fontSize={12} 
+                tick={{ fill: 'hsl(var(--muted-foreground))' }}
                 tickLine={false} 
                 axisLine={false}
               />
               <YAxis 
                 fontSize={12} 
+                tick={{ fill: 'hsl(var(--muted-foreground))' }}
                 tickLine={false} 
                 axisLine={false}
                 allowDecimals={false}
               />
               <Tooltip 
                 cursor={{ fill: 'hsl(var(--muted)/0.2)' }}
-                contentStyle={{ borderRadius: '8px', border: '1px solid hsl(var(--border))' }}
+                contentStyle={{ 
+                  borderRadius: '8px', 
+                  border: '1px solid hsl(var(--border))',
+                  backgroundColor: 'hsl(var(--popover))',
+                  color: 'hsl(var(--popover-foreground))'
+                }}
+                itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
               />
               <Bar dataKey="count" radius={[4, 4, 0, 0]} barSize={40}>
                 {buckets.map((entry, index) => (
