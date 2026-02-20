@@ -15,7 +15,7 @@ const FNS_LABELS: Record<string, string> = {
 
 /**
  * Column definitions for the FNS analysis DataTable.
- * Columns: Rank, SKU, Product Name, Supplier, Pick Count, Category.
+ * Columns: Rank, Product Name, Supplier, Pick Count, Category.
  *
  * All columns have `enableHiding: false` so the "View" column toggle
  * dropdown does not appear.
@@ -32,14 +32,6 @@ const columns: ColumnDef<FnsEnrichedRow>[] = [
             <span className="text-muted-foreground font-medium">
                 {row.index + 1}
             </span>
-        ),
-    },
-    {
-        accessorKey: "sku",
-        header: "SKU",
-        enableHiding: false,
-        cell: ({ row }) => (
-            <span className="font-mono text-sm">{row.original.sku}</span>
         ),
     },
     {

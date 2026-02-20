@@ -7,12 +7,6 @@ export const dynamic = "force-dynamic";
 
 const SPRING_API_BASE_URL =
     process.env.SPRING_API_BASE_URL || "http://100.81.225.79:8083";
-const DIRECTUS_BASE = (
-    process.env.UPSTREAM_API_BASE_URL ||
-    process.env.NEXT_PUBLIC_API_BASE_URL ||
-    ""
-).replace(/\/+$/, "");
-const DIRECTUS_TOKEN = process.env.DIRECTUS_STATIC_TOKEN || "";
 const COOKIE_NAME = "vos_access_token";
 
 /* ------------------------------------------------------------------ */
@@ -20,13 +14,11 @@ const COOKIE_NAME = "vos_access_token";
 /* ------------------------------------------------------------------ */
 
 /**
- * Fetches FNS pick-frequency data from Spring Boot, enriches with
- * SKU (products.product_code) from Directus, and returns a unified
- * response for the client.
+ * Fetches FNS pick-frequency data from Spring Boot and returns a
+ * unified response for the client.
  *
- * Product name comes from Spring Boot's `productDescription` field
- * (more specific than `productName` which can be duplicated).
- * Supplier name comes directly from the Spring Boot response.
+ * All data (product name, supplier, branch) comes directly from
+ * the Spring Boot response — no Directus enrichment needed.
  */
 export async function GET(req: NextRequest) {
     try {
@@ -67,43 +59,7 @@ export async function GET(req: NextRequest) {
         const fnsItems: any[] = await springRes.json();
         console.log("[fns-analysis] Spring Boot returned", fnsItems.length, "items");
 
-        // ── 3. Fetch products from Directus (for SKU / product_code) ───
-        let productCodeById = new Map<number, string>();
-        try {
-            const prodUrl = `${DIRECTUS_BASE}/items/products?fields=id,product_code&limit=-1`;
-            console.log("[fns-analysis] Fetching products from:", prodUrl);
-
-            // Build auth headers: use static token if available, otherwise try without
-            const directusHeaders: Record<string, string> = {
-                "Content-Type": "application/json",
-            };
-            if (DIRECTUS_TOKEN) {
-                directusHeaders["Authorization"] = `Bearer ${DIRECTUS_TOKEN}`;
-            }
-
-            const prodRes = await fetch(prodUrl, {
-                headers: directusHeaders,
-                cache: "no-store",
-            });
-
-            if (prodRes.ok) {
-                const prodData = await prodRes.json();
-                for (const p of prodData?.data ?? []) {
-                    const id = Number(p?.id);
-                    if (Number.isFinite(id)) {
-                        productCodeById.set(id, String(p?.product_code ?? "").trim());
-                    }
-                }
-                console.log("[fns-analysis] Loaded", productCodeById.size, "product codes from Directus");
-            } else {
-                console.warn("[fns-analysis] Directus products fetch failed:", prodRes.status, await prodRes.text().catch(() => ""));
-            }
-        } catch (e) {
-            console.warn("[fns-analysis] Directus products fetch error:", e);
-            // Non-fatal: SKU will show "—" if products unavailable
-        }
-
-        // ── 4. Enrich and build response ───────────────────────────────
+        // ── 3. Enrich and build response ───────────────────────────────
         let fastCount = 0;
         let normalCount = 0;
         let slowCount = 0;
@@ -116,7 +72,6 @@ export async function GET(req: NextRequest) {
         );
 
         const enrichedRows = sorted.map((item, idx) => {
-            const productId = Number(item?.productId) || 0;
             const fnsClass = String(item?.fnsClass ?? "S") as "F" | "N" | "S";
 
             if (fnsClass === "F") fastCount++;
@@ -131,15 +86,13 @@ export async function GET(req: NextRequest) {
 
             return {
                 rank: idx + 1,
-                sku: productCodeById.get(productId) || "—",
-                // Use productDescription (more specific than productName)
                 productName: String(item?.productDescription ?? item?.productName ?? "").trim() || "—",
-                // supplierName is directly in the Spring Boot response
                 supplierName: String(item?.supplierName ?? "").trim() || "—",
                 pickCount: Number(item?.outboundTxnCount) || 0,
                 fnsClass,
-                productId,
+                productId: Number(item?.productId) || 0,
                 branchId: Number(item?.branchId) || 0,
+                branchName: String(item?.branchName ?? "").trim() || "—",
             };
         });
 

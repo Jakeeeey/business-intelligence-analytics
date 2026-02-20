@@ -7,9 +7,12 @@
 export type FnsPickFrequencyItem = {
     id: string;               // e.g. "FNS:174:22009"
     branchId: number;          // Warehouse / branch identifier
+    branchName: string;        // Warehouse / branch display name
     productId: number;         // Links to Directus `products.id`
     productName: string;
     productDescription: string;
+    supplierId: number;        // Supplier identifier
+    supplierName: string;      // Supplier display name
     windowDays: number;        // Analysis window (e.g. 30 days)
     outboundTxnCount: number;  // Number of outbound picks in the window
     fastThreshold: number;     // Threshold for "Fast" classification (e.g. 15)
@@ -18,18 +21,18 @@ export type FnsPickFrequencyItem = {
 };
 
 /**
- * Enriched row for the UI DataTable — merges Spring Boot data
- * with Directus product (SKU) and supplier info.
+ * Enriched row for the UI DataTable.
+ * All data now comes directly from Spring Boot — no Directus enrichment needed.
  */
 export type FnsEnrichedRow = {
     rank: number;
-    sku: string;               // From Directus `products.product_code`
-    productName: string;       // From Spring Boot `productName`
-    supplierName: string;      // Resolved via purchase_order chain
+    productName: string;       // From Spring Boot `productDescription`
+    supplierName: string;      // From Spring Boot `supplierName`
     pickCount: number;         // From Spring Boot `outboundTxnCount`
     fnsClass: "F" | "N" | "S"; // From Spring Boot `fnsClass`
     productId: number;
     branchId: number;
+    branchName: string;        // From Spring Boot `branchName` (used for filtering)
 };
 
 /**
