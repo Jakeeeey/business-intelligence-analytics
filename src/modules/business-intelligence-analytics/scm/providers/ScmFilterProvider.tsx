@@ -12,6 +12,9 @@ interface ScmFilterContextType {
   setSelectedSupplier: (val: string) => void;
   selectedBranch: string;
   setSelectedBranch: (val: string) => void;
+  selectedRiskStatus: string;
+  setSelectedRiskStatus: (val: string) => void;
+
 }
 
 const ScmFilterContext = createContext<ScmFilterContextType | undefined>(
@@ -44,7 +47,8 @@ export function ScmFilterProvider({ children }: { children: React.ReactNode }) {
   }, [fromStr, toStr]);
 
   const selectedSupplier = searchParams.get("supplier") || "all";
-  const selectedBranch = searchParams.get("branch") || "all";
+  const selectedBranch = searchParams.get("branch_name") || "all";
+  const selectedRiskStatus = searchParams.get("risk_status") || "all";
 
   const updateFilters = (updates: Record<string, string | undefined>) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -73,7 +77,9 @@ export function ScmFilterProvider({ children }: { children: React.ReactNode }) {
         selectedSupplier,
         setSelectedSupplier: (val) => updateFilters({ supplier: val }),
         selectedBranch,
-        setSelectedBranch: (val) => updateFilters({ branch: val }),
+        setSelectedBranch: (val) => updateFilters({ branch_name: val }),
+        selectedRiskStatus,
+        setSelectedRiskStatus: (val) => updateFilters({ risk_status: val }),
       }}
     >
       {children}
