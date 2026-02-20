@@ -10,7 +10,9 @@ export async function GET(req: NextRequest) {
       req.cookies.get("vos_access_token")?.value; // <-- read token from cookie
 
     if (!token) {
-      return NextResponse.json({ error: "Unauthorized: no token provided" }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized: no token provided" 
+        
+      }, { status: 401 });
     }
 
     // Extract startDate and endDate from query parameters

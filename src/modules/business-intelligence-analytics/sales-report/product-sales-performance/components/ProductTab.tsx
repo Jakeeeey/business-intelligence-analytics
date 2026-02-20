@@ -143,7 +143,47 @@ export function ProductTab({ topProducts, productTrends, filteredData }: Product
 
       const data = Array.from(dataMap.entries())
         .map(([date, revenue]) => ({ date, revenue }))
-        .sort((a, b) => a.date.localeCompare(b.date));
+        .sort((a, b) => {
+          // Convert aggregated date strings back to comparable format for proper chronological sorting
+          const getDateValue = (dateStr: string) => {
+            if (timePeriod === "daily" || timePeriod === "weekly") {
+              // Format: "2025-10-12" - can be compared as Date
+              return new Date(dateStr).getTime();
+            } else if (timePeriod === "monthly") {
+              // Format: "2025-10" - add day to make valid date
+              return new Date(dateStr + "-01").getTime();
+            } else if (timePeriod === "bi-weekly") {
+              // Format: "2025-10-W0" - extract year and month, week number for sorting
+              const match = dateStr.match(/(\d{4})-(\d{2})-W(\d+)/);
+              if (match) {
+                const [, year, month, week] = match;
+                return new Date(parseInt(year), parseInt(month) - 1, parseInt(week) * 14 + 1).getTime();
+              }
+            } else if (timePeriod === "bi-monthly" || timePeriod === "quarterly") {
+              // Format: "2025-Q1" - extract year and quarter
+              const match = dateStr.match(/(\d{4})-Q(\d+)/);
+              if (match) {
+                const [, year, quarter] = match;
+                const month = (parseInt(quarter) - 1) * (timePeriod === "bi-monthly" ? 2 : 3);
+                return new Date(parseInt(year), month, 1).getTime();
+              }
+            } else if (timePeriod === "semi-annually") {
+              // Format: "2025-H1" - extract year and half
+              const match = dateStr.match(/(\d{4})-H(\d+)/);
+              if (match) {
+                const [, year, half] = match;
+                const month = (parseInt(half) - 1) * 6;
+                return new Date(parseInt(year), month, 1).getTime();
+              }
+            } else if (timePeriod === "yearly") {
+              // Format: "2025" - just the year
+              return new Date(parseInt(dateStr), 0, 1).getTime();
+            }
+            return 0;
+          };
+          
+          return getDateValue(a.date) - getDateValue(b.date);
+        });
 
       return { productName: pt.productName, data };
     });

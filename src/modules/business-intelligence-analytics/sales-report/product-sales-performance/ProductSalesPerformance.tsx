@@ -5,6 +5,8 @@ import * as React from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
+import { Badge } from "@/components/ui/badge";
+import { RefreshCw } from "lucide-react";
 import { useProductSalesPerformance } from "./hooks/useProductSalesPerformance";
 import { Filters } from "./components/Filters";
 import { KPICards } from "./components/KpiCards";
@@ -38,8 +40,8 @@ export default function ProductSalesPerformance() {
         uniqueProvinces={hook.uniqueProvinces}
       />
 
-      {/* Loading State */}
-      {hook.loading && (
+      {/* Loading State (when no data yet) */}
+      {hook.loading && !hook.loadedOnce && (
         <Card>
           <CardContent className="flex items-center justify-center p-8">
             <div className="flex flex-col items-center gap-4">
@@ -50,13 +52,21 @@ export default function ProductSalesPerformance() {
         </Card>
       )}
 
+      {/* Fresh Data Loading Indicator (when showing cached data) */}
+      {hook.isLoadingFresh && hook.loadedOnce && (
+        <div className="flex items-center justify-center gap-2 py-2">
+          <RefreshCw className="h-4 w-4 animate-spin text-primary" />
+          <span className="text-sm text-muted-foreground">Updating data...</span>
+        </div>
+      )}
+
       {/* KPIs */}
-      {!hook.loading && hook.loadedOnce && hook.filteredData.length > 0 && (
+      {hook.loadedOnce && hook.filteredData.length > 0 && (
         <KPICards kpis={hook.kpis} />
       )}
 
       {/* Tabs */}
-      {!hook.loading && hook.loadedOnce && hook.filteredData.length > 0 && (
+      {hook.loadedOnce && hook.filteredData.length > 0 && (
         <Tabs defaultValue="overview" className="space-y-4">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="overview">Overview</TabsTrigger>

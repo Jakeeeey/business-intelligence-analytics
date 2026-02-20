@@ -97,10 +97,13 @@ export function useProductSalesPerformance() {
   const [filters, setFilters] = React.useState<ProductPerformanceFilters>(getDefaultFilters);
   const [loading, setLoading] = React.useState(false);
   const [loadedOnce, setLoadedOnce] = React.useState(false);
+  const [isLoadingFresh, setIsLoadingFresh] = React.useState(false);
 
-  // Load initial data
+  // Load initial data with caching support
   async function loadData() {
     setLoading(true);
+    setIsLoadingFresh(true);
+    
     try {
       // Calculate date range from current filters
       const { from, to } = getDateRangeFromPreset(
@@ -109,14 +112,29 @@ export function useProductSalesPerformance() {
         filters.dateTo
       );
       
-      const data = await fetchProductSalesData(from, to);
+      // Show toast for loading
+      const loadingToast = toast.loading("Loading data...");
+      
+      // Fetch with cache support
+      const data = await fetchProductSalesData(from, to, {
+        onCacheData: (cachedData) => {
+          // Immediately show cached data
+          setRawData(cachedData);
+          setLoadedOnce(true);
+          setLoading(false);
+          toast.success("Showing cached data, updating...", { id: loadingToast });
+        },
+      });
+      
+      // Update with fresh data
       setRawData(data);
       setLoadedOnce(true);
-      toast.success("Data loaded successfully");
+      toast.success("Data loaded successfully", { id: loadingToast });
     } catch (e: any) {
       toast.error(e?.message || "Failed to load product sales data");
     } finally {
       setLoading(false);
+      setIsLoadingFresh(false);
     }
   }
 
@@ -333,6 +351,7 @@ export function useProductSalesPerformance() {
   return {
     loading,
     loadedOnce,
+    isLoadingFresh,
     loadData,
     rawData,
     filteredData,

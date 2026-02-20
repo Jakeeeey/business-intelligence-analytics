@@ -362,18 +362,14 @@ export function Filters(props: FiltersProps) {
                       {Array.from(filteredGroupedProducts.entries()).map(([group, items]) => {
                         const allSelected = items.every((item) => filters.products.includes(item));
                         const someSelected = items.some((item) => filters.products.includes(item));
+                        const checkedState = allSelected ? true : someSelected ? "indeterminate" : false;
                         
                         return (
                           <div key={group}>
                             <div className="flex items-center space-x-2 px-2 py-1 hover:bg-muted rounded cursor-pointer">
                               <Checkbox
                                 id={`product-group-${group}`}
-                                checked={allSelected}
-                                ref={(el) => {
-                                  if (el) {
-                                    el.indeterminate = someSelected && !allSelected;
-                                  }
-                                }}
+                                checked={checkedState}
                                 onCheckedChange={(checked) =>
                                   handleGroupSelect("products", items, !!checked)
                                 }
@@ -448,10 +444,10 @@ export function Filters(props: FiltersProps) {
                       {Array.from(filteredGroupedCities.entries()).map(([group, items]) => {
                         const allSelected = items.every((item) => filters.cities.includes(item));
                         const someSelected = items.some((item) => filters.cities.includes(item));
+                        const checkedState = allSelected ? true : someSelected ? "indeterminate" : false;
                         
                         return (
                           <div key={group}>
-                            
                             {items.map((city) => (
                               <div key={city} className="flex items-center space-x-2 px-4 py-1 hover:bg-muted rounded">
                                 <Checkbox
@@ -512,6 +508,7 @@ export function Filters(props: FiltersProps) {
                       {Array.from(filteredGroupedProvinces.entries()).map(([group, items]) => {
                         const allSelected = items.every((item) => filters.provinces.includes(item));
                         const someSelected = items.some((item) => filters.provinces.includes(item));
+                        const checkedState = allSelected ? true : someSelected ? "indeterminate" : false;
                         
                         return (
                           <div key={group}>
