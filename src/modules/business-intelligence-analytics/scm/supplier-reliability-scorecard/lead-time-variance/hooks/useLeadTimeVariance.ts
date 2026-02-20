@@ -1,12 +1,15 @@
 import { useState, useEffect, useCallback } from "react";
 import { format } from "date-fns";
-import { FulfillmentRatePo } from "../types/fulfillment-rate.schema";
-import { fetchFulfillmentRateData } from "../services/fulfillment-rate";
+import { fetchLeadTimeVarianceData } from "../services/lead-time-variance";
+import { LeadTimeVariancePo } from "../types/lead-time-variance.schema";
 import { useScmFilters } from "@/modules/business-intelligence-analytics/scm/providers/ScmFilterProvider";
 
-export function useFulfillmentRate() {
+/**
+ * Custom hook to fetch and manage Lead Time Variance data.
+ */
+export function useLeadTimeVariance() {
   const { dateRange } = useScmFilters();
-  const [data, setData] = useState<FulfillmentRatePo[]>([]);
+  const [data, setData] = useState<LeadTimeVariancePo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -21,21 +24,20 @@ export function useFulfillmentRate() {
         ? format(dateRange.to, "yyyy-MM-dd")
         : "";
 
-      // We only filter by date on the server to keep the full supplier list available for local switching
       const params: Record<string, string> = {
         from: fromFormatted,
         to: toFormatted,
         limit: "-1",
       };
 
-      const result = await fetchFulfillmentRateData(params);
+      const result = await fetchLeadTimeVarianceData(params);
       setData(result);
     } catch (err: any) {
-      setError(err.message || "Failed to load fulfillment data");
+      setError(err.message || "Failed to load lead time variance data");
     } finally {
       setIsLoading(false);
     }
-  }, [dateRange]); // Removed selectedSupplier as a dependency for the API call
+  }, [dateRange]);
 
   useEffect(() => {
     refresh();

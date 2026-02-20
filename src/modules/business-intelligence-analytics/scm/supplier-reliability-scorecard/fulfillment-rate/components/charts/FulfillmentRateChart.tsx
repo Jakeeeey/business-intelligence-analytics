@@ -1,12 +1,12 @@
-import React from "react";
+"use client";
+
+import React, { useMemo } from "react";
 import {
-  BarChart,
   Bar,
+  BarChart,
+  CartesianGrid,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
   Cell,
   LabelList,
   ReferenceLine,
@@ -17,7 +17,15 @@ import {
   CardHeader,
   CardTitle,
   CardDescription,
+  CardFooter,
 } from "@/components/ui/card";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@/components/ui/chart";
+import { TrendingUp, AlertCircle } from "lucide-react";
 
 interface FulfillmentRateChartProps {
   data: {
@@ -26,87 +34,123 @@ interface FulfillmentRateChartProps {
   }[];
 }
 
+const chartConfig = {
+  fulfillmentRate: {
+    label: "Fulfillment Rate",
+    color: "hsl(var(--primary))",
+  },
+} satisfies ChartConfig;
+
 export function FulfillmentRateChart({ data }: FulfillmentRateChartProps) {
+  // Slice to bottom 10 performers for optimal UI/UX
+  const slicedData = useMemo(() => data.slice(0, 10), [data]);
+
+  const avgRate =
+    data.length > 0
+      ? data.reduce((acc, curr) => acc + curr.fulfillmentRate, 0) / data.length
+      : 0;
+
   return (
-    <Card className="shadow-sm">
-      <CardHeader>
-        <CardTitle>Fulfillment Rate by Supplier</CardTitle>
-        <CardDescription>
-          Suppliers below 95% threshold are flagged in red
-        </CardDescription>
+    <Card className="shadow-xs gap-4">
+      <CardHeader className="flex flex-row items-start justify-between space-y-0">
+        <div className="space-y-1">
+          <CardTitle>Bottom 10 Performers</CardTitle>
+          <CardDescription>
+            Suppliers with the lowest fulfillment rates (Target: 95%)
+          </CardDescription>
+        </div>
+        {avgRate < 95 && (
+          <div className="flex items-center gap-2 text-destructive text-sm font-medium bg-destructive/5 px-2 py-1 rounded-md border border-destructive/10">
+            <AlertCircle className="h-4 w-4" />
+            Below 95% Target
+          </div>
+        )}
       </CardHeader>
-      <CardContent className="h-[400px] pt-4">
-        <ResponsiveContainer width="100%" height="100%">
+      <CardContent className="px-2 sm:px-6">
+        <ChartContainer config={chartConfig} className="w-full h-[400px]">
           <BarChart
-            data={data}
-            margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
+            accessibilityLayer
+            data={slicedData}
+            margin={{ top: 30, right: 10, left: 0, bottom: 60 }}
           >
-            <CartesianGrid
-              strokeDasharray="3 3"
-              vertical={false}
-              stroke="hsl(var(--border))"
-            />
+            <CartesianGrid vertical={false} strokeDasharray="3 3" />
             <XAxis
               dataKey="name"
-              fontSize={10}
-              tick={{ fill: "hsl(var(--muted-foreground))" }}
+              tickLine={false}
+              tickMargin={10}
+              axisLine={false}
               interval={0}
-              angle={-45}
-              textAnchor="end"
-              height={80}
+              tickFormatter={(value: string) =>
+                value.length > 5 ? `${value.slice(0, 5)}...` : value
+              }
             />
             <YAxis
-              fontSize={12}
-              tick={{ fill: "hsl(var(--muted-foreground))" }}
+              tickLine={false}
+              axisLine={false}
+              tickMargin={8}
               domain={[0, 100]}
+              tickFormatter={(value: number) => `${value}%`}
             />
-            <Tooltip
-              cursor={{ fill: "hsl(var(--muted)/0.2)" }}
-              contentStyle={{
-                borderRadius: "8px",
-                border: "1px solid hsl(var(--border))",
-              }}
-              formatter={(val: number) => [
-                `${val.toFixed(1)}%`,
-                "Fulfillment Rate",
-              ]}
-            />
+            <ChartTooltip content={<ChartTooltipContent />} />
             <ReferenceLine
               y={95}
               stroke="hsl(var(--destructive))"
-              strokeDasharray="3 3"
+              strokeDasharray="4 4"
               label={{
-                value: "95%",
-                position: "right",
+                value: "95% Target",
+                position: "insideTopRight",
                 fill: "hsl(var(--destructive))",
                 fontSize: 10,
+                fontWeight: 500,
+                offset: 10,
               }}
             />
-            <Bar dataKey="fulfillmentRate" radius={[4, 4, 0, 0]} barSize={40}>
-              {data.map((entry, index) => (
-                <Cell
-                  key={`cell-${index}`}
-                  fill={
-                    entry.fulfillmentRate < 95
-                      ? "hsl(var(--destructive))"
-                      : "hsl(var(--foreground))"
-                  }
-                />
-              ))}
+            <Bar dataKey="fulfillmentRate" radius={6} minPointSize={2}>
+              {slicedData.map(
+                (
+                  entry: { name: string; fulfillmentRate: number },
+                  index: number,
+                ) => (
+                  <Cell
+                    key={`cell-${index}`}
+                    fill={
+                      entry.fulfillmentRate < 95
+                        ? "hsl(var(--destructive))"
+                        : "hsl(var(--primary))"
+                    }
+                    fillOpacity={0.8}
+                  />
+                ),
+              )}
               <LabelList
                 dataKey="fulfillmentRate"
                 position="top"
-                formatter={(val: number) => `${val.toFixed(0)}%`}
-                style={{
-                  fontSize: "10px",
-                  fill: "hsl(var(--muted-foreground))",
-                }}
-                offset={10}
+                offset={12}
+                className="fill-foreground font-medium"
+                formatter={(value: number) => `${value.toFixed(0)}%`}
               />
             </Bar>
           </BarChart>
-        </ResponsiveContainer>
+        </ChartContainer>
       </CardContent>
+      <CardFooter className="flex-col items-start gap-2 text-sm">
+        <div className="flex gap-2 font-medium leading-none">
+          {avgRate >= 95 ? (
+            <>
+              Overall performance is on target{" "}
+              <TrendingUp className="h-4 w-4 text-emerald-500" />
+            </>
+          ) : (
+            <>
+              Average fulfillment rate is {avgRate.toFixed(1)}%{" "}
+              <TrendingUp className="h-4 w-4 text-destructive rotate-180" />
+            </>
+          )}
+        </div>
+        <div className="text-muted-foreground leading-none">
+          Showing worst 10 out of {data.length} total suppliers
+        </div>
+      </CardFooter>
     </Card>
   );
 }

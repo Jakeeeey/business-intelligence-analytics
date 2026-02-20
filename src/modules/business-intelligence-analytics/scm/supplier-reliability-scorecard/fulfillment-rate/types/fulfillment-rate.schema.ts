@@ -18,7 +18,7 @@ export type FulfillmentRatePo = z.infer<typeof FulfillmentRatePoSchema>;
 export interface ScmSummaryMetrics {
   avgFulfillmentRate: number;
   suppliersBelow95Count: number;
-  totalSuppliersCount: number;
-  totalPurchaseOrders: number;
+  totalSuppliers: number;
+  totalPOs: number;
   totalFulfillmentPct: number;
 }
