@@ -41,7 +41,7 @@ export default function StockOutRiskPage() {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Module 1: Stock-Out Risk (Predictive Flagging)</h2>
+          <h2 className="text-2xl font-bold tracking-tight">Stock-Out Risk (Predictive Flagging)</h2>
           <p className="text-sm text-muted-foreground">Automated early warnings for critical stock-outs</p>
         </div>
 
