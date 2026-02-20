@@ -28,7 +28,7 @@ import type { FnsEnrichedRow } from "./types";
  * Renders 4 tabs: Distribution, Fast, Normal, Slow.
  */
 export default function FnsAnalysisModule() {
-    const { selectedSupplier } = useScmFilters();
+    const { selectedSupplier, selectedBranch } = useScmFilters();
 
     const { data, summary, isLoading, error, refresh } = useFnsAnalysis();
 
@@ -39,11 +39,23 @@ export default function FnsAnalysisModule() {
         return Array.from(set).sort();
     }, [data]);
 
-    // ── Client-side filtering (supplier only; date is via ScmAdvancedFilters) ──
+    // ── Derive branch list from the fetched data ────────────────────
+    const branches = React.useMemo(() => {
+        const set = new Set(data.map((d) => d.branchName || "Unknown"));
+        return Array.from(set).filter((b) => b !== "Unknown" && b !== "—").sort();
+    }, [data]);
+
+    // ── Client-side filtering (supplier + branch) ───────────────────
     const filtered = React.useMemo(() => {
-        if (selectedSupplier === "all") return data;
-        return data.filter((d) => d.supplierName === selectedSupplier);
-    }, [data, selectedSupplier]);
+        let result = data;
+        if (selectedSupplier !== "all") {
+            result = result.filter((d) => d.supplierName === selectedSupplier);
+        }
+        if (selectedBranch !== "all") {
+            result = result.filter((d) => d.branchName === selectedBranch);
+        }
+        return result;
+    }, [data, selectedSupplier, selectedBranch]);
 
     // ── Category splits for tab views ──────────────────────────────
     const fastRows = React.useMemo(
@@ -58,6 +70,16 @@ export default function FnsAnalysisModule() {
         () => filtered.filter((d) => d.fnsClass === "S"),
         [filtered],
     );
+
+    // ── Dynamic summary derived from filtered data ──────────────────
+    const filteredSummary = React.useMemo(() => ({
+        fastCount: fastRows.length,
+        normalCount: normalRows.length,
+        slowCount: slowRows.length,
+        totalCount: filtered.length,
+        fastThreshold: summary.fastThreshold,
+        normalThreshold: summary.normalThreshold,
+    }), [fastRows, normalRows, slowRows, filtered, summary]);
 
     // ── Loading skeleton ───────────────────────────────────────────
     if (isLoading) {
@@ -111,7 +133,13 @@ export default function FnsAnalysisModule() {
                     </p>
                 </div>
 
-                <ScmAdvancedFilters suppliers={suppliers} />
+                <div className="bg-card border rounded-xl p-2 shadow-sm">
+                    <ScmAdvancedFilters
+                        suppliers={suppliers}
+                        branches={branches}
+                        showBranch={true}
+                    />
+                </div>
             </div>
 
             {/* ── Tabs: Distribution / Fast / Normal / Slow ────────────── */}
@@ -135,11 +163,11 @@ export default function FnsAnalysisModule() {
                         <CardHeader>
                             <CardTitle>Stock Movement Distribution</CardTitle>
                             <CardDescription>
-                                FNS classification breakdown across {summary.totalCount} SKUs
+                                FNS classification breakdown across {filteredSummary.totalCount} SKUs
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <FnsDistributionTab summary={summary} />
+                            <FnsDistributionTab summary={filteredSummary} />
                         </CardContent>
                     </Card>
                 </TabsContent>

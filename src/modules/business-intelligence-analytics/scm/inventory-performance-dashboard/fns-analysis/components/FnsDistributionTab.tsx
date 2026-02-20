@@ -6,8 +6,12 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { Card, CardContent } from "@/components/ui/card";
 import type { FnsSummary } from "../types";
 
-/** Pie chart fill colors that work on both light and dark backgrounds */
-const PIE_COLORS = ["#22c55e", "#3b82f6", "#ef4444"]; // green-500, blue-500, red-500
+/** Fixed color map — each category always gets its designated color */
+const FNS_COLORS: Record<string, string> = {
+    Fast: "#22c55e",   // green-500
+    Normal: "#3b82f6", // blue-500
+    Slow: "#ef4444",   // red-500
+};
 
 interface FnsDistributionTabProps {
     summary: FnsSummary;
@@ -50,10 +54,10 @@ export function FnsDistributionTab({ summary }: FnsDistributionTabProps) {
                                 }
                                 labelLine
                             >
-                                {chartData.map((entry, idx) => (
+                                {chartData.map((entry) => (
                                     <Cell
                                         key={entry.name}
-                                        fill={PIE_COLORS[idx % PIE_COLORS.length]}
+                                        fill={FNS_COLORS[entry.name] || "#94a3b8"}
                                         strokeWidth={2}
                                     />
                                 ))}
