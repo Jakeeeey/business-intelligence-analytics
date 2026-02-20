@@ -15,16 +15,12 @@ interface ScmAdvancedFiltersProps {
   suppliers: string[];
   branches?: string[];
   showBranch?: boolean;
-<<<<<<< HEAD
   showRiskStatus?: boolean;
-=======
->>>>>>> ef4672479fc18c28741ace2f9f4a6fed38759c4f
 }
 
 /**
  * ScmAdvancedFilters
  * A centralized filtering component for SCM modules.
-<<<<<<< HEAD
  * Groups date range, supplier, and branch filters into a single responsive layout.
  */
 export function ScmAdvancedFilters({ 
@@ -42,42 +38,18 @@ export function ScmAdvancedFilters({
     setSelectedBranch,
     selectedRiskStatus,
     setSelectedRiskStatus
-=======
- * Groups date range, supplier, and optional branch filters into a single responsive layout.
- */
-export function ScmAdvancedFilters({
-  suppliers,
-  branches = [],
-  showBranch = false,
-}: ScmAdvancedFiltersProps) {
-  const {
-    dateRange,
-    setDateRange,
-    selectedSupplier,
-    setSelectedSupplier,
-    selectedBranch,
-    setSelectedBranch,
->>>>>>> ef4672479fc18c28741ace2f9f4a6fed38759c4f
   } = useScmFilters();
 
   return (
     <div className="flex flex-wrap gap-2 items-center">
       {/* Date Range Filtering */}
       <ScmDateRangePicker date={dateRange} onDateChange={setDateRange} />
-<<<<<<< HEAD
       
-=======
-
->>>>>>> ef4672479fc18c28741ace2f9f4a6fed38759c4f
       {/* Supplier Filtering */}
       <div className="flex items-center gap-2">
         <Select value={selectedSupplier} onValueChange={setSelectedSupplier}>
           <SelectTrigger className="w-[180px]">
-<<<<<<< HEAD
-            <SelectValue placeholder="All Supplier" />
-=======
             <SelectValue placeholder="All Suppliers" />
->>>>>>> ef4672479fc18c28741ace2f9f4a6fed38759c4f
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Suppliers</SelectItem>
@@ -90,19 +62,11 @@ export function ScmAdvancedFilters({
         </Select>
       </div>
 
-<<<<<<< HEAD
       {/* Branch Filtering */}
-      {showBranch && (
-        <div className="flex items-center gap-2 px-2">
-          <Select value={selectedBranch} onValueChange={setSelectedBranch}>
-            <SelectTrigger className="w-[220px]">
-=======
-      {/* Optional Branch Filtering */}
       {showBranch && (
         <div className="flex items-center gap-2">
           <Select value={selectedBranch} onValueChange={setSelectedBranch}>
-            <SelectTrigger className="w-[180px]">
->>>>>>> ef4672479fc18c28741ace2f9f4a6fed38759c4f
+            <SelectTrigger className="w-[200px]">
               <SelectValue placeholder="All Branches" />
             </SelectTrigger>
             <SelectContent>
@@ -116,11 +80,10 @@ export function ScmAdvancedFilters({
           </Select>
         </div>
       )}
-<<<<<<< HEAD
 
       {/* Risk Status Filtering */}
       {showRiskStatus && (
-        <div className="flex items-center gap-2 px-2">
+        <div className="flex items-center gap-2">
           <Select value={selectedRiskStatus} onValueChange={setSelectedRiskStatus}>
             <SelectTrigger className="w-[160px]">
               <SelectValue placeholder="Risk Status" />
@@ -133,8 +96,6 @@ export function ScmAdvancedFilters({
           </Select>
         </div>
       )}
-=======
->>>>>>> ef4672479fc18c28741ace2f9f4a6fed38759c4f
     </div>
   );
 }
