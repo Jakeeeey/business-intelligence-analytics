@@ -208,10 +208,10 @@ export function DataTable<TData, TValue>({
       const nextPagination =
         typeof updater === "function"
           ? updater(
-              manualPagination
-                ? (pagination ?? internalPagination)
-                : internalPagination,
-            )
+            manualPagination
+              ? (pagination ?? internalPagination)
+              : internalPagination,
+          )
           : updater;
 
       if (manualPagination && onPaginationChange) {
@@ -250,37 +250,39 @@ export function DataTable<TData, TValue>({
           </div>
         )}
 
-        {/* View Toolbar */}
+        {/* View Toolbar — only shown when columns allow hiding */}
         <div className="flex items-center gap-2 ml-auto">
           {actionComponent}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="gap-2">
-                <Settings2 className="h-4 w-4" />
-                View
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-[150px]">
-              {table
-                .getAllColumns()
-                .filter((column) => column.getCanHide())
-                .map((column) => {
-                  return (
-                    <DropdownMenuCheckboxItem
-                      key={column.id}
-                      className="capitalize rounded-lg"
-                      checked={column.getIsVisible()}
-                      onCheckedChange={(value) =>
-                        column.toggleVisibility(!!value)
-                      }
-                    >
-                      {(column.columnDef.meta as any)?.label ||
-                        column.id.replace(/_/g, " ")}
-                    </DropdownMenuCheckboxItem>
-                  );
-                })}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {table.getAllColumns().some((column) => column.getCanHide()) && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="gap-2">
+                  <Settings2 className="h-4 w-4" />
+                  View
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-[150px]">
+                {table
+                  .getAllColumns()
+                  .filter((column) => column.getCanHide())
+                  .map((column) => {
+                    return (
+                      <DropdownMenuCheckboxItem
+                        key={column.id}
+                        className="capitalize rounded-lg"
+                        checked={column.getIsVisible()}
+                        onCheckedChange={(value) =>
+                          column.toggleVisibility(!!value)
+                        }
+                      >
+                        {(column.columnDef.meta as any)?.label ||
+                          column.id.replace(/_/g, " ")}
+                      </DropdownMenuCheckboxItem>
+                    );
+                  })}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </div>
 
@@ -296,9 +298,9 @@ export function DataTable<TData, TValue>({
                       {header.isPlaceholder
                         ? null
                         : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext(),
-                          )}
+                          header.column.columnDef.header,
+                          header.getContext(),
+                        )}
                     </TableHead>
                   );
                 })}
@@ -313,13 +315,12 @@ export function DataTable<TData, TValue>({
                     <TableCell key={colIndex} className="py-3 ">
                       <div className="flex items-center gap-2">
                         <div
-                          className={`h-4 bg-muted animate-pulse rounded ${
-                            colIndex === 0
-                              ? "w-48"
-                              : colIndex === columns.length - 1
-                                ? "w-8 ml-auto"
-                                : "w-24"
-                          }`}
+                          className={`h-4 bg-muted animate-pulse rounded ${colIndex === 0
+                            ? "w-48"
+                            : colIndex === columns.length - 1
+                              ? "w-8 ml-auto"
+                              : "w-24"
+                            }`}
                         />
                       </div>
                     </TableCell>
