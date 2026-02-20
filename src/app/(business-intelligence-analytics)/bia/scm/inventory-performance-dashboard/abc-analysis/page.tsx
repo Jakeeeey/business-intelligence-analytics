@@ -14,7 +14,8 @@ import { NavUser } from "../../../_components/nav-user";
 import { cookies } from "next/headers";
 
 // ✅ Wire the module you asked for
-import ComingSoon from "../../../_components/ComingSoon";
+import AbcAnalysisPage from "@/modules/business-intelligence-analytics/scm/inventory-performance-dashboard/abc-analysis/AbcAnalysisPage";
+import { ScmFilterProvider } from "@/modules/business-intelligence-analytics/scm/providers/ScmFilterProvider";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -120,8 +121,10 @@ export default async function Page() {
             </header>
 
             {/* ✅ Only content scrolls inside RIGHT column */}
-            <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-2 sm:p-4">
-                <ComingSoon />
+            <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
+                <ScmFilterProvider>
+                    <AbcAnalysisPage />
+                </ScmFilterProvider>
             </main>
         </div>
     );

@@ -13,26 +13,39 @@ import { useScmFilters } from "@/modules/business-intelligence-analytics/scm/pro
 
 interface ScmAdvancedFiltersProps {
   suppliers: string[];
+  branches?: string[];
+  showBranch?: boolean;
 }
 
 /**
  * ScmAdvancedFilters
  * A centralized filtering component for SCM modules.
- * Groups date range and supplier filters into a single responsive layout.
+ * Groups date range, supplier, and optional branch filters into a single responsive layout.
  */
-export function ScmAdvancedFilters({ suppliers }: ScmAdvancedFiltersProps) {
-  const { dateRange, setDateRange, selectedSupplier, setSelectedSupplier } =
-    useScmFilters();
+export function ScmAdvancedFilters({
+  suppliers,
+  branches = [],
+  showBranch = false,
+}: ScmAdvancedFiltersProps) {
+  const {
+    dateRange,
+    setDateRange,
+    selectedSupplier,
+    setSelectedSupplier,
+    selectedBranch,
+    setSelectedBranch,
+  } = useScmFilters();
 
   return (
-    <div className="flex flex-wrap gap-1 items-center">
+    <div className="flex flex-wrap gap-2 items-center">
       {/* Date Range Filtering */}
       <ScmDateRangePicker date={dateRange} onDateChange={setDateRange} />
+
       {/* Supplier Filtering */}
-      <div className="flex items-center gap-2 px-2">
+      <div className="flex items-center gap-2">
         <Select value={selectedSupplier} onValueChange={setSelectedSupplier}>
-          <SelectTrigger>
-            <SelectValue placeholder="All Supplier" />
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="All Suppliers" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Suppliers</SelectItem>
@@ -44,6 +57,25 @@ export function ScmAdvancedFilters({ suppliers }: ScmAdvancedFiltersProps) {
           </SelectContent>
         </Select>
       </div>
+
+      {/* Optional Branch Filtering */}
+      {showBranch && (
+        <div className="flex items-center gap-2">
+          <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="All Branches" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Branches</SelectItem>
+              {branches.map((b) => (
+                <SelectItem key={b} value={b}>
+                  {b}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
     </div>
   );
 }
