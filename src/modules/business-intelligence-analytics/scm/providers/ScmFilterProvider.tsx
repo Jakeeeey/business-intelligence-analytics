@@ -10,6 +10,8 @@ interface ScmFilterContextType {
   setDateRange: (range: DateRange | undefined) => void;
   selectedSupplier: string;
   setSelectedSupplier: (val: string) => void;
+  selectedBranch: string;
+  setSelectedBranch: (val: string) => void;
 }
 
 const ScmFilterContext = createContext<ScmFilterContextType | undefined>(
@@ -42,11 +44,12 @@ export function ScmFilterProvider({ children }: { children: React.ReactNode }) {
   }, [fromStr, toStr]);
 
   const selectedSupplier = searchParams.get("supplier") || "all";
+  const selectedBranch = searchParams.get("branch") || "all";
 
   const updateFilters = (updates: Record<string, string | undefined>) => {
     const params = new URLSearchParams(searchParams.toString());
     Object.entries(updates).forEach(([key, value]) => {
-      if (value) {
+      if (value && value !== "all") {
         params.set(key, value);
       } else {
         params.delete(key);
@@ -69,6 +72,8 @@ export function ScmFilterProvider({ children }: { children: React.ReactNode }) {
         setDateRange,
         selectedSupplier,
         setSelectedSupplier: (val) => updateFilters({ supplier: val }),
+        selectedBranch,
+        setSelectedBranch: (val) => updateFilters({ branch: val }),
       }}
     >
       {children}
