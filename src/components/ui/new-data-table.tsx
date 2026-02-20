@@ -236,7 +236,6 @@ export function DataTable<TData, TValue>({
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-4">
-        
         {/* Search Bar */}
         {searchKey && (
           <div className="max-w-sm w-full">
@@ -286,7 +285,7 @@ export function DataTable<TData, TValue>({
       </div>
 
       {/* Data Table */}
-      <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
+      <div className="rounded-xl border bg-card shadow-xs overflow-hidden">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (

@@ -295,7 +295,7 @@ export function LocationTab({ locationRevenue, filteredData }: LocationTabProps)
                   Clear
                 </Button>
               )}
-              <Button
+              {/* <Button
                 variant="outline"
                 size="sm"
                 onClick={() =>
@@ -312,7 +312,7 @@ export function LocationTab({ locationRevenue, filteredData }: LocationTabProps)
               >
                 <Download className="mr-2 h-4 w-4" />
                 Export CSV
-              </Button>
+              </Button> */}
             </div>
           </div>
         </CardHeader>
@@ -392,7 +392,7 @@ export function LocationTab({ locationRevenue, filteredData }: LocationTabProps)
                   Clear
                 </Button>
               )}
-              <Button
+              {/* <Button
                 variant="outline"
                 size="sm"
                 onClick={() =>
@@ -409,7 +409,7 @@ export function LocationTab({ locationRevenue, filteredData }: LocationTabProps)
               >
                 <Download className="mr-2 h-4 w-4" />
                 Export CSV
-              </Button>
+              </Button> */}
             </div>
           </div>
         </CardHeader>

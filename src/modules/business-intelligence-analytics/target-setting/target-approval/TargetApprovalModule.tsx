@@ -49,7 +49,8 @@ export default function TargetApprovalModule() {
 
   const joinedSupervisorAllocations = useMemo(() => {
     return supervisorAllocations.map(a => {
-      const u = metadata.users.find((u: any) => u.user_id === a.supervisor_user_id);
+      // Use loose comparison for ID match
+      const u = metadata.users.find((u: any) => String(u.user_id) === String(a.supervisor_user_id));
       return {
         ...a,
         supervisor_name: u ? `${u.user_fname} ${u.user_lname}` : undefined

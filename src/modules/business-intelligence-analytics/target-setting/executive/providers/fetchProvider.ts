@@ -135,6 +135,6 @@ export async function getSalesmen(): Promise<any[]> {
 }
 
 export async function getAllUsers(): Promise<any[]> {
-  const res = await http.get("/api/bia/metadata/users", { skipBaseUrl: true });
+  const res = await http.get("/api/bia/metadata/users", { params: { limit: -1 }, skipBaseUrl: true });
   return res.data?.data ?? [];
 }
