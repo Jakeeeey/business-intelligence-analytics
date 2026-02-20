@@ -7,6 +7,7 @@ import { DataTable } from "@/components/ui/new-data-table";
 import { useScmFilters } from "@/modules/business-intelligence-analytics/scm/providers/ScmFilterProvider";
 import { useFulfillmentRate } from "./hooks/useFulfillmentRate";
 import FulfillmentRateSkeleton from "@/app/(business-intelligence-analytics)/bia/_components/FulfillmentRateSkeleton";
+import { ErrorPage } from "@/app/(business-intelligence-analytics)/bia/_components/ErrorPage";
 
 import { FulfillmentRateMetrics } from "./components/cards/FulfillmentRateMetricsCard";
 import { FulfillmentRateChart } from "./components/charts/FulfillmentRateChart";
@@ -23,7 +24,7 @@ import {
 export default function FulfillmentRatePage() {
   const { dateRange, selectedSupplier } = useScmFilters();
 
-  const { data, isLoading } = useFulfillmentRate();
+  const { data, isLoading, error, refresh } = useFulfillmentRate();
 
   const suppliers = useMemo(() => {
     const set = new Set(data.map((d) => d.supplierName));
@@ -51,9 +52,10 @@ export default function FulfillmentRatePage() {
   );
 
   if (isLoading) return <FulfillmentRateSkeleton />;
+  if (error) return <ErrorPage message={error} onRefresh={refresh} />;
 
   return (
-    <div className="space-y-6 p-4 md:p-8 pt-6">
+    <div className="space-y-6 p-4 md:p-8 pt-6 h-full">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">
