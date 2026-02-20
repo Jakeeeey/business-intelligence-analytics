@@ -5,7 +5,7 @@ import * as React from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Download, Search, MapPin, ArrowUpDown } from "lucide-react";
+import { Download, Search, MapPin, ArrowUpDown, ChevronRight, ChevronDown } from "lucide-react";
 import type { LocationRevenue, ProductSaleRecord } from "../types";
 import {
   ChartContainer,
@@ -64,10 +64,13 @@ type LocationTabProps = {
 export function LocationTab({ locationRevenue, filteredData }: LocationTabProps) {
   const [searchTerm, setSearchTerm] = React.useState("");
   const [selectedLocation, setSelectedLocation] = React.useState<string | null>(null);
+  const [selectedProvince, setSelectedProvince] = React.useState<string | null>(null);
   const [sortBy, setSortBy] = React.useState<"location" | "revenue" | "transactions" | "avg">("revenue");
   const [sortOrder, setSortOrder] = React.useState<"asc" | "desc">("desc");
   const [currentPage, setCurrentPage] = React.useState(1);
   const [itemsPerPage, setItemsPerPage] = React.useState(10);
+  const [expandedProvinces, setExpandedProvinces] = React.useState<Set<string>>(new Set());
+  const [expandedCities, setExpandedCities] = React.useState<Set<string>>(new Set());
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("en-US", {
@@ -96,16 +99,113 @@ export function LocationTab({ locationRevenue, filteredData }: LocationTabProps)
     URL.revokeObjectURL(url);
   };
 
-  const filteredLocations = React.useMemo(() => {
-    let locations = searchTerm
-      ? locationRevenue.filter((loc) => loc.location.toLowerCase().includes(searchTerm.toLowerCase()))
-      : [...locationRevenue];
+  // Toggle functions
+  const toggleProvince = (province: string) => {
+    const newExpanded = new Set(expandedProvinces);
+    if (newExpanded.has(province)) {
+      newExpanded.delete(province);
+    } else {
+      newExpanded.add(province);
+    }
+    setExpandedProvinces(newExpanded);
+  };
 
-    // Sort locations
-    locations.sort((a, b) => {
+  const toggleCity = (cityKey: string, event: React.MouseEvent) => {
+    event.stopPropagation();
+    const newExpanded = new Set(expandedCities);
+    if (newExpanded.has(cityKey)) {
+      newExpanded.delete(cityKey);
+    } else {
+      newExpanded.add(cityKey);
+    }
+    setExpandedCities(newExpanded);
+  };
+
+  // Get province data
+  const getProvinceData = React.useMemo(() => {
+    const provinceMap = new Map<string, { revenue: number; transactions: number }>();
+
+    filteredData.forEach((r) => {
+      const existing = provinceMap.get(r.province) || { revenue: 0, transactions: 0 };
+      provinceMap.set(r.province, {
+        revenue: existing.revenue + r.amount,
+        transactions: existing.transactions + 1,
+      });
+    });
+
+    return Array.from(provinceMap.entries())
+      .map(([province, data]) => ({
+        province,
+        revenue: data.revenue,
+        transactions: data.transactions,
+      }));
+  }, [filteredData]);
+
+  // Get cities for a province
+  const getCitiesForProvince = (province: string) => {
+    const cityMap = new Map<string, { revenue: number; transactions: number }>();
+
+    filteredData
+      .filter((r) => r.province === province)
+      .forEach((r) => {
+        const existing = cityMap.get(r.city) || { revenue: 0, transactions: 0 };
+        cityMap.set(r.city, {
+          revenue: existing.revenue + r.amount,
+          transactions: existing.transactions + 1,
+        });
+      });
+
+    return Array.from(cityMap.entries())
+      .map(([city, data]) => ({
+        city,
+        revenue: data.revenue,
+        transactions: data.transactions,
+      }));
+  };
+
+  // Get products for a city in a province
+  const getProductsForCity = (city: string, province: string) => {
+    const productMap = new Map<string, { revenue: number; transactions: number }>();
+
+    filteredData
+      .filter((r) => r.city === city && r.province === province)
+      .forEach((r) => {
+        const existing = productMap.get(r.productName) || { revenue: 0, transactions: 0 };
+        productMap.set(r.productName, {
+          revenue: existing.revenue + r.amount,
+          transactions: existing.transactions + 1,
+        });
+      });
+
+    return Array.from(productMap.entries())
+      .map(([productName, data]) => ({
+        productName,
+        revenue: data.revenue,
+        transactions: data.transactions,
+      }));
+  };
+
+  const filteredProvinces = React.useMemo(() => {
+    let provinces = [...getProvinceData];
+
+    // Filter by search term (province name OR city name)
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
+      provinces = provinces.filter((p) => {
+        // Check if province name matches
+        if (p.province.toLowerCase().includes(searchLower)) return true;
+        
+        // Check if any city in this province matches
+        const cities = getCitiesForProvince(p.province);
+        return cities.some((city) => city.city.toLowerCase().includes(searchLower));
+      });
+    }
+
+    // Sort provinces
+    provinces.sort((a, b) => {
       let comparison = 0;
       if (sortBy === "location") {
-        comparison = a.location.localeCompare(b.location);
+        comparison = a.province.localeCompare(b.province);
       } else if (sortBy === "revenue") {
         comparison = a.revenue - b.revenue;
       } else if (sortBy === "transactions") {
@@ -116,19 +216,38 @@ export function LocationTab({ locationRevenue, filteredData }: LocationTabProps)
       return sortOrder === "asc" ? comparison : -comparison;
     });
 
-    return locations;
-  }, [locationRevenue, searchTerm, sortBy, sortOrder]);
+    return provinces;
+  }, [getProvinceData, searchTerm, sortBy, sortOrder]);
 
   // Pagination
-  const totalPages = Math.ceil(filteredLocations.length / itemsPerPage);
-  const paginatedLocations = React.useMemo(() => {
+  const totalPages = Math.ceil(filteredProvinces.length / itemsPerPage);
+  const paginatedProvinces = React.useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
-    return filteredLocations.slice(startIndex, startIndex + itemsPerPage);
-  }, [filteredLocations, currentPage, itemsPerPage]);
+    return filteredProvinces.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredProvinces, currentPage, itemsPerPage]);
 
   React.useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, sortBy, sortOrder]);
+
+  // Revenue by province for chart
+  const provinceRevenue = React.useMemo(() => {
+    return getProvinceData.sort((a, b) => b.revenue - a.revenue);
+  }, [getProvinceData]);
+
+  // Filtered cities based on selected province
+  const filteredCitiesByProvince = React.useMemo(() => {
+    if (!selectedProvince) return locationRevenue;
+    
+    return locationRevenue.filter((loc) => {
+      // Split only on the first comma to handle provinces with commas in their names
+      const firstCommaIndex = loc.location.indexOf(", ");
+      if (firstCommaIndex === -1) return false;
+      
+      const province = loc.location.substring(firstCommaIndex + 2); // +2 to skip ", "
+      return province === selectedProvince;
+    });
+  }, [locationRevenue, selectedProvince]);
 
   // Get top products for selected location
   const topProductsForLocation = React.useMemo(() => {
@@ -150,55 +269,9 @@ export function LocationTab({ locationRevenue, filteredData }: LocationTabProps)
       .slice(0, 5);
   }, [selectedLocation, filteredData]);
 
-  // Revenue by province
-  const provinceRevenue = React.useMemo(() => {
-    const provinceMap = new Map<string, { revenue: number; transactions: number }>();
-
-    filteredData.forEach((r) => {
-      const existing = provinceMap.get(r.province) || { revenue: 0, transactions: 0 };
-      provinceMap.set(r.province, {
-        revenue: existing.revenue + r.amount,
-        transactions: existing.transactions + 1,
-      });
-    });
-
-    return Array.from(provinceMap.entries())
-      .map(([province, data]) => ({
-        province,
-        revenue: data.revenue,
-        transactions: data.transactions,
-      }))
-      .sort((a, b) => b.revenue - a.revenue);
-  }, [filteredData]);
-
-  // Get color for heatmap
-  const getHeatmapColor = (value: number, max: number) => {
-    const intensity = value / max;
-    if (intensity > 0.8) return "hsl(var(--chart-1))";
-    if (intensity > 0.6) return "hsl(var(--chart-2))";
-    if (intensity > 0.4) return "hsl(var(--chart-3))";
-    if (intensity > 0.2) return "hsl(var(--chart-4))";
-    return "hsl(var(--chart-5))";
-  };
-
-  const maxRevenue = Math.max(...locationRevenue.map((l) => l.revenue));
-
   return (
     <div className="space-y-4">
-      {/* Search Bar */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Search locations..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-        </CardContent>
-      </Card>
+
 
       {/* Province Revenue Chart */}
       <Card>
@@ -206,26 +279,41 @@ export function LocationTab({ locationRevenue, filteredData }: LocationTabProps)
           <div className="flex items-center justify-between">
             <div>
               <CardTitle>Revenue by Province</CardTitle>
-              <CardDescription>Provincial performance comparison</CardDescription>
+              <CardDescription>
+                {selectedProvince 
+                  ? `Showing cities in ${selectedProvince}` 
+                  : "Provincial performance comparison (click bar to filter cities)"}
+              </CardDescription>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                exportToCSV(
-                  provinceRevenue.map((p, i) => ({
-                    rank: i + 1,
-                    province: p.province,
-                    revenue: p.revenue,
-                    transactions: p.transactions,
-                  })),
-                  "province-revenue.csv"
-                )
-              }
-            >
-              <Download className="mr-2 h-4 w-4" />
-              Export CSV
-            </Button>
+            <div className="flex gap-2">
+              {selectedProvince && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedProvince(null)}
+                >
+                  Clear
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  exportToCSV(
+                    provinceRevenue.map((p, i) => ({
+                      rank: i + 1,
+                      province: p.province,
+                      revenue: p.revenue,
+                      transactions: p.transactions,
+                    })),
+                    "province-revenue.csv"
+                  )
+                }
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Export CSV
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -241,7 +329,15 @@ export function LocationTab({ locationRevenue, filteredData }: LocationTabProps)
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={provinceRevenue}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="province" />
+                <XAxis 
+                  dataKey="province" 
+                  onClick={(data) => {
+                    if (data && data.value) {
+                      setSelectedProvince(data.value);
+                    }
+                  }}
+                  style={{ cursor: 'pointer' }}
+                />
                 <YAxis tickFormatter={(value) => formatCurrency(value)} />
                 <ChartTooltip
                   content={
@@ -250,9 +346,22 @@ export function LocationTab({ locationRevenue, filteredData }: LocationTabProps)
                     />
                   }
                 />
-                <Bar dataKey="revenue" radius={[4, 4, 0, 0]}>
+                <Bar 
+                  dataKey="revenue" 
+                  radius={[4, 4, 0, 0]}
+                  onClick={(data) => setSelectedProvince(data.province)}
+                  cursor="pointer"
+                  minPointSize={3}
+                >
                   {provinceRevenue.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={chartColors[index % chartColors.length]} />
+                    <Cell 
+                      key={`cell-${index}`} 
+                      fill={selectedProvince === entry.province 
+                        ? chartColors[0] 
+                        : chartColors[index % chartColors.length]
+                      }
+                      opacity={selectedProvince && selectedProvince !== entry.province ? 0.3 : 1}
+                    />
                   ))}
                 </Bar>
               </BarChart>
@@ -267,26 +376,41 @@ export function LocationTab({ locationRevenue, filteredData }: LocationTabProps)
           <div className="flex items-center justify-between">
             <div>
               <CardTitle>City Revenue Heatmap</CardTitle>
-              <CardDescription>Top 15 cities by revenue (click to see products)</CardDescription>
+              <CardDescription>
+                {selectedProvince 
+                  ? `Top 15 cities in ${selectedProvince} (click to see products)` 
+                  : "Top 15 cities by revenue (click to see products)"}
+              </CardDescription>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                exportToCSV(
-                  filteredLocations.map((l, i) => ({
-                    rank: i + 1,
-                    location: l.location,
-                    revenue: l.revenue,
-                    transactions: l.transactions,
-                  })),
-                  "city-revenue.csv"
-                )
-              }
-            >
-              <Download className="mr-2 h-4 w-4" />
-              Export CSV
-            </Button>
+            <div className="flex gap-2">
+              {selectedProvince && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedProvince(null)}
+                >
+                  Clear
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  exportToCSV(
+                    filteredCitiesByProvince.map((l, i) => ({
+                      rank: i + 1,
+                      location: l.location,
+                      revenue: l.revenue,
+                      transactions: l.transactions,
+                    })),
+                    selectedProvince ? `${selectedProvince}-cities-revenue.csv` : "city-revenue.csv"
+                  )
+                }
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Export CSV
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -300,10 +424,20 @@ export function LocationTab({ locationRevenue, filteredData }: LocationTabProps)
             className="h-100 w-full"
           >
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={filteredLocations.slice(0, 15)} layout="vertical">
+              <BarChart data={filteredCitiesByProvince.slice(0, 15)} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis type="number" tickFormatter={(value) => formatCurrency(value)} />
-                <YAxis dataKey="location" type="category" width={150} />
+                <YAxis 
+                  dataKey="location" 
+                  type="category" 
+                  width={150}
+                  onClick={(data) => {
+                    if (data && data.value) {
+                      setSelectedLocation(data.value);
+                    }
+                  }}
+                  style={{ cursor: 'pointer' }}
+                />
                 <ChartTooltip
                   content={
                     <ChartTooltipContent
@@ -316,8 +450,9 @@ export function LocationTab({ locationRevenue, filteredData }: LocationTabProps)
                   radius={[0, 4, 4, 0]}
                   onClick={(data) => setSelectedLocation(data.location)}
                   cursor="pointer"
+                  minPointSize={5}
                 >
-                  {filteredLocations.slice(0, 15).map((entry, index) => (
+                  {filteredCitiesByProvince.slice(0, 15).map((entry, index) => (
                     <Cell
                       key={`cell-${index}`}
                       fill={chartColors[index % chartColors.length]}
@@ -382,11 +517,26 @@ export function LocationTab({ locationRevenue, filteredData }: LocationTabProps)
         </Card>
       )}
 
+      {/* Search Bar */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search locations..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Location Details Table */}
       <Card>
         <CardHeader>
           <CardTitle>All Locations Performance</CardTitle>
-          <CardDescription>{filteredLocations.length} locations</CardDescription>
+          <CardDescription>{filteredProvinces.length} provinces</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="rounded-md border">
@@ -407,7 +557,7 @@ export function LocationTab({ locationRevenue, filteredData }: LocationTabProps)
                       }}
                       className="h-8"
                     >
-                      Location <ArrowUpDown className="ml-2 h-4 w-4" />
+                      Province / City / Product <ArrowUpDown className="ml-2 h-4 w-4" />
                     </Button>
                   </TableHead>
                   <TableHead className="text-right">
@@ -464,26 +614,99 @@ export function LocationTab({ locationRevenue, filteredData }: LocationTabProps)
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {paginatedLocations.length > 0 ? (
-                  paginatedLocations.map((location) => (
-                    <TableRow
-                      key={location.location}
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => setSelectedLocation(location.location)}
-                    >
-                      <TableCell className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4 text-muted-foreground" />
-                        {location.location}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {formatCurrency(location.revenue)}
-                      </TableCell>
-                      <TableCell className="text-right">{location.transactions}</TableCell>
-                      <TableCell className="text-right">
-                        {formatCurrency(location.revenue / location.transactions)}
-                      </TableCell>
-                    </TableRow>
-                  ))
+                {paginatedProvinces.length > 0 ? (
+                  <>
+                    {paginatedProvinces.map((provinceData) => {
+                      const isProvinceExpanded = expandedProvinces.has(provinceData.province);
+                      const cities = isProvinceExpanded ? getCitiesForProvince(provinceData.province) : [];
+
+                      return (
+                        <React.Fragment key={provinceData.province}>
+                          {/* Province Row */}
+                          <TableRow
+                            className="cursor-pointer hover:bg-muted/50 font-semibold"
+                            onClick={() => toggleProvince(provinceData.province)}
+                          >
+                            <TableCell className="flex items-center gap-2">
+                              {isProvinceExpanded ? (
+                                <ChevronDown className="h-4 w-4" />
+                              ) : (
+                                <ChevronRight className="h-4 w-4" />
+                              )}
+                              <MapPin className="h-4 w-4 text-muted-foreground" />
+                              {provinceData.province}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {formatCurrency(provinceData.revenue)}
+                            </TableCell>
+                            <TableCell className="text-right">{provinceData.transactions}</TableCell>
+                            <TableCell className="text-right">
+                              {formatCurrency(provinceData.revenue / provinceData.transactions)}
+                            </TableCell>
+                          </TableRow>
+
+                          {/* Cities under Province */}
+                          {isProvinceExpanded &&
+                            cities
+                              .filter((cityData) => {
+                                // If searching, only show cities that match the search term
+                                if (!searchTerm) return true;
+                                return cityData.city.toLowerCase().includes(searchTerm.toLowerCase());
+                              })
+                              .map((cityData) => {
+                              const cityKey = `${provinceData.province}-${cityData.city}`;
+                              const isCityExpanded = expandedCities.has(cityKey);
+                              const products = isCityExpanded ? getProductsForCity(cityData.city, provinceData.province) : [];
+
+                              return (
+                                <React.Fragment key={cityKey}>
+                                  {/* City Row */}
+                                  <TableRow
+                                    className="cursor-pointer hover:bg-muted/30 bg-muted/10"
+                                    onClick={(e) => toggleCity(cityKey, e)}
+                                  >
+                                    <TableCell className="pl-12">
+                                      <div className="flex items-center gap-2">
+                                        {isCityExpanded ? (
+                                          <ChevronDown className="h-3 w-3" />
+                                        ) : (
+                                          <ChevronRight className="h-3 w-3" />
+                                        )}
+                                        <span className="text-sm">{cityData.city}</span>
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="text-right text-sm">
+                                      {formatCurrency(cityData.revenue)}
+                                    </TableCell>
+                                    <TableCell className="text-right text-sm">{cityData.transactions}</TableCell>
+                                    <TableCell className="text-right text-sm">
+                                      {formatCurrency(cityData.revenue / cityData.transactions)}
+                                    </TableCell>
+                                  </TableRow>
+
+                                  {/* Products under City */}
+                                  {isCityExpanded &&
+                                    products.map((productData) => (
+                                      <TableRow key={`${cityKey}-${productData.productName}`} className="bg-muted/5">
+                                        <TableCell className="pl-20">
+                                          <span className="text-xs text-muted-foreground">{productData.productName}</span>
+                                        </TableCell>
+                                        <TableCell className="text-right text-xs">
+                                          {formatCurrency(productData.revenue)}
+                                        </TableCell>
+                                        <TableCell className="text-right text-xs">{productData.transactions}</TableCell>
+                                        <TableCell className="text-right text-xs">
+                                          {formatCurrency(productData.revenue / productData.transactions)}
+                                        </TableCell>
+                                      </TableRow>
+                                    ))}
+                                </React.Fragment>
+                              );
+                            })}
+                        </React.Fragment>
+                      );
+                    })}
+                  </>
                 ) : (
                   <TableRow>
                     <TableCell colSpan={4} className="h-24 text-center">
@@ -497,7 +720,7 @@ export function LocationTab({ locationRevenue, filteredData }: LocationTabProps)
           <div className="flex items-center justify-between px-2 py-4">
             <div className="flex items-center gap-4">
               <div className="text-sm text-muted-foreground">
-                Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredLocations.length)} of {filteredLocations.length} locations
+                Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredProvinces.length)} of {filteredProvinces.length} provinces
               </div>
               <div className="flex items-center gap-2">
                 <label className="text-sm text-muted-foreground">Show:</label>

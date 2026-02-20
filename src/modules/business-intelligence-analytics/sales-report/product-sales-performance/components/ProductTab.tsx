@@ -505,11 +505,28 @@ export function ProductTab({ topProducts, productTrends, filteredData }: Product
                   />
                   <YAxis tickFormatter={(value) => formatCurrency(value)} />
                   <ChartTooltip
-                    content={
-                      <ChartTooltipContent
-                        formatter={(value) => formatCurrency(Number(value))}
-                      />
-                    }
+                    content={({ active, payload }) => {
+                      if (!active || !payload || payload.length === 0) return null;
+                      
+                      return (
+                        <div className="rounded-lg border bg-background p-2 shadow-sm">
+                          <div className="grid gap-2">
+                            {payload.map((entry: any, index: number) => (
+                              <div key={index} className="flex items-center gap-2">
+                                <div
+                                  className="h-2 w-2 rounded-full"
+                                  style={{ backgroundColor: entry.color }}
+                                />
+                                <span className="text-sm font-medium">{entry.name}:</span>
+                                <span className="text-sm">{formatCurrency(entry.value)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    }}
+                    cursor={{ strokeDasharray: '3 3' }}
+                    allowEscapeViewBox={{ x: false, y: true }}
                   />
                   <Legend />
                   {aggregatedProductTrends.map((pt, i) => {
@@ -522,18 +539,18 @@ export function ProductTab({ topProducts, productTrends, filteredData }: Product
                         dataKey="revenue"
                         name={pt.productName}
                         stroke={color}
-                        strokeWidth={3}
+                        strokeWidth={2}
                         dot={{
                           r: 6,
                           fill: color,
                           stroke: "hsl(var(--background))",
-                          strokeWidth: 3
+                          strokeWidth: 5
                         }}
                         activeDot={{
                           r: 8,
                           fill: color,
                           stroke: "hsl(var(--background))",
-                          strokeWidth: 3
+                          strokeWidth: 1
                         }}
                       />
                     );

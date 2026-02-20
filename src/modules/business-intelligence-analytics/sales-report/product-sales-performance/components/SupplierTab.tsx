@@ -132,7 +132,7 @@ export function SupplierTab({ supplierPerformance, topSuppliers }: SupplierTabPr
       return next;
     });
   };
-
+const getProductColor = (index: number) => chartColors[index % chartColors.length];
   // Sort top suppliers chart based on current sort
   const sortedTopSuppliers = React.useMemo(() => {
     const suppliers = [...topSuppliers];
@@ -316,19 +316,27 @@ export function SupplierTab({ supplierPerformance, topSuppliers }: SupplierTabPr
           </div>
         </CardHeader>
         <CardContent>
+          
           <div className="space-y-2">
             {filteredSuppliers.length > 0 ? (
+              
               filteredSuppliers.map((supplier, index) => (
+                
                 <Collapsible
+                
                   key={supplier.supplier}
                   open={expandedSuppliers.has(supplier.supplier)}
                   onOpenChange={() => toggleSupplier(supplier.supplier)}
                 >
                   <Card>
+                    
                     <CollapsibleTrigger className="w-full">
+                    
                       <CardContent className="flex items-center justify-between p-4">
+                        
                         <div className="flex items-center gap-4">
-                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground"
+                          style={{ backgroundColor: getProductColor(index) }}>
                             {index + 1}
                           </div>
                           <div className="text-left">
