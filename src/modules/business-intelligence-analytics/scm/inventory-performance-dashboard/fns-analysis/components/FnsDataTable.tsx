@@ -17,9 +17,7 @@ const FNS_LABELS: Record<string, string> = {
  * Column definitions for the FNS analysis DataTable.
  * Columns: Rank, Product Name, Supplier, Pick Count, Category.
  *
- * All columns have `enableHiding: false` so the "View" column toggle
- * dropdown does not appear.
- *
+ * All columns are hideable via the View dropdown (column toggle).
  * Rank uses the row index (+ 1) so each tab's ranking restarts
  * from 1 independently.
  */
@@ -27,43 +25,38 @@ const columns: ColumnDef<FnsEnrichedRow>[] = [
     {
         accessorKey: "rank",
         header: "Rank",
-        enableHiding: false,
         cell: ({ row }) => (
-            <span className="text-muted-foreground font-medium">
-                {row.index + 1}
-            </span>
+            <span className="font-mono font-medium">#{row.index + 1}</span>
         ),
     },
     {
         accessorKey: "productName",
         header: "Product Name",
-        enableHiding: false,
         cell: ({ row }) => (
-            <span className="font-medium">{row.original.productName}</span>
+            <span className="font-medium line-clamp-1">{row.original.productName}</span>
         ),
     },
     {
         accessorKey: "supplierName",
         header: "Supplier",
-        enableHiding: false,
         cell: ({ row }) => (
-            <span className="text-muted-foreground">{row.original.supplierName}</span>
+            <span className="text-sm truncate max-w-[150px] inline-block">
+                {row.original.supplierName}
+            </span>
         ),
     },
     {
         accessorKey: "pickCount",
         header: "Pick Count",
-        enableHiding: false,
         cell: ({ row }) => (
-            <span className="font-bold text-center block">
-                {row.original.pickCount}
+            <span className="font-semibold text-primary">
+                {row.original.pickCount.toLocaleString()}
             </span>
         ),
     },
     {
         accessorKey: "fnsClass",
         header: "Category",
-        enableHiding: false,
         cell: ({ row }) => {
             const cls = row.original.fnsClass;
 
