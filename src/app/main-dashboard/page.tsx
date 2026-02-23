@@ -168,6 +168,24 @@ const SUBSYSTEMS: SubsystemItem[] = [
         ],
     },
     {
+        id: "arf",
+        title: "Audit, Risk, & Finance",
+        subtitle: "Audit findings, inventory variance, risk alerts, and compliance",
+        href: "/arf",
+        status: "comingSoon",
+        category: "Governance & Assurance",
+        icon: ShieldCheck,
+        tag: "ARF",
+        accentClass: "bg-slate-500/10 text-slate-700 dark:text-slate-200 ring-1 ring-slate-500/15",
+        submodules: [
+            { id: "findings", title: "Audit Findings" },
+            { id: "physical-inventory", title: "Physical Inventory" },
+            { id: "variance-analysis", title: "Variance Analysis" },
+            { id: "risk-alerts", title: "Risk Alerts" },
+            { id: "audit-logs", title: "Audit Logs" },
+        ],
+    },
+    {
         id: "finance",
         title: "Financial Management",
         subtitle: "General ledger, AR/AP, budgeting, cash & bank, compliance",
@@ -249,24 +267,6 @@ const SUBSYSTEMS: SubsystemItem[] = [
         ],
     },
     {
-        id: "arf",
-        title: "Audit Results Findings",
-        subtitle: "Audit issues, corrective actions, evidence, compliance follow-up",
-        href: "/arf",
-        status: "comingSoon",
-        category: "Governance & Assurance",
-        icon: ShieldCheck,
-        tag: "ARF",
-        accentClass:
-            "bg-slate-500/10 text-slate-700 dark:text-slate-200 ring-1 ring-slate-500/15",
-        submodules: [
-            { id: "findings", title: "Findings", status: "comingSoon" },
-            { id: "actions", title: "Action Plans", status: "comingSoon" },
-            { id: "evidence", title: "Evidence", status: "comingSoon" },
-            { id: "compliance", title: "Compliance", status: "comingSoon" },
-        ],
-    },
-    {
         id: "comms",
         title: "Integrated Communications",
         subtitle: "Announcements, messaging, notifications, tickets/case linkage",
@@ -284,8 +284,6 @@ const SUBSYSTEMS: SubsystemItem[] = [
             { id: "inbox", title: "Inbox", status: "comingSoon" },
         ],
     },
-
-    // ✅ NEW: Business Intelligence & Analytics
     {
         id: "bia",
         title: "Business Intelligence & Analytics",
@@ -304,7 +302,6 @@ const SUBSYSTEMS: SubsystemItem[] = [
             { id: "exports", title: "Exports", status: "comingSoon" },
         ],
     },
-
     {
         id: "pm-monitoring",
         title: "PM Monitoring",

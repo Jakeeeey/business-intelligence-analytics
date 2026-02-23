@@ -20,7 +20,7 @@ import {
     MapPinned,
     Users,
 
-    // ✅ SCM icons
+    // SCM icons
     Boxes,
     ClipboardList,
     BarChart4,
@@ -28,13 +28,28 @@ import {
     Timer,
     Percent,
     Truck,
-    History, // Added History icon
+    History,
+
+    // ARF icons
+    ShieldCheck,
+    AlertCircle,
+    Banknote,
+    PackageOpen,
+
+    // ✅ NEW: "Happy" / Positive Compliance Icons
+    HeartHandshake, // For Compliance & Integrity (Friendly)
+    KeyRound,       // For Access & Overrides
+    CheckCircle2,   // For Policy Adherence
+    SmilePlus,      // For Resolution Trackers
+    Award,          // For Executive Scorecard
+    Map,            // For Branch Risk Matrix
+    TrendingUp, Drum, RussianRuble,     // For Shrinkage vs Revenue
 } from "lucide-react";
 
-import { NavMain } from "./nav-main";
-import { Separator } from "@/components/ui/separator";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { cn } from "@/lib/utils";
+import {NavMain} from "./nav-main";
+import {Separator} from "@/components/ui/separator";
+import {ScrollArea} from "@/components/ui/scroll-area";
+import {cn} from "@/lib/utils";
 import {
     Sidebar,
     SidebarContent,
@@ -57,9 +72,16 @@ const data = {
                     url: "#",
                     icon: Target,
                     items: [
-                        { title: "Salesman Performance", url: "/bia/sales-report/salesman-performance", icon: BadgeCheck },
-                        { title: "Product Sales Performance", url: "/bia/sales-report/product-sales-performance", icon: UserCog },
-                        { title: "Product Returns Performance", url: "/bia/sales-report/product-returns-performance", icon: UserCog },
+                        {
+                            title: "Salesman Performance",
+                            url: "/bia/sales-report/salesman-performance",
+                            icon: BadgeCheck
+                        },
+                        {
+                            title: "Product Sales Performance",
+                            url: "/bia/sales-report/product-sales-performance",
+                            icon: UserCog
+                        },
                     ],
                 },
                 {
@@ -67,10 +89,10 @@ const data = {
                     url: "#",
                     icon: Target,
                     items: [
-                        { title: "Target Approval", url: "/bia/target-setting/target-approval", icon: BadgeCheck },
-                        { title: "Executive", url: "/bia/target-setting/executive", icon: UserCog },
-                        { title: "Manager", url: "/bia/target-setting/manager", icon: Briefcase },
-                        { title: "Supervisor", url: "/bia/target-setting/supervisor", icon: UserRound },
+                        {title: "Target Approval", url: "/bia/target-setting/target-approval", icon: BadgeCheck},
+                        {title: "Executive", url: "/bia/target-setting/executive", icon: UserCog},
+                        {title: "Manager", url: "/bia/target-setting/manager", icon: Briefcase},
+                        {title: "Supervisor", url: "/bia/target-setting/supervisor", icon: UserRound},
                     ],
                 },
                 {
@@ -78,19 +100,31 @@ const data = {
                     url: "#",
                     icon: LineChart,
                     items: [
-                        { title: "Executive Health", url: "/bia/target-setting-reports/executive-health", icon: HeartPulse },
-                        { title: "Managerial / Supplier", url: "/bia/target-setting-reports/managerial-supplier", icon: Factory },
-                        { title: "Salesman KPI", url: "/bia/target-setting-reports/salesman-kpi", icon: Gauge },
-                        { title: "AR and Remittance", url: "/bia/target-setting-reports/ar-and-remittance", icon: ArrowLeftRight },
-                        { title: "Channel", url: "/bia/target-setting-reports/channel", icon: Network },
-                        { title: "Area", url: "/bia/target-setting-reports/area", icon: MapPinned },
-                        { title: "Audit Trail", url: "/bia/target-setting/ts-audit-trail", icon: History },
+                        {
+                            title: "Executive Health",
+                            url: "/bia/target-setting-reports/executive-health",
+                            icon: HeartPulse
+                        },
+                        {
+                            title: "Managerial / Supplier",
+                            url: "/bia/target-setting-reports/managerial-supplier",
+                            icon: Factory
+                        },
+                        {title: "Salesman KPI", url: "/bia/target-setting-reports/salesman-kpi", icon: Gauge},
+                        {
+                            title: "AR and Remittance",
+                            url: "/bia/target-setting-reports/ar-and-remittance",
+                            icon: ArrowLeftRight
+                        },
+                        {title: "Channel", url: "/bia/target-setting-reports/channel", icon: Network},
+                        {title: "Area", url: "/bia/target-setting-reports/area", icon: MapPinned},
+                        {title: "Audit Trail", url: "/bia/target-setting/ts-audit-trail", icon: History},
                     ],
                 },
             ],
         },
 
-        // ✅ NEW: SCM tree
+        // SCM tree
         {
             title: "SCM",
             url: "#",
@@ -101,8 +135,16 @@ const data = {
                     url: "#",
                     icon: BarChart4,
                     items: [
-                        { title: "ABC Analysis", url: "/bia/scm/inventory-performance-dashboard/abc-analysis", icon: ClipboardList },
-                        { title: "FNS Analysis", url: "/bia/scm/inventory-performance-dashboard/fns-analysis", icon: ClipboardList },
+                        {
+                            title: "ABC Analysis",
+                            url: "/bia/scm/inventory-performance-dashboard/abc-analysis",
+                            icon: ClipboardList
+                        },
+                        {
+                            title: "FNS Analysis",
+                            url: "/bia/scm/inventory-performance-dashboard/fns-analysis",
+                            icon: ClipboardList
+                        },
                     ],
                 },
                 {
@@ -110,8 +152,12 @@ const data = {
                     url: "#",
                     icon: BadgeAlert,
                     items: [
-                        { title: "Stock-Out Risk", url: "/bia/scm/stock-health-monitor/stock-out-risk", icon: BadgeAlert },
-                        { title: "Aging & SLOB", url: "/bia/scm/stock-health-monitor/aging-and-slob", icon: Timer },
+                        {
+                            title: "Stock-Out Risk",
+                            url: "/bia/scm/stock-health-monitor/stock-out-risk",
+                            icon: BadgeAlert
+                        },
+                        {title: "Aging & SLOB", url: "/bia/scm/stock-health-monitor/aging-and-slob", icon: Timer},
                     ],
                 },
                 {
@@ -119,8 +165,66 @@ const data = {
                     url: "#",
                     icon: Truck,
                     items: [
-                        { title: "Lead Time Variance", url: "/bia/scm/supplier-reliability-scorecard/lead-time-variance", icon: Timer },
-                        { title: "Fulfillment Rate", url: "/bia/scm/supplier-reliability-scorecard/fulfillment-rate", icon: Percent },
+                        {
+                            title: "Lead Time Variance",
+                            url: "/bia/scm/supplier-reliability/lead-time-variance",
+                            icon: Timer
+                        },
+                        {
+                            title: "Fulfillment Rate",
+                            url: "/bia/scm/supplier-reliability/fulfillment-rate",
+                            icon: Percent
+                        },
+                    ],
+                },
+            ],
+        },
+
+        // ✅ UPDATED: ARF tree with Positive Framing
+        {
+            title: "ARF",
+            url: "#",
+            icon: ShieldCheck,
+            items: [
+                {
+                    title: "Variance Analysis",
+                    url: "#",
+                    icon: AlertCircle,
+                    items: [
+                        {
+                            title: "Inventory",
+                            url: "/bia/arf/variance-analysis/inventory-variances",
+                            icon: PackageOpen
+                        },
+                        {
+                            title: "Collection",
+                            url: "/bia/arf/variance-analysis/collection-variances",
+                            icon: Banknote
+                        },
+                        {
+                            title: "Disbursement",
+                            url: "/bia/arf/variance-analysis/disbursement-variances",
+                            icon: RussianRuble
+                        },
+                    ],
+                },
+                {
+                    title: "Operational Integrity", // Sounds much better than "Compliance Monitoring"
+                    url: "#",
+                    icon: HeartHandshake, // Friendly partnership icon
+                    items: [
+                        {title: "Access & Overrides", url: "/bia/arf/integrity/access-overrides", icon: KeyRound},
+                        {title: "Policy Adherence", url: "/bia/arf/integrity/policy-adherence", icon: CheckCircle2}, // Tracks stand-ups, memo compliance
+                        {title: "Resolution Trackers", url: "/bia/arf/integrity/resolutions", icon: SmilePlus}, // Tracking fixed issues happily
+                    ],
+                },
+                {
+                    title: "Executive Scorecard", // High-level view for GM/President
+                    url: "#",
+                    icon: Award,
+                    items: [
+                        {title: "Branch Risk Matrix", url: "/bia/arf/executive/branch-risk", icon: Map},
+                        {title: "Shrinkage vs Revenue", url: "/bia/arf/executive/shrinkage-revenue", icon: TrendingUp},
                     ],
                 },
             ],
@@ -128,7 +232,7 @@ const data = {
     ],
 };
 
-export function AppSidebar({ className, ...props }: React.ComponentProps<typeof Sidebar>) {
+export function AppSidebar({className, ...props}: React.ComponentProps<typeof Sidebar>) {
     const [roles, setRoles] = React.useState<{
         is_executive: boolean;
         is_division_sales_head: boolean;
@@ -153,41 +257,26 @@ export function AppSidebar({ className, ...props }: React.ComponentProps<typeof 
                 console.error("Failed to fetch roles:", error);
             }
         }
+
         fetchRoles();
     }, []);
 
     // Filter Logic
     const filteredNavMain = React.useMemo(() => {
-        // if (!roles) return data.navMain; // Fail-closed handled by initial state
-
         return data.navMain.map((group) => {
-            // CRM Group contains the nested items we need to filter
             if (group.title === "CRM") {
                 const updatedItems = group.items.map((subGroup) => {
-                    // Filter "Target Settings" items
                     if (subGroup.title === "Target Settings") {
                         const filteredSubItems = subGroup.items.filter((item) => {
-                            // 1. Target Approval: ONLY for Approvers
                             if (item.title === "Target Approval") {
                                 return roles.is_target_setting_approver;
                             }
-
-                            // 2. Executive Menu
-                            // Visible to: Executive OR Approver
-                            // Hidden for: Manager, Supervisor
                             if (item.title === "Executive") {
                                 return roles.is_target_setting_approver || roles.is_executive;
                             }
-
-                            // 3. Manager Menu
-                            // Visible to: Executive OR Manager OR Approver
-                            // Hidden for: Supervisor
                             if (item.title === "Manager") {
                                 return roles.is_target_setting_approver || roles.is_executive || roles.is_division_sales_head;
                             }
-
-                            // 4. Supervisor Menu
-                            // Visible to: ALL (Supervisor, Manager, Executive, Approver)
                             if (item.title === "Supervisor") {
                                 return (
                                     roles.is_target_setting_approver ||
@@ -196,31 +285,19 @@ export function AppSidebar({ className, ...props }: React.ComponentProps<typeof 
                                     roles.is_supervisor
                                 );
                             }
-
                             return true;
                         });
-                        return { ...subGroup, items: filteredSubItems };
+                        return {...subGroup, items: filteredSubItems};
                     }
 
-                    // Filter "Target Setting Reports" items
                     if (subGroup.title === "Target Setting Reports") {
                         const filteredSubItems = subGroup.items.filter((item) => {
-                            // 1. Executive Health
-                            // Visible to: Executive OR Approver
-                            // Hidden for: Manager, Supervisor
                             if (item.title === "Executive Health") {
                                 return roles.is_target_setting_approver || roles.is_executive;
                             }
-
-                            // 2. Managerial / Supplier
-                            // Visible to: Executive OR Manager OR Approver
-                            // Hidden for: Supervisor (User: "except sa Executive Health, and Managerial / Supplier")
                             if (item.title === "Managerial / Supplier") {
                                 return roles.is_target_setting_approver || roles.is_executive || roles.is_division_sales_head;
                             }
-
-                            // 3. All Other Reports (Salesman KPI, AR, Channel, Area, SamG)
-                            // Visible to: Executive OR Manager OR Supervisor OR Approver
                             return (
                                 roles.is_target_setting_approver ||
                                 roles.is_executive ||
@@ -228,15 +305,16 @@ export function AppSidebar({ className, ...props }: React.ComponentProps<typeof 
                                 roles.is_supervisor
                             );
                         });
-                        return { ...subGroup, items: filteredSubItems };
+                        return {...subGroup, items: filteredSubItems};
                     }
 
                     return subGroup;
                 });
 
-                return { ...group, items: updatedItems };
+                return {...group, items: updatedItems};
             }
 
+            // ARF and SCM pass through untouched by role filtering for now
             return group;
         });
     }, [roles]);
@@ -245,9 +323,7 @@ export function AppSidebar({ className, ...props }: React.ComponentProps<typeof 
         <Sidebar
             {...props}
             className={cn(
-                // ✅ brighter border in dark mode (para kita)
                 "border-r border-sidebar-border/60 dark:border-white/20",
-                // ✅ premium depth (subtle ring + shadow)
                 "shadow-sm dark:shadow-[0_0_0_1px_rgba(255,255,255,0.10),0_16px_40px_-24px_rgba(0,0,0,0.9)]",
                 className
             )}
@@ -280,7 +356,7 @@ export function AppSidebar({ className, ...props }: React.ComponentProps<typeof 
                 </SidebarMenu>
             </SidebarHeader>
 
-            <Separator />
+            <Separator/>
 
             <SidebarContent>
                 <div className="px-4 pt-3 pb-2 text-xs font-medium text-muted-foreground">Platform</div>
@@ -294,13 +370,13 @@ export function AppSidebar({ className, ...props }: React.ComponentProps<typeof 
                     )}
                 >
                     <div className="w-full min-w-0">
-                        <NavMain items={filteredNavMain} />
+                        <NavMain items={filteredNavMain}/>
                     </div>
                 </ScrollArea>
             </SidebarContent>
 
             <SidebarFooter className="p-0">
-                <Separator />
+                <Separator/>
                 <div className="py-3 text-center text-xs text-muted-foreground">VOS Web v2.0</div>
             </SidebarFooter>
         </Sidebar>
