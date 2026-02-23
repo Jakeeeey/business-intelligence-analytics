@@ -230,7 +230,8 @@ export function useManagerTargets() {
       const users = raw.users ?? [];
       return supervisorRows
         .map((sv) => {
-          const u = users.find((usr) => usr.user_id === sv.supervisor_user_id);
+          // Use loose comparison for ID match
+          const u = users.find((usr) => String(usr.user_id) === String(sv.supervisor_user_id));
           if (!u) return `User #${sv.supervisor_user_id}`;
           return fullName(u);
         })

@@ -12,8 +12,8 @@ import { NavUser } from "../../_components/nav-user";
 
 import { cookies } from "next/headers";
 
-// ✅ Wire the module you asked for
-import ComingSoon from "../../_components/ComingSoon"
+// ✅ Removed ComingSoon and wired the new Area Analytics module
+import { AreaChannelModule } from "@/modules/business-intelligence-analytics/target-setting-reports/area-analytics";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -118,11 +118,10 @@ export default async function Page() {
                 </div>
             </header>
 
-            {/* ✅ Only content scrolls inside RIGHT column */}
-            <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-2 sm:p-4">
-                <ComingSoon />
+            {/* ✅ Removed the p-2 sm:p-4 padding so the module can control its own spacing */}
+            <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
+                <AreaChannelModule />
             </main>
         </div>
     );
 }
-
