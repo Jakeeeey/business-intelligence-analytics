@@ -15,32 +15,36 @@ interface ScmAdvancedFiltersProps {
   suppliers: string[];
   branches?: string[];
   showBranch?: boolean;
+  showRiskStatus?: boolean;
 }
 
 /**
  * ScmAdvancedFilters
  * A centralized filtering component for SCM modules.
- * Groups date range, supplier, and optional branch filters into a single responsive layout.
+ * Groups date range, supplier, and branch filters into a single responsive layout.
  */
-export function ScmAdvancedFilters({
-  suppliers,
-  branches = [],
+export function ScmAdvancedFilters({ 
+  suppliers, 
+  branches = [], 
   showBranch = false,
+  showRiskStatus = false
 }: ScmAdvancedFiltersProps) {
-  const {
-    dateRange,
-    setDateRange,
-    selectedSupplier,
+  const { 
+    dateRange, 
+    setDateRange, 
+    selectedSupplier, 
     setSelectedSupplier,
     selectedBranch,
     setSelectedBranch,
+    selectedRiskStatus,
+    setSelectedRiskStatus
   } = useScmFilters();
 
   return (
     <div className="flex flex-wrap gap-2 items-center">
       {/* Date Range Filtering */}
       <ScmDateRangePicker date={dateRange} onDateChange={setDateRange} />
-
+      
       {/* Supplier Filtering */}
       <div className="flex items-center gap-2">
         <Select value={selectedSupplier} onValueChange={setSelectedSupplier}>
@@ -58,11 +62,11 @@ export function ScmAdvancedFilters({
         </Select>
       </div>
 
-      {/* Optional Branch Filtering */}
+      {/* Branch Filtering */}
       {showBranch && (
         <div className="flex items-center gap-2">
           <Select value={selectedBranch} onValueChange={setSelectedBranch}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-[200px]">
               <SelectValue placeholder="All Branches" />
             </SelectTrigger>
             <SelectContent>
@@ -72,6 +76,22 @@ export function ScmAdvancedFilters({
                   {b}
                 </SelectItem>
               ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
+      {/* Risk Status Filtering */}
+      {showRiskStatus && (
+        <div className="flex items-center gap-2">
+          <Select value={selectedRiskStatus} onValueChange={setSelectedRiskStatus}>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue placeholder="Risk Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="critical">Critical</SelectItem>
+              <SelectItem value="healthy">Healthy</SelectItem>
             </SelectContent>
           </Select>
         </div>

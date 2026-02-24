@@ -10,10 +10,13 @@ import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { NavUser } from "../../../_components/nav-user";
 
+import React, { Suspense } from "react";
 import { cookies } from "next/headers";
 
-// ✅ Wire the module you asked for
-import ComingSoon from "../../../_components/ComingSoon";
+// ✅ Wire the FNS Analysis module
+import FnsAnalysisModule from "@/modules/business-intelligence-analytics/scm/inventory-performance-dashboard/fns-analysis/FnsAnalysisModule";
+import { ScmFilterProvider } from "@/modules/business-intelligence-analytics/scm/providers/ScmFilterProvider";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -119,8 +122,19 @@ export default async function Page() {
             </header>
 
             {/* ✅ Only content scrolls inside RIGHT column */}
-            <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-2 sm:p-4">
-                <ComingSoon />
+            <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
+                <Suspense
+                    fallback={
+                        <div className="space-y-6 p-4 md:p-8 pt-6">
+                            <Skeleton className="h-9 w-64" />
+                            <Skeleton className="h-80 rounded-xl" />
+                        </div>
+                    }
+                >
+                    <ScmFilterProvider>
+                        <FnsAnalysisModule />
+                    </ScmFilterProvider>
+                </Suspense>
             </main>
         </div>
     );
