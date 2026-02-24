@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 
 import { fetchManagerialData, fetchDynamicTargets } from "./providers/fetchProvider";
 import { VSalesPerformanceDataDto } from "../executive-health/types";
+import { SalesmanDetailModal } from "./components/SalesmanDetailModal";
 
 // Custom component for the vertical dashed target line
 const CustomTargetLine = (props: any) => {
@@ -51,6 +52,24 @@ function ManagerialSupplierContent() {
     const [loading, setLoading] = useState(true);
     const [rawData, setRawData] = useState<VSalesPerformanceDataDto[]>([]);
     const [targets, setTargets] = useState<any>({ supplierTargets: [], salesmanTargets: [] });
+
+    // Salesman Detail Modal State
+    const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+    const [selectedSalesmanForModal, setSelectedSalesmanForModal] = useState<string | null>(null);
+
+    const salesmanDetailData = useMemo(() => {
+        if (!selectedSalesmanForModal || !selectedSupplier) return [];
+        return rawData.filter(d =>
+            d.salesmanName === selectedSalesmanForModal &&
+            d.supplierName === selectedSupplier &&
+            d.divisionName === selectedDivision
+        );
+    }, [rawData, selectedSalesmanForModal, selectedSupplier, selectedDivision]);
+
+    const handleSalesmanClick = (name: string) => {
+        setSelectedSalesmanForModal(name);
+        setIsDetailModalOpen(true);
+    };
 
     // 1. Fetch Data
     useEffect(() => {
@@ -250,9 +269,11 @@ function ManagerialSupplierContent() {
                                 onClick={(data) => {
                                     if (!selectedSupplier && data && data.activePayload) {
                                         setSelectedSupplier(data.activePayload[0].payload.name);
+                                    } else if (selectedSupplier && data && data.activePayload) {
+                                        handleSalesmanClick(data.activePayload[0].payload.name);
                                     }
                                 }}
-                                style={{ cursor: selectedSupplier ? 'default' : 'pointer' }}
+                                style={{ cursor: 'pointer' }}
                             >
                                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" strokeOpacity={0.5} />
                                 <XAxis type="number" hide />
@@ -287,8 +308,8 @@ function ManagerialSupplierContent() {
                             {(selectedSupplier ? salesmanBreakdown : supplierPerformance).map((item: any, i) => (
                                 <div
                                     key={i}
-                                    className={`group p-4 rounded-xl border border-transparent hover:border-border hover:bg-muted/50 transition-all ${!selectedSupplier ? 'cursor-pointer' : ''}`}
-                                    onClick={() => !selectedSupplier && setSelectedSupplier(item.name)}
+                                    className={`group p-4 rounded-xl border border-transparent hover:border-border hover:bg-muted/50 transition-all cursor-pointer`}
+                                    onClick={() => !selectedSupplier ? setSelectedSupplier(item.name) : handleSalesmanClick(item.name)}
                                 >
                                     <div className="flex justify-between items-start mb-3">
                                         <div className="w-[70%]">
@@ -314,6 +335,13 @@ function ManagerialSupplierContent() {
                     </CardContent>
                 </Card>
             </div>
+
+            <SalesmanDetailModal
+                isOpen={isDetailModalOpen}
+                onClose={() => setIsDetailModalOpen(false)}
+                data={salesmanDetailData}
+                salesmanName={selectedSalesmanForModal || ""}
+            />
         </div>
     );
 }

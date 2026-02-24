@@ -1,5 +1,4 @@
 export interface VSalesPerformanceDataDto {
-    storeName: string;
     // IDs
     divisionId: number;
     salesmanId: number;
@@ -11,10 +10,11 @@ export interface VSalesPerformanceDataDto {
     supplierName: string;
 
     // Data
-
     transactionDate: string; // Java LocalDate becomes a "YYYY-MM-DD" string
     netAmount: number;       // Java Double becomes number
     storeName?: string;      // Added for customer breakdown
+    storeType?: string;      // Added for salesman detail modal
+    storeTypeLabel?: string; // Added for salesman detail modal display
 }
 
 // Keep your helper interfaces
