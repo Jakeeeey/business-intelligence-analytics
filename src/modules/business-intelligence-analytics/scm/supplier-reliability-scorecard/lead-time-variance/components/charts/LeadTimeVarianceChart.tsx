@@ -35,7 +35,7 @@ interface LeadTimeVarianceChartProps {
 const chartConfig = {
   averageLeadTime: {
     label: "Avg. Lead Time (Days)",
-    color: "var(--chart-1)",
+    color: "var(--chart-2)",
   },
 } satisfies ChartConfig;
 
@@ -78,9 +78,9 @@ export function LeadTimeVarianceChart({ data }: LeadTimeVarianceChartProps) {
                   <Cell
                     key={`cell-${index}`}
                     fill={
-                      entry.averageLeadTime > 7
+                      entry.averageLeadTime > 1
                         ? "hsl(var(--destructive))"
-                        : "hsl(var(--chart-1))"
+                        : "hsl(var(--primary))"
                     }
                   />
                 ))}

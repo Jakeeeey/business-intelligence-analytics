@@ -72,7 +72,7 @@ export default function FulfillmentRatePage() {
       <DataTable
         columns={columns}
         data={tableData}
-        searchKey="supplierName"
+        // searchKey="supplierName"
         isLoading={isLoading}
       />
     </div>

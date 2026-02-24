@@ -86,7 +86,7 @@ export default function LeadTimeVariancePage() {
       <DataTable
         columns={columns}
         data={tableData}
-        searchKey="supplierName"
+        searchKey="purchaseOrderNo"
         isLoading={isLoading}
       />
     </div>
