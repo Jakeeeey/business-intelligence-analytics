@@ -155,69 +155,69 @@ export async function GET(req: NextRequest) {
   // LOOKUPS: group accounts by employee_id
   // =========================================
   // =========================================
-// LOOKUPS: group accounts by employee_id
-// - Display name comes from salesman.salesman_name
-// - NO /items/users call (Directus users is special)
-// =========================================
-if (mode === "lookups") {
-  const sm = await fetchAllItems(
-    "salesman",
-    "id,employee_id,salesman_name,salesman_code",
-    undefined,
-  );
-
-  if (!sm.ok) {
-    return json(
-      { success: false, message: "Failed to fetch salesman lookups", error: sm.error, data: null },
-      { status: sm.status },
+  // LOOKUPS: group accounts by employee_id
+  // - Display name comes from salesman.salesman_name
+  // - NO /items/users call (Directus users is special)
+  // =========================================
+  if (mode === "lookups") {
+    const sm = await fetchAllItems(
+      "salesman",
+      "id,employee_id,salesman_name,salesman_code",
+      undefined,
     );
-  }
 
-  // group by employee_id
-  const groups = new Map<number, { employee_id: number; employee: string; accounts: AnyRec[] }>();
-
-  for (const s of sm.data) {
-    const empId = Number(s?.employee_id ?? 0);
-    if (!Number.isFinite(empId) || empId <= 0) continue;
-
-    const salesmanName = String(s?.salesman_name ?? "").trim() || `Employee #${empId}`;
-
-    const acc = {
-      id: Number(s?.id),
-      employee_id: empId,
-      salesman_code: String(s?.salesman_code ?? "").trim(),
-      salesman_name: salesmanName,
-    };
-
-    if (!Number.isFinite(acc.id)) continue;
-
-    const g = groups.get(empId) ?? {
-      employee_id: empId,
-      employee: salesmanName, // ✅ SHOW THIS IN DROPDOWN
-      accounts: [],
-    };
-
-    // keep the first non-empty name as the employee display
-    if (!g.employee || g.employee.startsWith("Employee #")) {
-      g.employee = salesmanName;
+    if (!sm.ok) {
+      return json(
+        { success: false, message: "Failed to fetch salesman lookups", error: sm.error, data: null },
+        { status: sm.status },
+      );
     }
 
-    g.accounts.push(acc);
-    groups.set(empId, g);
+    // group by employee_id
+    const groups = new Map<number, { employee_id: number; employee: string; accounts: AnyRec[] }>();
+
+    for (const s of sm.data) {
+      const empId = Number(s?.employee_id ?? 0);
+      if (!Number.isFinite(empId) || empId <= 0) continue;
+
+      const salesmanName = String(s?.salesman_name ?? "").trim() || `Employee #${empId}`;
+
+      const acc = {
+        id: Number(s?.id),
+        employee_id: empId,
+        salesman_code: String(s?.salesman_code ?? "").trim(),
+        salesman_name: salesmanName,
+      };
+
+      if (!Number.isFinite(acc.id)) continue;
+
+      const g = groups.get(empId) ?? {
+        employee_id: empId,
+        employee: salesmanName, // ✅ SHOW THIS IN DROPDOWN
+        accounts: [],
+      };
+
+      // keep the first non-empty name as the employee display
+      if (!g.employee || g.employee.startsWith("Employee #")) {
+        g.employee = salesmanName;
+      }
+
+      g.accounts.push(acc);
+      groups.set(empId, g);
+    }
+
+    const employees = Array.from(groups.values())
+      .sort((a, b) => String(a.employee).localeCompare(String(b.employee)))
+      .map((g) => ({
+        employee_id: g.employee_id,
+        employee: g.employee,
+        accounts: g.accounts
+          .slice()
+          .sort((a, b) => String(a.salesman_code).localeCompare(String(b.salesman_code))),
+      }));
+
+    return json({ success: true, message: "OK", data: { employees } }, { status: 200 });
   }
-
-  const employees = Array.from(groups.values())
-    .sort((a, b) => String(a.employee).localeCompare(String(b.employee)))
-    .map((g) => ({
-      employee_id: g.employee_id,
-      employee: g.employee,
-      accounts: g.accounts
-        .slice()
-        .sort((a, b) => String(a.salesman_code).localeCompare(String(b.salesman_code))),
-    }));
-
-  return json({ success: true, message: "OK", data: { employees } }, { status: 200 });
-}
 
 
   // =========================================
@@ -539,7 +539,7 @@ if (mode === "lookups") {
 
   for (const si of salesInvoices) {
     const orderId = String(si?.order_id ?? "").trim();
-    const so = orderId ? soByOrderNo.get(orderId) : null;
+    const so = (orderId ? soByOrderNo.get(orderId) : null) ?? null;
 
     const effSalesmanId = Number(si?.salesman_id ?? so?.salesman_id ?? 0);
     if (!salesmanIds.includes(effSalesmanId)) continue;
@@ -612,7 +612,7 @@ if (mode === "lookups") {
   const invoiceRows = salesInvoices
     .map((si) => {
       const orderId = String(si?.order_id ?? "").trim();
-      const so = orderId ? soByOrderNo.get(orderId) : null;
+      const so = (orderId ? soByOrderNo.get(orderId) : null) ?? null;
 
       const effSalesmanId = Number(si?.salesman_id ?? so?.salesman_id ?? 0);
       if (!salesmanIds.includes(effSalesmanId)) return null;

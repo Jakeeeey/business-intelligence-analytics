@@ -18,11 +18,11 @@ export function useSalesReport() {
   const [loadingLookups, setLoadingLookups] = React.useState(false);
 
   const [filters, setFilters] = React.useState<SalesReportFilters>(() => ({
-  employee_id: null,
-  accountIds: [],
-  months: [],
-  year: new Date().getFullYear(),
-}));
+    employee_id: null,
+    salesman_codes: [],
+    months: [],
+    year: new Date().getFullYear(),
+  }));
 
 
   const [loading, setLoading] = React.useState(false);
