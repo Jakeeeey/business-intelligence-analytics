@@ -167,12 +167,12 @@ const data = {
                     items: [
                         {
                             title: "Lead Time Variance",
-                            url: "/bia/scm/supplier-reliability/lead-time-variance",
+                            url: "/bia/scm/supplier-reliability-scorecard/lead-time-variance",
                             icon: Timer
                         },
                         {
                             title: "Fulfillment Rate",
-                            url: "/bia/scm/supplier-reliability/fulfillment-rate",
+                            url: "/bia/scm/supplier-reliability-scorecard/fulfillment-rate",
                             icon: Percent
                         },
                     ],
@@ -290,7 +290,7 @@ export function AppSidebar({className, ...props}: React.ComponentProps<typeof Si
                         return {...subGroup, items: filteredSubItems};
                     }
 
-                    if (subGroup.title === "Target Setting Reports") {
+                    if (subGroup.title === "Sales BIA") {
                         const filteredSubItems = subGroup.items.filter((item) => {
                             if (item.title === "Executive Health") {
                                 return roles.is_target_setting_approver || roles.is_executive;
