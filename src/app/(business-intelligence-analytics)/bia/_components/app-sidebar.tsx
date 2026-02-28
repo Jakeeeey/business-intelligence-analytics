@@ -96,7 +96,7 @@ const data = {
                     ],
                 },
                 {
-                    title: "Target Setting Reports",
+                    title: "Sales BIA",
                     url: "#",
                     icon: LineChart,
                     items: [
