@@ -1,4 +1,5 @@
 // src/modules/business-intelligence-analytics/target-setting/manager/types.ts
+export type DirectusBool = boolean | number | { data: number[] };
 export type TargetStatus = "DRAFT" | "SUBMITTED" | "PENDING" | "APPROVED" | "REJECTED" | "SET";
 
 export type AllocationCreatorRole = "Executive" | "Manager" | "Supervisor";

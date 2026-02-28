@@ -25,10 +25,10 @@ export function SalesReportFiltersBar(props: Props) {
 
   // ✅ Salesman dropdown: value = employee_id
   const employeeOptions =
-  employees?.map((e) => ({
-    label: e.employee,              // ✅ displays "Dave Wilmore Duran"
-    value: String(e.employee_id),   // ✅ internal filter uses employee_id
-  })) ?? [];
+    employees?.map((e) => ({
+      label: e.employee_name,              // ✅ displays "Dave Wilmore Duran"
+      value: String(e.employee_id),   // ✅ internal filter uses employee_id
+    })) ?? [];
 
   const selectedEmployeeId = value.employee_id; // number | null
   const accountsForEmployee =
@@ -82,7 +82,7 @@ export function SalesReportFiltersBar(props: Props) {
                     onChange((prev) => ({
                       ...prev,
                       employee_id: Number.isFinite(id) ? id : null,
-                      accountIds: [], // reset accounts when salesman changes
+                      salesman_codes: [], // reset accounts when salesman changes
                     }));
                   }}
                 />

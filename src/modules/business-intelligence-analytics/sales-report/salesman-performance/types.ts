@@ -51,7 +51,7 @@ export type SalesInvoiceRow = {
 
 export type SalesReportFilters = {
   employee_id: number | null; // ✅
-  accountIds: number[];
+  salesman_codes: string[];
   months: number[];
   year: number;
 };
