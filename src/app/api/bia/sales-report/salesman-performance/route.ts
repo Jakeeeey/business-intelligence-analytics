@@ -210,7 +210,7 @@ export async function GET(req: NextRequest) {
       .sort((a, b) => String(a.employee).localeCompare(String(b.employee)))
       .map((g) => ({
         employee_id: g.employee_id,
-        employee: g.employee,
+        employee_name: g.employee,
         accounts: g.accounts
           .slice()
           .sort((a, b) => String(a.salesman_code).localeCompare(String(b.salesman_code))),
