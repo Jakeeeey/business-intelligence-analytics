@@ -83,6 +83,11 @@ const data = {
                             icon: UserCog
                         },
                         {
+                            title: "Product Return Performance",
+                            url: "/bia/sales-report/product-return-performance",
+                            icon: UserCog
+                        },
+                        {
                             title: "STT Report",
                             url: "/bia/sales-report/stt-report",
                             icon: BadgeCheck
