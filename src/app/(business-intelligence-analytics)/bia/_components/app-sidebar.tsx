@@ -82,6 +82,11 @@ const data = {
                             url: "/bia/sales-report/product-sales-performance",
                             icon: UserCog
                         },
+                        {
+                            title: "STT Report",
+                            url: "/bia/sales-report/stt-report",
+                            icon: BadgeCheck
+                        },
                     ],
                 },
                 {
