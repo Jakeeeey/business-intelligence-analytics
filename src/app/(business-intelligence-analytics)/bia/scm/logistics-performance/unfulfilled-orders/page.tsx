@@ -6,26 +6,25 @@ import {
     BreadcrumbPage,
     BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import {Separator} from "@/components/ui/separator";
-import {SidebarTrigger} from "@/components/ui/sidebar";
-import {NavUser} from "../../../_components/nav-user";
+import { Separator } from "@/components/ui/separator";
+import { SidebarTrigger } from "@/components/ui/sidebar";
+import { NavUser } from "../../../_components/nav-user";
 
-import React, {Suspense} from "react";
-import {cookies} from "next/headers";
+import { cookies } from "next/headers";
 
-// ✅ Wire the FNS Analysis module
-import FnsAnalysisModule
-    from "@/modules/business-intelligence-analytics/scm/inventory-performance-dashboard/fns-analysis/FnsAnalysisModule";
-import {ScmFilterProvider} from "@/modules/business-intelligence-analytics/scm/providers/ScmFilterProvider";
-import {Skeleton} from "@/components/ui/skeleton";
+// FIX 1: Removed the curly braces for default import
+import UnfulfilledOrdersModule from "@/modules/business-intelligence-analytics/scm/logistics-performance/unfulfilled-orders/UnfulfilledOrdersModule";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const COOKIE_NAME = "vos_access_token";
 
-// FIX: Replaced 'any' with 'Record<string, unknown>'
-function decodeJwtPayload(token: string): Record<string, unknown> | null {
+interface JwtPayload {
+    [key: string]: unknown;
+}
+
+function decodeJwtPayload(token: string): JwtPayload | null {
     try {
         const parts = token.split(".");
         if (parts.length < 2) return null;
@@ -35,18 +34,15 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
         const padded = b64 + "=".repeat((4 - (b64.length % 4)) % 4);
 
         const json = Buffer.from(padded, "base64").toString("utf8");
-        return JSON.parse(json) as Record<string, unknown>;
+        return JSON.parse(json);
     } catch {
         return null;
     }
 }
 
-// FIX: Replaced 'any' with 'Record<string, unknown> | null'
-function pickString(obj: Record<string, unknown> | null, keys: string[]): string {
-    if (!obj) return "";
-
+function pickString(obj: JwtPayload | null, keys: string[]): string {
     for (const k of keys) {
-        const v = obj[k];
+        const v = obj?.[k];
         if (typeof v === "string" && v.trim()) return v.trim();
     }
     return "";
@@ -91,10 +87,9 @@ export default async function Page() {
         // ✅ This fills the RIGHT column provided by SidebarInset (which is now fixed-height).
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
             {/* ✅ Topbar is fixed in place because ONLY <main> scrolls */}
-            <header
-                className="relative z-10 flex h-14 shrink-0 items-center justify-between border-b shadow-sm bg-background sm:h-16 overflow-hidden">
+            <header className="relative z-10 flex h-14 shrink-0 items-center justify-between border-b shadow-sm bg-background sm:h-16 overflow-hidden">
                 <div className="flex h-full min-w-0 items-center gap-2 px-3 sm:px-4 overflow-hidden">
-                    <SidebarTrigger className="-ml-1 shrink-0"/>
+                    <SidebarTrigger className="-ml-1 shrink-0" />
 
                     <Separator
                         orientation="vertical"
@@ -105,43 +100,35 @@ export default async function Page() {
                         <Breadcrumb>
                             <BreadcrumbList className="min-w-0 overflow-hidden">
                                 <BreadcrumbItem className="hidden md:block shrink-0">
-                                    <BreadcrumbLink>BIA</BreadcrumbLink>
+                                    <BreadcrumbLink href="#">BIA</BreadcrumbLink>
                                 </BreadcrumbItem>
-                                <BreadcrumbSeparator className="hidden md:block shrink-0"/>
+                                <BreadcrumbSeparator className="hidden md:block shrink-0" />
+
+                                {/* FIX 2: Updated Breadcrumbs for context accuracy */}
                                 <BreadcrumbItem className="hidden md:block shrink-0">
-                                    <BreadcrumbLink>Inventory Performance Dashboard</BreadcrumbLink>
+                                    <BreadcrumbLink href="#">Logistics Performance</BreadcrumbLink>
                                 </BreadcrumbItem>
-                                <BreadcrumbSeparator className="hidden md:block shrink-0"/>
+                                <BreadcrumbSeparator className="hidden md:block shrink-0" />
                                 <BreadcrumbItem className="min-w-0 overflow-hidden">
                                     <BreadcrumbPage className="truncate max-w-[56vw] sm:max-w-[60vw] md:max-w-none">
-                                        FNS Analysis
+                                        Unfulfilled Orders
                                     </BreadcrumbPage>
                                 </BreadcrumbItem>
+
                             </BreadcrumbList>
                         </Breadcrumb>
                     </div>
                 </div>
 
-                <div
-                    className="flex h-full items-center px-2 sm:px-4 shrink-0 max-w-[48vw] sm:max-w-none overflow-hidden">
-                    <NavUser user={headerUser}/>
+                <div className="flex h-full items-center px-2 sm:px-4 shrink-0 max-w-[48vw] sm:max-w-none overflow-hidden">
+                    <NavUser user={headerUser} />
                 </div>
             </header>
 
-            {/* ✅ Only content scrolls inside RIGHT column */}
+            {/* ✅ Removed the p-2 sm:p-4 padding so the module can control its own spacing */}
             <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
-                <Suspense
-                    fallback={
-                        <div className="space-y-6 p-4 md:p-8 pt-6">
-                            <Skeleton className="h-9 w-64"/>
-                            <Skeleton className="h-80 rounded-xl"/>
-                        </div>
-                    }
-                >
-                    <ScmFilterProvider>
-                        <FnsAnalysisModule/>
-                    </ScmFilterProvider>
-                </Suspense>
+                {/* FIX 3: Replaced <AreaChannelModule /> with the correct component */}
+                <UnfulfilledOrdersModule />
             </main>
         </div>
     );

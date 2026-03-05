@@ -6,19 +6,14 @@ import {
     BreadcrumbPage,
     BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import {Separator} from "@/components/ui/separator";
-import {SidebarTrigger} from "@/components/ui/sidebar";
-import {NavUser} from "../../../_components/nav-user";
+import { Separator } from "@/components/ui/separator";
+import { SidebarTrigger } from "@/components/ui/sidebar";
+import { NavUser } from "../../../_components/nav-user";
 
-import React, {Suspense} from "react";
-import {cookies} from "next/headers";
+import { cookies } from "next/headers";
 
-// ✅ Wire the FNS Analysis module
-import FnsAnalysisModule
-    from "@/modules/business-intelligence-analytics/scm/inventory-performance-dashboard/fns-analysis/FnsAnalysisModule";
-import {ScmFilterProvider} from "@/modules/business-intelligence-analytics/scm/providers/ScmFilterProvider";
-import {Skeleton} from "@/components/ui/skeleton";
-
+// FIX 1: Corrected the import to match the exported module name
+import { MovementReviewerModule } from "@/modules/business-intelligence-analytics/scm/logistics-performance/movement-reviewer/MovementReviewerModule";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -52,6 +47,7 @@ function pickString(obj: Record<string, unknown> | null, keys: string[]): string
     return "";
 }
 
+// Now this function naturally understands what obj is without any implicit 'any' warnings
 function buildHeaderUserFromToken(token: string | null | undefined) {
     const payload = token ? decodeJwtPayload(token) : null;
 
@@ -91,10 +87,9 @@ export default async function Page() {
         // ✅ This fills the RIGHT column provided by SidebarInset (which is now fixed-height).
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
             {/* ✅ Topbar is fixed in place because ONLY <main> scrolls */}
-            <header
-                className="relative z-10 flex h-14 shrink-0 items-center justify-between border-b shadow-sm bg-background sm:h-16 overflow-hidden">
+            <header className="relative z-10 flex h-14 shrink-0 items-center justify-between border-b shadow-sm bg-background sm:h-16 overflow-hidden">
                 <div className="flex h-full min-w-0 items-center gap-2 px-3 sm:px-4 overflow-hidden">
-                    <SidebarTrigger className="-ml-1 shrink-0"/>
+                    <SidebarTrigger className="-ml-1 shrink-0" />
 
                     <Separator
                         orientation="vertical"
@@ -105,43 +100,34 @@ export default async function Page() {
                         <Breadcrumb>
                             <BreadcrumbList className="min-w-0 overflow-hidden">
                                 <BreadcrumbItem className="hidden md:block shrink-0">
-                                    <BreadcrumbLink>BIA</BreadcrumbLink>
+                                    <BreadcrumbLink href="#">BIA</BreadcrumbLink>
                                 </BreadcrumbItem>
-                                <BreadcrumbSeparator className="hidden md:block shrink-0"/>
+                                <BreadcrumbSeparator className="hidden md:block shrink-0" />
+
+                                {/* FIX 2: Updated Breadcrumbs for context accuracy */}
                                 <BreadcrumbItem className="hidden md:block shrink-0">
-                                    <BreadcrumbLink>Inventory Performance Dashboard</BreadcrumbLink>
+                                    <BreadcrumbLink href="#">Logistics Performance</BreadcrumbLink>
                                 </BreadcrumbItem>
-                                <BreadcrumbSeparator className="hidden md:block shrink-0"/>
+                                <BreadcrumbSeparator className="hidden md:block shrink-0" />
                                 <BreadcrumbItem className="min-w-0 overflow-hidden">
                                     <BreadcrumbPage className="truncate max-w-[56vw] sm:max-w-[60vw] md:max-w-none">
-                                        FNS Analysis
+                                        Movement Reviewer
                                     </BreadcrumbPage>
                                 </BreadcrumbItem>
+
                             </BreadcrumbList>
                         </Breadcrumb>
                     </div>
                 </div>
 
-                <div
-                    className="flex h-full items-center px-2 sm:px-4 shrink-0 max-w-[48vw] sm:max-w-none overflow-hidden">
-                    <NavUser user={headerUser}/>
+                <div className="flex h-full items-center px-2 sm:px-4 shrink-0 max-w-[48vw] sm:max-w-none overflow-hidden">
+                    <NavUser user={headerUser} />
                 </div>
             </header>
 
-            {/* ✅ Only content scrolls inside RIGHT column */}
-            <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
-                <Suspense
-                    fallback={
-                        <div className="space-y-6 p-4 md:p-8 pt-6">
-                            <Skeleton className="h-9 w-64"/>
-                            <Skeleton className="h-80 rounded-xl"/>
-                        </div>
-                    }
-                >
-                    <ScmFilterProvider>
-                        <FnsAnalysisModule/>
-                    </ScmFilterProvider>
-                </Suspense>
+            {/* ✅ Removed the p-2 sm:p-4 padding so the module can control its own spacing */}
+            <main className="p-4 sm:p-6 min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
+                <MovementReviewerModule />
             </main>
         </div>
     );
