@@ -15,8 +15,17 @@ function pickForwardHeaders(req: NextRequest) {
   const headers = new Headers();
   const ct = req.headers.get("content-type");
   if (ct) headers.set("content-type", ct);
+
+  // Inject the static token for Directus metadata calls
+  const staticToken = process.env.DIRECTUS_STATIC_TOKEN;
   const auth = req.headers.get("authorization");
-  if (auth) headers.set("authorization", auth);
+
+  if (staticToken) {
+    headers.set("authorization", `Bearer ${staticToken}`);
+  } else if (auth) {
+    headers.set("authorization", auth);
+  }
+
   return headers;
 }
 
@@ -28,7 +37,13 @@ async function proxy(req: NextRequest) {
   }
 
   const url = buildUpstreamUrl(req, DIRECTUS_COLLECTION);
-  url.searchParams.set("limit", "-1"); // Fetch all for metadata
+
+  // Force optimization & strict filters for the dropdown
+  url.searchParams.set("limit", "-1");
+  url.searchParams.set("filter[isActive][_eq]", "1");
+  url.searchParams.set("filter[nonBuy][_eq]", "0"); // <-- MUST be 0 to match your SQL View
+  url.searchParams.set("sort", "supplier_name");
+  url.searchParams.set("fields", "id,supplier_name");
 
   try {
     const method = req.method;

@@ -177,6 +177,22 @@ const data = {
                         },
                     ],
                 },
+                {
+                    title: "Logistics Performance",
+                    url: "#",
+                    icon: Truck, // Or use MapPin / PackageSearch based on your Lucide imports
+                    items: [
+                        {
+                            title: "Unfulfilled Orders",
+                            url: "/bia/scm/logistics-performance/unfulfilled-orders",
+                            icon: ClipboardList
+                        }, {
+                            title: "Movement Reviewer",
+                            url: "/bia/scm/logistics-performance/movement-reviewer",
+                            icon: ClipboardList
+                        },
+                    ],
+                },
             ],
         },
 
