@@ -12,19 +12,19 @@ export const useSuppliers = () => {
     useEffect(() => {
         const fetchSuppliers = async () => {
             try {
-                const res = await fetch("/api/bia/metadata/suppliers");
+                // ✅ Pointing to the new module-specific route
+                const res = await fetch("/api/bia/scm/logistics-performance/movement-reviewer/suppliers");
                 if (!res.ok) throw new Error("Failed to fetch suppliers");
 
                 const json = await res.json();
 
-                // Safely extract the data array, handling Directus's { data: [] } wrapper
                 const dataArray = Array.isArray(json)
                     ? json
                     : (Array.isArray(json?.data) ? json.data : []);
 
-                const mappedSuppliers = dataArray.map((s: { id: string | number; supplier_name?: string }) => ({
-                    id: s.id?.toString(), // Safely convert ID to string for Shadcn Combobox
-                    name: s.supplier_name || "Unknown Supplier"
+                const mappedSuppliers = dataArray.map((s: Record<string, unknown>) => ({
+                    id: s.id ? String(s.id) : "",
+                    name: typeof s.supplier_name === "string" ? s.supplier_name : "Unknown Supplier"
                 }));
 
                 setSuppliers(mappedSuppliers);
