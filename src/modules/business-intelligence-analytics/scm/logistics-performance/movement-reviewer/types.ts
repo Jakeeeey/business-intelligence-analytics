@@ -18,6 +18,12 @@ export interface VProductMovementDto {
     supplierName: string | null;
     familyUnit: string | null;
     familyUnitCount: number | null;
+
+    // NEW: Computed fields attached during hook processing for Drill-Downs
+    computedFamilyId?: number;
+    computedMovementType?: string;
+    computedBranchCol?: string;
+    computedBoxQty?: number;
 }
 
 export interface PivotFamily {
@@ -32,7 +38,6 @@ export interface PivotReport {
     families: PivotFamily[];
 }
 
-// NEW: Interface for the high-level summary view
 export interface SummaryReport {
     columns: string[];
     movements: Record<string, Record<string, number>>;

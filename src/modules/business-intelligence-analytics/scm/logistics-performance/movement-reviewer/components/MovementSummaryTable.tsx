@@ -1,14 +1,16 @@
 import React from "react";
-import { SummaryReport } from "../types";
+import { SummaryReport, VProductMovementDto } from "../types";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Activity } from "lucide-react";
 
 interface MovementSummaryTableProps {
     report: SummaryReport;
+    rawData: VProductMovementDto[];
+    onCellClick: (data: VProductMovementDto[], title: string) => void;
 }
 
-export const MovementSummaryTable: React.FC<MovementSummaryTableProps> = ({ report }) => {
+export const MovementSummaryTable: React.FC<MovementSummaryTableProps> = ({ report, rawData, onCellClick }) => {
     return (
         <Card className="overflow-hidden border-border/60 shadow-sm">
             <CardHeader className="bg-primary/5 border-b py-4 px-6">
@@ -33,7 +35,6 @@ export const MovementSummaryTable: React.FC<MovementSummaryTableProps> = ({ repo
                             {report.columns.map((col) => (
                                 <TableHead
                                     key={col}
-                                    // FIX: Wrapped text styling applied here as well
                                     className="text-right font-semibold text-muted-foreground border-r bg-muted/10 last:border-r-0 min-w-[120px] max-w-[180px] whitespace-normal leading-snug align-bottom px-4 py-4 break-words"
                                 >
                                     {col}
@@ -52,7 +53,13 @@ export const MovementSummaryTable: React.FC<MovementSummaryTableProps> = ({ repo
                                     return (
                                         <TableCell
                                             key={col}
-                                            className={`text-right border-r last:border-r-0 px-4 font-mono ${val !== 0 ? 'text-foreground font-medium' : 'text-muted-foreground/40'}`}
+                                            onClick={() => {
+                                                if (val !== 0) {
+                                                    const filtered = rawData.filter(r => r.computedMovementType === movementType && r.computedBranchCol === col);
+                                                    onCellClick(filtered, `Summary: ${movementType} at ${col}`);
+                                                }
+                                            }}
+                                            className={`text-right border-r last:border-r-0 px-4 font-mono ${val !== 0 ? 'text-foreground font-medium cursor-pointer hover:bg-primary/10 hover:text-primary transition-colors' : 'text-muted-foreground/40'}`}
                                         >
                                             {val !== 0
                                                 ? Intl.NumberFormat('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(val)

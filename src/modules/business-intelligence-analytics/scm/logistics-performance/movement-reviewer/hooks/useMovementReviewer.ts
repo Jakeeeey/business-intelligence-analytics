@@ -15,7 +15,6 @@ export const useMovementReviewer = () => {
         try {
             const data = await fetchMovementReport(supplierId, from, to);
             setRawData(data);
-            // FIX: Replaced 'any' with 'unknown' and checked instance
         } catch (err: unknown) {
             if (err instanceof Error) {
                 setError(err.message);
@@ -46,7 +45,6 @@ export const useMovementReviewer = () => {
             }
             if (item.unitCount && item.unitCount > familyMeta[familyId].maxCount) {
                 familyMeta[familyId].maxCount = item.unitCount;
-                // FIX: Fallback to 'PC' if item.unit is null to prevent TS2322
                 familyMeta[familyId].maxUnit = item.unit || 'PC';
             }
             if (item.productId === familyId && item.productName) {
@@ -54,24 +52,46 @@ export const useMovementReviewer = () => {
             }
         });
 
-        // PASS 2: Aggregate Base Pieces
+        // PASS 2: Aggregate Base Pieces & Split Movement Types
         rawData.forEach((item) => {
+            const totalBasePieces = (item.inBase || 0) + (item.outBase || 0);
+
+            // The "Ghost Row" Killer. Completely ignore 0-value movements.
+            if (totalBasePieces === 0) return;
+
             const familyId = (item.parentId && item.parentId !== 0) ? item.parentId : item.productId;
             const branchCol = item.branchName || (item.branchId ? `Branch ${item.branchId}` : 'Warehouse');
             branches.add(branchCol);
 
+            let movementLabel = item.docType;
+            if (movementLabel === 'Stock Transfer') {
+                if ((item.inBase || 0) !== 0) {
+                    movementLabel = 'Stock Transfer (In)';
+                } else {
+                    movementLabel = 'Stock Transfer (Out)';
+                }
+            }
+
+            // === Attach metadata for the drill-down click ===
+            const highestDivisor = familyMeta[familyId].maxCount;
+            item.computedFamilyId = familyId;
+            item.computedMovementType = movementLabel;
+            item.computedBranchCol = branchCol;
+            item.computedBoxQty = totalBasePieces / highestDivisor;
+            // ================================================
+
             if (!pivot[familyId]) {
                 pivot[familyId] = { familyId, familyName: familyMeta[familyId].name, unit: familyMeta[familyId].maxUnit, movements: {} };
             }
-            if (!pivot[familyId].movements[item.docType]) {
-                pivot[familyId].movements[item.docType] = {};
+
+            if (!pivot[familyId].movements[movementLabel]) {
+                pivot[familyId].movements[movementLabel] = {};
             }
-            if (!pivot[familyId].movements[item.docType][branchCol]) {
-                pivot[familyId].movements[item.docType][branchCol] = 0;
+            if (!pivot[familyId].movements[movementLabel][branchCol]) {
+                pivot[familyId].movements[movementLabel][branchCol] = 0;
             }
 
-            const totalBasePieces = (item.inBase || 0) + (item.outBase || 0);
-            pivot[familyId].movements[item.docType][branchCol] += totalBasePieces;
+            pivot[familyId].movements[movementLabel][branchCol] += totalBasePieces;
         });
 
         // PASS 3: Convert to highest unit AND build Summary Report
@@ -110,6 +130,7 @@ export const useMovementReviewer = () => {
         error,
         pivotReport: parsedReports.pivotReport,
         summaryReport: parsedReports.summaryReport,
+        rawData,
         generateReport
     };
 };

@@ -1,5 +1,5 @@
 import React from "react";
-import { PivotReport } from "../types";
+import { PivotReport, VProductMovementDto } from "../types";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -7,9 +7,11 @@ import { Layers, FileSpreadsheet } from "lucide-react";
 
 interface MovementPivotTableProps {
     report: PivotReport;
+    rawData: VProductMovementDto[];
+    onCellClick: (data: VProductMovementDto[], title: string) => void;
 }
 
-export const MovementPivotTable: React.FC<MovementPivotTableProps> = ({ report }) => {
+export const MovementPivotTable: React.FC<MovementPivotTableProps> = ({ report, rawData, onCellClick }) => {
     if (!report || report.families.length === 0) {
         return (
             <Card className="border-dashed bg-muted/20">
@@ -54,7 +56,6 @@ export const MovementPivotTable: React.FC<MovementPivotTableProps> = ({ report }
                                     {report.columns.map((col) => (
                                         <TableHead
                                             key={col}
-                                            // FIX: Added whitespace-normal, max-w-[200px], align-bottom, and leading-snug
                                             className="text-right font-semibold text-muted-foreground border-r bg-muted/10 last:border-r-0 min-w-[120px] max-w-[180px] whitespace-normal leading-snug align-bottom px-4 py-4 break-words"
                                         >
                                             {col}
@@ -73,7 +74,13 @@ export const MovementPivotTable: React.FC<MovementPivotTableProps> = ({ report }
                                             return (
                                                 <TableCell
                                                     key={col}
-                                                    className={`text-right border-r last:border-r-0 px-4 font-mono ${val !== 0 ? 'text-foreground font-medium' : 'text-muted-foreground/40'}`}
+                                                    onClick={() => {
+                                                        if (val !== 0) {
+                                                            const filtered = rawData.filter(r => r.computedFamilyId === family.familyId && r.computedMovementType === movementType && r.computedBranchCol === col);
+                                                            onCellClick(filtered, `${family.familyName} - ${movementType} at ${col}`);
+                                                        }
+                                                    }}
+                                                    className={`text-right border-r last:border-r-0 px-4 font-mono ${val !== 0 ? 'text-foreground font-medium cursor-pointer hover:bg-primary/10 hover:text-primary transition-colors' : 'text-muted-foreground/40'}`}
                                                 >
                                                     {val !== 0
                                                         ? Intl.NumberFormat('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(val)
