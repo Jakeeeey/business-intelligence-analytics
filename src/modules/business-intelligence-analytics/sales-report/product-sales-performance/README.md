@@ -56,7 +56,7 @@ Interactive dashboard for analyzing product sales performance across products, s
 ### API Integration
 - **Endpoint**: `${SPRING_API_BASE_URL}/api/view-sales-product-performance/all`
 - **Environment Variable**: Uses `NEXT_PUBLIC_SPRING_API_BASE_URL` or `SPRING_API_BASE_URL` from `.env.local`
-- **Default URL**: `http://100.81.225.79:8083`
+- **Default URL**: Configured via `SPRING_API_BASE_URL` in `.env.local`
 
 ### Data Structure
 ```typescript
