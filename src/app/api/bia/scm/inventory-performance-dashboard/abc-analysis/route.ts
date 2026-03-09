@@ -4,8 +4,7 @@ import { cookies } from "next/headers";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const SPRING_API_BASE_URL =
-    process.env.SPRING_API_BASE_URL || "http://100.81.225.79:8083";
+const SPRING_API_BASE_URL = process.env.SPRING_API_BASE_URL;
 const COOKIE_NAME = "vos_access_token";
 
 export async function GET(req: NextRequest) {
@@ -20,6 +19,14 @@ export async function GET(req: NextRequest) {
     }
 
     const { searchParams } = new URL(req.url);
+    if (!SPRING_API_BASE_URL) {
+        console.error("[ABC-API] SPRING_API_BASE_URL is not defined in environment variables");
+        return NextResponse.json(
+            { ok: false, error: "Server Configuration Error" },
+            { status: 500 },
+        );
+    }
+
     const targetUrl = new URL(
         `${SPRING_API_BASE_URL.replace(/\/$/, "")}/api/view-abc-analysis-product/all`,
     );

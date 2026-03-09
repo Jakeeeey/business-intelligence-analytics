@@ -67,7 +67,7 @@ export function useAbcAnalysis() {
         const totalValue = sorted.reduce((sum, item) => sum + item.outValue, 0);
 
         let cumulativeValue = 0;
-        return sorted.map((item) => {
+        return sorted.map((item, i) => {
             cumulativeValue += item.outValue;
             const cumulativePct = totalValue > 0 ? (cumulativeValue / totalValue) * 100 : 0;
 
@@ -75,7 +75,12 @@ export function useAbcAnalysis() {
             if (cumulativePct <= 70) abcClass = "A";
             else if (cumulativePct <= 90) abcClass = "B";
 
-            return { ...item, abcClass, cumulativePct };
+            return {
+                ...item,
+                abcClass,
+                classRank: i + 1,
+                cumulativePct
+            };
         });
     }, [data, selectedSupplier, selectedBranch]);
 

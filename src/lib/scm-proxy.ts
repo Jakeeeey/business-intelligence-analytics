@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 
-const SPRING_API_BASE_URL = process.env.SPRING_API_BASE_URL || "http://100.81.225.79:8083";
+const SPRING_API_BASE_URL = process.env.SPRING_API_BASE_URL;
 const COOKIE_NAME = "vos_access_token";
 
 const AUTH_PAYLOAD = {

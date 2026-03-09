@@ -15,6 +15,9 @@ export const AbcProductSchema = z.object({
     rankByValue: z.number(),
     rankByVolume: z.number(),
     date: z.string(),
+    abcClass: z.enum(["A", "B", "C"]).optional(),
+    classRank: z.number().optional(),
+    cumulativePct: z.number().optional(),
 });
 
 export type AbcProduct = z.infer<typeof AbcProductSchema>;
