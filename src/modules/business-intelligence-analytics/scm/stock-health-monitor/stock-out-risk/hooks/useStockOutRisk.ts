@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
 import { fetchStockOutRiskData } from "../services/stock-out-risk";
 import { format } from "date-fns";
-import { StockOutRisk } from "../../types/stock-health.schema";
-import { useScmFilters } from "@/modules/business-intelligence-analytics/scm/providers/ScmFilterProvider";
+import { StockOutRisk } from "../types";
+import { useScmFilters } from "../providers/ScmFilterProvider";
 
 export function useStockOutRisk() {
   const [data, setData] = useState<StockOutRisk[]>([]);

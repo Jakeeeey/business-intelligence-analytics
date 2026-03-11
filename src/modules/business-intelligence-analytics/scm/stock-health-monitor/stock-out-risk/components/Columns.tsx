@@ -1,7 +1,7 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { StockOutRisk } from "../../types/stock-health.schema";
+import { StockOutRisk } from "../types";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 

@@ -14,7 +14,7 @@ import { NavUser } from "../../../_components/nav-user";
 import { cookies } from "next/headers";
 
 import LeadTimeVariancePage from "@/modules/business-intelligence-analytics/scm/supplier-reliability-scorecard/lead-time-variance/LeadTimeVariancePage";
-import { ScmFilterProvider } from "@/modules/business-intelligence-analytics/scm/providers/ScmFilterProvider";
+import { ScmFilterProvider } from "@/modules/business-intelligence-analytics/scm/supplier-reliability-scorecard/lead-time-variance/providers/ScmFilterProvider";
 import LeadTimeVarianceSkeleton from "@/app/(business-intelligence-analytics)/bia/_components/LeadTimeVarianceSkeleton";
 
 export const runtime = "nodejs";

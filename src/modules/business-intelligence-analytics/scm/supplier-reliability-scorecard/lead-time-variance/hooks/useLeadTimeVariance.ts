@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { format } from "date-fns";
 import { fetchLeadTimeVarianceData } from "../services/lead-time-variance";
 import { LeadTimeVariancePo } from "../types/lead-time-variance.schema";
-import { useScmFilters } from "@/modules/business-intelligence-analytics/scm/providers/ScmFilterProvider";
+import { useScmFilters } from "../providers/ScmFilterProvider";
 
 /**
  * Custom hook to fetch and manage Lead Time Variance data.

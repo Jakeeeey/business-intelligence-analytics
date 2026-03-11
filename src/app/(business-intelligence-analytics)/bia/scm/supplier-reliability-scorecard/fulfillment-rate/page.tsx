@@ -13,7 +13,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { NavUser } from "@/app/(business-intelligence-analytics)/bia/_components/nav-user";
 
 import FulfillmentRatePage from "@/modules/business-intelligence-analytics/scm/supplier-reliability-scorecard/fulfillment-rate/FulfillmentRatePage";
-import { ScmFilterProvider } from "@/modules/business-intelligence-analytics/scm/providers/ScmFilterProvider";
+import { ScmFilterProvider } from "@/modules/business-intelligence-analytics/scm/supplier-reliability-scorecard/fulfillment-rate/providers/ScmFilterProvider";
 import FulfillmentRateSkeleton from "@/app/(business-intelligence-analytics)/bia/_components/FulfillmentRateSkeleton";
 
 export const runtime = "nodejs";

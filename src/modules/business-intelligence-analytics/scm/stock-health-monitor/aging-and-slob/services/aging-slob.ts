@@ -1,4 +1,4 @@
-import { SlobAging } from "../../types/stock-health.schema";
+import { SlobAging, SlobAgingSchema } from "../types";
 
 export async function fetchAgingSlobData(): Promise<SlobAging[]> {
   const res = await fetch("/api/bia/scm/stock-health-monitor/aging-and-slob", {

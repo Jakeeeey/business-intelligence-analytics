@@ -4,7 +4,7 @@ import React, { useMemo } from "react";
 
 import { DataTable } from "@/components/ui/new-data-table";
 
-import { useScmFilters } from "@/modules/business-intelligence-analytics/scm/providers/ScmFilterProvider";
+import { useScmFilters } from "./providers/ScmFilterProvider";
 import { useFulfillmentRate } from "./hooks/useFulfillmentRate";
 import FulfillmentRateSkeleton from "@/app/(business-intelligence-analytics)/bia/_components/FulfillmentRateSkeleton";
 import { ErrorPage } from "@/app/(business-intelligence-analytics)/bia/_components/ErrorPage";
@@ -12,7 +12,7 @@ import { ErrorPage } from "@/app/(business-intelligence-analytics)/bia/_componen
 import { FulfillmentRateMetrics } from "./components/cards/FulfillmentRateMetricsCard";
 import { FulfillmentRateChart } from "./components/charts/FulfillmentRateChart";
 import { columns } from "./components/data-table/Columns";
-import { ScmAdvancedFilters } from "@/modules/business-intelligence-analytics/scm/components/filters/ScmAdvancedFilters";
+import { ScmAdvancedFilters } from "./components/ScmAdvancedFilters";
 
 import {
   calculateFulfillmentRateMetrics,

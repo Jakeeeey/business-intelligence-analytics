@@ -14,7 +14,7 @@ import { cookies } from "next/headers";
 
 // ✅ Wire the module you asked for
 import AgingSlobPage from "@/modules/business-intelligence-analytics/scm/stock-health-monitor/aging-and-slob/AgingSlobPage";
-import { ScmFilterProvider } from "@/modules/business-intelligence-analytics/scm/providers/ScmFilterProvider";
+import { ScmFilterProvider } from "@/modules/business-intelligence-analytics/scm/stock-health-monitor/aging-and-slob/providers/ScmFilterProvider";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

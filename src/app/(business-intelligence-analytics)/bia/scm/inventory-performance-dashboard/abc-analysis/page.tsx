@@ -15,7 +15,7 @@ import { cookies } from "next/headers";
 
 // ✅ Wire the module you asked for
 import AbcAnalysisPage from "@/modules/business-intelligence-analytics/scm/inventory-performance-dashboard/abc-analysis/AbcAnalysisPage";
-import { ScmFilterProvider } from "@/modules/business-intelligence-analytics/scm/providers/ScmFilterProvider";
+import { ScmFilterProvider } from "@/modules/business-intelligence-analytics/scm/inventory-performance-dashboard/abc-analysis/providers/ScmFilterProvider";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

@@ -45,6 +45,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { EmptyPlaceholder } from "@/components/shared/EmptyPlaceholder";
 
 interface SearchInputProps {
   placeholder: string;
@@ -141,6 +142,7 @@ export function DataTable<TData, TValue>({
   onSelectionChange,
   actionComponent,
 }: DataTableProps<TData, TValue>) {
+  "use no memo"
   const [internalSorting, setInternalSorting] = React.useState<SortingState>(
     [],
   );
@@ -173,6 +175,7 @@ export function DataTable<TData, TValue>({
     pageSize: pagination?.pageSize ?? 10,
   });
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data,
     columns,
@@ -236,7 +239,6 @@ export function DataTable<TData, TValue>({
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-4">
-        {/* Search Bar */}
         {searchKey && (
           <div className="max-w-sm w-full">
             <SearchInput
@@ -250,44 +252,39 @@ export function DataTable<TData, TValue>({
           </div>
         )}
 
-        {/* View Toolbar — only shown when columns allow hiding */}
         <div className="flex items-center gap-2 ml-auto">
           {actionComponent}
-          {table.getAllColumns().some((column) => column.getCanHide()) && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="gap-2">
-                  <Settings2 className="h-4 w-4" />
-                  View
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-[150px]">
-                {table
-                  .getAllColumns()
-                  .filter((column) => column.getCanHide())
-                  .map((column) => {
-                    return (
-                      <DropdownMenuCheckboxItem
-                        key={column.id}
-                        className="capitalize rounded-lg"
-                        checked={column.getIsVisible()}
-                        onCheckedChange={(value) =>
-                          column.toggleVisibility(!!value)
-                        }
-                      >
-                        {(column.columnDef.meta as any)?.label ||
-                          column.id.replace(/_/g, " ")}
-                      </DropdownMenuCheckboxItem>
-                    );
-                  })}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                <Settings2 className="h-4 w-4" />
+                View
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[150px]">
+              {table
+                .getAllColumns()
+                .filter((column) => column.getCanHide())
+                .map((column) => {
+                  return (
+                    <DropdownMenuCheckboxItem
+                      key={column.id}
+                      className="capitalize rounded-lg"
+                      checked={column.getIsVisible()}
+                      onCheckedChange={(value) =>
+                        column.toggleVisibility(!!value)
+                      }
+                    >
+                      {(column.columnDef.meta as { label?: string })?.label ||
+                        column.id.replace(/_/g, " ")}
+                    </DropdownMenuCheckboxItem>
+                  );
+                })}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
-
-      {/* Data Table */}
-      <div className="rounded-xl border bg-card shadow-xs overflow-hidden">
+      <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -348,9 +345,12 @@ export function DataTable<TData, TValue>({
               <TableRow>
                 <TableCell
                   colSpan={columns.length}
-                  className="h-24 text-center"
+                  className="h-24 text-center border-none hover:bg-transparent"
                 >
-                  <p className="text-sm text-muted-foreground">No results.</p>
+                  <EmptyPlaceholder
+                    title={emptyTitle}
+                    description={emptyDescription}
+                  />
                 </TableCell>
               </TableRow>
             )}

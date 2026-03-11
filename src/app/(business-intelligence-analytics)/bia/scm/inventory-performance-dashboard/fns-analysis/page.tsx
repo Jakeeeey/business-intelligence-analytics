@@ -16,7 +16,7 @@ import {cookies} from "next/headers";
 // ✅ Wire the FNS Analysis module
 import FnsAnalysisModule
     from "@/modules/business-intelligence-analytics/scm/inventory-performance-dashboard/fns-analysis/FnsAnalysisModule";
-import {ScmFilterProvider} from "@/modules/business-intelligence-analytics/scm/providers/ScmFilterProvider";
+import {ScmFilterProvider} from "@/modules/business-intelligence-analytics/scm/inventory-performance-dashboard/fns-analysis/providers/ScmFilterProvider";
 import {Skeleton} from "@/components/ui/skeleton";
 
 export const runtime = "nodejs";

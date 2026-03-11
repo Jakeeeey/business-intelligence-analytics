@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { format } from "date-fns";
-import { useScmFilters } from "@/modules/business-intelligence-analytics/scm/providers/ScmFilterProvider";
+import { useScmFilters } from "../providers/ScmFilterProvider";
 import { fetchAbcAnalysisData } from "../services/abc-analysis";
 import { AbcProduct } from "../types/abc-analysis.schema";
 

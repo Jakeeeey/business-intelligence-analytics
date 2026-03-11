@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { fetchAgingSlobData } from "../services/aging-slob";
-import { SlobAging } from "../../types/stock-health.schema";
-import { useScmFilters } from "@/modules/business-intelligence-analytics/scm/providers/ScmFilterProvider";
+import { SlobAging } from "../types";
+import { useScmFilters } from "../providers/ScmFilterProvider";
 import { parse, isWithinInterval } from "date-fns";
 
 export function useAgingSlob() {

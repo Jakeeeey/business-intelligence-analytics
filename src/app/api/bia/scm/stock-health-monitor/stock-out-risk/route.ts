@@ -1,4 +1,4 @@
-import { scmProxyRequest } from "@/lib/scm-proxy";
+import { scmProxyRequest } from "@/modules/business-intelligence-analytics/scm/stock-health-monitor/stock-out-risk/utils/proxy";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
