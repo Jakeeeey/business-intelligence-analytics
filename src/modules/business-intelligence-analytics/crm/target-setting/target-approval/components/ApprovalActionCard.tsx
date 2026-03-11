@@ -8,8 +8,8 @@ import type { TargetApprovalRecord, TargetStatus } from "../types";
 
 interface ApprovalActionCardProps {
   approvalRecord: TargetApprovalRecord | null;
-  myVote: any;
-  allVotes: any[];
+  myVote: TargetApprovalRecord | null;
+  allVotes: TargetApprovalRecord[];
   totalApprovers: number;
   onApprove: () => void;
   onReject: () => void;

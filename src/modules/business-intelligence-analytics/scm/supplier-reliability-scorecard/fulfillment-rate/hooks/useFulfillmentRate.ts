@@ -30,8 +30,8 @@ export function useFulfillmentRate() {
 
       const result = await fetchFulfillmentRateData(params);
       setData(result);
-    } catch (err: any) {
-      setError(err.message || "Failed to load fulfillment data");
+    } catch (err: unknown) {
+      setError((err as Error).message || "Failed to load fulfillment data");
     } finally {
       setIsLoading(false);
     }

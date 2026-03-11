@@ -14,13 +14,13 @@ export const fetchChannelDrilldownData = async (
         const rawData = await res.json();
 
         if (Array.isArray(rawData)) {
-            return rawData.map((item: any) => ({
-                divisionName: item.divisionName || "Unassigned",
-                storeTypeLabel: item.storeTypeLabel || "Uncategorized Channel",
-                storeName: item.storeName || "Unknown Store",
-                supplierName: item.supplierName || "Unknown Supplier",
-                salesmanName: item.salesmanName || "Unassigned",
-                netAmount: item.netAmount || 0
+            return rawData.map((item: Record<string, unknown>) => ({
+                divisionName: (item.divisionName as string) || "Unassigned",
+                storeTypeLabel: (item.storeTypeLabel as string) || "Uncategorized Channel",
+                storeName: (item.storeName as string) || "Unknown Store",
+                supplierName: (item.supplierName as string) || "Unknown Supplier",
+                salesmanName: (item.salesmanName as string) || "Unassigned",
+                netAmount: (item.netAmount as number) || 0
             }));
         }
         return [];

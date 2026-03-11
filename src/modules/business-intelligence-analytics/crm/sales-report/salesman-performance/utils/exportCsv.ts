@@ -31,8 +31,8 @@ function hasClassification(v: unknown) {
 function sortClassificationFirst(rows: SalesReportRow[]) {
   // Classified rows first; keep relative order within each group (stable sort in modern JS)
   return [...rows].sort((a, b) => {
-    const aHas = hasClassification((a as any).classification);
-    const bHas = hasClassification((b as any).classification);
+    const aHas = hasClassification((a as Record<string, unknown>).classification);
+    const bHas = hasClassification((b as Record<string, unknown>).classification);
     if (aHas === bHas) return 0;
     return aHas ? -1 : 1;
   });
@@ -51,22 +51,24 @@ export function exportSalesReportCsv(args: {
   // =========================
   // Sheet 1: Main Report Table
   // =========================
-  const sheet1Data = sortedReportRows.map((r) => ({
-    Classification: hasClassification((r as any).classification) ? (r as any).classification : "",
-    "Customer Name": (r as any).customer_name ?? "",
+  const sheet1Data = sortedReportRows.map((r) => {
+    const rc = r as Record<string, unknown>;
+    return {
+    Classification: hasClassification(rc.classification) ? rc.classification : "",
+    "Customer Name": rc.customer_name ?? "",
 
-    "Freq 1 Allocated (SO)": (r as any).so_1_15 ?? 0,
-    "Freq 1 SO Date": (r as any).so_1_15_date ?? "",
-    "Freq 1 Net Sales (SI)": (r as any).si_1_15 ?? 0,
-    "Freq 1 SI Date": (r as any).si_1_15_date ?? "",
+    "Freq 1 Allocated (SO)": rc.so_1_15 ?? 0,
+    "Freq 1 SO Date": rc.so_1_15_date ?? "",
+    "Freq 1 Net Sales (SI)": rc.si_1_15 ?? 0,
+    "Freq 1 SI Date": rc.si_1_15_date ?? "",
 
-    "Freq 2 Allocated (SO)": (r as any).so_16_eom ?? 0,
-    "Freq 2 SO Date": (r as any).so_16_eom_date ?? "",
-    "Freq 2 Net Sales (SI)": (r as any).si_16_eom ?? 0,
-    "Freq 2 SI Date": (r as any).si_16_eom_date ?? "",
+    "Freq 2 Allocated (SO)": rc.so_16_eom ?? 0,
+    "Freq 2 SO Date": rc.so_16_eom_date ?? "",
+    "Freq 2 Net Sales (SI)": rc.si_16_eom ?? 0,
+    "Freq 2 SI Date": rc.si_16_eom_date ?? "",
 
-    "Total (SI)": (r as any).total_si ?? 0,
-  }));
+    "Total (SI)": rc.total_si ?? 0,
+  }});
 
   const ws1 = XLSX.utils.json_to_sheet(sheet1Data, {
     header: [
@@ -101,12 +103,14 @@ export function exportSalesReportCsv(args: {
   // =========================
   // Sheet 2: Invoices Table
   // =========================
-  const sheet2Data = (invoiceRows ?? []).map((r) => ({
-    Customer: (r as any).customer ?? "",
-    "PO Date": (r as any).po_date ?? "",
-    "Sales Invoice Date": (r as any).si_date ?? "",
-    "Net Amount (SI - SR)": (r as any).net_amount ?? 0,
-  }));
+  const sheet2Data = (invoiceRows ?? []).map((r) => {
+    const rc = r as Record<string, unknown>;
+    return {
+    Customer: rc.customer ?? "",
+    "PO Date": rc.po_date ?? "",
+    "Sales Invoice Date": rc.si_date ?? "",
+    "Net Amount (SI - SR)": rc.net_amount ?? 0,
+  }});
 
   const ws2 = XLSX.utils.json_to_sheet(sheet2Data, {
     header: ["Customer", "PO Date", "Sales Invoice Date", "Net Amount (SI - SR)"],

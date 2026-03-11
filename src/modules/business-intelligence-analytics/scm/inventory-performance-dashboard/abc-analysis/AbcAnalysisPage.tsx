@@ -1,8 +1,7 @@
 "use client";
 
 import React from "react";
-import { Loader2, AlertCircle } from "lucide-react";
-import { Card, CardContent, CardDescription } from "@/components/ui/card";
+import { CardDescription } from "@/components/ui/card";
 
 import { ScmAdvancedFilters } from "./components/ScmAdvancedFilters";
 import { useAbcAnalysis } from "./hooks/useAbcAnalysis";

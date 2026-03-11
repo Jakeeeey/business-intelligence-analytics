@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -39,13 +39,12 @@ export function CompanyTargetCard({
 
   const unformatNumber = (val: string) => val.replace(/,/g, "");
 
-  useEffect(() => {
-    if (currentTarget) {
-      setTargetAmount(formatNumber(currentTarget.target_amount.toString()));
-    } else {
-      setTargetAmount("");
-    }
-  }, [currentTarget]);
+  const [prevTarget, setPrevTarget] = useState<TargetSettingExecutive | null>(currentTarget);
+
+  if (currentTarget !== prevTarget) {
+    setPrevTarget(currentTarget);
+    setTargetAmount(currentTarget ? formatNumber(currentTarget.target_amount.toString()) : "");
+  }
 
   const handleSave = () => {
     const rawValue = unformatNumber(targetAmount);

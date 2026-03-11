@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { fetchStockOutRiskData } from "../services/stock-out-risk";
 import { format } from "date-fns";
 import { StockOutRisk } from "../types";
@@ -10,7 +10,7 @@ export function useStockOutRisk() {
   const [error, setError] = useState<string | null>(null);
   const { selectedSupplier, selectedBranch, selectedRiskStatus, dateRange } = useScmFilters();
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setIsLoading(true);
       const start = dateRange?.from ? format(dateRange.from, "yyyy-MM-dd") : "";
@@ -19,16 +19,16 @@ export function useStockOutRisk() {
       const result = await fetchStockOutRiskData(start, end);
       setData(result);
       setError(null);
-    } catch (err: any) {
-      setError(err.message || "Failed to fetch Stock-out Risk data");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to fetch Stock-out Risk data");
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [dateRange]);
 
   useEffect(() => {
     fetchData();
-  }, [dateRange]);
+  }, [fetchData]);
 
   const filteredData = useMemo(() => {
     return data

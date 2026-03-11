@@ -30,8 +30,8 @@ export interface TargetSettingSalesman {
 }
 
 export interface TargetSettingResponse {
-    divisionTargets: any[];
-    supplierTargets: any[];
-    supervisorTargets: any[];
-    salesmanTargets: TargetSettingSalesman[];
+    divisionTargets?: Record<string, unknown>[];
+    supplierTargets?: Record<string, unknown>[];
+    supervisorTargets?: Record<string, unknown>[];
+    salesmanTargets?: TargetSettingSalesman[];
 }

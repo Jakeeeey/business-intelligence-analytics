@@ -1,13 +1,12 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus } from "lucide-react";
-import { format } from "date-fns";
 import type { Division, CreateDivisionAllocationDTO, TargetSettingExecutive, TargetSettingDivision } from "../types";
 
 interface DivisionAllocationCardProps {
@@ -18,7 +17,6 @@ interface DivisionAllocationCardProps {
   onUpdateAllocation: (id: number, data: Partial<CreateDivisionAllocationDTO>) => Promise<void>;
   isLoading: boolean;
   selectedPeriod: string;
-  onPeriodChange: (date: string) => void;
   allocatedAmount: number;
   remainingBalance: number;
 }
@@ -31,7 +29,6 @@ export function DivisionAllocationCard({
   onUpdateAllocation,
   isLoading,
   selectedPeriod,
-  onPeriodChange,
   allocatedAmount,
   remainingBalance
 }: DivisionAllocationCardProps) {
@@ -56,13 +53,12 @@ export function DivisionAllocationCard({
   }, [selectedDivision, allocations]);
 
   // Update amount when a division is selected or allocations change
-  useEffect(() => {
-    if (existingAllocation) {
-        setAmount(formatNumber(existingAllocation.target_amount.toString()));
-    } else {
-        setAmount("");
-    }
-  }, [existingAllocation]);
+  const [prevAllocation, setPrevAllocation] = useState<TargetSettingDivision | null>(existingAllocation || null);
+
+  if (existingAllocation !== prevAllocation) {
+    setPrevAllocation(existingAllocation || null);
+    setAmount(existingAllocation ? formatNumber(existingAllocation.target_amount.toString()) : "");
+  }
 
   const handleAction = () => {
     const rawValue = unformatNumber(amount);
@@ -92,19 +88,7 @@ export function DivisionAllocationCard({
   const isEnabled = !!companyTarget && companyTarget.status !== 'APPROVED';
   const currency = (val: number) => new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(val);
 
-  // Generate last 6 months and next 12 months (same as other card)
-  const periodOptions = useMemo(() => {
-    const options = [];
-    const today = new Date();
-    for (let i = -6; i < 12; i++) {
-        const d = new Date(today.getFullYear(), today.getMonth() + i, 1);
-        options.push({
-            label: format(d, "MMMM yyyy"),
-            value: format(d, "yyyy-MM-01")
-        });
-    }
-    return options;
-  }, []);
+
 
   return (
     <Card className="w-full h-full">

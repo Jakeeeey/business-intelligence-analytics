@@ -1,4 +1,5 @@
 import { VSalesPerformanceDataDto } from "../../executive-health/types";
+import { TargetSettingResponse } from "../types";
 
 /**
  * Fetches raw sales data for salesman performance analysis.
@@ -44,11 +45,11 @@ export const fetchSalesmanData = async (startDate: string, endDate: string): Pro
     // Return empty array if data is null or undefined to prevent UI crashes
     return Array.isArray(data) ? data : [];
 
-  } catch (error: any) {
-    if (error.name === 'AbortError') {
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === 'AbortError') {
       console.error("Salesman Fetch: The request timed out.");
     } else {
-      console.error("Salesman Fetch Error:", error.message);
+      console.error("Salesman Fetch Error:", error instanceof Error ? error.message : "Unknown error");
     }
     throw error;
   }
@@ -57,7 +58,7 @@ export const fetchSalesmanData = async (startDate: string, endDate: string): Pro
 /**
  * Fetches dynamic targets for salesman data.
  */
-export const fetchDynamicTargets = async (startDate: string, endDate: string): Promise<any> => {
+export const fetchDynamicTargets = async (startDate: string, endDate: string): Promise<TargetSettingResponse> => {
   try {
     const params = new URLSearchParams({ startDate, endDate });
     const url = `/api/bia/crm/target-setting-reports/managerial-supplier/targets?${params.toString()}`;
@@ -81,8 +82,8 @@ export const fetchDynamicTargets = async (startDate: string, endDate: string): P
     });
 
     return result;
-  } catch (error: any) {
-    console.error("Fetch Salesman Targets Error:", error.message);
-    return { supplierTargets: [], salesmanTargets: [] };
+  } catch (error: unknown) {
+    console.error("Fetch Salesman Targets Error:", error instanceof Error ? error.message : "Unknown error");
+    return { divisionTargets: [], supplierTargets: [], supervisorTargets: [], salesmanTargets: [] };
   }
 };

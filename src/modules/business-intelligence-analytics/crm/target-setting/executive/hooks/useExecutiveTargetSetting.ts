@@ -7,7 +7,10 @@ import type {
   TargetSettingDivision,
   Division,
   CreateCompanyTargetDTO,
-  CreateDivisionAllocationDTO
+  CreateDivisionAllocationDTO,
+  TargetSettingSupplier,
+  TargetSettingSupervisor,
+  TargetSettingSalesman
 } from "../types";
 import {
   getLatestCompanyTarget,
@@ -32,13 +35,13 @@ export function useExecutiveTargetSetting() {
   const [selectedPeriod, setSelectedPeriod] = useState<string>(format(new Date(), "yyyy-MM-01"));
   const [companyTarget, setCompanyTarget] = useState<TargetSettingExecutive | null>(null);
   const [allocations, setAllocations] = useState<TargetSettingDivision[]>([]);
-  const [supervisorAllocations, setSupervisorAllocations] = useState<any[]>([]);
-  const [supplierAllocations, setSupplierAllocations] = useState<any[]>([]);
-  const [salesmanAllocations, setSalesmanAllocations] = useState<any[]>([]);
+  const [supervisorAllocations, setSupervisorAllocations] = useState<TargetSettingSupervisor[]>([]);
+  const [supplierAllocations, setSupplierAllocations] = useState<TargetSettingSupplier[]>([]);
+  const [salesmanAllocations, setSalesmanAllocations] = useState<TargetSettingSalesman[]>([]);
   const [divisions, setDivisions] = useState<Division[]>([]);
-  const [suppliersMetadata, setSuppliersMetadata] = useState<any[]>([]);
-  const [salesmenMetadata, setSalesmenMetadata] = useState<any[]>([]);
-  const [usersMetadata, setUsersMetadata] = useState<any[]>([]);
+  const [suppliersMetadata, setSuppliersMetadata] = useState<{ id: number; supplier_name: string }[]>([]);
+  const [salesmenMetadata, setSalesmenMetadata] = useState<{ id: number; salesman_name: string }[]>([]);
+  const [usersMetadata, setUsersMetadata] = useState<{ user_id: number; user_fname?: string; user_lname?: string }[]>([]);
   const [currentUserId, setCurrentUserId] = useState<number>(1);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -53,9 +56,9 @@ export function useExecutiveTargetSetting() {
     ])
       .then(([divs, sups, sales, users, userId]) => {
         setDivisions(divs.sort((a, b) => a.division_name.localeCompare(b.division_name)));
-        setSuppliersMetadata(sups);
-        setSalesmenMetadata(sales);
-        setUsersMetadata(users);
+        setSuppliersMetadata(sups as { id: number; supplier_name: string }[]);
+        setSalesmenMetadata(sales as { id: number; salesman_name: string }[]);
+        setUsersMetadata(users as { user_id: number; user_fname?: string; user_lname?: string }[]);
         setCurrentUserId(userId);
       })
       .catch(err => console.error("Failed to load metadata", err));
@@ -121,7 +124,7 @@ export function useExecutiveTargetSetting() {
     if (divisions.length > 0) {
       load();
     }
-  }, [selectedPeriod, divisions]);
+  }, [selectedPeriod, divisions, salesmenMetadata, suppliersMetadata, usersMetadata]);
 
   const saveCompanyTarget = async (data: CreateCompanyTargetDTO) => {
     setIsLoading(true);

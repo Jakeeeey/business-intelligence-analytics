@@ -3,7 +3,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { ProductPerformanceKpis } from "../types";
-import { DollarSign, ShoppingCart, TrendingUp, Award, Package,PhilippinePeso } from "lucide-react";
+import { ShoppingCart, TrendingUp, Award, Package,PhilippinePeso } from "lucide-react";
 
 type KPICardsProps = {
   kpis: ProductPerformanceKpis;

@@ -26,7 +26,7 @@ async function fetchDirectus<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, { cache: "no-store", headers: directusHeaders(), ...(init ?? {}) });
 
   const text = await res.text().catch(() => "");
-  let json: any = null;
+  let json: Record<string, unknown> | null = null;
   try {
     json = text ? JSON.parse(text) : null;
   } catch {
@@ -34,10 +34,11 @@ async function fetchDirectus<T>(path: string, init?: RequestInit): Promise<T> {
   }
 
   if (!res.ok) {
+    const errorData = json as { errors?: { message?: string }[]; error?: string; message?: string } | null;
     const msg =
-      json?.errors?.[0]?.message ||
-      json?.error ||
-      json?.message ||
+      errorData?.errors?.[0]?.message ||
+      errorData?.error ||
+      errorData?.message ||
       text ||
       `Upstream failed (${res.status})`;
     throw new Error(msg);
@@ -46,13 +47,13 @@ async function fetchDirectus<T>(path: string, init?: RequestInit): Promise<T> {
   return json as T;
 }
 
-function normalizeStatus(v: any) {
+function normalizeStatus(v: unknown) {
   const s = String(v ?? "").trim().toUpperCase();
   const allowed = new Set(["DRAFT", "SUBMITTED", "PENDING", "APPROVED", "REJECTED", "SET"]);
-  return (allowed.has(s) ? s : "SET") as any;
+  return (allowed.has(s) ? s : "SET");
 }
 
-function dateOnly(v: any) {
+function dateOnly(v: unknown) {
   const s = String(v ?? "").trim();
   const m = s.match(/^(\d{4}-\d{2}-\d{2})/);
   return m ? m[1] : null;
@@ -82,7 +83,7 @@ function getJwtSub(token: string | null) {
 /* ---------------------------------------------------------- */
 
 async function resolveExecutiveContextByTsdId(tsd_id: number) {
-  const divRes = await fetchDirectus<{ data: any[] }>(
+  const divRes = await fetchDirectus<{ data: Record<string, unknown>[] }>(
     `/items/target_setting_division?filter[id][_eq]=${encodeURIComponent(String(tsd_id))}&limit=1`,
   );
   const div = divRes.data?.[0];
@@ -91,7 +92,7 @@ async function resolveExecutiveContextByTsdId(tsd_id: number) {
   const tse_id = Number(div.tse_id);
   if (!tse_id) throw new Error("Missing tse_id on target_setting_division.");
 
-  const execRes = await fetchDirectus<{ data: any[] }>(
+  const execRes = await fetchDirectus<{ data: Record<string, unknown>[] }>(
     `/items/target_setting_executive?filter[id][_eq]=${encodeURIComponent(String(tse_id))}&limit=1`,
   );
   const exec = execRes.data?.[0];
@@ -109,7 +110,7 @@ async function findSupervisorRowsByTssId(tss_id: number) {
   const q =
     `/items/target_setting_supervisor?limit=-1` +
     `&filter[tss_id][_eq]=${encodeURIComponent(String(tss_id))}`;
-  const r = await fetchDirectus<{ data: any[] }>(q);
+  const r = await fetchDirectus<{ data: Record<string, unknown>[] }>(q);
   return r.data ?? [];
 }
 
@@ -122,7 +123,7 @@ async function upsertSupervisorRow(args: {
 }) {
   const existing = await findSupervisorRowsByTssId(args.tss_id);
 
-  const payload: any = {
+  const payload: Record<string, unknown> = {
     tss_id: args.tss_id,
     target_amount: args.target_amount,
     fiscal_period: args.fiscal_period,
@@ -142,7 +143,7 @@ async function upsertSupervisorRow(args: {
     return { id, mode: "update" as const };
   }
 
-  const created = await fetchDirectus<{ data: any }>(`/items/target_setting_supervisor`, {
+  const created = await fetchDirectus<{ data: Record<string, unknown> }>(`/items/target_setting_supervisor`, {
     method: "POST",
     body: JSON.stringify(payload),
   });
@@ -170,19 +171,19 @@ export async function GET(req: NextRequest) {
       supervisorPerDivision,
       divisionSalesHead,
     ] = await Promise.all([
-      fetchDirectus<{ data: any[] }>(`/items/target_setting_executive?limit=-1`),
-      fetchDirectus<{ data: any[] }>(`/items/target_setting_division?limit=-1`),
-      fetchDirectus<{ data: any[] }>(`/items/target_setting_supplier?limit=-1`),
-      fetchDirectus<{ data: any[] }>(`/items/target_setting_supervisor?limit=-1`),
-      fetchDirectus<{ data: any[] }>(`/items/division?limit=-1`),
-      fetchDirectus<{ data: any[] }>(`/items/suppliers?limit=-1`),
-      fetchDirectus<{ data: any[] }>(`/items/user?limit=-1`),
+      fetchDirectus<{ data: Record<string, unknown>[] }>(`/items/target_setting_executive?limit=-1`),
+      fetchDirectus<{ data: Record<string, unknown>[] }>(`/items/target_setting_division?limit=-1`),
+      fetchDirectus<{ data: Record<string, unknown>[] }>(`/items/target_setting_supplier?limit=-1`),
+      fetchDirectus<{ data: Record<string, unknown>[] }>(`/items/target_setting_supervisor?limit=-1`),
+      fetchDirectus<{ data: Record<string, unknown>[] }>(`/items/division?limit=-1`),
+      fetchDirectus<{ data: Record<string, unknown>[] }>(`/items/suppliers?limit=-1`),
+      fetchDirectus<{ data: Record<string, unknown>[] }>(`/items/user?limit=-1`),
 
       // ✅ new
-      fetchDirectus<{ data: any[] }>(`/items/supervisor_per_division?limit=-1`),
+      fetchDirectus<{ data: Record<string, unknown>[] }>(`/items/supervisor_per_division?limit=-1`),
 
       // ✅ Manager division mapping
-      fetchDirectus<{ data: any[] }>(`/items/division_sales_head?limit=-1`),
+      fetchDirectus<{ data: Record<string, unknown>[] }>(`/items/division_sales_head?limit=-1`),
     ]);
 
     return NextResponse.json({
@@ -199,8 +200,8 @@ export async function GET(req: NextRequest) {
       supervisor_per_division: supervisorPerDivision.data ?? [],
       division_sales_head: divisionSalesHead.data ?? [],
     });
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message ?? "Failed to load manager targets." }, { status: 500 });
+  } catch (e: unknown) {
+    return NextResponse.json({ error: (e as Error)?.message ?? "Failed to load manager targets." }, { status: 500 });
   }
 }
 
@@ -248,7 +249,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Always create a new target_setting_supplier row (1 supplier → many supervisors)
-    const created = await fetchDirectus<{ data: any }>(`/items/target_setting_supplier`, {
+    const created = await fetchDirectus<{ data: Record<string, unknown> }>(`/items/target_setting_supplier`, {
       method: "POST",
       body: JSON.stringify(supplierPayload),
     });
@@ -267,8 +268,8 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ ok: true });
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message ?? "Failed to save allocation." }, { status: 500 });
+  } catch (e: unknown) {
+    return NextResponse.json({ error: (e as Error)?.message ?? "Failed to save allocation." }, { status: 500 });
   }
 }
 
@@ -292,7 +293,7 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: "Invalid payload." }, { status: 400 });
     }
 
-    const tssRes = await fetchDirectus<{ data: any[] }>(
+    const tssRes = await fetchDirectus<{ data: Record<string, unknown>[] }>(
       `/items/target_setting_supplier?filter[id][_eq]=${encodeURIComponent(String(id))}&limit=1`,
     );
     const tss = tssRes.data?.[0];
@@ -326,8 +327,8 @@ export async function PATCH(req: NextRequest) {
     });
 
     return NextResponse.json({ ok: true });
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message ?? "Failed to update allocation." }, { status: 500 });
+  } catch (e: unknown) {
+    return NextResponse.json({ error: (e as Error)?.message ?? "Failed to update allocation." }, { status: 500 });
   }
 }
 
@@ -340,7 +341,7 @@ export async function DELETE(req: NextRequest) {
     const id = Number(searchParams.get("id"));
     if (!id) return NextResponse.json({ error: "Missing id." }, { status: 400 });
 
-    const tssRes = await fetchDirectus<{ data: any[] }>(
+    const tssRes = await fetchDirectus<{ data: Record<string, unknown>[] }>(
       `/items/target_setting_supplier?filter[id][_eq]=${encodeURIComponent(String(id))}&limit=1`,
     );
     const tss = tssRes.data?.[0];
@@ -357,7 +358,7 @@ export async function DELETE(req: NextRequest) {
     const supRows = await findSupervisorRowsByTssId(id);
     for (const r of supRows) {
       // Cascade delete: remove salesman allocations linked to this supervisor target
-      const childRes = await fetchDirectus<{ data: any[] }>(
+      const childRes = await fetchDirectus<{ data: Record<string, unknown>[] }>(
         `/items/target_setting_salesman?filter[ts_supervisor_id][_eq]=${r.id}&fields=id`,
       );
       const childIds = (childRes.data ?? []).map((c) => c.id);
@@ -375,7 +376,7 @@ export async function DELETE(req: NextRequest) {
     await fetchDirectus(`/items/target_setting_supplier/${id}`, { method: "DELETE" });
 
     return NextResponse.json({ ok: true });
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message ?? "Failed to delete allocation." }, { status: 500 });
+  } catch (e: unknown) {
+    return NextResponse.json({ error: (e as Error)?.message ?? "Failed to delete allocation." }, { status: 500 });
   }
 }

@@ -10,13 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Pencil, Trash2 } from "lucide-react";
 
-// ❌ removed StatusBadge usage
 // import { StatusBadge } from "./ui";
-
-function clampMoney(n: number) {
-  if (!Number.isFinite(n)) return 0;
-  return n;
-}
 
 export function AllocationTable(props: {
   fiscalPeriod: string;

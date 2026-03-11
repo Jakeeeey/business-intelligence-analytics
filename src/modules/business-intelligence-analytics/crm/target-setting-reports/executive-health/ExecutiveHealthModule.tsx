@@ -3,10 +3,10 @@
 import React, { useEffect, useState, useMemo, Suspense } from "react";
 import { useRouter } from "next/navigation"; 
 import { 
-    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList, Scatter, ComposedChart 
+    Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList, Scatter, ComposedChart 
 } from 'recharts';
 import { 
-    TrendingDown, TrendingUp, Loader2, Calendar, LayoutDashboard, ChevronRight, AlertCircle
+    Loader2, Calendar, LayoutDashboard, ChevronRight, AlertCircle
 } from "lucide-react";
 import { format, startOfMonth, endOfMonth, parseISO } from "date-fns";
 
@@ -33,11 +33,9 @@ function ExecutiveHealthContent() {
     const [targets, setTargets] = useState<TargetSettingExecutive[]>([]);
     const [allocations, setAllocations] = useState<TargetSettingDivision[]>([]);
     const [divisions, setDivisions] = useState<{division_id: number, division_name: string}[]>([]);
-    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const load = async () => {
-            setLoading(true);
             try {
                 const start = format(startOfMonth(parseISO(fromMonth + "-01")), "yyyy-MM-dd");
                 const end = format(endOfMonth(parseISO(toMonth + "-01")), "yyyy-MM-dd");
@@ -60,9 +58,7 @@ function ExecutiveHealthContent() {
                     setAllocations([]);
                 }
             } catch (err) { 
-                console.error("Executive Fetch Error:", err); 
-            } finally { 
-                setLoading(false); 
+                console.error("Executive Health Fetch Error:", err); 
             }
         };
         load();
@@ -70,9 +66,9 @@ function ExecutiveHealthContent() {
 
     const { companyHealth, divisionHealth } = useMemo(() => {
         let totalActual = 0;
-        let totalTarget = targets.reduce((sum, t) => sum + (t.target_amount || 0), 0);
+        const totalTarget = targets.reduce((sum, t) => sum + (t.target_amount || 0), 0);
         
-        const divisionMap = new Map<string, any>();
+        const divisionMap = new Map<string, {name: string, sales: number}>();
 
         rawData.forEach(item => {
             const divName = item.divisionName || "Unknown";
@@ -226,7 +222,7 @@ function ExecutiveHealthContent() {
                                     }}
                                     itemStyle={{ color: 'hsl(var(--popover-foreground))', fontWeight: 'bold' }}
                                     labelStyle={{ color: 'hsl(var(--muted-foreground))', marginBottom: '4px', fontWeight: 'bold' }}
-                                    formatter={(v: any, name: string) => [formatPHP(v), name]} 
+                                    formatter={(v: number, name: string) => [formatPHP(v), name]} 
                                 />
                                 <Bar dataKey="sales" name="Actual" barSize={22} radius={[0, 6, 6, 0]} minPointSize={2}>
                                     {divisionHealth.map((e, i) => (
@@ -246,9 +242,9 @@ function ExecutiveHealthContent() {
                                 <Scatter 
                                     dataKey="target" 
                                     tooltipType="none"
-                                    shape={(props: any) => {
+                                    shape={(props: { cx?: number, cy?: number, payload?: { target?: number } }) => {
                                         const { cx, cy, payload } = props;
-                                        if (!payload || !payload.target) return <g />;
+                                        if (!payload || !payload.target || cx === undefined || cy === undefined) return <g />;
                                         return (
                                             <line 
                                                 x1={cx} y1={cy - 18} 

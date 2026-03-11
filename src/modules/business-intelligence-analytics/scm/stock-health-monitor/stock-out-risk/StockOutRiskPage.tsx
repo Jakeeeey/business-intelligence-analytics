@@ -10,7 +10,7 @@ import { ScmAdvancedFilters } from "./components/ScmAdvancedFilters";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function StockOutRiskPage() {
-  const { data, criticalItems, isLoading, error } = useStockOutRisk();
+  const { data, criticalItems, isLoading } = useStockOutRisk();
 
   // Extract unique suppliers and branches for filters
   const suppliers = React.useMemo(() => {

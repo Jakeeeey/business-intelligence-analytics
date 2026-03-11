@@ -99,7 +99,7 @@ async function proxy(req: NextRequest, { params }: { params: Promise<{ id: strin
             const { data: approvalsToDelete } = await approvalsListRes.json();
 
             if (approvalsToDelete && approvalsToDelete.length > 0) {
-              const idsToDelete = approvalsToDelete.map((a: any) => a.id);
+              const idsToDelete = approvalsToDelete.map((a: Record<string, unknown>) => a.id);
 
               // 2.2 Bulk delete by IDs
               const deleteApprovalsRes = await fetch(
@@ -141,7 +141,7 @@ async function proxy(req: NextRequest, { params }: { params: Promise<{ id: strin
 
             if (items && items.length > 0) {
               // Update each item to DRAFT
-              await Promise.all(items.map((item: any) =>
+              await Promise.all(items.map((item: Record<string, unknown>) =>
                 fetch(`${upstream}/items/${collection}/${item.id}`, {
                   method: "PATCH",
                   headers: { "Content-Type": "application/json", ...authHeader },
@@ -175,7 +175,7 @@ async function proxy(req: NextRequest, { params }: { params: Promise<{ id: strin
   }
 }
 
-export async function GET(req: NextRequest, context: any) { return proxy(req, context); }
-export async function PATCH(req: NextRequest, context: any) { return proxy(req, context); }
-export async function DELETE(req: NextRequest, context: any) { return proxy(req, context); }
-export async function OPTIONS(req: NextRequest) { return new NextResponse(null, { status: 204 }); }
+export async function GET(req: NextRequest, context: { params: Promise<{ id: string }> }) { return proxy(req, context); }
+export async function PATCH(req: NextRequest, context: { params: Promise<{ id: string }> }) { return proxy(req, context); }
+export async function DELETE(req: NextRequest, context: { params: Promise<{ id: string }> }) { return proxy(req, context); }
+export async function OPTIONS() { return new NextResponse(null, { status: 204 }); }

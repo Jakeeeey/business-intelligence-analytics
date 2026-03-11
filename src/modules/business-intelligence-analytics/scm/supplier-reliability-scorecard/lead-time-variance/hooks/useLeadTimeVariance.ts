@@ -32,8 +32,8 @@ export function useLeadTimeVariance() {
 
       const result = await fetchLeadTimeVarianceData(params);
       setData(result);
-    } catch (err: any) {
-      setError(err.message || "Failed to load lead time variance data");
+    } catch (err: unknown) {
+      setError((err as Error).message || "Failed to load lead time variance data");
     } finally {
       setIsLoading(false);
     }

@@ -21,8 +21,15 @@ import {
 } from "../../executive/providers/fetchProvider";
 import type {
   TargetSettingExecutive,
-  TargetApprover
+  TargetApprover,
+  TargetApprovalRecord
 } from "../types";
+import type {
+  TargetSettingDivision,
+  TargetSettingSupplier,
+  TargetSettingSupervisor,
+  TargetSettingSalesman
+} from "../../executive/types";
 
 export function useTargetApproval() {
   const [selectedPeriod, setSelectedPeriod] = useState<string>(
@@ -30,19 +37,24 @@ export function useTargetApproval() {
   );
 
   const [executiveTarget, setExecutiveTarget] = useState<TargetSettingExecutive | null>(null);
-  const [allVotes, setAllVotes] = useState<any[]>([]);
+  const [allVotes, setAllVotes] = useState<TargetApprovalRecord[]>([]);
   const [totalApprovers, setTotalApprovers] = useState(0);
   const [isApprover, setIsApprover] = useState(false);
   const [approver, setApprover] = useState<TargetApprover | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   // Hierarchy Data (Read-only)
-  const [allocations, setAllocations] = useState<any[]>([]);
-  const [supervisorAllocations, setSupervisorAllocations] = useState<any[]>([]);
-  const [supplierAllocations, setSupplierAllocations] = useState<any[]>([]);
-  const [salesmanAllocations, setSalesmanAllocations] = useState<any[]>([]);
+  const [allocations, setAllocations] = useState<TargetSettingDivision[]>([]);
+  const [supervisorAllocations, setSupervisorAllocations] = useState<TargetSettingSupervisor[]>([]);
+  const [supplierAllocations, setSupplierAllocations] = useState<TargetSettingSupplier[]>([]);
+  const [salesmanAllocations, setSalesmanAllocations] = useState<TargetSettingSalesman[]>([]);
   const [historicalTargets, setHistoricalTargets] = useState<TargetSettingExecutive[]>([]);
-  const [metadata, setMetadata] = useState<any>({
+  const [metadata, setMetadata] = useState<{
+    divisions: { division_id: number; division_name: string }[];
+    suppliers: { id: number; supplier_name: string }[];
+    users: { user_id: number; user_fname: string; user_lname: string }[];
+    salesmen: { id: number; salesman_name: string }[];
+  }>({
     divisions: [],
     suppliers: [],
     users: [],
@@ -50,8 +62,8 @@ export function useTargetApproval() {
   });
 
   const loadAuth = useCallback(async () => {
-    const res = await checkApproverStatus() as any;
-    setIsApprover(res.isApprover);
+    const res = await checkApproverStatus() as { isApprover: boolean; approver: TargetApprover | null; totalApprovers: number };
+    setIsApprover(Boolean(res.isApprover));
     setApprover(res.approver);
     setTotalApprovers(res.totalApprovers || 0);
   }, []);
@@ -73,12 +85,12 @@ export function useTargetApproval() {
 
       // 2. Fetch Approval Records specifically for THIS target ID if it exists
       const votesRes = await getApprovalRecord(selectedPeriod, target?.id);
-      setAllVotes((votesRes as any)?.data || []);
+      setAllVotes((votesRes as { data: TargetApprovalRecord[] })?.data || []);
       setMetadata({
-        divisions: divisionsData,
-        suppliers: suppliersData,
-        salesmen: salesmenData,
-        users: usersData
+        divisions: divisionsData as { division_id: number; division_name: string }[],
+        suppliers: suppliersData as { id: number; supplier_name: string }[],
+        salesmen: salesmenData as { id: number; salesman_name: string }[],
+        users: usersData as { user_id: number; user_fname: string; user_lname: string }[]
       });
 
       if (target) {
@@ -144,7 +156,8 @@ export function useTargetApproval() {
       });
       toast.success(`Vote submitted. Current Status: ${res.finalStatus}`);
       loadData();
-    } catch (error) {
+    } catch (err) {
+      console.error(err);
       toast.error(`Failed to submit vote`);
     } finally {
       setIsLoading(false);

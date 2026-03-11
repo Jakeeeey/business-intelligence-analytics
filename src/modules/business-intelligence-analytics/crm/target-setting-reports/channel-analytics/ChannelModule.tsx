@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 
@@ -31,7 +31,13 @@ function ChannelMatrixContent() {
     const [selectedDivision, setSelectedDivision] = useState<string>("All");
 
     // --- MODAL STATE ---
-    const [selectedChannel, setSelectedChannel] = useState<any | null>(null);
+    const [selectedChannel, setSelectedChannel] = useState<{
+        name: string;
+        total: number;
+        allStores: [string, number][];
+        allSuppliers: [string, number][];
+        allSalesmen: [string, number][];
+    } | null>(null);
     const [modalSearch, setModalSearch] = useState("");
 
     const [rawData, setRawData] = useState<ChannelDrilldownDto[]>([]);
@@ -99,12 +105,14 @@ function ChannelMatrixContent() {
 
     // Helper to render lists inside the modal
     const renderModalList = (items: [string, number][], icon: React.ReactNode, type: string) => {
+        if (!selectedChannel) return null;
+        
         const filteredItems = items.filter(([name]) => name.toLowerCase().includes(modalSearch.toLowerCase()));
 
         return (
             <div className="space-y-2 pb-10"> {/* Added pb-10 for bottom spacing */}
                 {filteredItems.length === 0 ? (
-                    <div className="text-center py-20 text-muted-foreground">No {type.toLowerCase()} found matching "{modalSearch}"</div>
+                    <div className="text-center py-20 text-muted-foreground">No {type.toLowerCase()} found matching &quot;{modalSearch}&quot;</div>
                 ) : (
                     filteredItems.map(([name, amt], idx) => {
                         const share = (amt / selectedChannel.total) * 100;

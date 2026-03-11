@@ -12,7 +12,7 @@ interface Props {
     selectedBranch: string | null;
 }
 
-const CustomTooltip = ({ active, payload }: any) => {
+const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: { payload: { label: string }; value: number }[] }) => {
     if (active && payload && payload.length) {
         const data = payload[0].payload;
         const value = payload[0].value;

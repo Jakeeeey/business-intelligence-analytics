@@ -14,13 +14,13 @@ export const fetchAreaDrilldownData = async (
         const rawData = await res.json();
 
         if (Array.isArray(rawData)) {
-            return rawData.map((item: any) => ({
-                divisionName: item.divisionName || "Unassigned",
-                province: item.province || "Unknown Province",
-                city: item.city || "Unknown City",
-                supplierName: item.supplierName || "Unknown Supplier",
-                salesmanName: item.salesmanName || "Unknown Salesman",
-                netAmount: item.netAmount || 0
+            return rawData.map((item: Record<string, unknown>) => ({
+                divisionName: (item.divisionName as string) || "Unassigned",
+                province: (item.province as string) || "Unknown Province",
+                city: (item.city as string) || "Unknown City",
+                supplierName: (item.supplierName as string) || "Unknown Supplier",
+                salesmanName: (item.salesmanName as string) || "Unknown Salesman",
+                netAmount: (item.netAmount as number) || 0
             }));
         }
         return [];

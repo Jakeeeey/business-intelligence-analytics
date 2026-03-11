@@ -46,8 +46,9 @@ export async function GET(req: NextRequest) {
     else if (data.data && Array.isArray(data.data)) records = data.data;
 
     return NextResponse.json(records);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("API Route Error:", error);
-    return NextResponse.json({ error: error?.message || "Internal server error" }, { status: 500 });
+    const errorObj = error as Error & { message?: string };
+    return NextResponse.json({ error: errorObj?.message || "Internal server error" }, { status: 500 });
   }
 }

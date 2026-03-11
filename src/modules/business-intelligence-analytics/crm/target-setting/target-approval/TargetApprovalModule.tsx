@@ -36,21 +36,21 @@ export default function TargetApprovalModule() {
   const joinedAllocations = useMemo(() => {
     return allocations.map(a => ({
       ...a,
-      division_name: metadata.divisions.find((d: any) => d.division_id === a.division_id)?.division_name
+      division_name: metadata.divisions.find((d: { division_id: number; division_name: string }) => d.division_id === a.division_id)?.division_name
     }));
   }, [allocations, metadata.divisions]);
 
   const joinedSupplierAllocations = useMemo(() => {
     return supplierAllocations.map(a => ({
       ...a,
-      supplier_name: metadata.suppliers.find((s: any) => s.id === a.supplier_id)?.supplier_name
+      supplier_name: metadata.suppliers.find((s: { id: number; supplier_name: string }) => s.id === a.supplier_id)?.supplier_name
     }));
   }, [supplierAllocations, metadata.suppliers]);
 
   const joinedSupervisorAllocations = useMemo(() => {
     return supervisorAllocations.map(a => {
       // Use loose comparison for ID match
-      const u = metadata.users.find((u: any) => String(u.user_id) === String(a.supervisor_user_id));
+      const u = metadata.users.find((u: { user_id: number; user_fname: string; user_lname: string }) => String(u.user_id) === String(a.supervisor_user_id));
       return {
         ...a,
         supervisor_name: u ? `${u.user_fname} ${u.user_lname}` : undefined
@@ -61,7 +61,7 @@ export default function TargetApprovalModule() {
   const joinedSalesmanAllocations = useMemo(() => {
     return salesmanAllocations.map(a => ({
       ...a,
-      salesman_name: metadata.salesmen.find((s: any) => s.id === a.salesman_id)?.salesman_name
+      salesman_name: metadata.salesmen.find((s: { id: number; salesman_name: string }) => s.id === a.salesman_id)?.salesman_name
     }));
   }, [salesmanAllocations, metadata.salesmen]);
 

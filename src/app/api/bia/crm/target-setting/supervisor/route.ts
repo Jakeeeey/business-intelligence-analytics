@@ -46,18 +46,18 @@ async function upstreamJson(url: string, init?: RequestInit) {
   });
 
   const text = await res.text().catch(() => "");
-  let json: any = null;
+  let json: Record<string, unknown> | null = null;
   try {
     json = text ? JSON.parse(text) : null;
   } catch {
-    json = text;
+    json = { text };
   }
 
   if (!res.ok) return { ok: false as const, status: res.status, json, url };
   return { ok: true as const, status: res.status, json, url };
 }
 
-async function proxy(req: NextRequest, path: string, method: string, body?: any) {
+async function proxy(req: NextRequest, path: string, method: string, body?: unknown) {
   const missing = requireUpstream();
   if (missing) return missing;
 
@@ -104,8 +104,9 @@ async function resolveTsSupervisorId(params: { userId: string; fiscalPeriod: str
     };
   }
 
-  const hit = (r.json?.data ?? [])?.[0];
-  if (!hit?.id) {
+  const dataList = (r.json?.data ?? []) as Record<string, unknown>[];
+  const hit = dataList[0];
+  if (!hit || !hit.id) {
     return {
       ok: false as const,
       status: 400,
@@ -122,7 +123,7 @@ async function resolveTsSupervisorId(params: { userId: string; fiscalPeriod: str
 }
 
 /* ---------- SERVER GUARD: cannot exceed supplier target ---------- */
-function toNum(v: any) {
+function toNum(v: unknown) {
   const n = Number(v);
   return Number.isFinite(n) ? n : 0;
 }
@@ -137,8 +138,9 @@ async function getSupplierTargetAmount(params: { fiscalPeriod: string; supplierI
 
   const r = await upstreamJson(url.toString());
   if (!r.ok) return { ok: false as const, status: r.status, error: r };
-  const hit = (r.json?.data ?? [])?.[0];
-  return { ok: true as const, amount: toNum(hit?.target_amount ?? 0), status: hit?.status ?? "DRAFT" };
+  const dataList = (r.json?.data ?? []) as Record<string, unknown>[];
+  const hit = dataList[0];
+  return { ok: true as const, amount: toNum(hit?.target_amount ?? 0), status: String(hit?.status ?? "DRAFT") };
 }
 
 async function getExistingAllocations(params: { fiscalPeriod: string; supplierId: number }) {
@@ -150,7 +152,7 @@ async function getExistingAllocations(params: { fiscalPeriod: string; supplierId
 
   const r = await upstreamJson(url.toString());
   if (!r.ok) return { ok: false as const, status: r.status, error: r };
-  return { ok: true as const, rows: (r.json?.data ?? []) as any[] };
+  return { ok: true as const, rows: (r.json?.data ?? []) as Record<string, unknown>[] };
 }
 
 async function enforceNotExceedSupplierTarget(args: {
@@ -238,7 +240,7 @@ async function handleSalesmenBySupervisor(req: NextRequest) {
     );
   }
 
-  const spdIds = Array.from(new Set((spdRes.json?.data ?? []).map((r: any) => Number(r.id)).filter(Boolean)));
+  const spdIds = Array.from(new Set(((spdRes.json?.data ?? []) as Record<string, unknown>[]).map((r: Record<string, unknown>) => Number(r.id)).filter(Boolean)));
   if (!spdIds.length) return NextResponse.json({ data: [] }, { status: 200 });
 
   const spsUrl = new URL(`${UPSTREAM}/items/salesman_per_supervisor`);
@@ -255,7 +257,7 @@ async function handleSalesmenBySupervisor(req: NextRequest) {
     );
   }
 
-  const salesmanIds = Array.from(new Set((spsRes.json?.data ?? []).map((r: any) => Number(r.salesman_id)).filter(Boolean)));
+  const salesmanIds = Array.from(new Set(((spsRes.json?.data ?? []) as Record<string, unknown>[]).map((r: Record<string, unknown>) => Number(r.salesman_id)).filter(Boolean)));
   if (!salesmanIds.length) return NextResponse.json({ data: [] }, { status: 200 });
 
   const smUrl = new URL(`${UPSTREAM}/items/salesman`);
@@ -271,7 +273,7 @@ async function handleSalesmenBySupervisor(req: NextRequest) {
     );
   }
 
-  const data = (smRes.json?.data ?? []) as any[];
+  const data = (smRes.json?.data ?? []) as Record<string, unknown>[];
   data.sort((a, b) => String(a?.salesman_name ?? "").localeCompare(String(b?.salesman_name ?? "")));
   return NextResponse.json({ data }, { status: 200 });
 }
@@ -298,7 +300,7 @@ async function handleSupervisorSuppliers(req: NextRequest) {
   }
 
   // 2. Extract Supplier Allocation IDs (tss_id points to target_setting_supplier.id)
-  const supplierAllocationIds = Array.from(new Set((tssRes.json?.data ?? []).map((r: any) => Number(r.tss_id)).filter((n: number) => Number.isFinite(n) && n > 0)));
+  const supplierAllocationIds = Array.from(new Set(((tssRes.json?.data ?? []) as Record<string, unknown>[]).map((r: Record<string, unknown>) => Number(r.tss_id)).filter((n: number) => Number.isFinite(n) && n > 0)));
 
   if (!supplierAllocationIds.length) {
     return NextResponse.json({ data: [] }, { status: 200 });
@@ -409,7 +411,7 @@ export async function PATCH(req: NextRequest) {
 
   const allocRes = await getExistingAllocations({ fiscalPeriod: String(body.fiscal_period), supplierId: Number(body.supplier_id) });
   if (allocRes.ok) {
-    const existing = (allocRes.rows as any[]).find((r) => Number(r.id) === Number(id));
+    const existing = (allocRes.rows as Record<string, unknown>[]).find((r) => Number(r.id) === Number(id));
     if (existing && existing.status !== "DRAFT") {
       return NextResponse.json({ error: "Cannot update target unless it is in DRAFT status." }, { status: 403 });
     }
@@ -430,7 +432,8 @@ export async function DELETE(req: NextRequest) {
   // Check status before delete
   const url = new URL(`${UPSTREAM}/items/target_setting_salesman/${encodeURIComponent(id)}`);
   const r = await upstreamJson(url.toString());
-  if (r.ok && r.json?.data?.status !== "DRAFT") {
+  const rData = r.json?.data as Record<string, unknown> | undefined;
+  if (r.ok && rData?.status !== "DRAFT") {
     return NextResponse.json({ error: "Cannot delete target unless it is in DRAFT status." }, { status: 403 });
   }
 

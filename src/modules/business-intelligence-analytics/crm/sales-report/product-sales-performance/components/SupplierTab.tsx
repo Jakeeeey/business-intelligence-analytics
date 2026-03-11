@@ -5,7 +5,7 @@ import * as React from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Download, Search, ChevronDown, ChevronUp, ArrowUpDown } from "lucide-react";
+import { Search, ChevronDown, ChevronUp, ArrowUpDown } from "lucide-react";
 import type { SupplierPerformance, TopItem } from "../types";
 import {
   ChartContainer,
@@ -71,7 +71,7 @@ export function SupplierTab({ supplierPerformance, topSuppliers }: SupplierTabPr
   const [expandedSuppliers, setExpandedSuppliers] = React.useState<Set<string>>(new Set());
   const [sortBy, setSortBy] = React.useState<"revenue" | "products" | "name">("revenue");
   const [sortOrder, setSortOrder] = React.useState<"asc" | "desc">("desc");
-  const [productSortBy, setProductSortBy] = React.useState<"revenue" | "percentage">("revenue");
+  const [productSortBy] = React.useState<"revenue" | "percentage">("revenue");
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("en-US", {
@@ -82,26 +82,8 @@ export function SupplierTab({ supplierPerformance, topSuppliers }: SupplierTabPr
     }).format(value);
   };
 
-  const exportToCSV = (data: any[], filename: string) => {
-    if (!data.length) return;
-
-    const headers = Object.keys(data[0]);
-    const csvContent = [
-      headers.join(","),
-      ...data.map((row) => headers.map((h) => row[h]).join(",")),
-    ].join("\n");
-
-    const blob = new Blob([csvContent], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    link.click();
-    URL.revokeObjectURL(url);
-  };
-
   const filteredSuppliers = React.useMemo(() => {
-    let suppliers = searchTerm
+    const suppliers = searchTerm
       ? supplierPerformance.filter((s) => s.supplier.toLowerCase().includes(searchTerm.toLowerCase()))
       : [...supplierPerformance];
 

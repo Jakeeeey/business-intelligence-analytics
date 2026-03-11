@@ -81,8 +81,8 @@ export function SalesReportTable(props: { rows: SalesReportRow[]; loading?: bool
   const sortedRows = React.useMemo(() => {
     if (!rows?.length) return [];
     return [...rows].sort((a, b) => {
-      const aHas = hasClassification((a as any).classification);
-      const bHas = hasClassification((b as any).classification);
+      const aHas = hasClassification((a as Record<string, unknown>).classification);
+      const bHas = hasClassification((b as Record<string, unknown>).classification);
       if (aHas === bHas) return 0; // keep original relative order (stable in modern JS engines)
       return aHas ? -1 : 1; // classified first
     });
@@ -139,10 +139,12 @@ export function SalesReportTable(props: { rows: SalesReportRow[]; loading?: bool
                       </TableCell>
                     </TableRow>
                   ) : (
-                    sortedRows.map((r, idx) => (
+                    sortedRows.map((r, idx) => {
+                      const rc = r as Record<string, unknown>;
+                      return (
                       <TableRow key={idx} className="whitespace-nowrap">
                         <TableCell className="font-medium border-r border-border">
-                          {hasClassification((r as any).classification) ? (r as any).classification : "—"}
+                          {hasClassification(rc.classification) ? (rc.classification as string) : "—"}
                         </TableCell>
                         <TableCell className="font-medium border-r border-border">{r.customer_name}</TableCell>
 
@@ -158,7 +160,8 @@ export function SalesReportTable(props: { rows: SalesReportRow[]; loading?: bool
 
                         <TableCell className="text-right font-semibold">{formatNumber(r.total_si)}</TableCell>
                       </TableRow>
-                    ))
+                      );
+                    })
                   )}
                 </TableBody>
               </Table>

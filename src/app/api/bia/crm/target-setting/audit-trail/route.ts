@@ -93,8 +93,8 @@ export async function POST(req: NextRequest) {
     const approvals = (await approvalsRes.json()).data || [];
 
     // 4. Calculate Approval Summary
-    const approvedCount = approvals.filter((a: any) => a.status === 'APPROVED').length;
-    const rejectedCount = approvals.filter((a: any) => a.status === 'REJECTED').length;
+    const approvedCount = approvals.filter((a: Record<string, unknown>) => a.status === 'APPROVED').length;
+    const rejectedCount = approvals.filter((a: Record<string, unknown>) => a.status === 'REJECTED').length;
     const hasRejection = rejectedCount > 0;
 
     // Get total active approvers count
@@ -182,7 +182,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
-export async function OPTIONS(req: NextRequest) {
+export async function OPTIONS() {
   return new NextResponse(null, { status: 204 });
 }
 
@@ -211,7 +211,7 @@ export async function GET(req: NextRequest) {
     const offset = (page - 1) * limit;
 
     // Build Directus filter
-    const filter: any = {
+    const filter: { _and: Record<string, unknown>[] } = {
       _and: []
     };
 

@@ -6,7 +6,7 @@ import type { ManagerBootstrapResponse } from "../types";
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, { cache: "no-store", ...(init ?? {}) });
   const text = await res.text().catch(() => "");
-  let json: any = null;
+  let json: Record<string, unknown> | null = null;
   try {
     json = text ? JSON.parse(text) : null;
   } catch {
@@ -14,12 +14,13 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
   }
 
   if (!res.ok) {
-    const msg =
+    const msg = String(
       json?.error ||
       json?.message ||
       (typeof json === "string" ? json : null) ||
       text ||
-      `Request failed (${res.status})`;
+      `Request failed (${res.status})`
+    );
     throw new Error(msg);
   }
 

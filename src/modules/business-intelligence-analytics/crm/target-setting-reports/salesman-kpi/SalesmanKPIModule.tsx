@@ -5,7 +5,7 @@ import { format, startOfMonth, endOfMonth, parseISO } from "date-fns";
 import { useSearchParams } from "next/navigation";
 import { Loader2, Calendar, ChevronRight, Search, Trophy, Coins, Target as TargetIcon, Hash } from "lucide-react";
 
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -33,11 +33,9 @@ function SalesmanKPIContent() {
 
     const [rawData, setRawData] = useState<VSalesPerformanceDataDto[]>([]);
     const [targets, setTargets] = useState<TargetSettingSalesman[]>([]);
-    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const load = async () => {
-            setLoading(true);
             try {
                 const start = format(startOfMonth(parseISO(fromMonth + "-01")), "yyyy-MM-dd");
                 const end = format(endOfMonth(parseISO(toMonth + "-01")), "yyyy-MM-dd");
@@ -56,7 +54,6 @@ function SalesmanKPIContent() {
                 setRawData(salesData);
                 setTargets(targetData.salesmanTargets || []);
             } catch (err) { console.error(err); }
-            finally { setLoading(false); }
         };
         load();
     }, [fromMonth, toMonth]);

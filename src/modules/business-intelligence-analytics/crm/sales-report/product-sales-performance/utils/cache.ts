@@ -26,7 +26,7 @@ export function getEndOfDayTimestamp(): number {
 /**
  * Generate cache key from parameters
  */
-export function generateCacheKey(prefix: string, params: Record<string, any>): string {
+export function generateCacheKey(prefix: string, params: Record<string, unknown>): string {
   const sortedParams = Object.keys(params)
     .sort()
     .map(key => `${key}=${params[key]}`)
@@ -111,7 +111,7 @@ export function clearExpiredCache(prefix?: string): void {
         if (entry.expiresAt && now > entry.expiresAt) {
           localStorage.removeItem(key);
         }
-      } catch (error) {
+      } catch {
         // Invalid cache entry, remove it
         localStorage.removeItem(key);
       }

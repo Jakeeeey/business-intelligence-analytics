@@ -130,8 +130,8 @@ export function useProductSalesPerformance() {
       setRawData(data);
       setLoadedOnce(true);
       toast.success("Data loaded successfully", { id: loadingToast });
-    } catch (e: any) {
-      toast.error(e?.message || "Failed to load product sales data");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Failed to load product sales data");
     } finally {
       setLoading(false);
       setIsLoadingFresh(false);
@@ -152,7 +152,7 @@ export function useProductSalesPerformance() {
       filters.dateTo
     );
 
-    let filtered = rawData.filter((record) => {
+    const filtered = rawData.filter((record) => {
       const recordDate = new Date(record.date);
       const fromDate = new Date(from);
       const toDate = new Date(to);

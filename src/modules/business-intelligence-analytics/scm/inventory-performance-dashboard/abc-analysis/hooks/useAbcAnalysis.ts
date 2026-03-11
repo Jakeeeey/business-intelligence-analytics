@@ -29,9 +29,10 @@ export function useAbcAnalysis() {
 
                 const result = await fetchAbcAnalysisData(params);
                 setData(result);
-            } catch (err: any) {
+            } catch (err) {
                 console.error("Failed to fetch ABC Analysis data:", err);
-                setError(err.message || "Failed to load data. Please check your connection.");
+                const message = err instanceof Error ? err.message : "Failed to load data. Please check your connection.";
+                setError(message);
             } finally {
                 setIsLoading(false);
             }
@@ -90,9 +91,9 @@ export function useAbcAnalysis() {
         const totalVolume = enrichedData.reduce((sum, item) => sum + item.outQtyBase, 0);
 
         const categories = {
-            A: enrichedData.filter(d => (d as any).abcClass === "A"),
-            B: enrichedData.filter(d => (d as any).abcClass === "B"),
-            C: enrichedData.filter(d => (d as any).abcClass === "C"),
+            A: enrichedData.filter(d => d.abcClass === "A"),
+            B: enrichedData.filter(d => d.abcClass === "B"),
+            C: enrichedData.filter(d => d.abcClass === "C"),
         };
 
         return {

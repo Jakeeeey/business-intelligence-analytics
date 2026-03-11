@@ -10,7 +10,7 @@ interface ReadonlyCompanyTargetCardProps {
   isLoading: boolean;
 }
 
-export function ReadonlyCompanyTargetCard({ target, isLoading }: ReadonlyCompanyTargetCardProps) {
+export function ReadonlyCompanyTargetCard({ target }: ReadonlyCompanyTargetCardProps) {
   const currency = (val: number) => new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(val);
 
   return (

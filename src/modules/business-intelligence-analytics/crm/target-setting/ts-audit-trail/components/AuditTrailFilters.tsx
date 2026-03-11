@@ -9,12 +9,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Search, X, Calendar as CalendarIcon, Filter as FilterIcon } from "lucide-react";
+import { Search, X, Filter as FilterIcon } from "lucide-react";
 import type { AuditTrailFilters } from "../types";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { format } from "date-fns";
-import { cn } from "@/lib/utils";
 
 interface Props {
   filters: AuditTrailFilters;

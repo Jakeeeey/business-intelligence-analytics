@@ -51,11 +51,11 @@ export const fetchManagerialData = async (startDate: string, endDate: string): P
         // Safety check to ensure we always return an array
         return Array.isArray(data) ? data : [];
 
-    } catch (error: any) {
-        if (error.name === 'AbortError') {
+    } catch (error: unknown) {
+        if (error instanceof Error && error.name === 'AbortError') {
             console.error("Managerial Fetch: Request timed out.");
         } else {
-            console.error("Managerial Fetch Error:", error.message);
+            console.error("Managerial Fetch Error:", error instanceof Error ? error.message : "Unknown error");
         }
         throw error; // Re-throw so the UI can show an error state if needed
     }
@@ -64,7 +64,7 @@ export const fetchManagerialData = async (startDate: string, endDate: string): P
 /**
  * Fetches dynamic targets for managerial supplier data.
  */
-export const fetchDynamicTargets = async (startDate: string, endDate: string, divisionId?: number): Promise<any> => {
+export const fetchDynamicTargets = async (startDate: string, endDate: string, divisionId?: number): Promise<Record<string, unknown>> => {
     try {
         const params = new URLSearchParams({ startDate, endDate });
         if (divisionId) params.append("divisionId", String(divisionId));
@@ -81,8 +81,8 @@ export const fetchDynamicTargets = async (startDate: string, endDate: string, di
         }
 
         return await response.json();
-    } catch (error: any) {
-        console.error("Fetch Targets Error:", error.message);
+    } catch (error: unknown) {
+        console.error("Fetch Targets Error:", error instanceof Error ? error.message : "Unknown error");
         return { supplierTargets: [], salesmanTargets: [] };
     }
 };

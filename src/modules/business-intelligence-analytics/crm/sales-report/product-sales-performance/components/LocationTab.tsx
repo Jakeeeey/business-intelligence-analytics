@@ -5,7 +5,7 @@ import * as React from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Download, Search, MapPin, ArrowUpDown, ChevronRight, ChevronDown } from "lucide-react";
+import { Search, MapPin, ArrowUpDown, ChevronRight, ChevronDown } from "lucide-react";
 import type { LocationRevenue, ProductSaleRecord } from "../types";
 import {
   ChartContainer,
@@ -81,23 +81,7 @@ export function LocationTab({ locationRevenue, filteredData }: LocationTabProps)
     }).format(value);
   };
 
-  const exportToCSV = (data: any[], filename: string) => {
-    if (!data.length) return;
 
-    const headers = Object.keys(data[0]);
-    const csvContent = [
-      headers.join(","),
-      ...data.map((row) => headers.map((h) => row[h]).join(",")),
-    ].join("\n");
-
-    const blob = new Blob([csvContent], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    link.click();
-    URL.revokeObjectURL(url);
-  };
 
   // Toggle functions
   const toggleProvince = (province: string) => {
@@ -142,7 +126,7 @@ export function LocationTab({ locationRevenue, filteredData }: LocationTabProps)
   }, [filteredData]);
 
   // Get cities for a province
-  const getCitiesForProvince = (province: string) => {
+  const getCitiesForProvince = React.useCallback((province: string) => {
     const cityMap = new Map<string, { revenue: number; transactions: number }>();
 
     filteredData
@@ -161,7 +145,7 @@ export function LocationTab({ locationRevenue, filteredData }: LocationTabProps)
         revenue: data.revenue,
         transactions: data.transactions,
       }));
-  };
+  }, [filteredData]);
 
   // Get products for a city in a province
   const getProductsForCity = (city: string, province: string) => {
@@ -217,7 +201,7 @@ export function LocationTab({ locationRevenue, filteredData }: LocationTabProps)
     });
 
     return provinces;
-  }, [getProvinceData, searchTerm, sortBy, sortOrder]);
+  }, [getProvinceData, searchTerm, sortBy, sortOrder, getCitiesForProvince]);
 
   // Pagination
   const totalPages = Math.ceil(filteredProvinces.length / itemsPerPage);

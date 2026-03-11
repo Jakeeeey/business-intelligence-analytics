@@ -2,8 +2,8 @@
 
 import React, { useMemo, useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { ResponsiveContainer, Sankey, Tooltip, Layer, Rectangle } from "recharts";
-import { Share2, Info, Building2, Layers, ShoppingBag, UserCircle, Users, MousePointer2, Maximize2, Minimize2 } from "lucide-react";
+import { ResponsiveContainer, Sankey, Layer, Rectangle } from "recharts";
+import { Info, Building2, Layers, ShoppingBag, UserCircle, Users, MousePointer2, Maximize2, Minimize2 } from "lucide-react";
 import { 
   Tooltip as ShadcnTooltip,
   TooltipContent,
@@ -12,13 +12,60 @@ import {
 } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 
+import type {
+  TargetSettingExecutive,
+  TargetSettingDivision,
+  TargetSettingSupplier,
+  TargetSettingSupervisor,
+  TargetSettingSalesman
+} from "../../executive/types";
+
 interface TargetSankeyChartProps {
-  companyTarget: any;
-  allocations: any[];
-  supplierAllocations: any[];
-  supervisorAllocations: any[];
-  salesmanAllocations: any[];
+  companyTarget: TargetSettingExecutive | null;
+  allocations: TargetSettingDivision[];
+  supplierAllocations: TargetSettingSupplier[];
+  supervisorAllocations: TargetSettingSupervisor[];
+  salesmanAllocations: TargetSettingSalesman[];
   isLoading?: boolean;
+}
+
+const COLORS: Record<string, string> = {
+  company: "#8b5cf6",    // Vibrant purple
+  division: "#06b6d4",   // Vibrant cyan
+  supplier: "#10b981",   // Vibrant emerald (kept)
+  supervisor: "#f97316", // Vibrant orange
+  salesman: "#f43f5e"    // Vibrant rose/pink
+};
+
+interface SankeyNodeProps {
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  index?: number;
+  payload?: { name: string; type: string; color: string };
+  containerWidth?: number;
+  onMouseEnter?: (e: React.MouseEvent) => void;
+  onMouseLeave?: (e: React.MouseEvent) => void;
+}
+
+interface SankeyLinkProps {
+  sourceX?: number;
+  sourceY?: number;
+  targetX?: number;
+  targetY?: number;
+  sourceControlX?: number;
+  targetControlX?: number;
+  linkWidth?: number;
+  index?: number;
+  payload?: {
+    source: number | { index: number; name: string };
+    target: number | { index: number; name: string };
+    value: number;
+    parentValue?: number;
+  };
+  onMouseEnter?: (e: React.MouseEvent) => void;
+  onMouseLeave?: (e: React.MouseEvent) => void;
 }
 
 export function TargetSankeyChart({
@@ -29,8 +76,8 @@ export function TargetSankeyChart({
   salesmanAllocations,
   isLoading
 }: TargetSankeyChartProps) {
-  const [activeNode, setActiveNode] = useState<any>(null);
-  const [activeLink, setActiveLink] = useState<any>(null);
+  const [activeNode, setActiveNode] = useState<SankeyNodeProps | null>(null);
+  const [activeLink, setActiveLink] = useState<SankeyLinkProps["payload"] | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [tooltipPositioned, setTooltipPositioned] = useState(false);
   // Optimize tooltip with Refs to prevent re-renders on every mouse move
@@ -107,14 +154,6 @@ export function TargetSankeyChart({
   const formatPHP = (val: number) => 
     new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(val);
 
-  const colors: Record<string, string> = {
-    company: "#8b5cf6",    // Vibrant purple
-    division: "#06b6d4",   // Vibrant cyan
-    supplier: "#10b981",   // Vibrant emerald (kept)
-    supervisor: "#f97316", // Vibrant orange
-    salesman: "#f43f5e"    // Vibrant rose/pink
-  };
-
   const data = useMemo(() => {
     if (!companyTarget) return { nodes: [], links: [] };
 
@@ -127,20 +166,20 @@ export function TargetSankeyChart({
         const key = `${type}:${uniqueId}`;
         if (nodeMap.has(key)) return nodeMap.get(key)!;
         const index = nodes.length;
-        nodes.push({ name, type, color: colors[type] || "#cbd5e1", id: key });
+        nodes.push({ name, type, color: COLORS[type] || "#cbd5e1", id: key });
         nodeMap.set(key, index);
         return index;
     };
 
     // 1. Root Node
     const companyNode = getOrCreateNode("COMPANY WIDE", "company", "root");
-    const rootTotal = companyTarget.target_amount || 0;
+    const rootTotal = companyTarget?.target_amount || 0;
 
     // 2. Division Links
     allocations.forEach(div => {
-        if (!div.id || div.target_amount <= 0) return;
+        if (!div.id || (div.target_amount || 0) <= 0) return;
 
-        const divNode = getOrCreateNode(div.division_name || `Div #${div.division_id}`, "division", div.id);
+        const divNode = getOrCreateNode(div.division_name || `Div #${div.division_id}`, "division", String(div.id));
         links.push({
             source: companyNode,
             target: divNode,
@@ -153,7 +192,7 @@ export function TargetSankeyChart({
         relevantSuppliers.forEach(sup => {
             if (!sup.id || sup.target_amount <= 0) return;
 
-            const supNode = getOrCreateNode(sup.supplier_name || `Sup #${sup.supplier_id}`, "supplier", sup.id);
+            const supNode = getOrCreateNode(sup.supplier_name || `Sup #${sup.supplier_id}`, "supplier", String(sup.id));
             links.push({
                 source: divNode,
                 target: supNode,
@@ -166,7 +205,7 @@ export function TargetSankeyChart({
             relevantSupervisors.forEach(sv => {
                 if (!sv.id || sv.target_amount <= 0) return;
 
-                const svNode = getOrCreateNode(sv.supervisor_name || `Supervisor #${sv.supervisor_user_id}`, "supervisor", sv.id);
+                const svNode = getOrCreateNode(sv.supervisor_name || `Supervisor #${sv.supervisor_user_id}`, "supervisor", String(sv.id));
                 links.push({
                     source: supNode,
                     target: svNode,
@@ -179,7 +218,7 @@ export function TargetSankeyChart({
                 relevantSalesmen.forEach(sale => {
                     if (!sale.id || sale.target_amount <= 0) return;
 
-                    const saleNode = getOrCreateNode(sale.salesman_name || `Salesman #${sale.salesman_id}`, "salesman", sale.id);
+                    const saleNode = getOrCreateNode(sale.salesman_name || `Salesman #${sale.salesman_id}`, "salesman", String(sale.id));
                     links.push({
                         source: svNode,
                         target: saleNode,
@@ -191,17 +230,15 @@ export function TargetSankeyChart({
         });
     });
 
-    // Validated Data Processing
-    
     // 1. Deduplicate Links (Aggregate values for same source-target pairs) & Remove Self-Loops
-    const linkMap = new Map<string, any>();
-    links.forEach(l => {
+    const linkMap = new Map<string, { source: number; target: number; value: number; parentValue?: number }>();
+    links.forEach((l) => {
         if (l.source === l.target) return; // Prevent self-loops
         
         const key = `${l.source}-${l.target}`;
         if (linkMap.has(key)) {
             const existing = linkMap.get(key);
-            existing.value += l.value;
+            if (existing) existing.value += l.value;
         } else {
             linkMap.set(key, { ...l });
         }
@@ -230,10 +267,10 @@ export function TargetSankeyChart({
     });
 
     // 3. Map links to new indices and strictly validate existance
-    const finalLinks = uniqueLinks
-        .map(l => {
-            const sourceIndex = indexMapping.get(l.source);
-            const targetIndex = indexMapping.get(l.target);
+    const finalLinksSub = uniqueLinks
+        .map((l) => {
+            const sourceIndex = indexMapping.get(l.source as number);
+            const targetIndex = indexMapping.get(l.target as number);
             if (sourceIndex === undefined || targetIndex === undefined) return null;
             return {
                 ...l,
@@ -241,54 +278,58 @@ export function TargetSankeyChart({
                 target: targetIndex
             };
         })
-        .filter(l => l !== null); // Remove any links that failed mapping
+        .filter((l): l is { source: number; target: number; value: number; parentValue?: number } => l !== null); 
 
-    return { nodes: finalNodes, links: finalLinks };
+    return { nodes: finalNodes, links: finalLinksSub };
   }, [companyTarget, allocations, supplierAllocations, supervisorAllocations, salesmanAllocations]);
 
-  const isHighlighted = (item: any, type: 'node' | 'link') => {
+  const isHighlighted = (item: Record<string, unknown>, type: 'node' | 'link') => {
     if (!activeNode && !activeLink) return true; 
 
     if (activeNode) {
       if (type === 'node') {
-        const targetNodeIndex = activeNode.index;
+        const targetNodeIndex = activeNode.index as number;
         if (item.index === targetNodeIndex) return true;
         return data.links.some(l => 
           (l.source === targetNodeIndex && l.target === item.index) ||
           (l.target === targetNodeIndex && l.source === item.index)
         );
       } else {
-        return item.source.index === activeNode.index || item.target.index === activeNode.index;
+        return (item.source as { index: number }).index === activeNode.index || (item.target as { index: number }).index === activeNode.index;
       }
     }
 
     if (activeLink) {
       if (type === 'link') {
-        return item.source.index === activeLink.source.index && item.target.index === activeLink.target.index;
+        const itemSourceIndex = typeof item.source === 'object' ? (item.source as { index: number }).index : item.source;
+        const itemTargetIndex = typeof item.target === 'object' ? (item.target as { index: number }).index : item.target;
+        const activeLinkSourceIndex = typeof activeLink.source === 'object' ? (activeLink.source as { index: number }).index : activeLink.source;
+        const activeLinkTargetIndex = typeof activeLink.target === 'object' ? (activeLink.target as { index: number }).index : activeLink.target;
+        return itemSourceIndex === activeLinkSourceIndex && itemTargetIndex === activeLinkTargetIndex;
       } else {
-        return item.index === activeLink.source.index || item.index === activeLink.target.index;
+        const itemIndex = item.index as number;
+        const activeLinkSourceIndex = typeof activeLink.source === 'object' ? (activeLink.source as { index: number }).index : activeLink.source;
+        const activeLinkTargetIndex = typeof activeLink.target === 'object' ? (activeLink.target as { index: number }).index : activeLink.target;
+        return itemIndex === activeLinkSourceIndex || itemIndex === activeLinkTargetIndex;
       }
     }
 
     return false;
   };
 
-  const DemoNode = (props: any) => {
-    const { x, y, width, height, index, payload, containerWidth } = props;
-    const isNodeActive = isHighlighted(props, 'node');
+  const DemoNode = (props: SankeyNodeProps) => {
+    const { x = 0, y = 0, width = 0, height = 0, index, payload, containerWidth } = props;
+    if (!payload) return null;
+    const isNodeActive = isHighlighted(props as unknown as Record<string, unknown>, 'node');
 
-    // Force labels for the last stag (Salesman) to look left, others look right or auto
-    // Using payload.type is safer than coordinate math
     const isRightAligned = payload.type === 'salesman' || (x > (containerWidth || 1000) * 0.6);
 
-    // Label Truncation Logic
     const MAX_LABEL_LENGTH = 16;
     let label = payload.name;
     if (label.length > MAX_LABEL_LENGTH && !activeNode) {
         label = label.substring(0, MAX_LABEL_LENGTH) + "...";
     }
 
-    // Pill styling logic
     const pillPadding = 8;
     const pillHeight = 20;
     const pillY = y + height / 2 - pillHeight / 2;
@@ -297,23 +338,21 @@ export function TargetSankeyChart({
     
     let pillX;
     if (isRightAligned) {
-         pillX = x - pillWidth - 32;  // Increased spacing to 32px
+         pillX = x - pillWidth - 32;  
     } else {
-         pillX = x + width + 32;      // Increased spacing to 32px
+         pillX = x + width + 32;      
     }
 
-    // Handlers
-    const handleEnter = (e: any) => {
+    const handleEnter = (e: React.MouseEvent) => {
         setActiveNode(props);
-        setActiveLink(null); // Explicitly clear link state to prevent stuck tooltips
+        setActiveLink(null); 
         if (props.onMouseEnter) props.onMouseEnter(e);
     };
-    const handleLeave = (e: any) => {
+    const handleLeave = (e: React.MouseEvent) => {
         setActiveNode(null);
         if (props.onMouseLeave) props.onMouseLeave(e);
     };
-    const handleClick = (e: any) => {
-        // "Instantly focus" - ensure state is set (redundant with hover but explicit intention)
+    const handleClick = () => {
         setActiveNode(props);
     };
 
@@ -335,7 +374,6 @@ export function TargetSankeyChart({
           rx={4} 
         />
         
-        {/* Label Pill Background - Light Theme requested */}
         <foreignObject x={pillX} y={pillY} width={pillWidth + 20} height={pillHeight}>
           <div 
              onMouseEnter={handleEnter}
@@ -354,9 +392,9 @@ export function TargetSankeyChart({
     );
   };
 
-  const DemoLink = (props: any) => {
-    const { sourceX, sourceY, targetX, targetY, sourceControlX, targetControlX, linkWidth, index, payload } = props;
-    const isLinkActive = isHighlighted(payload, 'link');
+  const DemoLink = (props: SankeyLinkProps) => {
+    const { sourceX, sourceY, targetX, targetY, sourceControlX, targetControlX, linkWidth = 1, index, payload } = props;
+    const isLinkActive = payload ? isHighlighted(payload as unknown as Record<string, unknown>, 'link') : false;
 
     return (
       <Layer key={`link-${index}`}>
@@ -370,8 +408,8 @@ export function TargetSankeyChart({
           strokeOpacity={isLinkActive ? 0.5 : 0.15}
           fill="none"
           onMouseEnter={(e) => {
-             setActiveLink(payload);
-             setActiveNode(null); // Explicitly clear node state
+             if (payload) setActiveLink(payload);
+             setActiveNode(null); 
              if (props.onMouseEnter) props.onMouseEnter(e);
           }}
           onMouseLeave={(e) => {
@@ -384,7 +422,7 @@ export function TargetSankeyChart({
     );
   };
 
-  const StageHeader = ({ label, icon: Icon, color }: { label: string, icon: any, color: string }) => (
+  const StageHeader = ({ label, icon: Icon, color }: { label: string, icon: React.ElementType, color: string }) => (
     <div className="flex flex-col items-center gap-1.5 flex-1 min-w-0">
       <div className="p-1.5 rounded-md bg-opacity-10" style={{ backgroundColor: `${color}1A` }}>
         <Icon className="h-3.5 w-3.5" style={{ color }} />
@@ -399,18 +437,22 @@ export function TargetSankeyChart({
     if (!activeItem) return null;
 
     const item = activeItem;
-    const isLink = item.source !== undefined && item.target !== undefined;
+    // Check if it's a link payload
+    const isLink = 'source' in item && 'target' in item;
     const rootTotal = companyTarget?.target_amount || 0;
     
     let value = 0;
 
     if (isLink) {
-        // For links, value comes from the link itself
-        value = item.value || 0;
-        const percentOfParent = item.parentValue ? (value / item.parentValue * 100).toFixed(1) : "0";
-        const percentOfRoot = rootTotal ? (value / rootTotal * 100).toFixed(1) : "0";
-        const sourceName = typeof item.source === 'object' ? item.source.name : item.source;
-        const targetName = typeof item.target === 'object' ? item.target.name : item.target;
+        const linkItem = item as SankeyLinkProps["payload"];
+        if (!linkItem) return null;
+
+        value = linkItem.value || 0;
+        const parentValue = linkItem.parentValue || 0;
+        const percentOfParent = parentValue ? ((value / parentValue) * 100).toFixed(1) : "0";
+        const percentOfRoot = rootTotal ? ((value / rootTotal) * 100).toFixed(1) : "0";
+        const sourceName = typeof linkItem.source === 'object' ? linkItem.source.name : linkItem.source;
+        const targetName = typeof linkItem.target === 'object' ? linkItem.target.name : linkItem.target;
 
         return (
             <div 
@@ -451,24 +493,16 @@ export function TargetSankeyChart({
         );
     }
 
-    // Node - Calculate value from links
     if (activeNode) {
         const nodeIndex = activeNode.index;
-        
-        // Handle potential Recharts mutation where source/target become objects
-        // Sum all outgoing links from this node
         const outgoingLinks = data.links.filter(l => {
-            const sourceIndex = typeof l.source === 'object' ? (l.source as any).index : l.source;
+            const sourceIndex = typeof l.source === 'object' ? (l.source as Record<string, unknown>).index : l.source;
             return sourceIndex === nodeIndex;
         });
-        
-        // Sum all incoming links to this node
         const incomingLinks = data.links.filter(l => {
-            const targetIndex = typeof l.target === 'object' ? (l.target as any).index : l.target;
+            const targetIndex = typeof l.target === 'object' ? (l.target as Record<string, unknown>).index : l.target;
             return targetIndex === nodeIndex;
         });
-        
-        // For nodes with outgoing links, sum those; otherwise sum incoming
         if (outgoingLinks.length > 0) {
             value = outgoingLinks.reduce((sum, link) => sum + (link.value || 0), 0);
         } else if (incomingLinks.length > 0) {
@@ -477,8 +511,8 @@ export function TargetSankeyChart({
     }
     
     const percentOfRoot = rootTotal ? (value / rootTotal * 100).toFixed(1) : "0";
-    const nodeName = activeNode?.payload?.name || item.name;
-    const nodeType = activeNode?.payload?.type || item.type || "Checkpoint";
+    const nodeName = activeNode?.payload?.name || (item as { name: string }).name;
+    const nodeType = activeNode?.payload?.type || (item as { type: string }).type || "Checkpoint";
 
     return (
         <div 
@@ -534,13 +568,12 @@ export function TargetSankeyChart({
         </CardHeader>
         
         <CardContent className={`${isFullscreen ? "h-[calc(100vh-100px)]" : "h-[600px]"} pt-4 flex flex-col transition-all duration-500`}>
-          {/* Stage Headers */}
           <div className="flex justify-between items-center gap-4 mb-6 px-4">
-            <StageHeader label="Company" icon={Building2} color={colors.company} />
-            <StageHeader label="Division" icon={Layers} color={colors.division} />
-            <StageHeader label="Supplier" icon={ShoppingBag} color={colors.supplier} />
-            <StageHeader label="Supervisor" icon={Users} color={colors.supervisor} />
-            <StageHeader label="Salesman" icon={UserCircle} color={colors.salesman} />
+            <StageHeader label="Company" icon={Building2} color={COLORS.company} />
+            <StageHeader label="Division" icon={Layers} color={COLORS.division} />
+            <StageHeader label="Supplier" icon={ShoppingBag} color={COLORS.supplier} />
+            <StageHeader label="Supervisor" icon={Users} color={COLORS.supervisor} />
+            <StageHeader label="Salesman" icon={UserCircle} color={COLORS.salesman} />
           </div>
 
           <div className="flex-1 min-h-0">
@@ -574,7 +607,6 @@ export function TargetSankeyChart({
         </CardContent>
       </Card>
       
-      {/* Render Custom Tooltip */}
       {renderCustomTooltip()}
     </div>
   );

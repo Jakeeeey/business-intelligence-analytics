@@ -5,10 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
-import {
-} from "@/components/ui/select";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { formatPeso } from "../utils/format";
 
 type Option = { id: number; label: string };
 
@@ -38,9 +35,6 @@ export default function ManagerContextCard({
     totalDivisionsTarget,
     status
 }: ManagerContextCardProps) {
-
-    // Current division target amount (if selected)
-    const currentDivisionTarget = divisionOptions.find(d => d.id === divisionTsdId)?.label.match(/Target: (₱[\d,.]+)/)?.[1] || "—";
 
     const getStatusBadge = (status?: string) => {
         const s = status?.toUpperCase();

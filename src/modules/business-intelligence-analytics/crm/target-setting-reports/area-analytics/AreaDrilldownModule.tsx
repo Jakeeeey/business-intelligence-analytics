@@ -7,7 +7,7 @@ import {
     ChevronDown, ChevronRight, Filter, TrendingUp, Search
 } from "lucide-react";
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -208,7 +208,7 @@ function CommandCenterContent() {
                                                 <div className="pl-6 space-y-1 pb-1">
                                                     {Array.from(pData.cities.entries())
                                                         .sort((a,b) => b[1] - a[1])
-                                                        .map(([city, cTotal]) => {
+                                                        .map(([city]) => {
                                                             const isCActive = activeSelection.level === "CITY" && activeSelection.cityName === city;
                                                             return (
                                                                 <div

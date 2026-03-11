@@ -62,8 +62,8 @@ export async function GET(req: NextRequest) {
 
         const data = await springRes.json();
         return NextResponse.json(data);
-    } catch (err: any) {
-        console.error("[ABC-API] Request failed:", err.message);
+    } catch (err: unknown) {
+        console.error("[ABC-API] Request failed:", (err as Error).message);
         return NextResponse.json(
             { ok: false, error: "Gateway Error" },
             { status: 502 },

@@ -3,15 +3,11 @@
 
 import * as React from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Download,TrendingUp } from "lucide-react";
 import type { RevenueByPeriod, TopItem } from "../types";
 import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
-  ChartLegend,
-  ChartLegendContent,
 } from "@/components/ui/chart";
 import {
   LineChart,
@@ -22,7 +18,6 @@ import {
   YAxis,
   CartesianGrid,
   ResponsiveContainer,
-  Tooltip,
   Cell,
 } from "recharts";
 
@@ -65,24 +60,6 @@ export function OverviewTab({ revenueByPeriod, topProducts, topSuppliers }: Over
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(value);
-  };
-
-  const exportToCSV = (data: any[], filename: string) => {
-    if (!data.length) return;
-
-    const headers = Object.keys(data[0]);
-    const csvContent = [
-      headers.join(","),
-      ...data.map((row) => headers.map((h) => row[h]).join(",")),
-    ].join("\n");
-
-    const blob = new Blob([csvContent], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    link.click();
-    URL.revokeObjectURL(url);
   };
 
   const chartConfig = {

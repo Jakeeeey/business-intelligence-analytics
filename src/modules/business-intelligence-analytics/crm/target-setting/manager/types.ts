@@ -76,7 +76,7 @@ export type UserRow = {
   user_mname: string | null;
   user_lname: string | null;
   role: string | null;
-  is_deleted?: any;
+  is_deleted?: unknown;
 };
 
 export type SupervisorPerDivisionRow = {

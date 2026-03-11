@@ -2,10 +2,8 @@
 
 import * as React from "react";
 import { CalendarIcon } from "lucide-react";
-import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
 
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -21,7 +19,6 @@ interface ScmDateRangePickerProps {
 }
 
 export function ScmDateRangePicker({
-  className,
   date: externalDate,
   onDateChange,
 }: ScmDateRangePickerProps) {

@@ -33,7 +33,6 @@ export function Filters(props: FiltersProps) {
     filters,
     onChange,
     onLoad,
-    loading,
     uniqueSuppliers,
     uniqueProducts,
     uniqueCities,
@@ -360,16 +359,11 @@ export function Filters(props: FiltersProps) {
                   <ScrollArea className="h-64">
                     <div className="p-2 space-y-1">
                       {Array.from(filteredGroupedProducts.entries()).map(([group, items]) => {
-                        const allSelected = items.every((item) => filters.products.includes(item));
-                        const someSelected = items.some((item) => filters.products.includes(item));
-                        const checkedState = allSelected ? true : someSelected ? "indeterminate" : false;
-                        
                         return (
                           <div key={group}>
                             <div className="flex items-center space-x-2 px-2 py-1 hover:bg-muted rounded cursor-pointer">
                               <Checkbox
                                 id={`product-group-${group}`}
-                                checked={checkedState}
                                 onCheckedChange={(checked) =>
                                   handleGroupSelect("products", items, !!checked)
                                 }
@@ -442,10 +436,6 @@ export function Filters(props: FiltersProps) {
                   <ScrollArea className="h-64">
                     <div className="p-2 space-y-1">
                       {Array.from(filteredGroupedCities.entries()).map(([group, items]) => {
-                        const allSelected = items.every((item) => filters.cities.includes(item));
-                        const someSelected = items.some((item) => filters.cities.includes(item));
-                        const checkedState = allSelected ? true : someSelected ? "indeterminate" : false;
-                        
                         return (
                           <div key={group}>
                             {items.map((city) => (
@@ -506,10 +496,6 @@ export function Filters(props: FiltersProps) {
                   <ScrollArea className="h-64">
                     <div className="p-2 space-y-1">
                       {Array.from(filteredGroupedProvinces.entries()).map(([group, items]) => {
-                        const allSelected = items.every((item) => filters.provinces.includes(item));
-                        const someSelected = items.some((item) => filters.provinces.includes(item));
-                        const checkedState = allSelected ? true : someSelected ? "indeterminate" : false;
-                        
                         return (
                           <div key={group}>
                             {items.map((province) => (

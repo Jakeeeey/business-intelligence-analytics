@@ -53,4 +53,4 @@ async function proxy(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) { return proxy(req); }
-export async function OPTIONS(req: NextRequest) { return new NextResponse(null, { status: 204 }); }
+export async function OPTIONS() { return new NextResponse(null, { status: 204 }); }

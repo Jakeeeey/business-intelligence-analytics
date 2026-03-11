@@ -12,7 +12,7 @@ import { useSalesmanAllocation } from "./hooks/useSalesmanAllocation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 
-function toNum(v: any) {
+function toNum(v: unknown) {
   const n = Number(v);
   return Number.isFinite(n) ? n : 0;
 }

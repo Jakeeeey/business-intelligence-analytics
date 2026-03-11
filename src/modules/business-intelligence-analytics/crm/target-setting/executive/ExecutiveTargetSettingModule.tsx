@@ -4,7 +4,7 @@ import { useExecutiveTargetSetting } from "./hooks/useExecutiveTargetSetting";
 import { CompanyTargetCard } from "./components/CompanyTargetCard";
 import { DivisionAllocationCard } from "./components/DivisionAllocationCard";
 import { AllocationHierarchyLog } from "./components/AllocationHierarchyLog";
-import { Loader2 } from "lucide-react";
+
 
 export default function ExecutiveTargetSettingModule() {
   const { 
@@ -50,7 +50,6 @@ export default function ExecutiveTargetSettingModule() {
           onUpdateAllocation={updateAllocation}
           isLoading={isLoading}
           selectedPeriod={selectedPeriod}
-          onPeriodChange={setSelectedPeriod}
           allocatedAmount={allocatedAmount}
           remainingBalance={remainingBalance}
         />

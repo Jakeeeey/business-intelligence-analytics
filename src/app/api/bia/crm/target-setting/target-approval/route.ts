@@ -5,7 +5,7 @@ export const runtime = "nodejs";
 
 const UPSTREAM_BASE = process.env.UPSTREAM_API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL;
 
-function decodeJwtPayload(token: string): any | null {
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
   try {
     const parts = token.split(".");
     if (parts.length < 2) return null;
@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
       if (!token) return NextResponse.json({ isApprover: false, approver: null, totalApprovers: 0 });
 
       const payload = decodeJwtPayload(token);
-      const userId = payload?.sub;
+      const userId = payload?.sub as string | undefined;
 
       const [approver, countRes] = await Promise.all([
         userId ? getApproverByUserId(userId) : null,
@@ -157,8 +157,8 @@ export async function POST(req: NextRequest) {
       });
       const { data: allVotes } = await allVotesRes.json();
 
-      const approvalsCount = allVotes.filter((v: any) => v.status === 'APPROVED').length;
-      const rejectionsCount = allVotes.filter((v: any) => v.status === 'REJECTED').length;
+      const approvalsCount = allVotes.filter((v: Record<string, unknown>) => v.status === 'APPROVED').length;
+      const rejectionsCount = allVotes.filter((v: Record<string, unknown>) => v.status === 'REJECTED').length;
 
       let finalStatus = 'DRAFT';
       if (rejectionsCount > 0) {
@@ -218,7 +218,7 @@ export async function POST(req: NextRequest) {
           });
           const { data: items } = await listRes.json();
           if (items && items.length > 0) {
-            await Promise.all(items.map((item: any) =>
+            await Promise.all(items.map((item: Record<string, unknown>) =>
               fetch(`${upstream}/items/${col}/${item.id}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json", ...authHeader },

@@ -5,18 +5,15 @@ import * as React from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Download, Search, ArrowUpDown, ChevronRight, ChevronDown } from "lucide-react";
+import { Search, ArrowUpDown, ChevronRight, ChevronDown } from "lucide-react";
 import type { TopItem, ProductTrend, ProductSaleRecord } from "../types";
 import {
   ChartContainer,
   ChartTooltip,
-  ChartTooltipContent,
 } from "@/components/ui/chart";
 import {
   LineChart,
   Line,
-  BarChart,
-  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -56,24 +53,6 @@ export function ProductTab({ topProducts, productTrends, filteredData }: Product
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(value);
-  };
-
-  const exportToCSV = (data: any[], filename: string) => {
-    if (!data.length) return;
-
-    const headers = Object.keys(data[0]);
-    const csvContent = [
-      headers.join(","),
-      ...data.map((row) => headers.map((h) => row[h]).join(",")),
-    ].join("\n");
-
-    const blob = new Blob([csvContent], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    link.click();
-    URL.revokeObjectURL(url);
   };
 
   const toggleProduct = (productName: string) => {
@@ -218,7 +197,7 @@ export function ProductTab({ topProducts, productTrends, filteredData }: Product
   };
 
   const filteredProducts = React.useMemo(() => {
-    let products = searchTerm
+    const products = searchTerm
       ? topProducts.filter((p) => p.name.toLowerCase().includes(searchTerm.toLowerCase()))
       : [...topProducts];
 
@@ -511,14 +490,18 @@ export function ProductTab({ topProducts, productTrends, filteredData }: Product
                       return (
                         <div className="rounded-lg border bg-background p-2 shadow-sm">
                           <div className="grid gap-2">
-                            {payload.map((entry: any, index: number) => (
+                            {payload.map((entry: { name?: string | number; value?: string | number | (string | number)[]; color?: string }, index: number) => (
                               <div key={index} className="flex items-center gap-2">
                                 <div
                                   className="h-2 w-2 rounded-full"
                                   style={{ backgroundColor: entry.color }}
                                 />
                                 <span className="text-sm font-medium">{entry.name}:</span>
-                                <span className="text-sm">{formatCurrency(entry.value)}</span>
+                                <span className="text-sm">
+                                  {entry.value !== undefined 
+                                    ? formatCurrency(Number(Array.isArray(entry.value) ? entry.value[0] : entry.value)) 
+                                    : ""}
+                                </span>
                               </div>
                             ))}
                           </div>
@@ -719,7 +702,7 @@ export function ProductTab({ topProducts, productTrends, filteredData }: Product
                                       </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                      {suppliers.map((supplier, idx) => {
+                                      {suppliers.map((supplier) => {
                                         const supplierKey = `${product.name}-${supplier.supplier}`;
                                         const isSupplierExpanded = expandedSuppliers.has(supplierKey);
                                         const sortState = supplierPeriodSort.get(supplierKey) || { sortBy: "period", sortOrder: "desc" };

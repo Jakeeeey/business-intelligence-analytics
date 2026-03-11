@@ -9,7 +9,7 @@ export async function GET(req: Request) {
   const startDate = searchParams.get("startDate");
   const endDate = searchParams.get("endDate");
 
-  let endpoint = "/api/view-stock-out-risk/all";
+  const endpoint = "/api/view-stock-out-risk/all";
   const params = new URLSearchParams();
   if (startDate) params.append("startDate", startDate);
   if (endDate) params.append("endDate", endDate);

@@ -5,7 +5,7 @@ export function isTrue(v: DirectusBool | undefined): boolean {
   if (v == null) return false;
   if (typeof v === "boolean") return v;
   if (typeof v === "number") return v === 1;
-  if (typeof v === "object" && Array.isArray((v as any).data)) return Number((v as any).data?.[0] ?? 0) === 1;
+  if (typeof v === "object" && Array.isArray((v as { data: unknown[] }).data)) return Number((v as { data: unknown[] }).data?.[0] ?? 0) === 1;
   return false;
 }
 

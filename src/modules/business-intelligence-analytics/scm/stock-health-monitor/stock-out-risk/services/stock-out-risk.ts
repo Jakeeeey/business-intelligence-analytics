@@ -1,4 +1,4 @@
-import { StockOutRisk, StockOutRiskSchema } from "../types";
+import { StockOutRisk } from "../types";
 
 export async function fetchStockOutRiskData(startDate?: string, endDate?: string): Promise<StockOutRisk[]> {
   const params = new URLSearchParams();

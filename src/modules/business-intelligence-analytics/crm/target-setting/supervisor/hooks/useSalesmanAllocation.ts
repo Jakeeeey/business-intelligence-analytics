@@ -30,17 +30,17 @@ import {
   type DivisionRow,
 } from "../providers/fetchProvider";
 
-function errMsg(e: any) {
-  return String(e?.message ?? e ?? "Unknown error");
+function errMsg(e: unknown) {
+  return String((e instanceof Error ? e.message : (e as string)) ?? "Unknown error");
 }
 
-function toNum(v: any) {
+function toNum(v: unknown) {
   const n = Number(v);
   return Number.isFinite(n) ? n : 0;
 }
 
 /** ✅ Prevent "January 1970" by filtering invalid fiscal_period values */
-function isValidFiscalPeriod(v: any): v is string {
+function isValidFiscalPeriod(v: unknown): v is string {
   return typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(v));
 }
 
@@ -279,7 +279,7 @@ export function useSalesmanAllocation() {
     } finally {
       setHierarchyLoading(false);
     }
-  }, [fiscalPeriod, supplierTargetRow?.tsd_id, supplierById, supplierTargetRow, divisionById]);
+  }, [fiscalPeriod, supplierById, supplierTargetRow, divisionById]);
 
   React.useEffect(() => {
     refreshHierarchy();

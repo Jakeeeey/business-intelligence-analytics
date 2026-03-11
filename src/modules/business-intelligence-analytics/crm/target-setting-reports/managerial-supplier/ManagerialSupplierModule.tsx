@@ -22,8 +22,8 @@ import { VSalesPerformanceDataDto } from "../executive-health/types";
 import { SalesmanDetailModal } from "./components/SalesmanDetailModal";
 
 // Custom component for the vertical dashed target line
-const CustomTargetLine = (props: any) => {
-    const { x, y, width, height, value } = props;
+const CustomTargetLine = (props: { x?: number, y?: number, width?: number, height?: number, value?: number }) => {
+    const { x = 0, y = 0, width = 0, height = 0, value } = props;
     if (!value || value === 0) return null;
     return (
         <line
@@ -49,9 +49,9 @@ function ManagerialSupplierContent() {
     // Drill-down State
     const [selectedSupplier, setSelectedSupplier] = useState<string | null>(null);
 
-    const [loading, setLoading] = useState(true);
     const [rawData, setRawData] = useState<VSalesPerformanceDataDto[]>([]);
-    const [targets, setTargets] = useState<any>({ supplierTargets: [], salesmanTargets: [] });
+    type TargetItem = { fiscal_period: string; supplier_id?: number; salesman_id?: number; target_amount?: number; };
+    const [targets, setTargets] = useState<{ supplierTargets: TargetItem[], salesmanTargets: TargetItem[] }>({ supplierTargets: [], salesmanTargets: [] });
 
     // Salesman Detail Modal State
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -74,7 +74,6 @@ function ManagerialSupplierContent() {
     // 1. Fetch Data
     useEffect(() => {
         const load = async () => {
-            setLoading(true);
             try {
                 const start = format(startOfMonth(parseISO(fromMonth + "-01")), "yyyy-MM-dd");
                 const end = format(endOfMonth(parseISO(toMonth + "-01")), "yyyy-MM-dd");
@@ -85,11 +84,14 @@ function ManagerialSupplierContent() {
                 // Scope targets to selected division
                 const divItem = data.find(d => d.divisionName === selectedDivision);
                 const targetData = await fetchDynamicTargets(start, end, divItem?.divisionId);
-                setTargets(targetData);
-            } catch (err) { console.error(err); } finally { setLoading(false); }
+                setTargets({
+                    supplierTargets: (targetData.supplierTargets as TargetItem[]) || [], 
+                    salesmanTargets: (targetData.salesmanTargets as TargetItem[]) || []
+                });
+            } catch (err) { console.error(err); }
         };
         load();
-    }, [fromMonth, toMonth]);
+    }, [fromMonth, toMonth, selectedDivision]);
 
     const divisions = useMemo(() => Array.from(new Set(rawData.map(d => d.divisionName))).sort(), [rawData]);
 
@@ -112,11 +114,11 @@ function ManagerialSupplierContent() {
             const supplierId = rawItem?.supplierId;
 
             // Find and sum targets for this supplier
-            const relevantTargets = targets.supplierTargets?.filter((t: any) => {
+            const relevantTargets = targets.supplierTargets?.filter((t: TargetItem) => {
                 const targetDate = parseISO(t.fiscal_period);
                 return t.supplier_id === supplierId && targetDate >= start && targetDate <= end;
             });
-            const target = relevantTargets?.reduce((sum: number, t: any) => sum + (t.target_amount || 0), 0) || 0;
+            const target = relevantTargets?.reduce((sum: number, t: TargetItem) => sum + (t.target_amount || 0), 0) || 0;
 
             return {
                 name,
@@ -165,7 +167,7 @@ function ManagerialSupplierContent() {
 
         return Array.from(salesmanMap.entries())
             .map(([name, data]) => {
-                const relevantSalesmanTargets = targets.salesmanTargets?.filter((t: any) => {
+                const relevantSalesmanTargets = targets.salesmanTargets?.filter((t: TargetItem) => {
                     const targetDate = parseISO(t.fiscal_period);
                     return (
                         t.salesman_id === data.salesmanId &&
@@ -175,7 +177,7 @@ function ManagerialSupplierContent() {
                     );
                 });
 
-                const target = relevantSalesmanTargets?.reduce((sum: number, t: any) => sum + (t.target_amount || 0), 0) || 0;
+                const target = relevantSalesmanTargets?.reduce((sum: number, t: TargetItem) => sum + (t.target_amount || 0), 0) || 0;
 
                 return {
                     name,
@@ -186,7 +188,7 @@ function ManagerialSupplierContent() {
                 };
             })
             .sort((a, b) => b.sales - a.sales);
-    }, [rawData, selectedSupplier, targets, selectedDivision]); // 👈 Added selectedDivision dependency
+    }, [rawData, selectedSupplier, targets, selectedDivision, fromMonth, toMonth]); // 👈 Added selectedDivision, fromMonth, toMonth dependencies
 
     const formatPHP = (val: number) => new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 0 }).format(val);
     const formatShort = (val: number) => {
@@ -278,14 +280,14 @@ function ManagerialSupplierContent() {
                                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" strokeOpacity={0.5} />
                                 <XAxis type="number" hide />
                                 <YAxis type="category" dataKey="name" width={140} fontSize={11} tick={{ fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
-                                <Tooltip formatter={(v: any) => formatPHP(v)} cursor={{ fill: 'hsl(var(--muted)/0.2)' }} />
+                                <Tooltip formatter={(v: number) => formatPHP(v)} cursor={{ fill: 'hsl(var(--muted)/0.2)' }} />
                                 {/* Underlay Target Bar */}
                                 <Bar dataKey="target" barSize={32} fill="#3b82f6" fillOpacity={0.15} radius={[0, 6, 6, 0]}>
                                     <LabelList dataKey="target" content={<CustomTargetLine />} />
                                 </Bar>
                                 {/* Overlay Sales Bar */}
                                 <Bar dataKey="sales" barSize={32} radius={[0, 6, 6, 0]} minPointSize={2}>
-                                    {(selectedSupplier ? salesmanBreakdown : supplierPerformance).slice(0, 10).map((entry: any, index) => (
+                                    {(selectedSupplier ? salesmanBreakdown : supplierPerformance).slice(0, 10).map((entry: { sales: number; target: number }, index: number) => (
                                         <Cell
                                             key={`cell-${index}`}
                                             fill={selectedSupplier ? '#3b82f6' : (entry.sales < 0 ? 'hsl(var(--destructive))' : entry.sales >= entry.target ? '#10b981' : '#f59e0b')}
@@ -305,7 +307,7 @@ function ManagerialSupplierContent() {
                     </CardHeader>
                     <CardContent className="p-0">
                         <div className="max-h-[550px] overflow-y-auto px-6 pb-6 space-y-4">
-                            {(selectedSupplier ? salesmanBreakdown : supplierPerformance).map((item: any, i) => (
+                            {(selectedSupplier ? salesmanBreakdown : supplierPerformance).map((item: { name: string; sales: number; target: number; achievement: number; status: string }, i: number) => (
                                 <div
                                     key={i}
                                     className={`group p-4 rounded-xl border border-transparent hover:border-border hover:bg-muted/50 transition-all cursor-pointer`}

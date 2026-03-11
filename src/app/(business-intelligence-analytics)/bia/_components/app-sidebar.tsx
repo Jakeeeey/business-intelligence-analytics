@@ -18,7 +18,6 @@ import {
     ArrowLeftRight,
     Network,
     MapPinned,
-    Users,
 
     // SCM icons
     Boxes,
@@ -43,7 +42,7 @@ import {
     SmilePlus,      // For Resolution Trackers
     Award,          // For Executive Scorecard
     Map,            // For Branch Risk Matrix
-    TrendingUp, Drum, RussianRuble,     // For Shrinkage vs Revenue
+    TrendingUp, RussianRuble,     // For Shrinkage vs Revenue
 } from "lucide-react";
 
 import {NavMain} from "./nav-main";

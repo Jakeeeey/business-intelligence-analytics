@@ -10,7 +10,6 @@ import SupplierAllocationsTable from "./components/SupplierAllocationsTable";
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Separator } from "@/components/ui/separator";
 
 import { useManagerTargets } from "./hooks/useManagerTargets";
 
@@ -45,7 +44,7 @@ export default function ManagerModule() {
   const totalDivisionsTarget = React.useMemo(() => {
     const total = m.divisionOptions.reduce((sum, x) => sum + (Number(x.tsd.target_amount) || 0), 0);
     return m.formatPeso(total);
-  }, [m.divisionOptions, m.formatPeso]);
+  }, [m]);
 
   const isReadOnly = React.useMemo(() => {
     const status = m.selectedDivisionTarget?.status?.toUpperCase();

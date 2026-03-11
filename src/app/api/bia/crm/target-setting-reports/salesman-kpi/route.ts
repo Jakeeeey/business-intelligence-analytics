@@ -40,7 +40,7 @@ function authHeaders() {
   return h;
 }
 
-async function upstreamJson<T>(url: string): Promise<{ ok: boolean, data?: T, error?: any }> {
+async function upstreamJson<T>(url: string): Promise<{ ok: boolean, data?: T, error?: unknown }> {
   try {
     const res = await fetch(url, {
       headers: authHeaders(),
@@ -106,7 +106,7 @@ export async function GET(req: NextRequest) {
   ];
 
   try {
-    const results = await Promise.all(checks.map(path => upstreamJson<{ data: any[] }>(`${UPSTREAM}/${path}`)));
+    const results = await Promise.all(checks.map(path => upstreamJson<{ data: Record<string, unknown>[] }>(`${UPSTREAM}/${path}`)));
 
     const hasFullAccess = results.some(r => r.ok && Array.isArray(r.data?.data) && r.data!.data.length > 0);
 
@@ -118,7 +118,7 @@ export async function GET(req: NextRequest) {
     }
 
     // 2. Check Supervisor Role (Restricted Access)
-    const spdRes = await upstreamJson<{ data: any[] }>(
+    const spdRes = await upstreamJson<{ data: Record<string, unknown>[] }>(
       `${UPSTREAM}/items/supervisor_per_division?filter[supervisor_id][_eq]=${sub}&filter[is_deleted][_eq]=0&fields=id`
     );
 
@@ -126,12 +126,12 @@ export async function GET(req: NextRequest) {
 
     if (supervisorRecords.length > 0) {
       // Get linked salesmen
-      const spdIds = supervisorRecords.map((r: any) => r.id);
-      const spsRes = await upstreamJson<{ data: any[] }>(
+      const spdIds = supervisorRecords.map((r: Record<string, unknown>) => r.id);
+      const spsRes = await upstreamJson<{ data: Record<string, unknown>[] }>(
         `${UPSTREAM}/items/salesman_per_supervisor?filter[supervisor_per_division_id][_in]=${spdIds.join(",")}&filter[is_deleted][_eq]=0&fields=salesman_id`
       );
 
-      const assignedSalesmanIds = new Set((spsRes.data?.data || []).map((r: any) => Number(r.salesman_id)));
+      const assignedSalesmanIds = new Set((spsRes.data?.data || []).map((r: Record<string, unknown>) => Number(r.salesman_id)));
 
       // Fetch all data and filter
       const token = req.cookies.get("vos_access_token")?.value;
@@ -139,7 +139,7 @@ export async function GET(req: NextRequest) {
 
       // Filter logic: Keep record if salesmanId is in assigned set
       const filteredData = Array.isArray(allData)
-        ? allData.filter((row: any) => assignedSalesmanIds.has(Number(row.salesmanId)))
+        ? allData.filter((row: Record<string, unknown>) => assignedSalesmanIds.has(Number(row.salesmanId)))
         : [];
 
       return NextResponse.json(filteredData);

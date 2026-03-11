@@ -6,9 +6,9 @@ export const dynamic = "force-dynamic";
 const DIRECTUS_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL || "").replace(/\/+$/, "");
 const DIRECTUS_TOKEN = process.env.DIRECTUS_STATIC_TOKEN || "";
 
-type AnyRec = Record<string, any>;
+type AnyRec = Record<string, unknown>;
 
-function json(res: any, init?: ResponseInit) {
+function json(res: unknown, init?: ResponseInit) {
   return NextResponse.json(res, init);
 }
 
@@ -18,7 +18,7 @@ function requireEnv() {
   return null;
 }
 
-function toISODateOnly(v: any): string | null {
+function toISODateOnly(v: unknown): string | null {
   if (!v) return null;
   const s = String(v).trim();
   if (!s) return null;

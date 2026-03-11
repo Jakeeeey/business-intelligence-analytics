@@ -2,12 +2,12 @@
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell, LineChart, Line } from "recharts";
-import { PieChart, LayoutDashboard, TrendingUp } from "lucide-react";
+import { LayoutDashboard, TrendingUp } from "lucide-react";
 import { format, parseISO } from "date-fns";
 
 interface TargetApprovalChartsProps {
-  allocations: any[];
-  historicalTargets: any[];
+  allocations: { division_name?: string; division_id: number; target_amount: number }[];
+  historicalTargets: { fiscal_period: string; target_amount: number }[];
   isLoading?: boolean;
 }
 
@@ -19,25 +19,19 @@ export function TargetApprovalCharts({
   const formatPHP = (val: number) => 
     new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(val);
 
-  const formatShort = (val: number) => {
-    if (Math.abs(val) >= 1000000) return `₱${(val / 1000000).toFixed(1)}M`;
-    if (Math.abs(val) >= 1000) return `₱${(val / 1000).toFixed(0)}k`;
-    return `₱${val.toFixed(0)}`;
-  };
-
   // Process data for Division Allocation Bar Chart
   const divisionData = allocations
     .map(a => ({
       name: a.division_name || `Div #${a.division_id}`,
-      amount: a.target_amount || 0
+      amount: Number(a.target_amount) || 0
     }))
     .sort((a, b) => b.amount - a.amount);
 
   // Process data for Trend Line Chart
   const trendData = historicalTargets
     .map(t => ({
-      period: format(parseISO(t.fiscal_period), "MMM yyyy"),
-      amount: t.target_amount || 0
+      period: format(parseISO(String(t.fiscal_period)), "MMM yyyy"),
+      amount: Number(t.target_amount) || 0
     }))
     .sort((a, b) => new Date(a.period).getTime() - new Date(b.period).getTime());
 
@@ -79,7 +73,7 @@ export function TargetApprovalCharts({
                   tickLine={false} 
                 />
                 <Tooltip 
-                  formatter={(v: any) => [formatPHP(v), "Target"]}
+                  formatter={(v: number) => [formatPHP(v), "Target"]}
                   contentStyle={{ fontSize: '12px', borderRadius: '8px' }}
                 />
                 <Bar dataKey="amount" radius={[0, 4, 4, 0]} barSize={20}>
@@ -120,7 +114,7 @@ export function TargetApprovalCharts({
                 />
                 <YAxis hide />
                 <Tooltip 
-                  formatter={(v: any) => [formatPHP(v), "Target"]}
+                  formatter={(v: number) => [formatPHP(v), "Target"]}
                   contentStyle={{ fontSize: '12px', borderRadius: '8px' }}
                 />
                 <Line 

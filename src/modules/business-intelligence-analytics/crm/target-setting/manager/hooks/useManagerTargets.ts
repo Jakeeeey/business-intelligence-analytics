@@ -39,7 +39,7 @@ type SupervisorOption = {
   name: string;
 };
 
-function formatFiscalPeriodLabel(input: any, fallbackId: number) {
+function formatFiscalPeriodLabel(input: unknown, fallbackId: number) {
   const raw = String(input ?? "").trim();
   if (!raw) return `Fiscal #${fallbackId}`;
 
@@ -54,15 +54,15 @@ function formatFiscalPeriodLabel(input: any, fallbackId: number) {
   return date.toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
 }
 
-function isTradeSupplier(supplierType: any) {
+function isTradeSupplier(supplierType: unknown) {
   const v = String(supplierType ?? "").trim().toUpperCase();
   return v === "TRADE";
 }
 
-function normalizeStatus(v: any): AllocationLogRow["status"] {
+function normalizeStatus(v: unknown): AllocationLogRow["status"] {
   const s = String(v ?? "").trim().toUpperCase();
   const allowed = new Set(["DRAFT", "SUBMITTED", "PENDING", "APPROVED", "REJECTED", "SET"]);
-  return (allowed.has(s) ? (s as any) : "SET");
+  return (allowed.has(s) ? (s as AllocationLogRow["status"]) : "SET");
 }
 
 function fullName(u: UserRow) {
@@ -77,9 +77,9 @@ function fullName(u: UserRow) {
  * Directus sometimes returns:
  * { type: "Buffer", data: [0|1] }
  */
-function isNotDeleted(v: any) {
+function isNotDeleted(v: unknown) {
   if (v && typeof v === "object") {
-    const maybeBuf = v as any;
+    const maybeBuf = v as Record<string, unknown>;
     if (maybeBuf.type === "Buffer" && Array.isArray(maybeBuf.data)) {
       const b = Number(maybeBuf.data?.[0] ?? 0);
       return b === 0;
@@ -111,10 +111,10 @@ export function useManagerTargets() {
     const list = raw?.target_setting_executive ?? [];
     return list
       .slice()
-      .sort((a, b) => String((a as any).fiscal_period ?? "").localeCompare(String((b as any).fiscal_period ?? "")))
+      .sort((a, b) => String((a as Record<string, unknown>).fiscal_period ?? "").localeCompare(String((b as Record<string, unknown>).fiscal_period ?? "")))
       .map((e) => ({
         id: e.id,
-        label: formatFiscalPeriodLabel((e as any).fiscal_period, e.id),
+        label: formatFiscalPeriodLabel((e as Record<string, unknown>).fiscal_period, e.id),
         raw: e,
       }));
   }, [raw]);
@@ -139,7 +139,7 @@ export function useManagerTargets() {
       const dsh = raw.division_sales_head ?? [];
       dsh
         .filter((r) => Number(r.user_id) === Number(currentUserId))
-        .filter((r: any) => isNotDeleted((r as any).is_deleted))
+        .filter((r) => isNotDeleted((r as Record<string, unknown>).is_deleted))
         .forEach((r) => allowedDivisionIds.add(Number(r.division_id)));
     }
 
@@ -150,15 +150,15 @@ export function useManagerTargets() {
       .map((tsd) => {
         const d = divisions.find((z) => z.division_id === tsd.division_id);
         const divisionName = d?.division_name ?? `Division #${tsd.division_id}`;
-        return { tsd, divisionName, divisionId: tsd.division_id } as any;
+        return { tsd, divisionName, divisionId: tsd.division_id } as DivisionOption & { divisionId: number };
       })
-      .filter((item: any) => {
+      .filter((item) => {
         // strict only when we have current user
         if (currentUserId) return allowedDivisionIds.has(Number(item.divisionId));
         // fallback if no cookie/auth
         return true;
       })
-      .sort((a: any, b: any) => a.divisionName.localeCompare(b.divisionName));
+      .sort((a, b) => a.divisionName.localeCompare(b.divisionName));
   }, [raw, selectedExecutiveId]);
 
   const selectedDivisionTarget = React.useMemo<TargetSettingDivision | null>(() => {
@@ -169,9 +169,9 @@ export function useManagerTargets() {
   const supplierOptions = React.useMemo<SupplierOption[]>(() => {
     const suppliers = raw?.suppliers ?? [];
     return suppliers
-      .filter((s: any) => Number(s?.isActive ?? 1) === 1)
-      .filter((s: any) => isTradeSupplier(s?.supplier_type))
-      .map((s: any) => ({
+      .filter((s: Record<string, unknown>) => Number(s?.isActive ?? 1) === 1)
+      .filter((s: Record<string, unknown>) => isTradeSupplier(s?.supplier_type))
+      .map((s: Record<string, unknown>) => ({
         id: Number(s.id),
         name: String(s.supplier_name ?? "").trim() || `Supplier #${s.id}`,
       }))
@@ -186,17 +186,17 @@ export function useManagerTargets() {
     if (!raw) return [];
 
     const users = raw.users ?? [];
-    const spd: SupervisorPerDivisionRow[] = (raw.supervisor_per_division ?? []) as any;
+    const spd: SupervisorPerDivisionRow[] = (raw.supervisor_per_division ?? []) as SupervisorPerDivisionRow[];
 
     const divisionId = selectedDivisionTarget?.division_id ?? null;
     if (!divisionId) return [];
 
     const allowedSupervisorIds = new Set<number>(
       spd
-        .filter((r: any) => Number(r?.division_id) === Number(divisionId))
-        .filter((r: any) => isNotDeleted(r?.is_deleted))
-        .map((r: any) => Number(r?.supervisor_id))
-        .filter((id: any) => Number.isFinite(id) && id > 0),
+        .filter((r) => Number(r?.division_id) === Number(divisionId))
+        .filter((r) => isNotDeleted(r?.is_deleted))
+        .map((r) => Number(r?.supervisor_id))
+        .filter((id) => Number.isFinite(id) && id > 0),
     );
 
     return users
@@ -246,7 +246,7 @@ export function useManagerTargets() {
     const out: AllocationLogRow[] = [];
 
     const exec = (raw.target_setting_executive ?? []).find((x) => x.id === selectedExecutiveId);
-    const execStatus = normalizeStatus((exec as any)?.status);
+    const execStatus = normalizeStatus((exec as Record<string, unknown>)?.status);
 
     if (exec) {
       out.push({
@@ -264,7 +264,7 @@ export function useManagerTargets() {
 
     divTargets.forEach((tsd) => {
       const d = divisions.find((z) => z.division_id === tsd.division_id);
-      const divStatus = normalizeStatus((tsd as any).status ?? execStatus);
+      const divStatus = normalizeStatus((tsd as Record<string, unknown>).status ?? execStatus);
 
       out.push({
         id: `div-${tsd.id}`,
@@ -285,9 +285,9 @@ export function useManagerTargets() {
       if (tsd.tse_id !== selectedExecutiveId) return;
 
       const d = divisions.find((z) => z.division_id === tsd.division_id);
-      const s = (suppliers as any[]).find((z) => Number(z.id) === tss.supplier_id);
+      const s = (suppliers as Record<string, unknown>[]).find((z) => Number(z.id) === tss.supplier_id);
 
-      const supplierStatus = normalizeStatus((tss as any).status ?? execStatus);
+      const supplierStatus = normalizeStatus((tss as Record<string, unknown>).status ?? execStatus);
 
       out.push({
         id: `supp-${tss.id}`,
@@ -320,8 +320,8 @@ export function useManagerTargets() {
 
       const first = (data.target_setting_executive ?? [])[0];
       if (first && !selectedExecutiveId) setSelectedExecutiveId(first.id);
-    } catch (e: any) {
-      toast.error(e?.message ?? "Failed to load data.");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Failed to load data.");
     } finally {
       setLoading(false);
     }
@@ -332,8 +332,8 @@ export function useManagerTargets() {
     try {
       const data = await bootstrapManagerTargets();
       setRaw(data);
-    } catch (e: any) {
-      toast.error(e?.message ?? "Failed to refresh data.");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Failed to refresh data.");
     } finally {
       setRefreshing(false);
     }
@@ -395,8 +395,8 @@ export function useManagerTargets() {
       }
       await reload();
       setTargetAmountInput("");
-    } catch (e: any) {
-      toast.error(e?.message ?? "Failed to save allocation.");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Failed to save allocation.");
     }
   }
 
@@ -405,8 +405,8 @@ export function useManagerTargets() {
       await deleteSupplierAllocation(id);
       toast.success("Allocation deleted.");
       await reload();
-    } catch (e: any) {
-      toast.error(e?.message ?? "Failed to delete allocation.");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Failed to delete allocation.");
     }
   }
 

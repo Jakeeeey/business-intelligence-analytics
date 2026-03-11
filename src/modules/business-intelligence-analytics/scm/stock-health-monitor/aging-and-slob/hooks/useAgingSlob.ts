@@ -16,8 +16,8 @@ export function useAgingSlob() {
       const result = await fetchAgingSlobData();
       setData(result);
       setError(null);
-    } catch (err: any) {
-      setError(err.message || "Failed to fetch Aging & SLOB data");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to fetch Aging & SLOB data");
     } finally {
       setIsLoading(false);
     }

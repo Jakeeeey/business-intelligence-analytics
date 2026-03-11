@@ -35,8 +35,8 @@ export function useSalesReport() {
     try {
       const data = await getLookups();
       setEmployees(data.employees ?? []);
-    } catch (e: any) {
-      toast.error(e?.message || "Failed to load lookups.");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Failed to load lookups.");
     } finally {
       setLoadingLookups(false);
     }
@@ -59,8 +59,8 @@ export function useSalesReport() {
       setRows(data.rows ?? []);
       setInvoices(data.invoices ?? []);
       setKpis(data.kpis ?? null);
-    } catch (e: any) {
-      toast.error(e?.message || "Failed to generate report.");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Failed to generate report.");
     } finally {
       setLoading(false);
     }

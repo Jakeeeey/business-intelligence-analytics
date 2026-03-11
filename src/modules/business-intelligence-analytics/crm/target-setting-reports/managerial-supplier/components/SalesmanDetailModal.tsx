@@ -9,7 +9,6 @@ import {
     DialogDescription,
 } from "@/components/ui/dialog";
 import {
-    Table,
     TableBody,
     TableCell,
     TableHead,
@@ -19,7 +18,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
-import { Search, Store, User2 } from "lucide-react";
+import { Search, User2 } from "lucide-react";
 import { VSalesPerformanceDataDto } from "../../executive-health/types";
 
 interface SalesmanDetailModalProps {

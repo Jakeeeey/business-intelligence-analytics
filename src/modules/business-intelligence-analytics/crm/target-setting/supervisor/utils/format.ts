@@ -4,7 +4,7 @@ export function monthLabel(isoDate: string) {
   return d.toLocaleString("en-US", { month: "long", year: "numeric" });
 }
 
-export function moneyPHP(v: any) {
+export function moneyPHP(v: unknown) {
   const n = Number(v);
   if (!Number.isFinite(n)) return "—";
   return n.toLocaleString("en-PH", {

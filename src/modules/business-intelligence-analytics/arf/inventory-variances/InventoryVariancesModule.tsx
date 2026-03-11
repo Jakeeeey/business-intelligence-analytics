@@ -25,24 +25,26 @@ export const InventoryVariancesModule = () => {
     // Fetch data WITHOUT dates since the SQL view now handles the "Latest Snapshot" natively
     const {data, loading, error} = useInventoryVariances();
 
+    const ledger = data?.ledger;
+
     // Extract unique suppliers for the dropdown
     const uniqueSuppliers = useMemo(() => {
-        if (!data?.ledger) return [];
-        const suppliers = new Set(data.ledger.map(item => item.supplierName).filter(Boolean));
+        if (!ledger) return [];
+        const suppliers = new Set(ledger.map(item => item.supplierName).filter(Boolean));
         return Array.from(suppliers).sort();
-    }, [data?.ledger]);
+    }, [ledger]);
 
     // Apply BOTH Branch and Supplier filters
     const filteredLedger = useMemo(() => {
-        let ledger = data?.ledger || [];
+        let currentLedger = ledger || [];
         if (selectedBranch) {
-            ledger = ledger.filter(item => item.branchName === selectedBranch);
+            currentLedger = currentLedger.filter(item => item.branchName === selectedBranch);
         }
         if (selectedSupplier) {
-            ledger = ledger.filter(item => item.supplierName === selectedSupplier);
+            currentLedger = currentLedger.filter(item => item.supplierName === selectedSupplier);
         }
-        return ledger;
-    }, [selectedBranch, selectedSupplier, data]);
+        return currentLedger;
+    }, [selectedBranch, selectedSupplier, ledger]);
 
     // Accuracy Math
     const kpiStats = useMemo(() => {
@@ -91,11 +93,11 @@ export const InventoryVariancesModule = () => {
     }, [filteredLedger, viewMode]);
 
     const dynamicBranchRisk = useMemo(() => {
-        if (!data?.ledger) return [];
+        if (!ledger) return [];
         const branchMap = new Map<string, number>();
 
         // Ensure we only loop over items that match the current Supplier filter
-        const baseLedger = selectedSupplier ? data.ledger.filter(i => i.supplierName === selectedSupplier) : data.ledger;
+        const baseLedger = selectedSupplier ? ledger.filter(i => i.supplierName === selectedSupplier) : ledger;
 
         baseLedger.forEach(item => {
             const cost = Number(item.differenceCost) || 0;
@@ -111,7 +113,7 @@ export const InventoryVariancesModule = () => {
         return Array.from(branchMap.entries())
             .map(([label, value]) => ({label, value}))
             .sort((a, b) => viewMode === 'loss' ? a.value - b.value : b.value - a.value);
-    }, [data?.ledger, viewMode, selectedSupplier]);
+    }, [ledger, viewMode, selectedSupplier]);
 
     if (error) return <div
         className="p-8 text-center border-2 border-dashed rounded-xl text-red-500 bg-red-50">Error: {error}</div>;

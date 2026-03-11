@@ -64,8 +64,8 @@ export async function fetchProductSalesData(
     setCacheData(cacheKey, records);
     
     return records;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching product sales data:", error);
-    throw new Error(error?.message || "Failed to fetch product sales data");
+    throw new Error(error instanceof Error ? error.message : "Failed to fetch product sales data");
   }
 }

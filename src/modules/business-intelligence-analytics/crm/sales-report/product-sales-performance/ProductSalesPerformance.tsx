@@ -5,7 +5,6 @@ import * as React from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
-import { Badge } from "@/components/ui/badge";
 import { RefreshCw } from "lucide-react";
 import { useProductSalesPerformance } from "./hooks/useProductSalesPerformance";
 import { Filters } from "./components/Filters";
