@@ -6,11 +6,11 @@ import {
     BreadcrumbPage,
     BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import {Separator} from "@/components/ui/separator";
-import {SidebarTrigger} from "@/components/ui/sidebar";
-import {NavUser} from "../../../_components/nav-user";
+import { Separator } from "@/components/ui/separator";
+import { SidebarTrigger } from "@/components/ui/sidebar";
+import { NavUser } from "../../../_components/nav-user";
 
-import {cookies} from "next/headers";
+import { cookies } from "next/headers";
 
 // ✅ Wire the module you asked for
 import ComingSoon from "../../../_components/ComingSoon";
@@ -86,7 +86,7 @@ export default async function Page() {
             <header
                 className="relative z-10 flex h-14 shrink-0 items-center justify-between border-b shadow-sm bg-background sm:h-16 overflow-hidden">
                 <div className="flex h-full min-w-0 items-center gap-2 px-3 sm:px-4 overflow-hidden">
-                    <SidebarTrigger className="-ml-1 shrink-0"/>
+                    <SidebarTrigger className="-ml-1 shrink-0" />
 
                     <Separator
                         orientation="vertical"
@@ -99,11 +99,15 @@ export default async function Page() {
                                 <BreadcrumbItem className="hidden md:block shrink-0">
                                     <BreadcrumbLink>BIA</BreadcrumbLink>
                                 </BreadcrumbItem>
-                                <BreadcrumbSeparator className="hidden md:block shrink-0"/>
+                                <BreadcrumbSeparator className="hidden md:block shrink-0" />
+                                <BreadcrumbItem className="hidden md:block shrink-0">
+                                    <BreadcrumbLink>ARF</BreadcrumbLink>
+                                </BreadcrumbItem>
+                                <BreadcrumbSeparator className="hidden md:block shrink-0" />
                                 <BreadcrumbItem className="hidden md:block shrink-0">
                                     <BreadcrumbLink>Stock Health Monitor</BreadcrumbLink>
                                 </BreadcrumbItem>
-                                <BreadcrumbSeparator className="hidden md:block shrink-0"/>
+                                <BreadcrumbSeparator className="hidden md:block shrink-0" />
                                 <BreadcrumbItem className="min-w-0 overflow-hidden">
                                     <BreadcrumbPage className="truncate max-w-[56vw] sm:max-w-[60vw] md:max-w-none">
                                         Stock Out Risk
@@ -116,13 +120,13 @@ export default async function Page() {
 
                 <div
                     className="flex h-full items-center px-2 sm:px-4 shrink-0 max-w-[48vw] sm:max-w-none overflow-hidden">
-                    <NavUser user={headerUser}/>
+                    <NavUser user={headerUser} />
                 </div>
             </header>
 
             {/* ✅ Only content scrolls inside RIGHT column */}
             <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-2 sm:p-4">
-                <ComingSoon/>
+                <ComingSoon />
             </main>
         </div>
     );

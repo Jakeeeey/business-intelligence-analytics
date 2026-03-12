@@ -6,18 +6,18 @@ import {
     BreadcrumbPage,
     BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import {Separator} from "@/components/ui/separator";
-import {SidebarTrigger} from "@/components/ui/sidebar";
-import {NavUser} from "../../../_components/nav-user";
+import { Separator } from "@/components/ui/separator";
+import { SidebarTrigger } from "@/components/ui/sidebar";
+import { NavUser } from "../../../_components/nav-user";
 
-import React, {Suspense} from "react";
-import {cookies} from "next/headers";
+import React, { Suspense } from "react";
+import { cookies } from "next/headers";
 
 // ✅ Wire the FNS Analysis module
 import FnsAnalysisModule
     from "@/modules/business-intelligence-analytics/scm/inventory-performance-dashboard/fns-analysis/FnsAnalysisModule";
-import {ScmFilterProvider} from "@/modules/business-intelligence-analytics/scm/inventory-performance-dashboard/fns-analysis/providers/ScmFilterProvider";
-import {Skeleton} from "@/components/ui/skeleton";
+import { ScmFilterProvider } from "@/modules/business-intelligence-analytics/scm/inventory-performance-dashboard/fns-analysis/providers/ScmFilterProvider";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -94,7 +94,7 @@ export default async function Page() {
             <header
                 className="relative z-10 flex h-14 shrink-0 items-center justify-between border-b shadow-sm bg-background sm:h-16 overflow-hidden">
                 <div className="flex h-full min-w-0 items-center gap-2 px-3 sm:px-4 overflow-hidden">
-                    <SidebarTrigger className="-ml-1 shrink-0"/>
+                    <SidebarTrigger className="-ml-1 shrink-0" />
 
                     <Separator
                         orientation="vertical"
@@ -107,11 +107,15 @@ export default async function Page() {
                                 <BreadcrumbItem className="hidden md:block shrink-0">
                                     <BreadcrumbLink>BIA</BreadcrumbLink>
                                 </BreadcrumbItem>
-                                <BreadcrumbSeparator className="hidden md:block shrink-0"/>
+                                <BreadcrumbSeparator className="hidden md:block shrink-0" />
+                                <BreadcrumbItem className="hidden md:block shrink-0">
+                                    <BreadcrumbLink>SCM</BreadcrumbLink>
+                                </BreadcrumbItem>
+                                <BreadcrumbSeparator className="hidden md:block shrink-0" />
                                 <BreadcrumbItem className="hidden md:block shrink-0">
                                     <BreadcrumbLink>Inventory Performance Dashboard</BreadcrumbLink>
                                 </BreadcrumbItem>
-                                <BreadcrumbSeparator className="hidden md:block shrink-0"/>
+                                <BreadcrumbSeparator className="hidden md:block shrink-0" />
                                 <BreadcrumbItem className="min-w-0 overflow-hidden">
                                     <BreadcrumbPage className="truncate max-w-[56vw] sm:max-w-[60vw] md:max-w-none">
                                         FNS Analysis
@@ -124,7 +128,7 @@ export default async function Page() {
 
                 <div
                     className="flex h-full items-center px-2 sm:px-4 shrink-0 max-w-[48vw] sm:max-w-none overflow-hidden">
-                    <NavUser user={headerUser}/>
+                    <NavUser user={headerUser} />
                 </div>
             </header>
 
@@ -133,13 +137,13 @@ export default async function Page() {
                 <Suspense
                     fallback={
                         <div className="space-y-6 p-4 md:p-8 pt-6">
-                            <Skeleton className="h-9 w-64"/>
-                            <Skeleton className="h-80 rounded-xl"/>
+                            <Skeleton className="h-9 w-64" />
+                            <Skeleton className="h-80 rounded-xl" />
                         </div>
                     }
                 >
                     <ScmFilterProvider>
-                        <FnsAnalysisModule/>
+                        <FnsAnalysisModule />
                     </ScmFilterProvider>
                 </Suspense>
             </main>
