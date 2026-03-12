@@ -166,7 +166,28 @@ const data = {
                             url: "/bia/scm/stock-health-monitor/stock-out-risk",
                             icon: BadgeAlert
                         },
-                        {title: "Aging & SLOB", url: "/bia/scm/stock-health-monitor/aging-and-slob", icon: Timer},
+                        {
+                            title: "Aging & SLOB", 
+                            url: "/bia/scm/stock-health-monitor/aging-and-slob", 
+                            icon: Timer
+                        },
+                    ],
+                },
+                {
+                    title: "Stock Out Monitoring",
+                    url: "#",
+                    icon: BadgeAlert,
+                    items: [
+                        {
+                            title: "Allocated vs Ordered",
+                            url: "/bia/scm/stock-out-monitoring/allocated-vs-ordered",
+                            icon: BadgeAlert
+                        },
+                        {
+                            title: "Orders vs Consolidated", 
+                            url: "/bia/scm/stock-out-monitoring/orders-vs-consolidated", 
+                            icon: Timer
+                        },
                     ],
                 },
                 {
