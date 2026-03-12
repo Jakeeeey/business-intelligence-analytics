@@ -9,7 +9,6 @@ interface Props {
     totalOverage: number;
     netTotal: number;
     totalItems: number;
-    recordCount: number;
     accuracyScore: number;
     supplierName?: string | null; // NEW: Accepts the selected supplier
 }
@@ -19,7 +18,6 @@ export const InventoryVarianceKpis = ({
                                           totalOverage,
                                           netTotal,
                                           totalItems,
-                                          recordCount,
                                           accuracyScore,
                                           supplierName
                                       }: Props) => {

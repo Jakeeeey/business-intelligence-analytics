@@ -67,7 +67,7 @@ export function SearchableSelect({
                                 <CommandItem
                                     key={opt.value}
                                     value={opt.label} // Use label for searching
-                                    onSelect={(currentValue) => {
+                                    onSelect={() => {
                                         // We need to map back to the ID/value since CommandItem uses text content or value prop
                                         // Here we used label as value for search, so we find the option by label and call onValueChange with its value
                                         // However, simpler is to use the option.value if unique, but Command compares normalized search.

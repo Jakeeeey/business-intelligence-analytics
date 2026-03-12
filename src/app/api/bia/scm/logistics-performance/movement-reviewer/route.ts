@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
 
         // Return exactly what Spring returns (matches your Spring Boot response map)
         return NextResponse.json(await springRes.json());
-    } catch (err) {
+    } catch {
         return NextResponse.json({ ok: false }, { status: 502 });
     }
 }

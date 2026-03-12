@@ -1,5 +1,5 @@
 // src/app/api/bia/scm/inventory-performance-dashboard/fns-analysis/route.ts
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
 export const runtime = "nodejs";
@@ -20,7 +20,7 @@ const COOKIE_NAME = "vos_access_token";
  * All data (product name, supplier, branch) comes directly from
  * the Spring Boot response — no Directus enrichment needed.
  */
-export async function GET(req: NextRequest) {
+export async function GET() {
     try {
         // ── 1. Auth: read session cookie ────────────────────────────────
         const cookieStore = await cookies();
@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
             );
         }
 
-        const fnsItems: any[] = await springRes.json();
+        const fnsItems: Record<string, unknown>[] = await springRes.json();
         console.log("[fns-analysis] Spring Boot returned", fnsItems.length, "items");
 
         // ── 3. Enrich and build response ───────────────────────────────

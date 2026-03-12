@@ -18,7 +18,6 @@ import {
     ArrowLeftRight,
     Network,
     MapPinned,
-    Users,
 
     // SCM icons
     Boxes,
@@ -43,7 +42,7 @@ import {
     SmilePlus,      // For Resolution Trackers
     Award,          // For Executive Scorecard
     Map,            // For Branch Risk Matrix
-    TrendingUp, Drum, RussianRuble,     // For Shrinkage vs Revenue
+    TrendingUp, RussianRuble,     // For Shrinkage vs Revenue
 } from "lucide-react";
 
 import {NavMain} from "./nav-main";
@@ -74,22 +73,22 @@ const data = {
                     items: [
                         {
                             title: "Salesman Performance",
-                            url: "/bia/sales-report/salesman-performance",
+                            url: "/bia/crm/sales-report/salesman-performance",
                             icon: BadgeCheck
                         },
                         {
                             title: "Product Sales Performance",
-                            url: "/bia/sales-report/product-sales-performance",
+                            url: "/bia/crm/sales-report/product-sales-performance",
                             icon: UserCog
                         },
                         {
                             title: "Product Return Performance",
-                            url: "/bia/sales-report/product-return-performance",
+                            url: "/bia/crm/sales-report/product-returns-performance",
                             icon: UserCog
                         },
                         {
                             title: "STT Report",
-                            url: "/bia/sales-report/stt-report",
+                            url: "/bia/crm/sales-report/stt-report",
                             icon: BadgeCheck
                         },
                     ],
@@ -99,10 +98,10 @@ const data = {
                     url: "#",
                     icon: Target,
                     items: [
-                        {title: "Target Approval", url: "/bia/target-setting/target-approval", icon: BadgeCheck},
-                        {title: "Executive", url: "/bia/target-setting/executive", icon: UserCog},
-                        {title: "Manager", url: "/bia/target-setting/manager", icon: Briefcase},
-                        {title: "Supervisor", url: "/bia/target-setting/supervisor", icon: UserRound},
+                        {title: "Target Approval", url: "/bia/crm/target-setting/target-approval", icon: BadgeCheck},
+                        {title: "Executive", url: "/bia/crm/target-setting/executive", icon: UserCog},
+                        {title: "Manager", url: "/bia/crm/target-setting/manager", icon: Briefcase},
+                        {title: "Supervisor", url: "/bia/crm/target-setting/supervisor", icon: UserRound},
                     ],
                 },
                 {
@@ -112,23 +111,23 @@ const data = {
                     items: [
                         {
                             title: "Executive Health",
-                            url: "/bia/target-setting-reports/executive-health",
+                            url: "/bia/crm/target-setting-reports/executive-health",
                             icon: HeartPulse
                         },
                         {
                             title: "Managerial / Supplier",
-                            url: "/bia/target-setting-reports/managerial-supplier",
+                            url: "/bia/crm/target-setting-reports/managerial-supplier",
                             icon: Factory
                         },
-                        {title: "Salesman KPI", url: "/bia/target-setting-reports/salesman-kpi", icon: Gauge},
+                        {title: "Salesman KPI", url: "/bia/crm/target-setting-reports/salesman-kpi", icon: Gauge},
                         {
                             title: "AR and Remittance",
-                            url: "/bia/target-setting-reports/ar-and-remittance",
+                            url: "/bia/crm/target-setting-reports/ar-and-remittance",
                             icon: ArrowLeftRight
                         },
-                        {title: "Channel", url: "/bia/target-setting-reports/channel", icon: Network},
-                        {title: "Area", url: "/bia/target-setting-reports/area", icon: MapPinned},
-                        {title: "Audit Trail", url: "/bia/target-setting/ts-audit-trail", icon: History},
+                        {title: "Channel", url: "/bia/crm/target-setting-reports/channel", icon: Network},
+                        {title: "Area", url: "/bia/crm/target-setting-reports/area", icon: MapPinned},
+                        {title: "Audit Trail", url: "/bia/crm/target-setting/ts-audit-trail", icon: History},
                     ],
                 },
             ],
@@ -295,7 +294,7 @@ export function AppSidebar({className, ...props}: React.ComponentProps<typeof Si
     React.useEffect(() => {
         async function fetchRoles() {
             try {
-                const response = await fetch("/api/bia/target-setting/roles");
+                const response = await fetch("/api/bia/crm/target-setting/roles");
                 const data = await response.json();
                 if (data.roles) {
                     setRoles(data.roles);

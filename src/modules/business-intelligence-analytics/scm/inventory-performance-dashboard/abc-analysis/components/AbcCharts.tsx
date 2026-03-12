@@ -2,6 +2,7 @@
 
 import React, { useMemo } from "react";
 import { PieChart as PieChartIcon, BarChart3 } from "lucide-react";
+import { AbcProduct } from "../types/abc-analysis.schema";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
     PieChart,
@@ -26,7 +27,7 @@ interface AbcChartsProps {
         catB: { value: number; count: number };
         catC: { value: number; count: number };
     };
-    data: any[];
+    data: AbcProduct[];
 }
 
 export function AbcCharts({ stats, data }: AbcChartsProps) {

@@ -6,7 +6,7 @@ import { SlobMetricsCards } from "./components/SlobMetricsCards";
 import { DataTable } from "@/components/ui/new-data-table";
 import { columns } from "./components/Columns";
 import { AgingSlobCharts } from "./components/AgingSlobCharts";
-import { ScmAdvancedFilters } from "@/modules/business-intelligence-analytics/scm/components/filters/ScmAdvancedFilters";
+import { ScmAdvancedFilters } from "./components/ScmAdvancedFilters";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function AgingSlobPage() {

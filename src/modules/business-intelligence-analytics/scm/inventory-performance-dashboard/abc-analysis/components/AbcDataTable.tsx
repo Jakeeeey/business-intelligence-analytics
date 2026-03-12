@@ -8,14 +8,15 @@ import { Button } from "@/components/ui/button";
 import { ArrowUpDown } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { AbcProduct } from "../types/abc-analysis.schema";
 
 interface AbcDataTableProps {
-    data: any[];
+    data: AbcProduct[];
     isLoading: boolean;
 }
 
 export function AbcDataTable({ data, isLoading }: AbcDataTableProps) {
-    const columns: ColumnDef<any>[] = [
+    const columns: ColumnDef<AbcProduct>[] = [
         {
             accessorKey: "classRank",
             header: ({ column }) => (
@@ -99,7 +100,7 @@ export function AbcDataTable({ data, isLoading }: AbcDataTableProps) {
             header: "Cum. %",
             cell: ({ row }) => (
                 <span className="text-xs text-muted-foreground italic">
-                    {row.original.cumulativePct.toFixed(1)}%
+                    {(row.original.cumulativePct ?? 0).toFixed(1)}%
                 </span>
             ),
         },

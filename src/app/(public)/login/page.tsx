@@ -57,6 +57,14 @@ type FieldErrors = {
 }
 
 export default function LoginPage() {
+    return (
+        <React.Suspense fallback={<div className="min-h-dvh flex items-center justify-center">Loading...</div>}>
+            <LoginForm />
+        </React.Suspense>
+    )
+}
+
+function LoginForm() {
     const router = useRouter()
     const searchParams = useSearchParams()
 
@@ -108,8 +116,9 @@ export default function LoginPage() {
             const next = searchParams.get("next") || "/main-dashboard"
             router.replace(next)
             router.refresh()
-        } catch (err: any) {
-            const raw = err?.message ? String(err.message) : "Network error. Please try again."
+        } catch (err: unknown) {
+            const errorObj = err as Error
+            const raw = errorObj?.message ? String(errorObj.message) : "Network error. Please try again."
             const msg = normalizeLoginErrorMessage(raw)
             toast.error("Sign in failed", { description: msg })
         } finally {
@@ -275,3 +284,4 @@ export default function LoginPage() {
         </div>
     )
 }
+

@@ -20,7 +20,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { StockOutRisk } from "../../types/stock-health.schema";
+import { StockOutRisk } from "../types";
 
 interface StockOutRiskChartsProps {
   data: StockOutRisk[];

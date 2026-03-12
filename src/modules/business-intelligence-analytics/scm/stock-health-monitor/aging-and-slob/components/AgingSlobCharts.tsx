@@ -15,7 +15,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { SlobAging } from "../../types/stock-health.schema";
+import { SlobAging } from "../types";
 
 interface AgingSlobChartsProps {
   data: SlobAging[];

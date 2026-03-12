@@ -1,6 +1,6 @@
 "use client";
 
-import React, {useState, useEffect, useMemo} from "react";
+import React, {useState, useEffect, useMemo, useCallback} from "react";
 import {format, startOfMonth, differenceInDays} from "date-fns";
 import {Card, CardContent} from "@/components/ui/card";
 import {Input} from "@/components/ui/input";
@@ -46,7 +46,7 @@ export default function UnfulfilledOrdersModule() {
         };
     }, [data]);
 
-    const handleFetch = async () => {
+    const handleFetch = useCallback(async () => {
         setLoading(true);
         try {
             const result = await getUnfulfilledOrders(start, end);
@@ -57,11 +57,11 @@ export default function UnfulfilledOrdersModule() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [start, end]);
 
     useEffect(() => {
         handleFetch();
-    }, []);
+    }, [handleFetch]);
 
     return (
         <div className="p-8 space-y-6 max-w-[1600px] mx-auto bg-background min-h-screen">

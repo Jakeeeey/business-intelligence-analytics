@@ -15,11 +15,11 @@ interface Props {
     endDate: string;
 }
 
-export const ExportReportModal = ({ isOpen, onClose, data, startDate, endDate }: Props) => {
+export const ExportReportModal = ({ isOpen, onClose, data }: Props) => {
     const [printNotFulfilled, setPrintNotFulfilled] = useState(true);
     const [printWithConcerns, setPrintWithConcerns] = useState(true);
 
-    const printFilteredData = useMemo(() => {
+    useMemo(() => {
         return data.filter(order => {
             if (printNotFulfilled && order.unfulfilledStatus === 'Not Fulfilled') return true;
             if (printWithConcerns && order.unfulfilledStatus === 'Fulfilled With Concerns') return true;

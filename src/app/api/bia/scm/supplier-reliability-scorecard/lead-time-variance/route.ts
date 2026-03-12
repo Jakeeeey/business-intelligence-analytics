@@ -55,7 +55,7 @@ export async function GET(req: NextRequest) {
 
     const data = await springRes.json();
     return NextResponse.json(data);
-  } catch (err) {
+  } catch {
     return NextResponse.json(
       { ok: false, error: "Gateway Error" },
       { status: 502 },

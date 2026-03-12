@@ -1,4 +1,5 @@
 // src/app/(business-intelligence-analytics)/bia/scm/inventory-performance-dashboard/abc-analysis/page.tsx
+import React, { Suspense } from "react";
 import {
     Breadcrumb,
     BreadcrumbItem,
@@ -15,14 +16,14 @@ import { cookies } from "next/headers";
 
 // ✅ Wire the module you asked for
 import AbcAnalysisPage from "@/modules/business-intelligence-analytics/scm/inventory-performance-dashboard/abc-analysis/AbcAnalysisPage";
-import { ScmFilterProvider } from "@/modules/business-intelligence-analytics/scm/providers/ScmFilterProvider";
+import { ScmFilterProvider } from "@/modules/business-intelligence-analytics/scm/inventory-performance-dashboard/abc-analysis/providers/ScmFilterProvider";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const COOKIE_NAME = "vos_access_token";
 
-function decodeJwtPayload(token: string): any | null {
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
     try {
         const parts = token.split(".");
         if (parts.length < 2) return null;
@@ -38,7 +39,7 @@ function decodeJwtPayload(token: string): any | null {
     }
 }
 
-function pickString(obj: any, keys: string[]): string {
+function pickString(obj: Record<string, unknown> | null, keys: string[]): string {
     for (const k of keys) {
         const v = obj?.[k];
         if (typeof v === "string" && v.trim()) return v.trim();
@@ -102,6 +103,10 @@ export default async function Page() {
                                 </BreadcrumbItem>
                                 <BreadcrumbSeparator className="hidden md:block shrink-0" />
                                 <BreadcrumbItem className="hidden md:block shrink-0">
+                                    <BreadcrumbLink>SCM</BreadcrumbLink>
+                                </BreadcrumbItem>
+                                <BreadcrumbSeparator className="hidden md:block shrink-0" />
+                                <BreadcrumbItem className="hidden md:block shrink-0">
                                     <BreadcrumbLink>Inventory Performance Dashboard</BreadcrumbLink>
                                 </BreadcrumbItem>
                                 <BreadcrumbSeparator className="hidden md:block shrink-0" />
@@ -122,9 +127,11 @@ export default async function Page() {
 
             {/* ✅ Only content scrolls inside RIGHT column */}
             <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
-                <ScmFilterProvider>
-                    <AbcAnalysisPage />
-                </ScmFilterProvider>
+                <Suspense fallback={<div className="p-4 text-sm text-muted-foreground">Loading ABC Analysis...</div>}>
+                    <ScmFilterProvider>
+                        <AbcAnalysisPage />
+                    </ScmFilterProvider>
+                </Suspense>
             </main>
         </div>
     );
