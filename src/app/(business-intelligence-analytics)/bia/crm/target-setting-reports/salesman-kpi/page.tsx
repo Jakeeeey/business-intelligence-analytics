@@ -1,3 +1,4 @@
+import React, { Suspense } from "react";
 import {
     Breadcrumb,
     BreadcrumbItem,
@@ -124,7 +125,9 @@ export default async function Page() {
 
             {/* ✅ Only content scrolls inside RIGHT column */}
             <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-2 sm:p-4">
-                <SalesmanKPIModule />
+                <Suspense fallback={<div className="p-4 text-sm text-muted-foreground">Loading Salesman KPIs...</div>}>
+                    <SalesmanKPIModule />
+                </Suspense>
             </main>
         </div>
     );
