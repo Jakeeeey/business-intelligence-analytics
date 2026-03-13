@@ -19,46 +19,46 @@ function ReportTableSkeletonRows(props: { rows?: number }) {
         <TableRow key={`sk-${i}`} className="whitespace-nowrap">
           <TableCell className="border-r border-border">
             <div className="space-y-2">
-              <Skeleton className="h-4 w-[180px]" />
-              <Skeleton className="h-3 w-[120px]" />
+              <Skeleton className="h-4 w-45" />
+              <Skeleton className="h-3 w-30" />
             </div>
           </TableCell>
 
           <TableCell className="border-r border-border">
-            <Skeleton className="h-4 w-[260px]" />
+            <Skeleton className="h-4 w-65" />
           </TableCell>
 
           {/* FREQ 1 */}
           <TableCell className="text-right">
-            <Skeleton className="ml-auto h-4 w-[110px]" />
+            <Skeleton className="ml-auto h-4 w-27.5" />
           </TableCell>
           <TableCell>
-            <Skeleton className="h-4 w-[140px]" />
+            <Skeleton className="h-4 w-35" />
           </TableCell>
           <TableCell className="text-right">
-            <Skeleton className="ml-auto h-4 w-[110px]" />
+            <Skeleton className="ml-auto h-4 w-27.5" />
           </TableCell>
           <TableCell className="border-r border-border">
-            <Skeleton className="h-4 w-[140px]" />
+            <Skeleton className="h-4 w-35" />
           </TableCell>
 
           {/* FREQ 2 */}
           <TableCell className="text-right">
-            <Skeleton className="ml-auto h-4 w-[110px]" />
+            <Skeleton className="ml-auto h-4 w-27.5" />
           </TableCell>
           <TableCell>
-            <Skeleton className="h-4 w-[140px]" />
+            <Skeleton className="h-4 w-35" />
           </TableCell>
           <TableCell className="text-right">
-            <Skeleton className="ml-auto h-4 w-[110px]" />
+            <Skeleton className="ml-auto h-4 w-27.5" />
           </TableCell>
           <TableCell className="border-r border-border">
-            <Skeleton className="h-4 w-[140px]" />
+            <Skeleton className="h-4 w-35" />
           </TableCell>
 
           {/* TOTAL */}
           <TableCell className="text-right">
-            <Skeleton className="ml-auto h-4 w-[120px]" />
+            <Skeleton className="ml-auto h-4 w-30" />
           </TableCell>
         </TableRow>
       ))}
@@ -97,7 +97,7 @@ export function SalesReportTable(props: { rows: SalesReportRow[]; loading?: bool
               <Table className="w-full">
                 <TableHeader>
                   <TableRow className="whitespace-nowrap">
-                    <TableHead rowSpan={2} className="min-w-[200px] align-middle border-r border-border">
+                    <TableHead rowSpan={2} className="min-w-50 align-middle border-r border-border">
                       CLASSIFICATION
                     </TableHead>
                     <TableHead rowSpan={2} className="min-w-[320px] align-middle border-r border-border">
@@ -111,21 +111,21 @@ export function SalesReportTable(props: { rows: SalesReportRow[]; loading?: bool
                       FREQ 2 ( 16 - END )
                     </TableHead>
 
-                    <TableHead rowSpan={2} className="min-w-[140px] text-right align-middle">
+                    <TableHead rowSpan={2} className="min-w-35 text-right align-middle">
                       TOTAL (SI)
                     </TableHead>
                   </TableRow>
 
                   <TableRow className="whitespace-nowrap">
-                    <TableHead className="text-right min-w-[140px]">Allocated (SO)</TableHead>
-                    <TableHead className="min-w-[140px]">SO Date</TableHead>
-                    <TableHead className="text-right min-w-[140px]">Net Sales (SI)</TableHead>
-                    <TableHead className="min-w-[140px] border-r border-border">SI Date</TableHead>
+                    <TableHead className="text-right min-w-35">Allocated (SO)</TableHead>
+                    <TableHead className="min-w-35">SO Date</TableHead>
+                    <TableHead className="text-right min-w-35">Net Sales (SI)</TableHead>
+                    <TableHead className="min-w-35 border-r border-border">SI Date</TableHead>
 
-                    <TableHead className="text-right min-w-[140px]">Allocated (SO)</TableHead>
-                    <TableHead className="min-w-[140px]">SO Date</TableHead>
-                    <TableHead className="text-right min-w-[140px]">Net Sales (SI)</TableHead>
-                    <TableHead className="min-w-[140px] border-r border-border">SI Date</TableHead>
+                    <TableHead className="text-right min-w-35">Allocated (SO)</TableHead>
+                    <TableHead className="min-w-35">SO Date</TableHead>
+                    <TableHead className="text-right min-w-35">Net Sales (SI)</TableHead>
+                    <TableHead className="min-w-35 border-r border-border">SI Date</TableHead>
                   </TableRow>
                 </TableHeader>
 

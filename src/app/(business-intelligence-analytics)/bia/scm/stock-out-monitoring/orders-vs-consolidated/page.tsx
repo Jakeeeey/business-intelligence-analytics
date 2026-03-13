@@ -13,7 +13,8 @@ import { NavUser } from "../../../_components/nav-user";
 import { cookies } from "next/headers";
 
 // FIX 1: Corrected the import to match the exported module name
-import ComingSoon from "../../../_components/ComingSoon";
+
+import OrderedvsConsolidatedModule from "@/modules/business-intelligence-analytics/scm/stock-out-monitoring/orders-vs-consolidated";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -127,7 +128,7 @@ export default async function Page() {
 
             {/* ✅ Removed the p-2 sm:p-4 padding so the module can control its own spacing */}
             <main className="p-4 sm:p-6 min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
-                <ComingSoon />
+                <OrderedvsConsolidatedModule />
             </main>
         </div>
     );

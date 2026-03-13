@@ -1,13 +1,25 @@
 // src/modules/business-intelligence-analytics/sales-report/product-sales-performance/types.ts
 
 export type ProductSaleRecord = {
+  id: string;
+  customerName: string;
+  brgy: string;
   city: string;
   province: string;
+  supplierId: number;
   supplier: string;
+  productId: number;
   productName: string;
   productDescription?: string;
   amount: number;
   date: string; // ISO date string
+  salesmanCode: string;
+  salesmanName: string;
+  divisionId: number;
+  divisionName: string;
+  operationId: number;
+  operationCode: string;
+  operationName: string;
 };
 
 export type DateRangePreset = "yesterday" | "today" | "tomorrow" | "this-week" | "this-month" | "this-year" | "custom";
@@ -20,6 +32,9 @@ export type ProductPerformanceFilters = {
   products: string[];
   cities: string[];
   provinces: string[];
+  divisions: string[];
+  operations: string[];
+  salesmen: string[];
 };
 
 export type ProductPerformanceKpis = {
@@ -56,4 +71,15 @@ export type SupplierPerformance = {
   supplier: string;
   revenue: number;
   products: TopItem[];
+};
+
+
+export type ModalItem = { name: string; revenue: number; count: number };
+
+
+export type ModalConfig = {
+  type: "product" | "supplier" | "customer" | "location" | "salesman" | "division" | "operation";
+  item: ModalItem;
+  rank: number;
+  color: string;
 };

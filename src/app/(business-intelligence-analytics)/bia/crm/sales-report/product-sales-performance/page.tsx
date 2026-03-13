@@ -14,7 +14,8 @@ import { cookies } from "next/headers";
 
 // ✅ Wire the actual module
 // import ProductSalesPerformanceModule from "@/modules/business-intelligence-analytics/crm/sales-report/product-sales-performance";
-import ComingSoon from "@/app/(business-intelligence-analytics)/bia/_components/ComingSoon";
+// import ComingSoon from "@/app/(business-intelligence-analytics)/bia/_components/ComingSoon";
+import ProductSalesPerformance from "@/modules/business-intelligence-analytics/crm/sales-report/product-sales-performance";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -125,7 +126,7 @@ export default async function Page() {
 
             {/* ✅ Only content scrolls inside RIGHT column */}
             <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-2 sm:p-4">
-                <ComingSoon />
+                <ProductSalesPerformance />
             </main>
         </div>
     );
