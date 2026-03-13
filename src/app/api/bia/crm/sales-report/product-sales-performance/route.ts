@@ -63,10 +63,17 @@ export async function GET(req: NextRequest) {
       
     // });
     return NextResponse.json(records);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("API Route Error:", error);
+    const message =
+      error instanceof Error
+        ? error.message
+        : typeof error === "object" && error !== null && "message" in error
+        ? String((error as { message?: unknown }).message)
+        : String(error ?? "Internal server error");
+
     return NextResponse.json(
-      { error: error?.message || "Internal server error" },
+      { error: message || "Internal server error" },
       { status: 500 },
     );
   }
