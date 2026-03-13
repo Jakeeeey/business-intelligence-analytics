@@ -133,15 +133,15 @@ export async function fetchSTTReportData(
 
     const data = await res.json();
 
-    console.log("[Sales Report Summary] Response received:", {
-      status: res.status,
-      ok: res.ok,
-      dataType: Array.isArray(data) ? "array" : typeof data,
-      dataLength: Array.isArray(data)
-        ? data.length
-        : data?.data?.length || "N/A",
-      sample: Array.isArray(data) ? data[0] : data,
-    });
+    // console.log("[Sales Report Summary] Response received:", {
+    //   status: res.status,
+    //   ok: res.ok,
+    //   dataType: Array.isArray(data) ? "array" : typeof data,
+    //   dataLength: Array.isArray(data)
+    //     ? data.length
+    //     : data?.data?.length || "N/A",
+    //   sample: Array.isArray(data) ? data[0] : data,
+    // });
 
     if (!Array.isArray(data)) {
       throw new Error("Invalid sales report response format");
