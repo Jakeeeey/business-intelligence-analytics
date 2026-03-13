@@ -6,11 +6,7 @@ import {
   setCacheData,
   clearExpiredCache,
 } from "../utils/cache";
-import {
-  idbGetUnwrapped,
-  idbSet,
-  idbClearExpired,
-} from "../utils/indexedDB";
+import { idbGetUnwrapped, idbSet, idbClearExpired } from "../utils/indexedDB";
 
 const CACHE_PREFIX = "product-sales-performance";
 
@@ -119,7 +115,9 @@ export async function fetchProductSalesData(
 
     return records;
   } catch (error: unknown) {
-    if ((error as any)?.name === "AbortError") throw error as Error;
+    // handle aborts specifically; DOMException/AbortError may not be Error in some environments
+    const errName = (error as { name?: unknown })?.name;
+    if (errName === "AbortError") throw error as Error;
     console.error("Error fetching product sales data:", error);
     const message = error instanceof Error ? error.message : String(error);
     const rethrow = new Error(
