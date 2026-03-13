@@ -53,68 +53,74 @@ function pctFmt(n: number) {
   return `${n.toFixed(1)}%`;
 }
 
+const MONTHS_SHORT = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
+
 const GRANULARITY_LABELS: Record<Granularity, string> = {
   daily: "Daily",
   weekly: "Weekly",
   biweekly: "Bi-Weekly",
-  semimonth: "Semi-Month",
   monthly: "Monthly",
+  bimonthly: "Bi-Monthly",
   quarterly: "Quarterly",
+  semiannually: "Semi-Annually",
   yearly: "Yearly",
 };
 
 function humanizePeriodKey(key: string, granularity: Granularity): string {
+  const m = String(key ?? "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return key;
+
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  const day = Number(m[3]);
+  const start = new Date(y, mo - 1, day);
+  const mon = (dt: Date) => MONTHS_SHORT[dt.getMonth()];
+
   if (granularity === "daily") {
-    const d = new Date(key + "T00:00:00");
-    return isNaN(d.getTime())
-      ? key
-      : d.toLocaleDateString("en-PH", { month: "short", day: "numeric" });
+    return `${mon(start)} ${day}`;
   }
-  if (granularity === "weekly" || granularity === "biweekly") {
-    const [yr, wk] = key.split("-W");
-    return `Wk ${wk}, '${yr?.slice(2)}`;
+  if (granularity === "weekly") {
+    const end = new Date(y, mo - 1, day + 6);
+    return start.getMonth() === end.getMonth()
+      ? `${mon(start)} ${day}-${end.getDate()}`
+      : `${mon(start)} ${day} - ${mon(end)} ${end.getDate()}`;
   }
-  if (granularity === "semimonth") {
-    const [yr, mo, half] = key.split("-");
-    const months = [
-      "Jan",
-      "Feb",
-      "Mar",
-      "Apr",
-      "May",
-      "Jun",
-      "Jul",
-      "Aug",
-      "Sep",
-      "Oct",
-      "Nov",
-      "Dec",
-    ];
-    return `${months[Number(mo) - 1] ?? mo} ${half === "1" ? "1-15" : "16+"} '${yr?.slice(2)}`;
+  if (granularity === "biweekly") {
+    const end = new Date(y, mo - 1, day + 13);
+    return start.getMonth() === end.getMonth()
+      ? `${mon(start)} ${day}-${end.getDate()}`
+      : `${mon(start)} ${day} - ${mon(end)} ${end.getDate()}`;
   }
   if (granularity === "monthly") {
-    const [yr, mo] = key.split("-");
-    const months = [
-      "Jan",
-      "Feb",
-      "Mar",
-      "Apr",
-      "May",
-      "Jun",
-      "Jul",
-      "Aug",
-      "Sep",
-      "Oct",
-      "Nov",
-      "Dec",
-    ];
-    return `${months[Number(mo) - 1] ?? mo} '${yr?.slice(2)}`;
+    return `${mon(start)} ${y}`;
+  }
+  if (granularity === "bimonthly") {
+    const endMonth = new Date(y, mo + 1, 0);
+    return `${mon(start)}-${mon(endMonth)} ${y}`;
   }
   if (granularity === "quarterly") {
-    const [yr, q] = key.split("-Q");
-    return `Q${q} '${yr?.slice(2)}`;
+    const q = Math.floor((mo - 1) / 3) + 1;
+    return `Q${q} ${y}`;
   }
-  if (granularity === "yearly") return key;
+  if (granularity === "semiannually") {
+    return `H${mo <= 6 ? 1 : 2} ${y}`;
+  }
+  if (granularity === "yearly") {
+    return `${y}`;
+  }
   return key;
 }
 

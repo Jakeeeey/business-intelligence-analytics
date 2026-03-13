@@ -34,39 +34,59 @@ function fmtLocalDate(d: Date): string {
 }
 
 function getBucketKey(date: Date, granularity: Granularity): string {
-  const y = date.getFullYear();
-  const m = date.getMonth() + 1;
-  const d = date.getDate();
-  const mm = String(m).padStart(2, "0");
-  const dd = String(d).padStart(2, "0");
+  const base = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const fmt = (dt: Date) =>
+    `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
 
   switch (granularity) {
     case "daily":
-      return `${y}-${mm}-${dd}`;
+      return fmt(base);
     case "weekly": {
-      const jan1 = new Date(y, 0, 1);
-      const week = Math.ceil(
-        ((date.getTime() - jan1.getTime()) / 86400000 + jan1.getDay() + 1) / 7,
-      );
-      return `${y}-W${String(week).padStart(2, "0")}`;
+      const day = base.getDay();
+      const daysFromMonday = (day + 6) % 7;
+      const monday = new Date(base);
+      monday.setDate(base.getDate() - daysFromMonday);
+      return fmt(monday);
     }
     case "biweekly": {
-      const jan1 = new Date(y, 0, 1);
-      const week = Math.ceil(
-        ((date.getTime() - jan1.getTime()) / 86400000 + jan1.getDay() + 1) / 7,
+      const day = base.getDay();
+      const daysFromMonday = (day + 6) % 7;
+      const weekStart = new Date(base);
+      weekStart.setDate(base.getDate() - daysFromMonday);
+
+      const yearStart = new Date(base.getFullYear(), 0, 1);
+      const ysDaysFromMonday = (yearStart.getDay() + 6) % 7;
+      const yearFirstMonday = new Date(yearStart);
+      yearFirstMonday.setDate(yearStart.getDate() - ysDaysFromMonday);
+
+      const msPerWeek = 7 * 24 * 60 * 60 * 1000;
+      const weekIndex = Math.floor(
+        (weekStart.getTime() - yearFirstMonday.getTime()) / msPerWeek,
       );
-      return `${y}-BW${String(Math.ceil(week / 2)).padStart(2, "0")}`;
+      const biIndex = Math.floor(weekIndex / 2);
+      const bucketStart = new Date(
+        yearFirstMonday.getTime() + biIndex * 14 * 24 * 60 * 60 * 1000,
+      );
+      return fmt(bucketStart);
     }
-    case "semimonth":
-      return `${y}-${mm}-${d <= 15 ? "A" : "B"}`;
     case "monthly":
-      return `${y}-${mm}`;
-    case "quarterly":
-      return `${y}-Q${Math.ceil(m / 3)}`;
+      return fmt(new Date(base.getFullYear(), base.getMonth(), 1));
+    case "bimonthly": {
+      const startMonth = base.getMonth() - (base.getMonth() % 2);
+      return fmt(new Date(base.getFullYear(), startMonth, 1));
+    }
+    case "quarterly": {
+      const startMonth = Math.floor(base.getMonth() / 3) * 3;
+      return fmt(new Date(base.getFullYear(), startMonth, 1));
+    }
+    case "semiannually": {
+      const startMonth = base.getMonth() < 6 ? 0 : 6;
+      return fmt(new Date(base.getFullYear(), startMonth, 1));
+    }
     case "yearly":
-      return `${y}`;
+      return fmt(new Date(base.getFullYear(), 0, 1));
     default:
-      return `${y}-${mm}-${dd}`;
+      return fmt(base);
   }
 }
 

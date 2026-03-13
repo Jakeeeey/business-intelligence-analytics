@@ -122,9 +122,10 @@ export type Granularity =
   | "daily"
   | "weekly"
   | "biweekly"
-  | "semimonth"
+  | "bimonthly"
   | "monthly"
   | "quarterly"
+  | "semiannually"
   | "yearly";
 
 // Recharts tooltip prop types

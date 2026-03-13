@@ -24,6 +24,7 @@ export function getAccessToken(): string | null {
   if (typeof window !== "undefined") {
     const t = window.localStorage.getItem("access_token");
     if (t) return t;
+    console.log("access token:",  t);
   }
 
   // Option B: env token fallback (dev/service token)
