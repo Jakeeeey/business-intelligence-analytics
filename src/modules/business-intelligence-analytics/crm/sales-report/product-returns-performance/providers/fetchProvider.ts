@@ -6,11 +6,7 @@ import {
   setCacheData,
   clearExpiredCache,
 } from "../utils/cache";
-import {
-  idbGetUnwrapped,
-  idbSet,
-  idbClearExpired,
-} from "../utils/indexedDB";
+import { idbGetUnwrapped, idbSet, idbClearExpired } from "../utils/indexedDB";
 
 const CACHE_PREFIX = "product-returns-performance";
 
@@ -81,23 +77,28 @@ export async function fetchProductReturnsData(
       const idbSummary = await idbGetUnwrapped(`summary:${cacheKey}`);
       if (idbSummary && options?.onCacheData) {
         // idbSummary is a compact summary; normalize any blank fields
-        const normalize = (r: any) => ({
-          ...r,
-          supplier:
-            (r.supplier && String(r.supplier).trim()) || "Unknown Supplier",
-          productName:
-            (r.productName && String(r.productName).trim()) ||
-            "Unknown Product",
-          customerName:
-            (r.customerName && String(r.customerName).trim()) ||
-            "Unknown Customer",
-          salesmanName:
-            (r.salesmanName && String(r.salesmanName).trim()) ||
-            "Unknown Salesman",
-          city: (r.city && String(r.city).trim()) || "Unknown City",
-          province:
-            (r.province && String(r.province).trim()) || "Unknown Province",
-        });
+        const normalize = (r: unknown): ProductReturnRecord => {
+          const obj = r as ProductReturnRecord;
+          return {
+            ...obj,
+            supplier:
+              (obj.supplier && String(obj.supplier).trim()) ||
+              "Unknown Supplier",
+            productName:
+              (obj.productName && String(obj.productName).trim()) ||
+              "Unknown Product",
+            customerName:
+              (obj.customerName && String(obj.customerName).trim()) ||
+              "Unknown Customer",
+            salesmanName:
+              (obj.salesmanName && String(obj.salesmanName).trim()) ||
+              "Unknown Salesman",
+            city: (obj.city && String(obj.city).trim()) || "Unknown City",
+            province:
+              (obj.province && String(obj.province).trim()) ||
+              "Unknown Province",
+          };
+        };
         options.onCacheData(
           Array.isArray(idbSummary)
             ? idbSummary.map(normalize)
@@ -194,7 +195,8 @@ export async function fetchProductReturnsData(
     return records;
   } catch (error: unknown) {
     // If the request was aborted, propagate silently (caller handles AbortError)
-    if ((error as any)?.name === "AbortError" || signal?.aborted) {
+    const errName = (error as { name?: unknown })?.name;
+    if (errName === "AbortError" || signal?.aborted) {
       throw error as Error;
     }
 
