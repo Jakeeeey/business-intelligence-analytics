@@ -32,13 +32,13 @@ import {
   NativeSelect,
   NativeSelectOption,
 } from "@/components/ui/native-select";
-import { Button } from "@/components/ui/button";
-import {
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-} from "@/components/ui/popover";
-import { ScrollArea } from "@/components/ui/scroll-area";
+// import { Button } from "@/components/ui/button";
+// import {
+//   Popover,
+//   PopoverTrigger,
+//   PopoverContent,
+// } from "@/components/ui/popover";
+// import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 
 /* ─── Helpers ─────────────────────────────────────────────────── */
@@ -181,11 +181,11 @@ const InsightStat = React.memo(function InsightStat({
 });
 
 /* ─── Brand Summary ───────────────────────────────────────────── */
-type BrandSummary = {
-  brandName: string;
-  totalOrdered: number;
-  orderCount: number;
-};
+// type BrandSummary = {
+//   brandName: string;
+//   totalOrdered: number;
+//   orderCount: number;
+// };
 
 /* ─── Props ───────────────────────────────────────────────────── */
 type Props = { productSummaries: ProductOrdersSummary[] };
@@ -263,9 +263,9 @@ export function TopProductsTab({ productSummaries }: Props) {
   const [selectedProduct, setSelectedProduct] = React.useState<string | null>(
     null,
   );
-  const [selectedBrand, setSelectedBrand] = React.useState<string | null>(null);
-  const [brandSearch, setBrandSearch] = React.useState("");
-  const [categorySearch, setCategorySearch] = React.useState("");
+  // const [selectedBrand, setSelectedBrand] = React.useState<string | null>(null);
+  // const [brandSearch] = React.useState("");
+  // const [categorySearch] = React.useState("");
   const [searchQuery, setSearchQuery] = React.useState("");
   const [appliedSearch, setAppliedSearch] = React.useState("");
 
@@ -318,61 +318,61 @@ export function TopProductsTab({ productSummaries }: Props) {
         .slice(0, 10),
     [productSummaries],
   );
-  const brandSummaries = React.useMemo((): BrandSummary[] => {
-    const map = new Map<string, BrandSummary>();
-    for (const p of productSummaries) {
-      const key = p.brandName || "Unknown";
-      const existing = map.get(key);
-      if (existing) {
-        existing.totalOrdered += p.totalOrdered;
-        existing.orderCount += p.orderCount;
-      } else
-        map.set(key, {
-          brandName: key,
-          totalOrdered: p.totalOrdered,
-          orderCount: p.orderCount,
-        });
-    }
-    return Array.from(map.values())
-      .sort((a, b) => b.totalOrdered - a.totalOrdered)
-      .slice(0, 10);
-  }, [productSummaries]);
+  // const brandSummaries = React.useMemo((): BrandSummary[] => {
+  //   const map = new Map<string, BrandSummary>();
+  //   for (const p of productSummaries) {
+  //     const key = p.brandName || "Unknown";
+  //     const existing = map.get(key);
+  //     if (existing) {
+  //       existing.totalOrdered += p.totalOrdered;
+  //       existing.orderCount += p.orderCount;
+  //     } else
+  //       map.set(key, {
+  //         brandName: key,
+  //         totalOrdered: p.totalOrdered,
+  //         orderCount: p.orderCount,
+  //       });
+  //   }
+  //   return Array.from(map.values())
+  //     .sort((a, b) => b.totalOrdered - a.totalOrdered)
+  //     .slice(0, 10);
+  // }, [productSummaries]);
 
-  const totalPages = Math.ceil(sorted.length / itemsPerPage);
-  const paginatedItems = sorted.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage,
-  );
+  // const totalPages = Math.ceil(sorted.length / itemsPerPage);
+  // const paginatedItems = sorted.slice(
+  //   (currentPage - 1) * itemsPerPage,
+  //   currentPage * itemsPerPage,
+  // );
 
   /* NOTE: unique brand / category lists for dropdowns */
-  const uniqueBrands = React.useMemo(
-    () =>
-      [...new Set(productSummaries.map((p) => p.brandName))]
-        .filter(Boolean)
-        .sort(),
-    [productSummaries],
-  );
-  const uniqueCategories = React.useMemo(
-    () =>
-      [...new Set(productSummaries.map((p) => p.categoryName))]
-        .filter(Boolean)
-        .sort(),
-    [productSummaries],
-  );
+  // const uniqueBrands = React.useMemo(
+  //   () =>
+  //     [...new Set(productSummaries.map((p) => p.brandName))]
+  //       .filter(Boolean)
+  //       .sort(),
+  //   [productSummaries],
+  // );
+  // const uniqueCategories = React.useMemo(
+  //   () =>
+  //     [...new Set(productSummaries.map((p) => p.categoryName))]
+  //       .filter(Boolean)
+  //       .sort(),
+  //   [productSummaries],
+  // );
 
-  const filteredBrands = React.useMemo(() => {
-    if (!brandSearch) return uniqueBrands;
-    return uniqueBrands.filter((b) =>
-      b.toLowerCase().includes(brandSearch.toLowerCase()),
-    );
-  }, [uniqueBrands, brandSearch]);
+  // const filteredBrands = React.useMemo(() => {
+  //   if (!brandSearch) return uniqueBrands;
+  //   return uniqueBrands.filter((b) =>
+  //     b.toLowerCase().includes(brandSearch.toLowerCase()),
+  //   );
+  // }, [uniqueBrands, brandSearch]);
 
-  const filteredCategories = React.useMemo(() => {
-    if (!categorySearch) return uniqueCategories;
-    return uniqueCategories.filter((c) =>
-      c.toLowerCase().includes(categorySearch.toLowerCase()),
-    );
-  }, [uniqueCategories, categorySearch]);
+  // const filteredCategories = React.useMemo(() => {
+  //   if (!categorySearch) return uniqueCategories;
+  //   return uniqueCategories.filter((c) =>
+  //     c.toLowerCase().includes(categorySearch.toLowerCase()),
+  //   );
+  // }, [uniqueCategories, categorySearch]);
 
   const filteredSorted = React.useMemo(() => {
     let data = sorted;

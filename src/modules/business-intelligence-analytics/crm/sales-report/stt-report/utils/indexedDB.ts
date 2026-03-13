@@ -97,7 +97,7 @@ export async function idbClearExpired(prefix?: string): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       const tx = db.transaction("datasets", "readwrite");
       const store = tx.objectStore("datasets");
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    
       const req = store.openCursor();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       req.onsuccess = (event: any) => {

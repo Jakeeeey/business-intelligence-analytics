@@ -13,7 +13,7 @@ import { NavUser } from "../../../_components/nav-user";
 import { cookies } from "next/headers";
 
 // ✅ Wire the actual module
-import ComingSoon from "../../../_components/ComingSoon";
+// import ComingSoon from "../../../_components/ComingSoon";
 import ProductReturnsPerformanceModule from "@/modules/business-intelligence-analytics/crm/sales-report/product-returns-performance";
 
 

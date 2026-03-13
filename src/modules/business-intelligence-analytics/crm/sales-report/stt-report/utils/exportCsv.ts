@@ -207,6 +207,7 @@ export function exportToExcel(
     const invAoa: unknown[][] = [["Invoices (deduplicated by invoiceId)"], [`Date Range: ${ctx.dateFrom} to ${ctx.dateTo}`], [], INVOICE_HEADERS, ...invoiceRows];
     const invWs = XLSX.utils.aoa_to_sheet(invAoa);
     // autosize invoice sheet cols
+     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     invWs["!cols"] = INVOICE_HEADERS.map((h, i) => ({ wch: Math.min(Math.max(10, String(h).length + 2), 50) }));
     XLSX.utils.book_append_sheet(wb, invWs, "Invoices");
 

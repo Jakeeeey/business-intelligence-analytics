@@ -20,20 +20,20 @@ function InvoicesTableSkeletonRows(props: { rows?: number }) {
           <TableCell className="border-r border-border">
             <div className="space-y-2">
               <Skeleton className="h-4 w-[320px]" />
-              <Skeleton className="h-3 w-[200px]" />
+              <Skeleton className="h-3 w-50" />
             </div>
           </TableCell>
 
           <TableCell className="border-r border-border">
-            <Skeleton className="h-4 w-[140px]" />
+            <Skeleton className="h-4 w-35" />
           </TableCell>
 
           <TableCell className="border-r border-border">
-            <Skeleton className="h-4 w-[160px]" />
+            <Skeleton className="h-4 w-40" />
           </TableCell>
 
           <TableCell className="text-right">
-            <Skeleton className="ml-auto h-4 w-[150px]" />
+            <Skeleton className="ml-auto h-4 w-37.5" />
           </TableCell>
         </TableRow>
       ))}
@@ -61,12 +61,12 @@ export function SalesInvoicesTable(props: { rows: SalesInvoiceRow[]; loading?: b
               <Table className="w-full">
                 <TableHeader>
                   <TableRow className="whitespace-nowrap">
-                    <TableHead className="min-w-[420px] border-r border-border">CUSTOMER</TableHead>
-                    <TableHead className="min-w-[160px] border-r border-border">PO DATE</TableHead>
-                    <TableHead className="min-w-[180px] border-r border-border">
+                    <TableHead className="min-w-105 border-r border-border">CUSTOMER</TableHead>
+                    <TableHead className="min-w-40 border-r border-border">PO DATE</TableHead>
+                    <TableHead className="min-w-45 border-r border-border">
                       SALES INVOICE DATE
                     </TableHead>
-                    <TableHead className="min-w-[200px] text-right">NET AMOUNT (SI - SR)</TableHead>
+                    <TableHead className="min-w-50 text-right">NET AMOUNT (SI - SR)</TableHead>
                   </TableRow>
                 </TableHeader>
 

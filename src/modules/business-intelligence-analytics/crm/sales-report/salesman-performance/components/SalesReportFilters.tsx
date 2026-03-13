@@ -71,7 +71,7 @@ export function SalesReportFiltersBar(props: Props) {
           <div className="flex w-full flex-col gap-3 lg:w-auto lg:flex-row lg:items-center lg:justify-end">
             <div className="flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap lg:w-auto lg:flex-nowrap">
               {/* ✅ Salesman single-select (employee_id) */}
-              <div className="min-w-0 flex-1 sm:flex-none sm:min-w-[220px] lg:min-w-[240px]">
+              <div className="min-w-0 flex-1 sm:flex-none sm:min-w-55 lg:min-w-60">
                 <MultiSelect
                   mode="single"
                   placeholder="Select Salesman"
@@ -90,7 +90,7 @@ export function SalesReportFiltersBar(props: Props) {
               </div>
 
               {/* ✅ Accounts multi-select (salesman_code) */}
-              <div className="min-w-0 flex-1 sm:flex-none sm:min-w-[240px] lg:min-w-[260px]">
+              <div className="min-w-0 flex-1 sm:flex-none sm:min-w-60 lg:min-w-65">
                 <MultiSelect
                   mode="multi"
                   placeholder="Select Accounts"
@@ -105,7 +105,7 @@ export function SalesReportFiltersBar(props: Props) {
               </div>
 
               {/* Month stays multi-select */}
-              <div className="min-w-0 flex-1 sm:flex-none sm:min-w-[200px] lg:min-w-[200px]">
+              <div className="min-w-0 flex-1 sm:flex-none sm:min-w-50 lg:min-w-50">
                 <MultiSelect
                   mode="multi"
                   placeholder="Select Month"
@@ -120,7 +120,7 @@ export function SalesReportFiltersBar(props: Props) {
               </div>
 
               {/* Year single-select */}
-              <div className="min-w-0 flex-1 sm:flex-none sm:min-w-[120px] lg:min-w-[120px]">
+              <div className="min-w-0 flex-1 sm:flex-none sm:min-w-30 lg:min-w-30">
                 <MultiSelect
                   mode="single"
                   placeholder="Year"

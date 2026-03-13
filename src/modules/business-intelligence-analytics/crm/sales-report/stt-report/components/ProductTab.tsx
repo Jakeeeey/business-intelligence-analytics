@@ -415,15 +415,16 @@ function ProductTabComponent({ productSummaries }: ProductTabProps) {
             />
           </div>
           <div className="overflow-x-auto">
-            <Table className="table-fixed min-w-[860px]">
+            
+            <Table className="table-fixed min-w-215">
               <TableHeader>
                 <TableRow className="dark:border-zinc-700">
-                  <TableHead className="w-[48px]">#</TableHead>
-                  <TableHead className="w-[200px]">Product</TableHead>
-                  <TableHead className="w-[140px]">Supplier</TableHead>
-                  <TableHead className="w-[120px]">Category</TableHead>
+                  <TableHead className="w-12">#</TableHead>
+                  <TableHead className="w-50">Product</TableHead>
+                  <TableHead className="w-35">Supplier</TableHead>
+                  <TableHead className="w-30">Category</TableHead>
                   <TableHead
-                    className="w-[90px] cursor-pointer hover:text-foreground text-right"
+                    className="w-22.5 cursor-pointer hover:text-foreground text-right"
                     onClick={() => toggleSort("totalQuantity")}
                   >
                     Qty
@@ -434,7 +435,7 @@ function ProductTabComponent({ productSummaries }: ProductTabProps) {
                     />
                   </TableHead>
                   <TableHead
-                    className="w-[130px] cursor-pointer hover:text-foreground text-right"
+                    className="w-32.5 cursor-pointer hover:text-foreground text-right"
                     onClick={() => toggleSort("totalAmount")}
                   >
                     Revenue
@@ -445,7 +446,7 @@ function ProductTabComponent({ productSummaries }: ProductTabProps) {
                     />
                   </TableHead>
                   <TableHead
-                    className="w-[120px] cursor-pointer hover:text-foreground text-right"
+                    className="w-30or-pointer hover:text-foreground text-right"
                     onClick={() => toggleSort("totalDiscount")}
                   >
                     Discount
@@ -456,7 +457,7 @@ function ProductTabComponent({ productSummaries }: ProductTabProps) {
                     />
                   </TableHead>
                   <TableHead
-                    className="w-[90px] cursor-pointer hover:text-foreground text-right"
+                    className="w-22.5 cursor-pointer hover:text-foreground text-right"
                     onClick={() => toggleSort("returnQuantity")}
                   >
                     Rtn Qty
@@ -467,7 +468,7 @@ function ProductTabComponent({ productSummaries }: ProductTabProps) {
                     />
                   </TableHead>
                   <TableHead
-                    className="w-[120px] cursor-pointer hover:text-foreground text-right"
+                    className="w-30 cursor-pointer hover:text-foreground text-right"
                     onClick={() => toggleSort("returnAmount")}
                   >
                     Rtn Amt

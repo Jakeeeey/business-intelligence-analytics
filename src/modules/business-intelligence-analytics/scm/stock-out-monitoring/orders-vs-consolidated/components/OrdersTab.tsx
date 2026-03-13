@@ -39,20 +39,20 @@ export function OrdersTab({ canonicalOrders }: Props) {
   const [showFullyConsolidated, setShowFullyConsolidated] =
     React.useState<boolean>(true);
 
-  const uniqueOrderSuppliers = React.useMemo(
-    () =>
-      [...new Set(canonicalOrders.map((o) => o.supplierName))]
-        .filter(Boolean)
-        .sort(),
-    [canonicalOrders],
-  );
-  const uniqueOrderStatuses = React.useMemo(
-    () =>
-      [...new Set(canonicalOrders.map((o) => o.orderStatus))]
-        .filter(Boolean)
-        .sort(),
-    [canonicalOrders],
-  );
+  // const uniqueOrderSuppliers = React.useMemo(
+  //   () =>
+  //     [...new Set(canonicalOrders.map((o) => o.supplierName))]
+  //       .filter(Boolean)
+  //       .sort(),
+  //   [canonicalOrders],
+  // );
+  // const uniqueOrderStatuses = React.useMemo(
+  //   () =>
+  //     [...new Set(canonicalOrders.map((o) => o.orderStatus))]
+  //       .filter(Boolean)
+  //       .sort(),
+  //   [canonicalOrders],
+  // );
 
   const filteredOrders = React.useMemo(() => {
     let data = canonicalOrders;

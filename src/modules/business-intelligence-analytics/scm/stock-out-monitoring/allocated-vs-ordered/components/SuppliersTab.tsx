@@ -27,8 +27,8 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { useTheme } from "next-themes";
-import { Switch } from "@/components/ui/switch";
+// import { useTheme } from "next-themes";
+// import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type {
@@ -44,30 +44,30 @@ function pctFmt(n: number) {
   return `${n.toFixed(1)}%`;
 }
 
-const chartColors = [
-  "#3b82f6",
-  "#8b5cf6",
-  "#ec4899",
-  "#f97316",
-  "#22c55e",
-  "#14b8a6",
-  "#eab308",
-  "#ef4444",
-  "#6366f1",
-  "#06b6d4",
-];
-const chartColorsDark = [
-  "#2563eb",
-  "#6d28d9",
-  "#be185d",
-  "#c2410c",
-  "#15803d",
-  "#0f766e",
-  "#a16207",
-  "#b91c1c",
-  "#4338ca",
-  "#0e7490",
-];
+// const chartColors = [
+//   "#3b82f6",
+//   "#8b5cf6",
+//   "#ec4899",
+//   "#f97316",
+//   "#22c55e",
+//   "#14b8a6",
+//   "#eab308",
+//   "#ef4444",
+//   "#6366f1",
+//   "#06b6d4",
+// ];
+// const chartColorsDark = [
+//   "#2563eb",
+//   "#6d28d9",
+//   "#be185d",
+//   "#c2410c",
+//   "#15803d",
+//   "#0f766e",
+//   "#a16207",
+//   "#b91c1c",
+//   "#4338ca",
+//   "#0e7490",
+// ];
 
 /* ─── Custom Y-Axis Tick ──────────────────────────────────────── */
 function CustomYAxisTick({
@@ -292,9 +292,9 @@ type Props = {
 };
 
 export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
-  const { theme } = useTheme();
-  const isDark = theme === "dark";
-  const barColor = isDark ? chartColorsDark[0] : chartColors[0];
+  // const { theme } = useTheme();
+  // const isDark = theme === "dark";
+  // const barColor = isDark ? chartColorsDark[0] : chartColors[0];
 
   /* ─── Table state ── */
   const [sortKey, setSortKey] =
@@ -317,7 +317,7 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
   >(null);
   const [searchQuery, setSearchQuery] = React.useState("");
   const [appliedSearch, setAppliedSearch] = React.useState("");
-  const [showFullyAllocated, setShowFullyAllocated] =
+  const [showFullyAllocated] =
     React.useState<boolean>(true);
 
   const handleSort = React.useCallback(
@@ -409,13 +409,13 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
       }))
       .sort((a, b) => b.allocationGap - a.allocationGap);
   }, [drillDownSupplier, allRecords]);
-  const top10ByRate = React.useMemo(
-    () =>
-      [...supplierSummaries]
-        .sort((a, b) => a.allocationRate - b.allocationRate)
-        .slice(0, 10),
-    [supplierSummaries],
-  );
+  // const top10ByRate = React.useMemo(
+  //   () =>
+  //     [...supplierSummaries]
+  //       .sort((a, b) => a.allocationRate - b.allocationRate)
+  //       .slice(0, 10),
+  //   [supplierSummaries],
+  // );
 
   const totalPages = Math.ceil(sorted.length / itemsPerPage);
   const paginatedItems = sorted.slice(
@@ -469,7 +469,8 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
       if (typeof window !== "undefined") setContainerWidth(window.innerWidth);
       return;
     }
-    const update = () => setContainerWidth(Math.floor(el.getBoundingClientRect().width));
+    const update = () =>
+      setContainerWidth(Math.floor(el.getBoundingClientRect().width));
     const ro = new ResizeObserver(() => update());
     ro.observe(el);
     update();
@@ -485,9 +486,9 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
     return Math.max(10, Math.min(60, perBar));
   }, [containerWidth, top10ByOrders.length]);
 
-  const allocatedBarSize = React.useMemo(() => {
-    return Math.max(8, Math.min(40, Math.round(orderedBarSize * 0.28)));
-  }, [orderedBarSize]);
+  // const allocatedBarSize = React.useMemo(() => {
+  //   return Math.max(8, Math.min(40, Math.round(orderedBarSize * 0.28)));
+  // }, [orderedBarSize]);
 
   if (supplierSummaries.length === 0) {
     return (
@@ -498,7 +499,6 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
       </Card>
     );
   }
-
 
   return (
     <div className="space-y-4">
@@ -608,83 +608,83 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
         <CardContent>
           <div ref={chartRef} className="w-full">
             <ResponsiveContainer width="100%" height={300}>
-            <BarChart
-              data={top10ByOrders}
-              margin={{ top: 5, right: 20, left: 10, bottom: 70 }}
-              barCategoryGap="25%"
-            >
-              <CartesianGrid
-                strokeDasharray="3 3"
-                stroke="currentColor"
-                strokeOpacity={0.1}
-              />
-              <XAxis
-                dataKey="supplierName"
-                tick={(p) => <CustomXAxisTick {...p} onClick={openModal} />}
-                tickLine={false}
-                axisLine={{ stroke: "currentColor", strokeOpacity: 0.2 }}
-                interval={0}
-              />
-              <YAxis
-                tickFormatter={(v) => numFmt(v)}
-                tick={{ fontSize: 11 }}
-                tickLine={false}
-                axisLine={{ stroke: "currentColor", strokeOpacity: 0.2 }}
-              />
-              <Tooltip
-                content={(p: unknown) => (
-                  <GroupedBarTooltip
-                    {...(p as Parameters<typeof GroupedBarTooltip>[0])}
-                  />
-                )}
-              />
-              <Bar
-                dataKey="totalOrdered"
-                name="Ordered"
-                fill="#6366f1"
-                radius={[4, 4, 0, 0]}
-                barSize={orderedBarSize}
-                onMouseEnter={(d) => setHoveredBar(`ord::${d.supplierName}`)}
-                onMouseLeave={() => setHoveredBar(null)}
-                onClick={(d) => openModal(d.supplierName)}
-                cursor="pointer"
+              <BarChart
+                data={top10ByOrders}
+                margin={{ top: 5, right: 20, left: 10, bottom: 70 }}
+                barCategoryGap="25%"
               >
-                {top10ByOrders.map((e, i) => (
-                  <Cell
-                    key={i}
-                    fill="#6366f1"
-                    opacity={
-                      selectedSupplier && selectedSupplier !== e.supplierName
-                        ? 0.25
-                        : 1
-                    }
-                  />
-                ))}
-              </Bar>
-              <Bar
-                dataKey="totalAllocated"
-                name="Allocated"
-                fill="#10b981"
-                radius={[4, 4, 0, 0]}
-                barSize={orderedBarSize}
-                onMouseEnter={(d) => setHoveredBar(`alc::${d.supplierName}`)}
-                onMouseLeave={() => setHoveredBar(null)}
-                onClick={(d) => openModal(d.supplierName)}
-                cursor="pointer"
-              >
-                {top10ByOrders.map((e, i) => (
-                  <Cell
-                    key={i}
-                    fill="#10b981"
-                    opacity={
-                      selectedSupplier && selectedSupplier !== e.supplierName
-                        ? 0.25
-                        : 1
-                    }
-                  />
-                ))}
-              </Bar>
-            </BarChart>
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="currentColor"
+                  strokeOpacity={0.1}
+                />
+                <XAxis
+                  dataKey="supplierName"
+                  tick={(p) => <CustomXAxisTick {...p} onClick={openModal} />}
+                  tickLine={false}
+                  axisLine={{ stroke: "currentColor", strokeOpacity: 0.2 }}
+                  interval={0}
+                />
+                <YAxis
+                  tickFormatter={(v) => numFmt(v)}
+                  tick={{ fontSize: 11 }}
+                  tickLine={false}
+                  axisLine={{ stroke: "currentColor", strokeOpacity: 0.2 }}
+                />
+                <Tooltip
+                  content={(p: unknown) => (
+                    <GroupedBarTooltip
+                      {...(p as Parameters<typeof GroupedBarTooltip>[0])}
+                    />
+                  )}
+                />
+                <Bar
+                  dataKey="totalOrdered"
+                  name="Ordered"
+                  fill="#6366f1"
+                  radius={[4, 4, 0, 0]}
+                  barSize={orderedBarSize}
+                  onMouseEnter={(d) => setHoveredBar(`ord::${d.supplierName}`)}
+                  onMouseLeave={() => setHoveredBar(null)}
+                  onClick={(d) => openModal(d.supplierName)}
+                  cursor="pointer"
+                >
+                  {top10ByOrders.map((e, i) => (
+                    <Cell
+                      key={i}
+                      fill="#6366f1"
+                      opacity={
+                        selectedSupplier && selectedSupplier !== e.supplierName
+                          ? 0.25
+                          : 1
+                      }
+                    />
+                  ))}
+                </Bar>
+                <Bar
+                  dataKey="totalAllocated"
+                  name="Allocated"
+                  fill="#10b981"
+                  radius={[4, 4, 0, 0]}
+                  barSize={orderedBarSize}
+                  onMouseEnter={(d) => setHoveredBar(`alc::${d.supplierName}`)}
+                  onMouseLeave={() => setHoveredBar(null)}
+                  onClick={(d) => openModal(d.supplierName)}
+                  cursor="pointer"
+                >
+                  {top10ByOrders.map((e, i) => (
+                    <Cell
+                      key={i}
+                      fill="#10b981"
+                      opacity={
+                        selectedSupplier && selectedSupplier !== e.supplierName
+                          ? 0.25
+                          : 1
+                      }
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
             </ResponsiveContainer>
           </div>
           <div className="flex justify-center gap-6 mt-2">

@@ -490,6 +490,7 @@ export function useAllocatedvsOrdered() {
     let notAllocated = 0;
 
     for (const o of orderSummaries) {
+       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       if (o.allocationGap === 0) fullyAllocated++;
       else if (o.totalAllocated > 0) partiallyAllocated++;
       else notAllocated++;
@@ -650,7 +651,6 @@ export function useAllocatedvsOrdered() {
         setLoading(false);
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
 

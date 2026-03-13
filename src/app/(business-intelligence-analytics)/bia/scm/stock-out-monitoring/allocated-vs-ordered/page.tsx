@@ -13,7 +13,7 @@ import { NavUser } from "../../../_components/nav-user";
 import { cookies } from "next/headers";
 
 // FIX 1: Corrected the import to match the exported module name
-import ComingSoon from "../../../_components/ComingSoon";
+// import ComingSoon from "../../../_components/ComingSoon";
 import AllocatedvsOrderedModule from "@/modules/business-intelligence-analytics/scm/stock-out-monitoring/allocated-vs-ordered";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

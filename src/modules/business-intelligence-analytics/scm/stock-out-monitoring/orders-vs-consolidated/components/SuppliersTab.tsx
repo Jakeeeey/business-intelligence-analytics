@@ -233,8 +233,8 @@ export function SuppliersTab({ supplierSummaries }: Props) {
   const [itemsPerPage, setItemsPerPage] = React.useState(10);
 
   /* ─── Drill-down state ── */
-  const [drillSupplier, setDrillSupplier] = React.useState("all");
-  const [drillStatus, setDrillStatus] = React.useState("all");
+  const [drillSupplier] = React.useState("all");
+  const [drillStatus] = React.useState("all");
   const [searchQuery, setSearchQuery] = React.useState("");
   const [appliedSearch, setAppliedSearch] = React.useState("");
   const [showFullyConsolidated, setShowFullyConsolidated] =

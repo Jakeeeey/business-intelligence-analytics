@@ -278,7 +278,7 @@ function CustomXAxisTick({
     </g>
   );
 }
-
+ // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function CustomYAxisTick({
   x,
   y,
@@ -420,6 +420,7 @@ export function OverviewTab({
   const [selectedProduct, setSelectedProduct] = React.useState<string | null>(
     null,
   );
+   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [selectedSupplier, setSelectedSupplier] = React.useState<string | null>(
     null,
   );
@@ -485,7 +486,7 @@ export function OverviewTab({
     },
     [productSummaries],
   );
-
+ // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleSupplierBarClick = React.useCallback(
     (data: { supplierName: string }) => {
       const name = data.supplierName;

@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { useTheme } from "next-themes";
-import { Switch } from "@/components/ui/switch";
+// import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { ProductAllocationSummary } from "../types";
@@ -261,7 +261,7 @@ export function TopProductsTab({ productSummaries }: Props) {
 
   const [searchQuery, setSearchQuery] = React.useState("");
   const [appliedSearch, setAppliedSearch] = React.useState("");
-  const [showFullyAllocated, setShowFullyAllocated] =
+  const [showFullyAllocated] =
     React.useState<boolean>(true);
 
   /* ─── Chart state ────────────────────────────────────────── */

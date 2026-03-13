@@ -4,8 +4,8 @@ import * as React from "react";
 import {
   Area,
   AreaChart,
-  Bar,
-  BarChart,
+  // Bar,
+  // BarChart,
   CartesianGrid,
   Cell,
   Pie,
@@ -199,154 +199,154 @@ const GapTooltip = React.memo(function GapTooltip({
   );
 });
 
-const CustomBarTooltip = React.memo(function CustomBarTooltip({
-  active,
-  payload,
-  data,
-  valueKey,
-  nameKey,
-  valueLabel = "Value",
-}: {
-  active?: boolean;
-  payload?: Array<{ payload?: Record<string, unknown>; value?: number }>;
-  data: Array<Record<string, unknown>>;
-  valueKey: string;
-  nameKey: string;
-  valueLabel?: string;
-}) {
-  if (!active || !payload?.length) return null;
-  const item = (payload[0]?.payload || {}) as Record<string, unknown>;
-  const name = String(item[nameKey] || "");
-  const value = Number(item[valueKey] || 0);
-  const total = data.reduce((s, d) => s + Number(d[valueKey] || 0), 0);
-  const contribution = total > 0 ? ((value / total) * 100).toFixed(1) : "0.0";
-  const rank = data.findIndex((d) => String(d[nameKey]) === name) + 1;
-  return (
-    <div className="rounded-lg border bg-background p-3 shadow-md text-sm min-w-48 space-y-1 pointer-events-none">
-      <p className="font-semibold text-foreground leading-snug line-clamp-2">
-        {name}
-      </p>
-      <div className="border-t border-border pt-1.5 space-y-1">
-        <div className="flex justify-between gap-4">
-          <span className="text-muted-foreground">{valueLabel}</span>
-          <span className="font-medium tabular-nums">{numFmt(value)}</span>
-        </div>
-        <div className="flex justify-between gap-4">
-          <span className="text-muted-foreground">Contribution</span>
-          <span className="font-medium">{contribution}%</span>
-        </div>
-        <div className="flex justify-between gap-4">
-          <span className="text-muted-foreground">Rank</span>
-          <span className="font-medium">#{rank}</span>
-        </div>
-        <p className="text-[10px] text-primary pt-0.5 italic">
-          Click for quick insights
-        </p>
-      </div>
-    </div>
-  );
-});
+// const CustomBarTooltip = React.memo(function CustomBarTooltip({
+//   active,
+//   payload,
+//   data,
+//   valueKey,
+//   nameKey,
+//   valueLabel = "Value",
+// }: {
+//   active?: boolean;
+//   payload?: Array<{ payload?: Record<string, unknown>; value?: number }>;
+//   data: Array<Record<string, unknown>>;
+//   valueKey: string;
+//   nameKey: string;
+//   valueLabel?: string;
+// }) {
+//   if (!active || !payload?.length) return null;
+//   const item = (payload[0]?.payload || {}) as Record<string, unknown>;
+//   const name = String(item[nameKey] || "");
+//   const value = Number(item[valueKey] || 0);
+//   const total = data.reduce((s, d) => s + Number(d[valueKey] || 0), 0);
+//   const contribution = total > 0 ? ((value / total) * 100).toFixed(1) : "0.0";
+//   const rank = data.findIndex((d) => String(d[nameKey]) === name) + 1;
+//   return (
+//     <div className="rounded-lg border bg-background p-3 shadow-md text-sm min-w-48 space-y-1 pointer-events-none">
+//       <p className="font-semibold text-foreground leading-snug line-clamp-2">
+//         {name}
+//       </p>
+//       <div className="border-t border-border pt-1.5 space-y-1">
+//         <div className="flex justify-between gap-4">
+//           <span className="text-muted-foreground">{valueLabel}</span>
+//           <span className="font-medium tabular-nums">{numFmt(value)}</span>
+//         </div>
+//         <div className="flex justify-between gap-4">
+//           <span className="text-muted-foreground">Contribution</span>
+//           <span className="font-medium">{contribution}%</span>
+//         </div>
+//         <div className="flex justify-between gap-4">
+//           <span className="text-muted-foreground">Rank</span>
+//           <span className="font-medium">#{rank}</span>
+//         </div>
+//         <p className="text-[10px] text-primary pt-0.5 italic">
+//           Click for quick insights
+//         </p>
+//       </div>
+//     </div>
+//   );
+// });
 
 /* ─── Custom Axis Ticks (Clickable + Word-Wrapped) ───────────── */
 
-function CustomXAxisTick({
-  x,
-  y,
-  payload,
-  onClick,
-}: {
-  x?: number;
-  y?: number;
-  payload?: { value: string };
-  onClick?: (name: string) => void;
-}) {
-  if (!payload || x == null || y == null) return null;
-  const fullName = payload.value || "";
-  const maxChars = 13;
-  const words = fullName.split(/\s+/);
-  let line1 = "";
-  let line2 = "";
-  for (const w of words) {
-    if (!line1 || line1.length + w.length + 1 <= maxChars) {
-      line1 += (line1 ? " " : "") + w;
-    } else if (!line2 || line2.length + w.length + 1 <= maxChars) {
-      line2 += (line2 ? " " : "") + w;
-    }
-  }
-  if (line2.length > maxChars) line2 = line2.slice(0, maxChars - 1) + "…";
-  return (
-    <g transform={`translate(${x},${y + 4})`}>
-      <text
-        textAnchor="end"
-        fill="currentColor"
-        fontSize={10}
-        cursor={onClick ? "pointer" : "default"}
-        onClick={onClick ? () => onClick(fullName) : undefined}
-        transform="rotate(-30)"
-        style={{ transition: "opacity 0.12s" }}
-      >
-        <tspan x={0} dy="0">
-          {line1}
-        </tspan>
-        {line2 && (
-          <tspan x={0} dy="11">
-            {line2}
-          </tspan>
-        )}
-      </text>
-    </g>
-  );
-}
+// function CustomXAxisTick({
+//   x,
+//   y,
+//   payload,
+//   onClick,
+// }: {
+//   x?: number;
+//   y?: number;
+//   payload?: { value: string };
+//   onClick?: (name: string) => void;
+// }) {
+//   if (!payload || x == null || y == null) return null;
+//   const fullName = payload.value || "";
+//   const maxChars = 13;
+//   const words = fullName.split(/\s+/);
+//   let line1 = "";
+//   let line2 = "";
+//   for (const w of words) {
+//     if (!line1 || line1.length + w.length + 1 <= maxChars) {
+//       line1 += (line1 ? " " : "") + w;
+//     } else if (!line2 || line2.length + w.length + 1 <= maxChars) {
+//       line2 += (line2 ? " " : "") + w;
+//     }
+//   }
+//   if (line2.length > maxChars) line2 = line2.slice(0, maxChars - 1) + "…";
+//   return (
+//     <g transform={`translate(${x},${y + 4})`}>
+//       <text
+//         textAnchor="end"
+//         fill="currentColor"
+//         fontSize={10}
+//         cursor={onClick ? "pointer" : "default"}
+//         onClick={onClick ? () => onClick(fullName) : undefined}
+//         transform="rotate(-30)"
+//         style={{ transition: "opacity 0.12s" }}
+//       >
+//         <tspan x={0} dy="0">
+//           {line1}
+//         </tspan>
+//         {line2 && (
+//           <tspan x={0} dy="11">
+//             {line2}
+//           </tspan>
+//         )}
+//       </text>
+//     </g>
+//   );
+// }
 
-function CustomYAxisTick({
-  x,
-  y,
-  payload,
-  onClick,
-}: {
-  x?: number;
-  y?: number;
-  payload?: { value: string };
-  onClick?: (name: string) => void;
-}) {
-  if (!payload || x == null || y == null) return null;
-  const fullName = payload.value || "";
-  const maxChars = 18;
-  const words = fullName.split(/\s+/);
-  let line1 = "";
-  let line2 = "";
-  for (const w of words) {
-    if (!line1 || line1.length + w.length + 1 <= maxChars) {
-      line1 += (line1 ? " " : "") + w;
-    } else if (!line2 || line2.length + w.length + 1 <= maxChars) {
-      line2 += (line2 ? " " : "") + w;
-    }
-  }
-  if (line2.length > maxChars) line2 = line2.slice(0, maxChars - 1) + "…";
-  const hasTwoLines = !!line2;
-  const dy0 = hasTwoLines ? -6 : 4;
-  return (
-    <g transform={`translate(${x},${y})`}>
-      <text
-        textAnchor="end"
-        fill="currentColor"
-        fontSize={10}
-        cursor={onClick ? "pointer" : "default"}
-        onClick={onClick ? () => onClick(fullName) : undefined}
-        style={{ transition: "opacity 0.12s" }}
-      >
-        <tspan x={0} dy={dy0}>
-          {line1}
-        </tspan>
-        {hasTwoLines && (
-          <tspan x={0} dy={13}>
-            {line2}
-          </tspan>
-        )}
-      </text>
-    </g>
-  );
-}
+// function CustomYAxisTick({
+//   x,
+//   y,
+//   payload,
+//   onClick,
+// }: {
+//   x?: number;
+//   y?: number;
+//   payload?: { value: string };
+//   onClick?: (name: string) => void;
+// }) {
+//   if (!payload || x == null || y == null) return null;
+//   const fullName = payload.value || "";
+//   const maxChars = 18;
+//   const words = fullName.split(/\s+/);
+//   let line1 = "";
+//   let line2 = "";
+//   for (const w of words) {
+//     if (!line1 || line1.length + w.length + 1 <= maxChars) {
+//       line1 += (line1 ? " " : "") + w;
+//     } else if (!line2 || line2.length + w.length + 1 <= maxChars) {
+//       line2 += (line2 ? " " : "") + w;
+//     }
+//   }
+//   if (line2.length > maxChars) line2 = line2.slice(0, maxChars - 1) + "…";
+//   const hasTwoLines = !!line2;
+//   const dy0 = hasTwoLines ? -6 : 4;
+//   return (
+//     <g transform={`translate(${x},${y})`}>
+//       <text
+//         textAnchor="end"
+//         fill="currentColor"
+//         fontSize={10}
+//         cursor={onClick ? "pointer" : "default"}
+//         onClick={onClick ? () => onClick(fullName) : undefined}
+//         style={{ transition: "opacity 0.12s" }}
+//       >
+//         <tspan x={0} dy={dy0}>
+//           {line1}
+//         </tspan>
+//         {hasTwoLines && (
+//           <tspan x={0} dy={13}>
+//             {line2}
+//           </tspan>
+//         )}
+//       </text>
+//     </g>
+//   );
+// }
 
 /* ─── Donut Active Shape ─────────────────────────────────────── */
 
@@ -416,23 +416,28 @@ type OverviewTabProps = {
 export function OverviewTab({
   allocationByPeriod,
   allocationStatusDistribution,
-  productSummaries,
-  supplierSummaries,
+  // productSummaries,
+  // supplierSummaries,
   granularity,
   setGranularity,
+   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   onNavigateToTab,
 }: OverviewTabProps) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
+   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const activeChartColors = isDark ? chartColorsDark : chartColors;
 
   /* ─── Bar hover ──────────────────────────────────────────── */
+   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [hoveredBar, setHoveredBar] = React.useState<string | null>(null);
 
   /* ─── Selected bars ──────────────────────────────────────── */
+   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [selectedProduct, setSelectedProduct] = React.useState<string | null>(
     null,
   );
+   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [selectedSupplier, setSelectedSupplier] = React.useState<string | null>(
     null,
   );
@@ -466,65 +471,65 @@ export function OverviewTab({
       })),
     [allocationByPeriod, granularity],
   );
-  const top10Products = React.useMemo(
-    () => productSummaries.slice(0, 10),
-    [productSummaries],
-  );
-  const top10Suppliers = React.useMemo(
-    () => supplierSummaries.slice(0, 10),
-    [supplierSummaries],
-  );
+  // const top10Products = React.useMemo(
+  //   () => productSummaries.slice(0, 10),
+  //   [productSummaries],
+  // );
+  // const top10Suppliers = React.useMemo(
+  //   () => supplierSummaries.slice(0, 10),
+  //   [supplierSummaries],
+  // );
 
-  /* ─── Handlers ───────────────────────────────────────────── */
-  const handleProductBarClick = React.useCallback(
-    (data: { productName: string }) => {
-      const name = data.productName;
-      setSelectedProduct((prev) => (prev === name ? null : name));
-      const found = productSummaries.find((p) => p.productName === name);
-      if (found) setProductModal(found);
-    },
-    [productSummaries],
-  );
+  // /* ─── Handlers ───────────────────────────────────────────── */
+  // const handleProductBarClick = React.useCallback(
+  //   (data: { productName: string }) => {
+  //     const name = data.productName;
+  //     setSelectedProduct((prev) => (prev === name ? null : name));
+  //     const found = productSummaries.find((p) => p.productName === name);
+  //     if (found) setProductModal(found);
+  //   },
+  //   [productSummaries],
+  // );
 
-  const handleSupplierBarClick = React.useCallback(
-    (data: { supplierName: string }) => {
-      const name = data.supplierName;
-      setSelectedSupplier((prev) => (prev === name ? null : name));
-      const found = supplierSummaries.find((s) => s.supplierName === name);
-      if (found) setSupplierModal(found);
-    },
-    [supplierSummaries],
-  );
+  // const handleSupplierBarClick = React.useCallback(
+  //   (data: { supplierName: string }) => {
+  //     const name = data.supplierName;
+  //     setSelectedSupplier((prev) => (prev === name ? null : name));
+  //     const found = supplierSummaries.find((s) => s.supplierName === name);
+  //     if (found) setSupplierModal(found);
+  //   },
+  //   [supplierSummaries],
+  // );
 
-  const handleProductLabelClick = React.useCallback(
-    (name: string) => {
-      setSelectedProduct((prev) => (prev === name ? null : name));
-      const found = productSummaries.find((p) => p.productName === name);
-      if (found) setProductModal(found);
-    },
-    [productSummaries],
-  );
+  // const handleProductLabelClick = React.useCallback(
+  //   (name: string) => {
+  //     setSelectedProduct((prev) => (prev === name ? null : name));
+  //     const found = productSummaries.find((p) => p.productName === name);
+  //     if (found) setProductModal(found);
+  //   },
+  //   [productSummaries],
+  // );
 
-  const handleSupplierLabelClick = React.useCallback(
-    (name: string) => {
-      setSelectedSupplier((prev) => (prev === name ? null : name));
-      const found = supplierSummaries.find((s) => s.supplierName === name);
-      if (found) setSupplierModal(found);
-    },
-    [supplierSummaries],
-  );
+  // const handleSupplierLabelClick = React.useCallback(
+  //   (name: string) => {
+  //     setSelectedSupplier((prev) => (prev === name ? null : name));
+  //     const found = supplierSummaries.find((s) => s.supplierName === name);
+  //     if (found) setSupplierModal(found);
+  //   },
+  //   [supplierSummaries],
+  // );
 
-  const cellStyle = React.useCallback(
-    (prefix: string, name: string): React.CSSProperties => ({
-      filter:
-        hoveredBar === `${prefix}::${name}`
-          ? "brightness(1.25) drop-shadow(0 0 4px rgba(0,0,0,0.22))"
-          : undefined,
-      transition: "filter 0.1s ease, opacity 0.12s ease",
-      cursor: "pointer",
-    }),
-    [hoveredBar],
-  );
+  // const cellStyle = React.useCallback(
+  //   (prefix: string, name: string): React.CSSProperties => ({
+  //     filter:
+  //       hoveredBar === `${prefix}::${name}`
+  //         ? "brightness(1.25) drop-shadow(0 0 4px rgba(0,0,0,0.22))"
+  //         : undefined,
+  //     transition: "filter 0.1s ease, opacity 0.12s ease",
+  //     cursor: "pointer",
+  //   }),
+  //   [hoveredBar],
+  // );
 
   /* ─── Donut legend (memoized) ────────────────────────────── */
   const donutLegend = React.useMemo(

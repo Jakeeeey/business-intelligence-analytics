@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
+// import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { OrderAllocationSummary } from "../types";
@@ -38,7 +38,7 @@ export function OrdersTab({ orderSummaries }: Props) {
 
   const [searchQuery, setSearchQuery] = React.useState("");
   const [appliedSearch, setAppliedSearch] = React.useState("");
-  const [showFullyConsolidated, setShowFullyConsolidated] =
+  const [showFullyConsolidated] =
     React.useState<boolean>(true);
 
   const handleSort = React.useCallback(

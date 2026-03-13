@@ -26,10 +26,10 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
-    const branches = searchParams.getAll("branches");
-    const salesmen = searchParams.getAll("salesman");
-    const statuses = searchParams.getAll("statuses");
-    const suppliers = searchParams.getAll("suppliers");
+    // const branches = searchParams.getAll("branches");
+    // const salesmen = searchParams.getAll("salesman");
+    // const statuses = searchParams.getAll("statuses");
+    // const suppliers = searchParams.getAll("suppliers");
 
     const url = new URL(
       `${SPRING_API_BASE}/api/view-sales-report-itemized/filtered`,

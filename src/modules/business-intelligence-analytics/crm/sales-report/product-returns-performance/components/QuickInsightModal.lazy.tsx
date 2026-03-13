@@ -11,7 +11,7 @@ const phpFormatter = new Intl.NumberFormat("en-US", { style: "currency", currenc
 const fmtPHP = (v: number) => phpFormatter.format(v);
 
 
-
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function QuickInsightModal({
   config, filteredData, onClose, onNavigateToTab,
 }: {

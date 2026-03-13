@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import type { AllocationFilters, DateRangePreset } from "../types";
+import type { AllocationFilters } from "../types";
 // import { exportToExcel } from "../utils/exportCsv";
 
 type FiltersProps = {
@@ -192,13 +192,13 @@ export function Filters({
     }
   }, [filters.dateRangePreset, filters.dateFrom, filters.dateTo]);
 
-  const setDatePreset = React.useCallback(
-    (preset: DateRangePreset) => {
-      // console.log("dateRangePreset selected:", preset);
-      onChange({ ...filters, dateRangePreset: preset });
-    },
-    [filters, onChange],
-  );
+  // const setDatePreset = React.useCallback(
+  //   (preset: DateRangePreset) => {
+  //     // console.log("dateRangePreset selected:", preset);
+  //     onChange({ ...filters, dateRangePreset: preset });
+  //   },
+  //   [filters, onChange],
+  // );
 
   // If records are provided, compute counts scoped to the selected date range.
   const computedSupplierCounts: Record<string, number> | undefined =

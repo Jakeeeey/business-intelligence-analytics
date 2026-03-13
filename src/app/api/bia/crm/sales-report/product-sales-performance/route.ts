@@ -9,14 +9,13 @@ export async function GET(req: NextRequest) {
       req.headers.get("authorization")?.replace("Bearer ", "") ||
       req.cookies.get("vos_access_token")?.value; // <-- read token from cookie
 
-    
     if (!token) {
       return NextResponse.json(
         { error: "Unauthorized: no token provided" },
         { status: 401 },
       );
     }
-    
+
     // Extract startDate and endDate from query parameters
     const { searchParams } = new URL(req.url);
     const startDate = searchParams.get("startDate");
@@ -28,7 +27,7 @@ export async function GET(req: NextRequest) {
     );
     if (startDate) url.searchParams.append("startDate", startDate);
     if (endDate) url.searchParams.append("endDate", endDate);
-    
+
     // Call Spring API
     const response = await fetch(url.toString(), {
       headers: {
@@ -37,7 +36,7 @@ export async function GET(req: NextRequest) {
       },
       cache: "no-store",
     });
-    
+
     const data = await response.json();
 
     if (!response.ok) {
@@ -60,7 +59,7 @@ export async function GET(req: NextRequest) {
     //   url: url.toString(),
     //   tokenProvided: !!token,
     //   response:response,
-      
+
     // });
     return NextResponse.json(records);
   } catch (error: unknown) {
@@ -69,8 +68,8 @@ export async function GET(req: NextRequest) {
       error instanceof Error
         ? error.message
         : typeof error === "object" && error !== null && "message" in error
-        ? String((error as { message?: unknown }).message)
-        : String(error ?? "Internal server error");
+          ? String((error as { message?: unknown }).message)
+          : String(error ?? "Internal server error");
 
     return NextResponse.json(
       { error: message || "Internal server error" },

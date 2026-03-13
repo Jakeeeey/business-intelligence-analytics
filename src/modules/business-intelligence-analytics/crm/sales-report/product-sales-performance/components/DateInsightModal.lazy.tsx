@@ -1,6 +1,6 @@
 "use client";
 import * as React from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 const phpFormatter = new Intl.NumberFormat("en-US", { style: "currency", currency: "PHP", minimumFractionDigits: 2, maximumFractionDigits: 2 });

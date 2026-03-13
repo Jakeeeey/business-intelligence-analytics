@@ -14,7 +14,7 @@ import { cookies } from "next/headers";
 
 // ✅ Wire the actual module
 // import ProductSalesPerformanceModule from "@/modules/business-intelligence-analytics/crm/sales-report/product-sales-performance";
-import ComingSoon from "@/app/(business-intelligence-analytics)/bia/_components/ComingSoon";
+// import ComingSoon from "@/app/(business-intelligence-analytics)/bia/_components/ComingSoon";
 import ProductSalesPerformance from "@/modules/business-intelligence-analytics/crm/sales-report/product-sales-performance";
 
 export const runtime = "nodejs";

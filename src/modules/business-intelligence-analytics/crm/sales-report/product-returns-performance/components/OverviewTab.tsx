@@ -517,6 +517,7 @@ interface CustomizedDotProps {
 }
 
 function CustomizedDot(props: CustomizedDotProps) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { cx, cy, payload, onClick, r = 6 } = props || {};
   if (cx === undefined || cy === undefined) return null;
   // use stroke/fill from recharts props to keep theme colours; fall back to red for returns
@@ -547,7 +548,7 @@ type OverviewTabProps = {
 };
 
 export function OverviewTab({
-  returnsByPeriod,
+  // returnsByPeriod,
   topProducts,
   topSuppliers,
   filteredData,

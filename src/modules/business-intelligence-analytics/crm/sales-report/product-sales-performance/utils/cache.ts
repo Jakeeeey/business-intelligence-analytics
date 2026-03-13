@@ -157,6 +157,8 @@ export function clearExpiredCache(prefix?: string): void {
         if (entry.expiresAt && now > entry.expiresAt) {
           localStorage.removeItem(key);
         }
+        
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
         // Invalid cache entry, remove it
         localStorage.removeItem(key);

@@ -205,11 +205,11 @@ function ReturnsTabComponent({ returnRecords }: ReturnsTabProps) {
           </div>
 
           <div className="overflow-x-auto">
-            <Table className="table-fixed min-w-[900px]">
+            <Table className="table-fixed min-w-225">
               <TableHeader>
                 <TableRow className="dark:border-zinc-700">
                   <TableHead
-                    className="w-[120px] cursor-pointer hover:text-foreground"
+                    className="w-30 cursor-pointer hover:text-foreground"
                     onClick={() => toggleSort("invoiceNo")}
                   >
                     Invoice No
@@ -231,7 +231,7 @@ function ReturnsTabComponent({ returnRecords }: ReturnsTabProps) {
                     />
                   </TableHead>
                   <TableHead
-                    className="w-[150px] cursor-pointer hover:text-foreground"
+                    className="w-37.5 cursor-pointer hover:text-foreground"
                     onClick={() => toggleSort("customerName")}
                   >
                     Customer
@@ -242,7 +242,7 @@ function ReturnsTabComponent({ returnRecords }: ReturnsTabProps) {
                     />
                   </TableHead>
                   <TableHead
-                    className="w-[170px] cursor-pointer hover:text-foreground"
+                    className="w-42.5 cursor-pointer hover:text-foreground"
                     onClick={() => toggleSort("productName")}
                   >
                     Product

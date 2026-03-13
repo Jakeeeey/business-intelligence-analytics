@@ -13,7 +13,7 @@ import { NavUser } from "../../../_components/nav-user";
 import { cookies } from "next/headers";
 
 // ✅ Wire the module you asked for
-import ComingSoon from "../../../_components/ComingSoon";
+// import ComingSoon from "../../../_components/ComingSoon";
 import STTReportModule from "@/modules/business-intelligence-analytics/crm/sales-report/stt-report";
 
 export const runtime = "nodejs";
