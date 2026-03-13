@@ -1,6 +1,9 @@
 // src/modules/business-intelligence-analytics/sales-report/product-sales-performance/utils/exportCsv.ts
 
-export function exportToCSV(data: Record<string, unknown>[], filename: string) {
+export function exportToCSV(
+  data: Array<Record<string, unknown>>,
+  filename: string,
+) {
   if (!data || data.length === 0) {
     console.warn("No data to export");
     return;
@@ -11,14 +14,16 @@ export function exportToCSV(data: Record<string, unknown>[], filename: string) {
     const csvContent = [
       headers.join(","),
       ...data.map((row) =>
-        headers.map((header) => {
-          const value = row[header];
-          // Handle values that contain commas by wrapping in quotes
-          if (typeof value === "string" && value.includes(",")) {
-            return `"${value}"`;
-          }
-          return value;
-        }).join(",")
+        headers
+          .map((header) => {
+            const value = (row as Record<string, unknown>)[header];
+            // Handle values that contain commas by wrapping in quotes
+            if (typeof value === "string" && value.includes(",")) {
+              return `"${value}"`;
+            }
+            return String(value ?? "");
+          })
+          .join(","),
       ),
     ].join("\n");
 

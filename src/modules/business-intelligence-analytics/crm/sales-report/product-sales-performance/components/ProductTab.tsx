@@ -2,15 +2,19 @@
 "use client";
 
 import * as React from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { useTheme } from "next-themes";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, ArrowUpDown, ChevronRight, ChevronDown } from "lucide-react";
 import type { TopItem, ProductTrend, ProductSaleRecord } from "../types";
-import {
-  ChartContainer,
-  ChartTooltip,
-} from "@/components/ui/chart";
+import { ChartContainer, ChartTooltip } from "@/components/ui/chart";
 import {
   LineChart,
   Line,
@@ -29,176 +33,126 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
+// Module-scope formatter — avoids creating Intl.NumberFormat on every call
+const _phpFmt = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "PHP",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+const formatCurrency = (v: number) => _phpFmt.format(v);
+
+// Chart color palettes at module scope — avoids array recreation on every render
+const chartColors = [
+  "#3b82f6", // blue
+  "#8b5cf6", // violet
+  "#ec4899", // pink
+  "#f97316", // orange
+  "#22c55e", // green
+  "#14b8a6", // teal
+  "#eab308", // yellow
+  "#ef4444", // red
+  "#6366f1", // indigo
+  "#06b6d4", // cyan
+  "#84cc16", // lime
+  "#a855f7", // purple
+  "#f43f5e", // rose
+  "#0ea5e9", // sky
+  "#10b981", // emerald
+  "#f59e0b", // amber
+  "#64748b", // slate
+  "#9333ea", // deep purple
+  "#0891b2", // deep cyan
+  "#dc2626", // strong red
+];
+const chartColorsDark = [
+  "#2563eb", // deep blue
+  "#6d28d9", // deep violet
+  "#be185d", // deep pink
+  "#c2410c", // deep orange
+  "#15803d", // deep green
+  "#0f766e", // deep teal
+  "#a16207", // deep yellow
+  "#b91c1c", // deep red
+  "#4338ca", // deep indigo
+  "#0e7490", // deep cyan
+  "#4d7c0f", // deep lime
+  "#7e22ce", // deep purple
+  "#9f1239", // deep rose
+  "#0369a1", // deep sky
+  "#047857", // deep emerald
+  "#b45309", // deep amber
+  "#475569", // dark slate
+  "#5b21b6", // rich purple
+  "#155e75", // rich cyan
+  "#991b1b", // strong deep red
+];
+
 type ProductTabProps = {
   topProducts: TopItem[];
   productTrends: ProductTrend[];
   filteredData: ProductSaleRecord[];
 };
 
-export function ProductTab({ topProducts, productTrends, filteredData }: ProductTabProps) {
+export function ProductTab({
+  topProducts,
+  productTrends,
+  filteredData,
+}: ProductTabProps) {
+  const { theme } = useTheme();
+  const resolvedTheme = theme;
+  const isDark = resolvedTheme === "dark";
+
   const [searchTerm, setSearchTerm] = React.useState("");
-  const [sortBy, setSortBy] = React.useState<"revenue" | "transactions" | "avg">("revenue");
+  const [sortBy, setSortBy] = React.useState<
+    "revenue" | "transactions" | "avg"
+  >("revenue");
   const [sortOrder, setSortOrder] = React.useState<"asc" | "desc">("desc");
   const [currentPage, setCurrentPage] = React.useState(1);
   const [itemsPerPage, setItemsPerPage] = React.useState(10);
-  const [timePeriod, setTimePeriod] = React.useState<"daily" | "weekly" | "bi-weekly" | "monthly" | "bi-monthly" | "quarterly" | "semi-annually" | "yearly">("monthly");
-  const [expandedProducts, setExpandedProducts] = React.useState<Set<string>>(new Set());
-  const [expandedSuppliers, setExpandedSuppliers] = React.useState<Set<string>>(new Set());
-  const [supplierPeriodSort, setSupplierPeriodSort] = React.useState<Map<string, { sortBy: "period" | "revenue" | "transactions" | "avg"; sortOrder: "asc" | "desc" }>>(new Map());
+  const [timePeriod, setTimePeriod] = React.useState<
+    | "daily"
+    | "weekly"
+    | "bi-weekly"
+    | "monthly"
+    | "bi-monthly"
+    | "quarterly"
+    | "semi-annually"
+    | "yearly"
+  >("monthly");
+  const [expandedProducts, setExpandedProducts] = React.useState<Set<string>>(
+    new Set(),
+  );
+  const [, setExpandedSuppliers] = React.useState<Set<string>>(new Set());
+  const [selectedProductInTrend, setSelectedProductInTrend] = React.useState<
+    string | null
+  >(null);
+  const [hoveredProductInTrend, setHoveredProductInTrend] = React.useState<
+    string | null
+  >(null);
+  type CustomerSortField =
+    | "customer"
+    | "division"
+    | "operation"
+    | "salesman"
+    | "revenue"
+    | "transactions"
+    | "avg";
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "PHP",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(value);
-  };
+  const [customerSortMap, setCustomerSortMap] = React.useState<
+    Map<string, { by: CustomerSortField; order: "asc" | "desc" }>
+  >(new Map());
 
-  const toggleProduct = (productName: string) => {
-    setExpandedProducts((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(productName)) {
-        newSet.delete(productName);
-      } else {
-        newSet.add(productName);
-      }
-      return newSet;
-    });
-  };
-
-  const toggleSupplier = (supplierKey: string, event: React.MouseEvent) => {
-    event.stopPropagation();
-    setExpandedSuppliers((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(supplierKey)) {
-        newSet.delete(supplierKey);
-      } else {
-        newSet.add(supplierKey);
-      }
-      return newSet;
-    });
-  };
-
-  const getSupplierTimePeriodData = (
-    productName: string,
-    supplierName: string,
-    sortBy: "period" | "revenue" | "transactions" | "avg" = "period",
-    sortOrder: "asc" | "desc" = "desc"
-  ) => {
-    const dataMap = new Map<string, { revenue: number; transactions: number }>();
-
-    filteredData
-      .filter((record) => record.productName === productName && record.supplier === supplierName)
-      .forEach((record) => {
-        const date = new Date(record.date);
-        let key = "";
-
-        if (timePeriod === "daily") {
-          key = record.date.split("T")[0];
-        } else if (timePeriod === "weekly") {
-          const weekStart = new Date(date);
-          weekStart.setDate(date.getDate() - date.getDay());
-          key = weekStart.toISOString().split("T")[0];
-        } else if (timePeriod === "bi-weekly") {
-          const weekNum = Math.floor(date.getDate() / 14);
-          key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-W${weekNum}`;
-        } else if (timePeriod === "monthly") {
-          key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-        } else if (timePeriod === "bi-monthly") {
-          const biMonth = Math.floor(date.getMonth() / 2);
-          key = `${date.getFullYear()}-Q${biMonth + 1}`;
-        } else if (timePeriod === "quarterly") {
-          const quarter = Math.floor(date.getMonth() / 3);
-          key = `${date.getFullYear()}-Q${quarter + 1}`;
-        } else if (timePeriod === "semi-annually") {
-          const half = Math.floor(date.getMonth() / 6);
-          key = `${date.getFullYear()}-H${half + 1}`;
-        } else if (timePeriod === "yearly") {
-          key = `${date.getFullYear()}`;
-        }
-
-        const existing = dataMap.get(key) || { revenue: 0, transactions: 0 };
-        dataMap.set(key, {
-          revenue: existing.revenue + record.amount,
-          transactions: existing.transactions + 1,
-        });
-      });
-
-    return Array.from(dataMap.entries())
-      .map(([period, data]) => ({ period, revenue: data.revenue, transactions: data.transactions }))
-      .sort((a, b) => {
-        let comparison = 0;
-        
-        if (sortBy === "period") {
-          const getDateValue = (dateStr: string) => {
-            if (timePeriod === "daily" || timePeriod === "weekly") {
-              return new Date(dateStr).getTime();
-            } else if (timePeriod === "monthly") {
-              return new Date(dateStr + "-01").getTime();
-            } else if (timePeriod === "bi-weekly") {
-              const match = dateStr.match(/(\d{4})-(\d{2})-W(\d+)/);
-              if (match) {
-                const [, year, month, week] = match;
-                return new Date(parseInt(year), parseInt(month) - 1, parseInt(week) * 14 + 1).getTime();
-              }
-            } else if (timePeriod === "bi-monthly" || timePeriod === "quarterly") {
-              const match = dateStr.match(/(\d{4})-Q(\d+)/);
-              if (match) {
-                const [, year, quarter] = match;
-                const month = (parseInt(quarter) - 1) * (timePeriod === "bi-monthly" ? 2 : 3);
-                return new Date(parseInt(year), month, 1).getTime();
-              }
-            } else if (timePeriod === "semi-annually") {
-              const match = dateStr.match(/(\d{4})-H(\d+)/);
-              if (match) {
-                const [, year, half] = match;
-                const month = (parseInt(half) - 1) * 6;
-                return new Date(parseInt(year), month, 1).getTime();
-              }
-            } else if (timePeriod === "yearly") {
-              return new Date(parseInt(dateStr), 0, 1).getTime();
-            }
-            return 0;
-          };
-          comparison = getDateValue(a.period) - getDateValue(b.period);
-        } else if (sortBy === "revenue") {
-          comparison = a.revenue - b.revenue;
-        } else if (sortBy === "transactions") {
-          comparison = a.transactions - b.transactions;
-        } else if (sortBy === "avg") {
-          comparison = (a.revenue / a.transactions) - (b.revenue / b.transactions);
-        }
-        
-        return sortOrder === "asc" ? comparison : -comparison;
-      });
-  };
-
-  const getProductSuppliers = (productName: string) => {
-    const supplierMap = new Map<string, { revenue: number; transactions: number }>();
-
-    filteredData
-      .filter((record) => record.productName === productName)
-      .forEach((record) => {
-        const existing = supplierMap.get(record.supplier) || { revenue: 0, transactions: 0 };
-        supplierMap.set(record.supplier, {
-          revenue: existing.revenue + record.amount,
-          transactions: existing.transactions + 1,
-        });
-      });
-
-    return Array.from(supplierMap.entries())
-      .map(([supplier, data]) => ({
-        supplier,
-        revenue: data.revenue,
-        transactions: data.transactions,
-      }))
-      .sort((a, b) => b.revenue - a.revenue);
-  };
+  const [customerPage, setCustomerPage] = React.useState<Map<string, number>>(
+    new Map(),
+  );
+  const [customerItemsPerPage] = React.useState(10);
 
   const filteredProducts = React.useMemo(() => {
     const products = searchTerm
-      ? topProducts.filter((p) => p.name.toLowerCase().includes(searchTerm.toLowerCase()))
+      ? topProducts.filter((p) =>
+          p.name.toLowerCase().includes(searchTerm.toLowerCase()),
+        )
       : [...topProducts];
 
     // Sort products
@@ -217,6 +171,258 @@ export function ProductTab({ topProducts, productTrends, filteredData }: Product
     return products;
   }, [topProducts, searchTerm, sortBy, sortOrder]);
 
+  // CSV export not currently used; keep implementation commented for future use
+
+  const toggleProduct = React.useCallback((productName: string) => {
+    setExpandedProducts((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(productName)) {
+        newSet.delete(productName);
+      } else {
+        newSet.add(productName);
+      }
+      return newSet;
+    });
+  }, []);
+
+  const handleTrendLineClick = React.useCallback(
+    (productName: string) => {
+      setSelectedProductInTrend(productName);
+      setExpandedProducts((prev) => {
+        const next = new Set(prev);
+        next.add(productName);
+        return next;
+      });
+      const idx = filteredProducts.findIndex((p) => p.name === productName);
+      if (idx !== -1) {
+        const targetPage = Math.ceil((idx + 1) / itemsPerPage);
+        setCurrentPage(targetPage);
+      }
+      setTimeout(() => {
+        const id = `product-row-${productName.replace(/[^a-zA-Z0-9]/g, "-")}`;
+        document
+          .getElementById(id)
+          ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 150);
+    },
+    [filteredProducts, itemsPerPage],
+  );
+
+  React.useEffect(() => {
+    // Listen for navigation to product row and auto-expand when hash is present
+    const sanitize = (s: string) => s.replace(/[^a-zA-Z0-9]/g, "-");
+    const handler = () => {
+      const hash = window.location.hash;
+      if (hash.startsWith("#product-row-")) {
+        const safeId = hash.replace("#product-row-", "");
+        const match = topProducts.find((p) => sanitize(p.name) === safeId);
+        if (match) {
+          setExpandedProducts((prev) => {
+            const next = new Set(prev);
+            next.add(match.name);
+            return next;
+          });
+          setTimeout(() => {
+            const idx = filteredProducts.findIndex(
+              (p) => p.name === match.name,
+            );
+            if (idx !== -1) setCurrentPage(Math.ceil((idx + 1) / itemsPerPage));
+            const id = `product-row-${safeId}`;
+            let attempts = 0;
+            const tryScroll = () => {
+              const el = document.getElementById(id);
+              if (el)
+                el.scrollIntoView({ behavior: "smooth", block: "center" });
+              else if (attempts < 5) {
+                attempts += 1;
+                setTimeout(tryScroll, 120);
+              }
+            };
+            tryScroll();
+          }, 50);
+        }
+      }
+    };
+    window.addEventListener("hashchange", handler);
+    handler();
+    return () => window.removeEventListener("hashchange", handler);
+  }, [topProducts, filteredProducts, itemsPerPage]);
+
+  // `toggleSupplier` removed — not used in current UI
+  const getYAxisWidth = (data: { revenue?: number }[]) => {
+    if (!data?.length) return 60;
+
+    const maxValue = Math.max(...data.map((d) => d.revenue || 0));
+    const formatted = formatCurrency(maxValue);
+
+    return Math.max(60, formatted.length * 8); // 8px per char approx
+  };
+
+  const formatPeriodLabel = React.useCallback(
+    (key: string) => {
+      const MONTHS = [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec",
+      ];
+      if (!key) return "";
+      try {
+        if (timePeriod === "daily") {
+          const parts = key.split("T")[0].split("-");
+          return `${MONTHS[Number(parts[1]) - 1]} ${Number(parts[2])}`;
+        }
+        if (timePeriod === "weekly") {
+          const parts = key.split("-");
+          if (parts.length === 3) {
+            const y = Number(parts[0]),
+              m = Number(parts[1]),
+              d = Number(parts[2]);
+            const start = new Date(y, m - 1, d);
+            const end = new Date(start);
+            end.setDate(start.getDate() + 6);
+            const sm = MONTHS[start.getMonth()],
+              em = MONTHS[end.getMonth()];
+            return sm === em
+              ? `${sm} ${start.getDate()}-${end.getDate()}`
+              : `${sm} ${start.getDate()} - ${em} ${end.getDate()}`;
+          }
+          return key;
+        }
+        if (timePeriod === "bi-weekly") {
+          const bw = key.match(/^(\d{4})-(\d{2})-W(\d+)/);
+          if (bw) {
+            const y = Number(bw[1]),
+              m = Number(bw[2]),
+              n = Number(bw[3]);
+            const startDay = n === 0 ? 1 : n * 14;
+            const endDay = Math.min(new Date(y, m, 0).getDate(), startDay + 13);
+            const start = new Date(y, m - 1, startDay);
+            const sm = MONTHS[start.getMonth()],
+              em = MONTHS[new Date(y, m - 1, endDay).getMonth()];
+            return sm === em
+              ? `${sm} ${startDay}-${endDay}`
+              : `${sm} ${startDay} - ${em} ${endDay}`;
+          }
+          return key;
+        }
+        if (timePeriod === "monthly") {
+          const parts = key.split("-");
+          if (parts.length >= 2)
+            return `${MONTHS[Number(parts[1]) - 1]} ${parts[0]}`;
+          return key;
+        }
+        if (timePeriod === "bi-monthly") {
+          const bm = key.match(/^(\d{4})-Q(\d+)/);
+          if (bm) {
+            const b = Number(bm[2]) - 1;
+            return `${MONTHS[b * 2]}-${MONTHS[b * 2 + 1]} ${bm[1]}`;
+          }
+          return key;
+        }
+        if (timePeriod === "quarterly") {
+          const q = key.match(/^(\d{4})-Q(\d+)/);
+          if (q) return `Q${q[2]} ${q[1]}`;
+          return key;
+        }
+        if (timePeriod === "semi-annually") {
+          const h = key.match(/^(\d{4})-H(\d+)/);
+          if (h) return `H${h[2]} ${h[1]}`;
+          return key;
+        }
+        return key;
+      } catch {
+        return key;
+      }
+    },
+    [timePeriod],
+  );
+  // `getSupplierTimePeriodData` removed — not currently used by the UI
+
+  // `getProductSuppliers` removed — not currently used by the UI
+
+  // Get customers for a specific product
+  const getProductCustomers = (productName: string) => {
+    const customerMap = new Map<
+      string,
+      {
+        revenue: number;
+        transactions: number;
+        divisionName: string;
+        operationName: string;
+        salesmanName: string;
+      }
+    >();
+
+    filteredData
+      .filter((record) => record.productName === productName)
+      .forEach((record) => {
+        const existing = customerMap.get(record.customerName) || {
+          revenue: 0,
+          transactions: 0,
+          divisionName: record.divisionName,
+          operationName: record.operationName,
+          salesmanName: record.salesmanName,
+        };
+        customerMap.set(record.customerName, {
+          revenue: existing.revenue + record.amount,
+          transactions: existing.transactions + 1,
+          divisionName: record.divisionName,
+          operationName: record.operationName,
+          salesmanName: record.salesmanName,
+        });
+      });
+
+    const customers = Array.from(customerMap.entries()).map(
+      ([customer, data]) => ({
+        customer,
+        revenue: data.revenue,
+        transactions: data.transactions,
+        divisionName: data.divisionName,
+        operationName: data.operationName,
+        salesmanName: data.salesmanName,
+      }),
+    );
+
+    // Sort customers based on per-product sort settings
+    const sort = customerSortMap.get(productName) || {
+      by: "revenue" as CustomerSortField,
+      order: "desc" as "asc" | "desc",
+    };
+
+    customers.sort((a, b) => {
+      let comparison = 0;
+      if (sort.by === "customer") {
+        comparison = a.customer.localeCompare(b.customer);
+      } else if (sort.by === "division") {
+        comparison = (a.divisionName || "").localeCompare(b.divisionName || "");
+      } else if (sort.by === "operation") {
+        comparison = (a.operationName || "").localeCompare(
+          b.operationName || "",
+        );
+      } else if (sort.by === "salesman") {
+        comparison = (a.salesmanName || "").localeCompare(b.salesmanName || "");
+      } else if (sort.by === "revenue") {
+        comparison = a.revenue - b.revenue;
+      } else if (sort.by === "transactions") {
+        comparison = a.transactions - b.transactions;
+      } else if (sort.by === "avg") {
+        comparison = a.revenue / a.transactions - b.revenue / b.transactions;
+      }
+      return sort.order === "asc" ? comparison : -comparison;
+    });
+
+    return customers;
+  };
+
   // Pagination
   const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
   const paginatedProducts = React.useMemo(() => {
@@ -233,7 +439,17 @@ export function ProductTab({ topProducts, productTrends, filteredData }: Product
     return productTrends.map((pt) => {
       const dataMap = new Map<string, number>();
 
-      pt.data.forEach((d) => {
+      // First, ensure pt.data is sorted chronologically
+      const sortedData = [...pt.data].sort((a, b) => {
+        const [yearA, monthA, dayA] = a.date.split("-").map(Number);
+        const [yearB, monthB, dayB] = b.date.split("-").map(Number);
+        return (
+          new Date(yearA, monthA - 1, dayA).getTime() -
+          new Date(yearB, monthB - 1, dayB).getTime()
+        );
+      });
+
+      sortedData.forEach((d) => {
         const date = new Date(d.date);
         let key = "";
 
@@ -269,25 +485,38 @@ export function ProductTab({ topProducts, productTrends, filteredData }: Product
         .sort((a, b) => {
           // Convert aggregated date strings back to comparable format for proper chronological sorting
           const getDateValue = (dateStr: string) => {
+            if (!dateStr) return 0;
+
             if (timePeriod === "daily" || timePeriod === "weekly") {
-              // Format: "2025-10-12" - can be compared as Date
-              return new Date(dateStr).getTime();
+              // Format: "2025-10-12" or "2026-01-17" - parse as ISO date string
+              const [year, month, day] = dateStr.split("-").map(Number);
+              return new Date(year, month - 1, day).getTime();
             } else if (timePeriod === "monthly") {
               // Format: "2025-10" - add day to make valid date
-              return new Date(dateStr + "-01").getTime();
+              const [year, month] = dateStr.split("-").map(Number);
+              return new Date(year, month - 1, 1).getTime();
             } else if (timePeriod === "bi-weekly") {
               // Format: "2025-10-W0" - extract year and month, week number for sorting
               const match = dateStr.match(/(\d{4})-(\d{2})-W(\d+)/);
               if (match) {
                 const [, year, month, week] = match;
-                return new Date(parseInt(year), parseInt(month) - 1, parseInt(week) * 14 + 1).getTime();
+                return new Date(
+                  parseInt(year),
+                  parseInt(month) - 1,
+                  parseInt(week) * 14 + 1,
+                ).getTime();
               }
-            } else if (timePeriod === "bi-monthly" || timePeriod === "quarterly") {
+            } else if (
+              timePeriod === "bi-monthly" ||
+              timePeriod === "quarterly"
+            ) {
               // Format: "2025-Q1" - extract year and quarter
               const match = dateStr.match(/(\d{4})-Q(\d+)/);
               if (match) {
                 const [, year, quarter] = match;
-                const month = (parseInt(quarter) - 1) * (timePeriod === "bi-monthly" ? 2 : 3);
+                const month =
+                  (parseInt(quarter) - 1) *
+                  (timePeriod === "bi-monthly" ? 2 : 3);
                 return new Date(parseInt(year), month, 1).getTime();
               }
             } else if (timePeriod === "semi-annually") {
@@ -312,43 +541,139 @@ export function ProductTab({ topProducts, productTrends, filteredData }: Product
     });
   }, [productTrends, timePeriod]);
 
-  const chartColors = [
-    "#3b82f6", // blue
-    "#8b5cf6", // violet
-    "#ec4899", // pink
-    "#f97316", // orange
-    "#22c55e", // green
-    "#14b8a6", // teal
-    "#eab308", // yellow
-    "#ef4444", // red
-    "#6366f1", // indigo
-    "#06b6d4", // cyan
+  // Collect all unique dates from all products and sort them chronologically
+  const allDates = React.useMemo(() => {
+    const dateSet = new Set<string>();
+    aggregatedProductTrends.forEach((pt) => {
+      pt.data.forEach((d) => dateSet.add(d.date));
+    });
 
-    "#84cc16", // lime
-    "#a855f7", // purple
-    "#f43f5e", // rose
-    "#0ea5e9", // sky
-    "#10b981", // emerald
-    "#f59e0b", // amber
-    "#64748b", // slate
-    "#9333ea", // deep purple
-    "#0891b2", // deep cyan
-    "#dc2626", // strong red
-  ];
+    const dates = Array.from(dateSet).sort((a, b) => {
+      const getDateValue = (dateStr: string) => {
+        if (!dateStr) return 0;
+
+        if (timePeriod === "daily" || timePeriod === "weekly") {
+          const [year, month, day] = dateStr.split("-").map(Number);
+          return new Date(year, month - 1, day).getTime();
+        } else if (timePeriod === "monthly") {
+          const [year, month] = dateStr.split("-").map(Number);
+          return new Date(year, month - 1, 1).getTime();
+        } else if (timePeriod === "bi-weekly") {
+          const match = dateStr.match(/(\d{4})-(\d{2})-W(\d+)/);
+          if (match) {
+            const [, year, month, week] = match;
+            return new Date(
+              parseInt(year),
+              parseInt(month) - 1,
+              parseInt(week) * 14 + 1,
+            ).getTime();
+          }
+        } else if (timePeriod === "bi-monthly" || timePeriod === "quarterly") {
+          const match = dateStr.match(/(\d{4})-Q(\d+)/);
+          if (match) {
+            const [, year, quarter] = match;
+            const month =
+              (parseInt(quarter) - 1) * (timePeriod === "bi-monthly" ? 2 : 3);
+            return new Date(parseInt(year), month, 1).getTime();
+          }
+        } else if (timePeriod === "semi-annually") {
+          const match = dateStr.match(/(\d{4})-H(\d+)/);
+          if (match) {
+            const [, year, half] = match;
+            const month = (parseInt(half) - 1) * 6;
+            return new Date(parseInt(year), month, 1).getTime();
+          }
+        } else if (timePeriod === "yearly") {
+          return new Date(parseInt(dateStr), 0, 1).getTime();
+        }
+        return 0;
+      };
+
+      return getDateValue(a) - getDateValue(b);
+    });
+
+    return dates;
+  }, [aggregatedProductTrends, timePeriod]);
+
+  // chartColors / chartColorsDark are now defined at module scope above
+  const activeChartColors = isDark ? chartColorsDark : chartColors;
+
+  const chartLines = React.useMemo(() => {
+    return aggregatedProductTrends.map((pt, i) => {
+      const color = activeChartColors[i % activeChartColors.length];
+      const isSelected = selectedProductInTrend === pt.productName;
+      const isHovered = hoveredProductInTrend === pt.productName;
+      const opacity =
+        (selectedProductInTrend && !isSelected) ||
+        (!selectedProductInTrend && hoveredProductInTrend && !isHovered)
+          ? 0.3
+          : 1;
+
+      return (
+        <Line
+          key={pt.productName}
+          data={pt.data}
+          type="monotone"
+          dataKey="revenue"
+          name={pt.productName}
+          stroke={color}
+          strokeWidth={isSelected || isHovered ? 3 : 2}
+          strokeOpacity={opacity}
+          dot={{
+            r: isSelected || isHovered ? 7 : 6,
+            fill: color,
+            stroke: "hsl(var(--background))",
+            strokeWidth: 5,
+            opacity: opacity,
+          }}
+          activeDot={{
+            r: 9,
+            fill: color,
+            stroke: "hsl(var(--background))",
+            strokeWidth: 1,
+            onClick: () => handleTrendLineClick(pt.productName),
+            onMouseOver: () => setHoveredProductInTrend(pt.productName),
+          }}
+          onClick={() => handleTrendLineClick(pt.productName)}
+          style={{ cursor: "pointer" }}
+        />
+      );
+    });
+  }, [
+    aggregatedProductTrends,
+    activeChartColors,
+    selectedProductInTrend,
+    hoveredProductInTrend,
+    handleTrendLineClick,
+  ]);
 
   return (
     <div className="space-y-4">
-
       {/* Product Trends Over Time */}
       {productTrends.length > 0 && (
-        <Card>
+        <Card className="dark:border-zinc-700 dark:bg-white/13">
           <CardHeader>
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle>Top 5 Products - Sales Trend</CardTitle>
-                  <CardDescription>Revenue performance over time</CardDescription>
+                  <CardDescription>
+                    Revenue performance over time (click line to highlight)
+                  </CardDescription>
                 </div>
+                {selectedProductInTrend && (
+                  <Button
+                    className="dark:border-zinc-700"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedProductInTrend(null);
+                      setExpandedProducts(new Set());
+                    }}
+                  >
+                    Clear Selection
+                  </Button>
+                )}
                 {/* <Button
                   variant="outline"
                   size="sm"
@@ -369,6 +694,7 @@ export function ProductTab({ topProducts, productTrends, filteredData }: Product
               </div>
               <div className="flex flex-wrap gap-2">
                 <Button
+                  className="dark:border-zinc-700"
                   variant={timePeriod === "daily" ? "default" : "outline"}
                   size="sm"
                   onClick={() => {
@@ -380,6 +706,7 @@ export function ProductTab({ topProducts, productTrends, filteredData }: Product
                   Daily
                 </Button>
                 <Button
+                  className="dark:border-zinc-700"
                   variant={timePeriod === "weekly" ? "default" : "outline"}
                   size="sm"
                   onClick={() => {
@@ -391,6 +718,7 @@ export function ProductTab({ topProducts, productTrends, filteredData }: Product
                   Weekly
                 </Button>
                 <Button
+                  className="dark:border-zinc-700"
                   variant={timePeriod === "bi-weekly" ? "default" : "outline"}
                   size="sm"
                   onClick={() => {
@@ -402,6 +730,7 @@ export function ProductTab({ topProducts, productTrends, filteredData }: Product
                   Bi-Weekly
                 </Button>
                 <Button
+                  className="dark:border-zinc-700"
                   variant={timePeriod === "monthly" ? "default" : "outline"}
                   size="sm"
                   onClick={() => {
@@ -413,6 +742,7 @@ export function ProductTab({ topProducts, productTrends, filteredData }: Product
                   Monthly
                 </Button>
                 <Button
+                  className="dark:border-zinc-700"
                   variant={timePeriod === "bi-monthly" ? "default" : "outline"}
                   size="sm"
                   onClick={() => {
@@ -424,6 +754,7 @@ export function ProductTab({ topProducts, productTrends, filteredData }: Product
                   Bi-Monthly
                 </Button>
                 <Button
+                  className="dark:border-zinc-700"
                   variant={timePeriod === "quarterly" ? "default" : "outline"}
                   size="sm"
                   onClick={() => {
@@ -435,7 +766,10 @@ export function ProductTab({ topProducts, productTrends, filteredData }: Product
                   Quarterly
                 </Button>
                 <Button
-                  variant={timePeriod === "semi-annually" ? "default" : "outline"}
+                  className="dark:border-zinc-700"
+                  variant={
+                    timePeriod === "semi-annually" ? "default" : "outline"
+                  }
                   size="sm"
                   onClick={() => {
                     setTimePeriod("semi-annually");
@@ -446,6 +780,7 @@ export function ProductTab({ topProducts, productTrends, filteredData }: Product
                   Semi-Annually
                 </Button>
                 <Button
+                  className="dark:border-zinc-700"
                   variant={timePeriod === "yearly" ? "default" : "outline"}
                   size="sm"
                   onClick={() => {
@@ -467,77 +802,91 @@ export function ProductTab({ topProducts, productTrends, filteredData }: Product
                     pt.productName,
                     {
                       label: pt.productName,
-                      color: chartColors[i % chartColors.length],
+                      color: activeChartColors[i % activeChartColors.length],
                     },
-                  ])
+                  ]),
                 ),
               }}
               className="h-100 w-full"
             >
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart>
+                <LineChart onMouseLeave={() => setHoveredProductInTrend(null)}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis
                     dataKey="date"
                     type="category"
                     allowDuplicatedCategory={false}
+                    domain={allDates}
+                    ticks={allDates}
+                    tickFormatter={formatPeriodLabel}
+                    tick={{ fontSize: 10, fill: "#64748b" }}
+                    interval="preserveStartEnd"
                   />
-                  <YAxis tickFormatter={(value) => formatCurrency(value)} />
+                  <YAxis
+                    width={getYAxisWidth(topProducts)}
+                    tickFormatter={(value) => formatCurrency(value)}
+                  />
                   <ChartTooltip
-                    content={({ active, payload }) => {
-                      if (!active || !payload || payload.length === 0) return null;
-                      
+                    content={({
+                      active,
+                      payload,
+                      label,
+                    }: {
+                      active?: boolean;
+                      payload?: Array<{
+                        name?: string;
+                        value?: number;
+                        color?: string;
+                      }>;
+                      label?: string;
+                    }) => {
+                      if (!active || !payload?.length) return null;
+                      const target = hoveredProductInTrend
+                        ? payload.find((e) => e.name === hoveredProductInTrend)
+                        : payload[0];
+                      if (!target) return null;
+                      const rank =
+                        aggregatedProductTrends.findIndex(
+                          (t) => t.productName === target.name,
+                        ) + 1;
                       return (
-                        <div className="rounded-lg border bg-background p-2 shadow-sm">
-                          <div className="grid gap-2">
-                            {payload.map((entry: { name?: string | number; value?: string | number | (string | number)[]; color?: string }, index: number) => (
-                              <div key={index} className="flex items-center gap-2">
-                                <div
-                                  className="h-2 w-2 rounded-full"
-                                  style={{ backgroundColor: entry.color }}
-                                />
-                                <span className="text-sm font-medium">{entry.name}:</span>
-                                <span className="text-sm">
-                                  {entry.value !== undefined 
-                                    ? formatCurrency(Number(Array.isArray(entry.value) ? entry.value[0] : entry.value)) 
-                                    : ""}
-                                </span>
-                              </div>
-                            ))}
+                        <div className="rounded-lg border bg-background p-3 shadow-md text-sm min-w-48 space-y-1.5">
+                          <p className="text-xs text-muted-foreground">
+                            {label ? formatPeriodLabel(String(label)) : ""}
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <div
+                              className="h-3 w-3 rounded-full shrink-0"
+                              style={{ backgroundColor: target.color }}
+                            />
+                            <span className="font-semibold leading-tight text-xs wrap-break-words">
+                              {target.name}
+                            </span>
+                          </div>
+                          <div className="border-t pt-1.5 space-y-1">
+                            <div className="flex justify-between gap-4">
+                              <span className="text-muted-foreground">
+                                Revenue
+                              </span>
+                              <span className="font-medium">
+                                {formatCurrency(target.value as number)}
+                              </span>
+                            </div>
+                            <div className="flex justify-between gap-4">
+                              <span className="text-muted-foreground">
+                                Rank
+                              </span>
+                              <span className="font-medium">#{rank}</span>
+                            </div>
                           </div>
                         </div>
                       );
                     }}
-                    cursor={{ strokeDasharray: '3 3' }}
+                    cursor={{ strokeDasharray: "3 3" }}
                     allowEscapeViewBox={{ x: false, y: true }}
                   />
                   <Legend />
-                  {aggregatedProductTrends.map((pt, i) => {
-                    const color = chartColors[i % chartColors.length];
-                    return (
-                      <Line
-                        key={pt.productName}
-                        data={pt.data}
-                        type="monotone"
-                        dataKey="revenue"
-                        name={pt.productName}
-                        stroke={color}
-                        strokeWidth={2}
-                        dot={{
-                          r: 6,
-                          fill: color,
-                          stroke: "hsl(var(--background))",
-                          strokeWidth: 5
-                        }}
-                        activeDot={{
-                          r: 8,
-                          fill: color,
-                          stroke: "hsl(var(--background))",
-                          strokeWidth: 1
-                        }}
-                      />
-                    );
-                  })}
+                  {chartLines}
                 </LineChart>
               </ResponsiveContainer>
             </ChartContainer>
@@ -546,23 +895,22 @@ export function ProductTab({ topProducts, productTrends, filteredData }: Product
       )}
 
       {/* Search Bar */}
-      <Card>
-        <CardContent className="pt-6">
+      <Card className="dark:border-zinc-700 dark:bg-white/13">
+        <CardContent className="">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
+              className="pl-10 dark:border-zinc-700"
               placeholder="Search products..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
             />
           </div>
         </CardContent>
       </Card>
 
-
       {/* Product Revenue Table */}
-      <Card>
+      <Card className="dark:border-zinc-700 dark:bg-white/13">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
@@ -570,6 +918,19 @@ export function ProductTab({ topProducts, productTrends, filteredData }: Product
               <CardDescription>
                 {filteredProducts.length} products found
               </CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setExpandedProducts(new Set());
+                  setSelectedProductInTrend(null);
+                  setCustomerSortMap(new Map());
+                }}
+              >
+                Collapse All
+              </Button>
             </div>
             {/* <Button
               variant="outline"
@@ -594,12 +955,12 @@ export function ProductTab({ topProducts, productTrends, filteredData }: Product
         </CardHeader>
         <CardContent>
           <div className="rounded-md border">
-            <Table>
+            <Table className="table-fixed w-full dark:border-zinc-700 dark:bg-white/3">
               <TableHeader>
                 <TableRow>
                   {/* <TableHead className="w-15">Rank</TableHead> */}
-                  <TableHead>Product Name</TableHead>
-                  <TableHead className="text-right">
+                  <TableHead className="min-w-0 w-full">Product Name</TableHead>
+                  <TableHead className="w-30 text-right">
                     <Button
                       variant="ghost"
                       size="sm"
@@ -616,7 +977,7 @@ export function ProductTab({ topProducts, productTrends, filteredData }: Product
                       Revenue <ArrowUpDown className="ml-2 h-4 w-4" />
                     </Button>
                   </TableHead>
-                  <TableHead className="text-right">
+                  <TableHead className="w-28 text-right">
                     <Button
                       variant="ghost"
                       size="sm"
@@ -633,7 +994,7 @@ export function ProductTab({ topProducts, productTrends, filteredData }: Product
                       Transactions <ArrowUpDown className="ml-2 h-4 w-4" />
                     </Button>
                   </TableHead>
-                  <TableHead className="text-right">
+                  <TableHead className="w-59 text-right ">
                     <Button
                       variant="ghost"
                       size="sm"
@@ -656,13 +1017,20 @@ export function ProductTab({ topProducts, productTrends, filteredData }: Product
                 {paginatedProducts.length > 0 ? (
                   paginatedProducts.map((product, index) => {
                     const isExpanded = expandedProducts.has(product.name);
-                    const suppliers = isExpanded ? getProductSuppliers(product.name) : [];
-                    const getProductColor = (index: number) => chartColors[index % chartColors.length];
+                    const customers = isExpanded
+                      ? getProductCustomers(product.name)
+                      : [];
+                    const getProductColor = (index: number) =>
+                      activeChartColors[index % activeChartColors.length];
                     return (
                       <React.Fragment key={product.name}>
-                        <TableRow className="cursor-pointer hover:bg-muted/50" onClick={() => toggleProduct(product.name)}>
+                        <TableRow
+                          id={`product-row-${product.name.replace(/[^a-zA-Z0-9]/g, "-")}`}
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={() => toggleProduct(product.name)}
+                        >
                           {/* <TableCell className="font-medium">{(currentPage - 1) * itemsPerPage + index + 1}</TableCell> */}
-                          <TableCell>
+                          <TableCell className="min-w-0 w-full">
                             <div className="flex items-center gap-2">
                               {isExpanded ? (
                                 <ChevronDown className="h-4 w-4 text-muted-foreground" />
@@ -677,166 +1045,332 @@ export function ProductTab({ topProducts, productTrends, filteredData }: Product
                               </span>
                             </div>
                           </TableCell>
-                          <TableCell className="text-right">
+                          <TableCell className="w-28 text-right">
                             {formatCurrency(product.revenue)}
                           </TableCell>
-                          <TableCell className="text-right">{product.count}</TableCell>
-                          <TableCell className="text-right">
+                          <TableCell className="w-20 text-right">
+                            {product.count}
+                          </TableCell>
+                          <TableCell className="w-32 text-right">
                             {formatCurrency(product.revenue / product.count)}
                           </TableCell>
                         </TableRow>
-                        {isExpanded && suppliers.length > 0 && (
-                          <TableRow>
-                            <TableCell colSpan={5} className="bg-muted/30 p-0">
-                              <div className="px-12 py-4">
-                                {/* <div className="text-sm font-semibold mb-3 text-muted-foreground">Suppliers for {product.name}</div> */}
-                                <div className="rounded-md border bg-background">
-                                  <Table>
-                                    <TableHeader>
-                                      <TableRow>
-                                        {/* <TableHead className="w-12">#</TableHead> */}
-                                        <TableHead>Supplier Name</TableHead>
-                                        <TableHead className="text-right">Revenue</TableHead>
-                                        <TableHead className="text-right">Transactions</TableHead>
-                                        <TableHead className="text-right">Avg/Transaction</TableHead>
-                                      </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                      {suppliers.map((supplier) => {
-                                        const supplierKey = `${product.name}-${supplier.supplier}`;
-                                        const isSupplierExpanded = expandedSuppliers.has(supplierKey);
-                                        const sortState = supplierPeriodSort.get(supplierKey) || { sortBy: "period", sortOrder: "desc" };
-                                        const timePeriodData = isSupplierExpanded ? getSupplierTimePeriodData(product.name, supplier.supplier, sortState.sortBy, sortState.sortOrder) : [];
-                                        
-                                        const handlePeriodSort = (column: "period" | "revenue" | "transactions" | "avg") => {
-                                          const newSortState = new Map(supplierPeriodSort);
-                                          const currentSort = sortState;
-                                          
-                                          if (currentSort.sortBy === column) {
-                                            newSortState.set(supplierKey, {
-                                              sortBy: column,
-                                              sortOrder: currentSort.sortOrder === "asc" ? "desc" : "asc"
-                                            });
-                                          } else {
-                                            newSortState.set(supplierKey, {
-                                              sortBy: column,
-                                              sortOrder: "desc"
-                                            });
-                                          }
-                                          setSupplierPeriodSort(newSortState);
-                                        };
-                                        
-                                        return (
-                                          <React.Fragment key={supplier.supplier}>
-                                            <TableRow 
-                                              className="cursor-pointer hover:bg-muted/50"
-                                              onClick={(e) => toggleSupplier(supplierKey, e)}
-                                            >
-                                              <TableCell>
-                                                <div className="flex items-center gap-2">
-                                                  {isSupplierExpanded ? (
-                                                    <ChevronDown className="h-3 w-3 text-muted-foreground" />
-                                                  ) : (
-                                                    <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                        {isExpanded &&
+                          customers.length > 0 &&
+                          (() => {
+                            const currentCustomerPage =
+                              customerPage.get(product.name) || 1;
+                            const customerTotalPages = Math.ceil(
+                              customers.length / customerItemsPerPage,
+                            );
+                            const startIdx =
+                              (currentCustomerPage - 1) * customerItemsPerPage;
+                            const paginatedCustomers = customers.slice(
+                              startIdx,
+                              startIdx + customerItemsPerPage,
+                            );
+
+                            const handleCustomerSort = (
+                              field: CustomerSortField,
+                            ) => {
+                              setCustomerSortMap((prev) => {
+                                const next = new Map(prev);
+                                const cur = next.get(product.name);
+                                if (cur?.by === field) {
+                                  next.set(product.name, {
+                                    by: field,
+                                    order: cur.order === "asc" ? "desc" : "asc",
+                                  });
+                                } else {
+                                  next.set(product.name, {
+                                    by: field,
+                                    order: "desc",
+                                  });
+                                }
+                                return next;
+                              });
+                            };
+
+                            return (
+                              <TableRow>
+                                <TableCell colSpan={5} className="  p-0">
+                                  <div className="px-12 py-4">
+                                    <div className="rounded-md border  ">
+                                      <Table className="table-fixed dark:border-zinc-700 dark:bg-white/3">
+                                        <TableHeader>
+                                          <TableRow>
+                                            <TableHead className="w-64">
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() =>
+                                                  handleCustomerSort("customer")
+                                                }
+                                                className="h-8"
+                                              >
+                                                Customer Name{" "}
+                                                <ArrowUpDown className="ml-2 h-4 w-4" />
+                                              </Button>
+                                            </TableHead>
+                                            <TableHead className="w-36">
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() =>
+                                                  handleCustomerSort("division")
+                                                }
+                                                className="h-8"
+                                              >
+                                                Division{" "}
+                                                <ArrowUpDown className="ml-2 h-4 w-4" />
+                                              </Button>
+                                            </TableHead>
+                                            <TableHead className="w-36">
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() =>
+                                                  handleCustomerSort(
+                                                    "operation",
+                                                  )
+                                                }
+                                                className="h-8"
+                                              >
+                                                Operation{" "}
+                                                <ArrowUpDown className="ml-2 h-4 w-4" />
+                                              </Button>
+                                            </TableHead>
+                                            <TableHead className="w-40">
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() =>
+                                                  handleCustomerSort("salesman")
+                                                }
+                                                className="h-8"
+                                              >
+                                                Salesman{" "}
+                                                <ArrowUpDown className="ml-2 h-4 w-4" />
+                                              </Button>
+                                            </TableHead>
+                                            <TableHead className="w-28 text-right">
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() =>
+                                                  handleCustomerSort("revenue")
+                                                }
+                                                className="h-8"
+                                              >
+                                                Revenue{" "}
+                                                <ArrowUpDown className="ml-2 h-4 w-4" />
+                                              </Button>
+                                            </TableHead>
+                                            <TableHead className="w-20 text-right">
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() =>
+                                                  handleCustomerSort(
+                                                    "transactions",
+                                                  )
+                                                }
+                                                className="h-8"
+                                              >
+                                                Transactions{" "}
+                                                <ArrowUpDown className="ml-2 h-4 w-4" />
+                                              </Button>
+                                            </TableHead>
+                                            <TableHead className="w-28 text-right">
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() =>
+                                                  handleCustomerSort("avg")
+                                                }
+                                                className="h-8"
+                                              >
+                                                Avg/Transaction{" "}
+                                                <ArrowUpDown className="ml-2 h-4 w-4" />
+                                              </Button>
+                                            </TableHead>
+                                          </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                          {paginatedCustomers.map(
+                                            (customer, idx) => (
+                                              <TableRow
+                                                key={`${customer.customer}-${idx}`}
+                                              >
+                                                <TableCell>
+                                                  {customer.customer}
+                                                </TableCell>
+                                                <TableCell>
+                                                  {customer.divisionName}
+                                                </TableCell>
+                                                <TableCell>
+                                                  {customer.operationName}
+                                                </TableCell>
+                                                <TableCell>
+                                                  {customer.salesmanName}
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                  {formatCurrency(
+                                                    customer.revenue,
                                                   )}
-                                                  <span>{supplier.supplier}</span>
-                                                </div>
-                                              </TableCell>
-                                              <TableCell className="text-right">{formatCurrency(supplier.revenue)}</TableCell>
-                                              <TableCell className="text-right">{supplier.transactions}</TableCell>
-                                              <TableCell className="text-right">{formatCurrency(supplier.revenue / supplier.transactions)}</TableCell>
-                                            </TableRow>
-                                            {isSupplierExpanded && timePeriodData.length > 0 && (
-                                              <TableRow>
-                                                <TableCell colSpan={4} className="bg-muted/20 p-0">
-                                                  <div className="px-8 py-3" onClick={(e) => e.stopPropagation()}>
-                                                    <div className="text-xs font-semibold mb-2 text-muted-foreground">
-                                                      Revenue by {timePeriod.charAt(0).toUpperCase() + timePeriod.slice(1)} Period
-                                                    </div>
-                                                    <div className="rounded-md border bg-background">
-                                                      <Table>
-                                                        <TableHeader>
-                                                          <TableRow>
-                                                            <TableHead className="text-xs">
-                                                              <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                onClick={(e) => {
-                                                                  e.stopPropagation();
-                                                                  handlePeriodSort("period");
-                                                                }}
-                                                                className="h-6 px-2 text-xs"
-                                                              >
-                                                                Period <ArrowUpDown className="ml-1 h-3 w-3" />
-                                                              </Button>
-                                                            </TableHead>
-                                                            <TableHead className="text-right text-xs">
-                                                              <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                onClick={(e) => {
-                                                                  e.stopPropagation();
-                                                                  handlePeriodSort("revenue");
-                                                                }}
-                                                                className="h-6 px-2 text-xs"
-                                                              >
-                                                                Revenue <ArrowUpDown className="ml-1 h-3 w-3" />
-                                                              </Button>
-                                                            </TableHead>
-                                                            <TableHead className="text-right text-xs">
-                                                              <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                onClick={(e) => {
-                                                                  e.stopPropagation();
-                                                                  handlePeriodSort("transactions");
-                                                                }}
-                                                                className="h-6 px-2 text-xs"
-                                                              >
-                                                                Transactions <ArrowUpDown className="ml-1 h-3 w-3" />
-                                                              </Button>
-                                                            </TableHead>
-                                                            <TableHead className="text-right text-xs">
-                                                              <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                onClick={(e) => {
-                                                                  e.stopPropagation();
-                                                                  handlePeriodSort("avg");
-                                                                }}
-                                                                className="h-6 px-2 text-xs"
-                                                              >
-                                                                Avg/Transaction <ArrowUpDown className="ml-1 h-3 w-3" />
-                                                              </Button>
-                                                            </TableHead>
-                                                          </TableRow>
-                                                        </TableHeader>
-                                                        <TableBody>
-                                                          {timePeriodData.map((data) => (
-                                                            <TableRow key={data.period}>
-                                                              <TableCell className="text-xs">{data.period}</TableCell>
-                                                              <TableCell className="text-right text-xs">{formatCurrency(data.revenue)}</TableCell>
-                                                              <TableCell className="text-right text-xs">{data.transactions}</TableCell>
-                                                              <TableCell className="text-right text-xs">{formatCurrency(data.revenue / data.transactions)}</TableCell>
-                                                            </TableRow>
-                                                          ))}
-                                                        </TableBody>
-                                                      </Table>
-                                                    </div>
-                                                  </div>
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                  {customer.transactions}
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                  {formatCurrency(
+                                                    customer.revenue /
+                                                      customer.transactions,
+                                                  )}
                                                 </TableCell>
                                               </TableRow>
-                                            )}
-                                          </React.Fragment>
-                                        );
-                                      })}
-                                    </TableBody>
-                                  </Table>
-                                </div>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        )}
+                                            ),
+                                          )}
+                                        </TableBody>
+                                      </Table>
+                                    </div>
+                                    {customerTotalPages > 1 && (
+                                      <div className="flex items-center justify-between px-2 py-4">
+                                        {/* <div className="text-sm text-muted-foreground">
+                                        Showing {startIdx + 1} to {Math.min(startIdx + customerItemsPerPage, customers.length)} of {customers.length} customers
+                                      </div> */}
+
+                                        <div className="flex items-center gap-4">
+                                          <div className="flex items-center gap-2">
+                                            {/* <label className="text-sm text-muted-foreground">Show:</label> */}
+                                            <select
+                                              className="h-8 rounded-md border border-input bg-background px-3 py-1 text-sm dark:border-zinc-700"
+                                              value={itemsPerPage}
+                                              onChange={(e) => {
+                                                setItemsPerPage(
+                                                  Number(e.target.value),
+                                                );
+                                                setCurrentPage(1);
+                                              }}
+                                            >
+                                              <option value={10}>10</option>
+                                              <option value={25}>25</option>
+                                              <option value={50}>50</option>
+                                              <option value={100}>100</option>
+                                            </select>
+                                          </div>
+                                          <div className="text-sm text-muted-foreground">
+                                            Showing{" "}
+                                            {(currentPage - 1) * itemsPerPage +
+                                              1}{" "}
+                                            to{" "}
+                                            {Math.min(
+                                              currentPage * itemsPerPage,
+                                              filteredProducts.length,
+                                            )}{" "}
+                                            of {filteredProducts.length}{" "}
+                                            products
+                                          </div>
+                                        </div>
+                                        <div className="flex gap-1">
+                                          <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => {
+                                              const newPage = Math.max(
+                                                1,
+                                                currentCustomerPage - 1,
+                                              );
+                                              setCustomerPage(
+                                                new Map(customerPage).set(
+                                                  product.name,
+                                                  newPage,
+                                                ),
+                                              );
+                                            }}
+                                            disabled={currentCustomerPage === 1}
+                                          >
+                                            Previous
+                                          </Button>
+                                          {Array.from(
+                                            {
+                                              length: Math.min(
+                                                5,
+                                                customerTotalPages,
+                                              ),
+                                            },
+                                            (_, i) => {
+                                              let pageNum;
+                                              if (customerTotalPages <= 5) {
+                                                pageNum = i + 1;
+                                              } else if (
+                                                currentCustomerPage <= 3
+                                              ) {
+                                                pageNum = i + 1;
+                                              } else if (
+                                                currentCustomerPage >=
+                                                customerTotalPages - 2
+                                              ) {
+                                                pageNum =
+                                                  customerTotalPages - 4 + i;
+                                              } else {
+                                                pageNum =
+                                                  currentCustomerPage - 2 + i;
+                                              }
+                                              return (
+                                                <Button
+                                                  key={pageNum}
+                                                  variant={
+                                                    currentCustomerPage ===
+                                                    pageNum
+                                                      ? "default"
+                                                      : "outline"
+                                                  }
+                                                  size="sm"
+                                                  onClick={() => {
+                                                    setCustomerPage(
+                                                      new Map(customerPage).set(
+                                                        product.name,
+                                                        pageNum,
+                                                      ),
+                                                    );
+                                                  }}
+                                                >
+                                                  {pageNum}
+                                                </Button>
+                                              );
+                                            },
+                                          )}
+                                          <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => {
+                                              const newPage = Math.min(
+                                                customerTotalPages,
+                                                currentCustomerPage + 1,
+                                              );
+                                              setCustomerPage(
+                                                new Map(customerPage).set(
+                                                  product.name,
+                                                  newPage,
+                                                ),
+                                              );
+                                            }}
+                                            disabled={
+                                              currentCustomerPage ===
+                                              customerTotalPages
+                                            }
+                                          >
+                                            Next
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })()}
                       </React.Fragment>
                     );
                   })
@@ -852,13 +1386,10 @@ export function ProductTab({ topProducts, productTrends, filteredData }: Product
           </div>
           <div className="flex items-center justify-between px-2 py-4">
             <div className="flex items-center gap-4">
-              <div className="text-sm text-muted-foreground">
-                Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredProducts.length)} of {filteredProducts.length} products
-              </div>
               <div className="flex items-center gap-2">
-                <label className="text-sm text-muted-foreground">Show:</label>
+                {/* <label className="text-sm text-muted-foreground">Show:</label> */}
                 <select
-                  className="h-8 rounded-md border border-input bg-background px-3 py-1 text-sm"
+                  className="h-8 rounded-md border border-input bg-background px-3 py-1 text-sm dark:border-zinc-700"
                   value={itemsPerPage}
                   onChange={(e) => {
                     setItemsPerPage(Number(e.target.value));
@@ -871,9 +1402,15 @@ export function ProductTab({ topProducts, productTrends, filteredData }: Product
                   <option value={100}>100</option>
                 </select>
               </div>
+              <div className="text-sm text-muted-foreground">
+                Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
+                {Math.min(currentPage * itemsPerPage, filteredProducts.length)}{" "}
+                of {filteredProducts.length} products
+              </div>
             </div>
             <div className="flex gap-1">
               <Button
+                className="dark:border-zinc-700 dark:bg-white/5"
                 variant="outline"
                 size="sm"
                 onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
@@ -894,6 +1431,7 @@ export function ProductTab({ topProducts, productTrends, filteredData }: Product
                 }
                 return (
                   <Button
+                    className="dark:border-zinc-700"
                     key={pageNum}
                     variant={currentPage === pageNum ? "default" : "outline"}
                     size="sm"
@@ -904,9 +1442,12 @@ export function ProductTab({ topProducts, productTrends, filteredData }: Product
                 );
               })}
               <Button
+                className="dark:border-zinc-700 dark:bg-white/5"
                 variant="outline"
                 size="sm"
-                onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                onClick={() =>
+                  setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                }
                 disabled={currentPage === totalPages}
               >
                 Next
