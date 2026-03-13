@@ -58,14 +58,14 @@ export function Filters({
   recordFieldNames,
 }: FiltersProps) {
   // Debug incoming raw records + mapping
-  React.useEffect(() => {
-    console.log(
-      "Filters mounted/updated — records count:",
-      records?.length ?? 0,
-    );
-    console.log("Records sample:", records ? records.slice(0, 3) : []);
-    console.log("recordFieldNames:", recordFieldNames);
-  }, [records, recordFieldNames]);
+  // React.useEffect(() => {
+  //   console.log(
+  //     "Filters mounted/updated — records count:",
+  //     records?.length ?? 0,
+  //   );
+  //   console.log("Records sample:", records ? records.slice(0, 3) : []);
+  //   console.log("recordFieldNames:", recordFieldNames);
+  // }, [records, recordFieldNames]);
 
   // Search states
   const [supplierSearch, setSupplierSearch] = React.useState("");
@@ -85,13 +85,13 @@ export function Filters({
     const next = checked
       ? [...current, value]
       : current.filter((v) => v !== value);
-    console.log("filter change:", {
-      field,
-      value,
-      checked,
-      before: current,
-      after: next,
-    });
+    // console.log("filter change:", {
+    //   field,
+    //   value,
+    //   checked,
+    //   before: current,
+    //   after: next,
+    // });
     onChange({ ...filters, [field]: next });
   };
 
@@ -101,7 +101,7 @@ export function Filters({
       "suppliers" | "brands" | "categories" | "statuses"
     >,
   ) => {
-    console.log("clear filter:", field);
+    // console.log("clear filter:", field);
     onChange({ ...filters, [field]: [] });
   };
 
@@ -194,7 +194,7 @@ export function Filters({
 
   const setDatePreset = React.useCallback(
     (preset: DateRangePreset) => {
-      console.log("dateRangePreset selected:", preset);
+      // console.log("dateRangePreset selected:", preset);
       onChange({ ...filters, dateRangePreset: preset });
     },
     [filters, onChange],
@@ -250,7 +250,7 @@ export function Filters({
       map.forEach((set, k) => {
         out[k] = set.size;
       });
-      console.log("computedSupplierCounts:", { from, to, counts: out });
+      // console.log("computedSupplierCounts:", { from, to, counts: out });
       return out;
     }, [records, recordFieldNames, getDateRange]);
 
@@ -301,7 +301,7 @@ export function Filters({
       map.forEach((set, k) => {
         out[k] = set.size;
       });
-      console.log("computedBrandCounts:", { from, to, counts: out });
+      // console.log("computedBrandCounts:", { from, to, counts: out });
       return out;
     }, [records, recordFieldNames, getDateRange]);
 
@@ -352,7 +352,7 @@ export function Filters({
       map.forEach((set, k) => {
         out[k] = set.size;
       });
-      console.log("computedCategoryCounts:", { from, to, counts: out });
+      // console.log("computedCategoryCounts:", { from, to, counts: out });
       return out;
     }, [records, recordFieldNames, getDateRange]);
 
@@ -403,7 +403,7 @@ export function Filters({
       map.forEach((set, k) => {
         out[k] = set.size;
       });
-      console.log("computedStatusCounts:", { from, to, counts: out });
+      // console.log("computedStatusCounts:", { from, to, counts: out });
       return out;
     }, [records, recordFieldNames, getDateRange]);
 

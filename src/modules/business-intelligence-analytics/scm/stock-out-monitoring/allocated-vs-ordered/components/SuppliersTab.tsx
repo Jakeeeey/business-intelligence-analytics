@@ -459,6 +459,36 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
     </span>
   );
 
+  // --- Dynamic bar sizing: measure chart container width and compute bar sizes
+  const chartRef = React.useRef<HTMLDivElement | null>(null);
+  const [containerWidth, setContainerWidth] = React.useState<number>(0);
+
+  React.useEffect(() => {
+    const el = chartRef.current;
+    if (!el) {
+      if (typeof window !== "undefined") setContainerWidth(window.innerWidth);
+      return;
+    }
+    const update = () => setContainerWidth(Math.floor(el.getBoundingClientRect().width));
+    const ro = new ResizeObserver(() => update());
+    ro.observe(el);
+    update();
+    return () => ro.disconnect();
+  }, []);
+
+  const orderedBarSize = React.useMemo(() => {
+    const n = Math.max(1, top10ByOrders.length);
+    if (containerWidth <= 0) return 50;
+    const gapFactor = 0.25; // matches barCategoryGap
+    const availablePerCategory = (containerWidth / n) * (1 - gapFactor);
+    const perBar = Math.max(8, Math.floor(availablePerCategory / 2));
+    return Math.max(10, Math.min(60, perBar));
+  }, [containerWidth, top10ByOrders.length]);
+
+  const allocatedBarSize = React.useMemo(() => {
+    return Math.max(8, Math.min(40, Math.round(orderedBarSize * 0.28)));
+  }, [orderedBarSize]);
+
   if (supplierSummaries.length === 0) {
     return (
       <Card className="border-muted dark:border-zinc-700 dark:bg-white/13">
@@ -468,6 +498,7 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
       </Card>
     );
   }
+
 
   return (
     <div className="space-y-4">
@@ -575,7 +606,8 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
+          <div ref={chartRef} className="w-full">
+            <ResponsiveContainer width="100%" height={300}>
             <BarChart
               data={top10ByOrders}
               margin={{ top: 5, right: 20, left: 10, bottom: 70 }}
@@ -611,7 +643,7 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
                 name="Ordered"
                 fill="#6366f1"
                 radius={[4, 4, 0, 0]}
-                barSize={14}
+                barSize={orderedBarSize}
                 onMouseEnter={(d) => setHoveredBar(`ord::${d.supplierName}`)}
                 onMouseLeave={() => setHoveredBar(null)}
                 onClick={(d) => openModal(d.supplierName)}
@@ -634,7 +666,7 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
                 name="Allocated"
                 fill="#10b981"
                 radius={[4, 4, 0, 0]}
-                barSize={14}
+                barSize={orderedBarSize}
                 onMouseEnter={(d) => setHoveredBar(`alc::${d.supplierName}`)}
                 onMouseLeave={() => setHoveredBar(null)}
                 onClick={(d) => openModal(d.supplierName)}
@@ -653,7 +685,8 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
                 ))}
               </Bar>
             </BarChart>
-          </ResponsiveContainer>
+            </ResponsiveContainer>
+          </div>
           <div className="flex justify-center gap-6 mt-2">
             <div className="flex items-center gap-2">
               <span
