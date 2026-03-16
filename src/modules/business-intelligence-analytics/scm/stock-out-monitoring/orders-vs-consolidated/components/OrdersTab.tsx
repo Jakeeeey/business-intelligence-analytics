@@ -6,9 +6,13 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { CanonicalOrder } from "../types";
+import { ChevronRight } from "lucide-react";
+import type { CanonicalOrder, OrdersRecord } from "../types";
 
-type Props = { canonicalOrders: CanonicalOrder[] };
+type Props = {
+  canonicalOrders: CanonicalOrder[];
+  filteredData: OrdersRecord[];
+};
 
 function numFmt(n: number) {
   return n.toLocaleString("en-PH", { maximumFractionDigits: 2 });
@@ -24,7 +28,7 @@ function fmtDate(d: string) {
       });
 }
 
-export function OrdersTab({ canonicalOrders }: Props) {
+export function OrdersTab({ canonicalOrders, filteredData }: Props) {
   const [sortKey, setSortKey] =
     React.useState<keyof CanonicalOrder>("orderDate");
   const [sortDir, setSortDir] = React.useState<"asc" | "desc">("desc");
@@ -39,20 +43,26 @@ export function OrdersTab({ canonicalOrders }: Props) {
   const [showFullyConsolidated, setShowFullyConsolidated] =
     React.useState<boolean>(true);
 
-  // const uniqueOrderSuppliers = React.useMemo(
-  //   () =>
-  //     [...new Set(canonicalOrders.map((o) => o.supplierName))]
-  //       .filter(Boolean)
-  //       .sort(),
-  //   [canonicalOrders],
-  // );
-  // const uniqueOrderStatuses = React.useMemo(
-  //   () =>
-  //     [...new Set(canonicalOrders.map((o) => o.orderStatus))]
-  //       .filter(Boolean)
-  //       .sort(),
-  //   [canonicalOrders],
-  // );
+  /* ─── Expandable rows ── */
+  const [expandedOrders, setExpandedOrders] = React.useState<Set<number>>(
+    new Set(),
+  );
+  const linesByOrder = React.useMemo(() => {
+    const map = new Map<number, OrdersRecord[]>();
+    for (const r of filteredData) {
+      if (!map.has(r.orderId)) map.set(r.orderId, []);
+      map.get(r.orderId)!.push(r);
+    }
+    return map;
+  }, [filteredData]);
+  const toggleExpanded = (orderId: number) => {
+    setExpandedOrders((prev) => {
+      const next = new Set(prev);
+      if (next.has(orderId)) next.delete(orderId);
+      else next.add(orderId);
+      return next;
+    });
+  };
 
   const filteredOrders = React.useMemo(() => {
     let data = canonicalOrders;
@@ -60,7 +70,6 @@ export function OrdersTab({ canonicalOrders }: Props) {
       data = data.filter((o) => o.supplierName === supplierFilter);
     if (statusFilter !== "all")
       data = data.filter((o) => o.orderStatus === statusFilter);
-    // Apply search if provided
     if (appliedSearch && appliedSearch.trim() !== "") {
       const q = appliedSearch.trim().toLowerCase();
       data = data.filter(
@@ -69,7 +78,6 @@ export function OrdersTab({ canonicalOrders }: Props) {
           (o.supplierName || "").toLowerCase().includes(q),
       );
     }
-    // Exclude fully consolidated orders when toggle is off
     if (!showFullyConsolidated) {
       data = data.filter((o) => !o.isConsolidated);
     }
@@ -119,7 +127,6 @@ export function OrdersTab({ canonicalOrders }: Props) {
     currentPage * itemsPerPage,
   );
 
-  // Debounce appliedSearch from searchQuery
   React.useEffect(() => {
     const id = setTimeout(() => {
       setAppliedSearch(searchQuery);
@@ -165,7 +172,6 @@ export function OrdersTab({ canonicalOrders }: Props) {
               )}
             </div>
           </div>
-          {/* Filter dropdowns + search + consolidated toggle */}
           <div className="flex flex-wrap items-center gap-2">
             <Input
               placeholder="Search orders..."
@@ -187,30 +193,6 @@ export function OrdersTab({ canonicalOrders }: Props) {
               </Button>
             ) : null}
 
-            {/* <select
-              className="h-8 rounded-md border border-input bg-background px-3 py-1 text-sm dark:border-zinc-700"
-              value={supplierFilter}
-              onChange={(e) => setSupplierFilter(e.target.value)}
-            >
-              <option value="all">All Suppliers</option>
-              {uniqueOrderSuppliers.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
-            <select
-              className="h-8 rounded-md border border-input bg-background px-3 py-1 text-sm dark:border-zinc-700"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-            >
-              <option value="all">All Statuses</option>
-              {uniqueOrderStatuses.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select> */}
             {(supplierFilter !== "all" || statusFilter !== "all") && (
               <button
                 className="text-xs text-muted-foreground hover:text-foreground underline"
@@ -219,7 +201,7 @@ export function OrdersTab({ canonicalOrders }: Props) {
                   setStatusFilter("all");
                 }}
               >
-                Clear
+                Clear filters
               </button>
             )}
 
@@ -238,26 +220,28 @@ export function OrdersTab({ canonicalOrders }: Props) {
           </div>
         </div>
       </CardHeader>
+
       <CardContent className="p-0">
         <div className="overflow-x-auto">
           <table
             className="w-full text-sm"
-            style={{ tableLayout: "fixed", minWidth: 800 }}
+            style={{ tableLayout: "fixed", minWidth: 1000 }}
           >
             <colgroup>
-              <col style={{ width: 130 }} />
-              <col style={{ width: 110 }} />
-              <col style={{ width: 145 }} />
-              <col style={{ width: 110 }} />
-              <col style={{ width: 180 }} />
-              <col style={{ width: 80 }} />
-              <col style={{ width: 100 }} />
-              <col style={{ width: 120 }} />
+              <col style={{ width: 40 }} />  {/* expand toggle */}
+              <col style={{ width: 130 }} /> {/* Order No */}
+              <col style={{ width: 120 }} /> {/* Date */}
+              <col style={{ width: 140 }} /> {/* Status */}
+              <col style={{ width: 200 }} /> {/* Supplier */}
+              <col style={{ width: 100 }} /> {/* Products */}
+              <col style={{ width: 120 }} /> {/* Qty Ordered */}
+              <col style={{ width: 150 }} /> {/* Net Amount */}
             </colgroup>
             <thead>
               <tr className="border-b dark:border-zinc-700 bg-muted/30">
+                <th className="py-3 pl-3" />
                 <th
-                  className="py-3 pl-4 pr-2 text-left font-medium text-muted-foreground cursor-pointer hover:text-foreground"
+                  className="py-3 pl-2 pr-2 text-left font-medium text-muted-foreground cursor-pointer hover:text-foreground"
                   onClick={() => handleSort("orderNo")}
                 >
                   Order No. {sortIcon("orderNo")}
@@ -274,12 +258,12 @@ export function OrdersTab({ canonicalOrders }: Props) {
                 >
                   Status {sortIcon("orderStatus")}
                 </th>
-                <th
+                {/* <th
                   className="py-3 px-2 text-left font-medium text-muted-foreground cursor-pointer hover:text-foreground"
                   onClick={() => handleSort("isConsolidated")}
                 >
                   Consolidated? {sortIcon("isConsolidated")}
-                </th>
+                </th> */}
                 <th
                   className="py-3 px-2 text-left font-medium text-muted-foreground cursor-pointer hover:text-foreground"
                   onClick={() => handleSort("supplierName")}
@@ -307,66 +291,167 @@ export function OrdersTab({ canonicalOrders }: Props) {
               </tr>
             </thead>
             <tbody>
-              {paginatedItems.map((row) => (
-                <tr
-                  key={row.orderId}
-                  className={[
-                    "border-b dark:border-zinc-800 hover:bg-muted/30 transition-colors",
-                    !row.isConsolidated
-                      ? "bg-amber-50/30 dark:bg-amber-950/15"
-                      : "bg-emerald-50/10 dark:bg-emerald-950/5",
-                  ].join(" ")}
-                >
-                  <td className="py-2.5 pl-4 pr-2 font-medium">
-                    <span className="block truncate">{row.orderNo}</span>
-                  </td>
-                  <td className="py-2.5 px-2 text-muted-foreground text-xs whitespace-nowrap">
-                    {fmtDate(row.orderDate)}
-                  </td>
-                  <td className="py-2.5 px-2">
-                    <Badge variant="outline" className="text-xs">
-                      <span className="block truncate max-w-30">
-                        {row.orderStatus}
-                      </span>
-                    </Badge>
-                  </td>
-                  <td className="py-2.5 px-2">
-                    {row.isConsolidated ? (
-                      <Badge
-                        variant="outline"
-                        className="text-xs border-emerald-500 text-emerald-600 dark:text-emerald-400"
-                      >
-                        Yes
-                      </Badge>
-                    ) : (
-                      <Badge
-                        variant="outline"
-                        className="text-xs border-amber-500 text-amber-600 dark:text-amber-400"
-                      >
-                        For Consolidation
-                      </Badge>
+              {paginatedItems.map((row) => {
+                const isExpanded = expandedOrders.has(row.orderId);
+                const lines = linesByOrder.get(row.orderId) ?? [];
+                return (
+                  <React.Fragment key={row.orderId}>
+                    {/* ── Parent row ── */}
+                    <tr
+                      className={[
+                        "border-b dark:border-zinc-800 hover:bg-muted/30 transition-colors cursor-pointer select-none",
+                        !row.isConsolidated
+                          ? "bg-amber-50/30 dark:bg-amber-950/15"
+                          : "bg-emerald-50/10 dark:bg-emerald-950/5",
+                      ].join(" ")}
+                      onClick={() => toggleExpanded(row.orderId)}
+                    >
+                      <td className="py-2.5 pl-3">
+                        <ChevronRight
+                          className={`h-4 w-4 text-muted-foreground transition-transform duration-150 ${isExpanded ? "rotate-90" : ""}`}
+                        />
+                      </td>
+                      <td className="py-2.5 pl-2 pr-2 font-medium">
+                        <span className="block truncate">{row.orderNo}</span>
+                      </td>
+                      <td className="py-2.5 px-2 text-muted-foreground text-xs whitespace-nowrap">
+                        {fmtDate(row.orderDate)}
+                      </td>
+                      <td className="py-2.5 px-2">
+                        <Badge variant="outline" className="text-xs">
+                          <span className="block truncate max-w-30">
+                            {row.orderStatus}
+                          </span>
+                        </Badge>
+                      </td>
+                      {/* <td className="py-2.5 px-2">
+                        {row.isConsolidated ? (
+                          <Badge
+                            variant="outline"
+                            className="text-xs border-emerald-500 text-emerald-600 dark:text-emerald-400"
+                          >
+                            Yes
+                          </Badge>
+                        ) : (
+                          <Badge
+                            variant="outline"
+                            className="text-xs border-amber-500 text-amber-600 dark:text-amber-400"
+                          >
+                            For Consolidation
+                          </Badge>
+                        )}
+                      </td> */}
+                      <td className="py-2.5 px-2">
+                        <span className="block truncate" title={row.supplierName}>
+                          {row.supplierName}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-2 text-right text-muted-foreground">
+                        {row.productCount}
+                      </td>
+                      <td className="py-2.5 px-2 text-right tabular-nums">
+                        {numFmt(row.totalOrdered)}
+                      </td>
+                      <td className="py-2.5 pr-4 pl-2 text-right tabular-nums">
+                        ₱{numFmt(row.netAmount)}
+                      </td>
+                    </tr>
+
+                    {/* ── Expanded product lines ── */}
+                    {isExpanded && (
+                      <tr className="border-b dark:border-zinc-800 bg-muted/10">
+                        <td colSpan={8} className="p-0">
+                          <div className="px-6 py-3 overflow-x-auto">
+                            <table
+                              className="w-full text-xs"
+                              style={{ tableLayout: "fixed", minWidth: 960 }}
+                            >
+                              <colgroup>
+                                <col style={{ width: 110 }} /> {/* Brand */}
+                                <col style={{ width: 120 }} /> {/* Category */}
+                                <col style={{ width: 240 }} /> {/* Product Name */}
+                                <col style={{ width: 70 }} />  {/* Unit */}
+                                <col style={{ width: 100 }} /> {/* Net Price */}
+                                <col style={{ width: 80 }} />  {/* Ordered */}
+                                <col style={{ width: 100 }} /> {/* Consolidated */}
+                                <col style={{ width: 70 }} />  {/* Gap */}
+                                <col style={{ width: 120 }} /> {/* Variance Amount */}
+                              </colgroup>
+                              <thead>
+                                <tr className="border-b dark:border-zinc-700 text-muted-foreground">
+                                  <th className="py-2 px-2 text-left font-medium">Brand</th>
+                                  <th className="py-2 px-2 text-left font-medium">Category</th>
+                                  <th className="py-2 px-2 text-left font-medium">Product Name</th>
+                                  <th className="py-2 px-2 text-left font-medium">Unit</th>
+                                  <th className="py-2 px-2 text-right font-medium">Net Price</th>
+                                  <th className="py-2 px-2 text-right font-medium">Ordered</th>
+                                  <th className="py-2 px-2 text-right font-medium">Consolidated</th>
+                                  <th className="py-2 px-2 text-right font-medium">Gap</th>
+                                  <th className="py-2 px-2 text-right font-medium">Variance Amount</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {lines.map((line, li) => {
+                                  const netPricePerUnit = line.orderedQuantity > 0 ? line.netAmount / line.orderedQuantity : 0;
+                                  const gap = line.orderedQuantity - line.allocatedQuantity;
+                                  const varianceAmount = gap * netPricePerUnit;
+                                  return (
+                                  <tr
+                                    key={li}
+                                    className="border-b dark:border-zinc-800/50 last:border-0 hover:bg-muted/20"
+                                  >
+                                    <td className="py-1.5 px-2 text-muted-foreground">
+                                      <span className="block truncate">{line.brandName}</span>
+                                    </td>
+                                    <td className="py-1.5 px-2 text-muted-foreground">
+                                      <span className="block truncate">{line.categoryName}</span>
+                                    </td>
+                                    <td className="py-1.5 px-2 font-medium">
+                                      <span className="block truncate" title={line.productName}>
+                                        {line.productName}
+                                      </span>
+                                    </td>
+                                    <td className="py-1.5 px-2 text-muted-foreground">{line.unit}</td>
+                                    <td className="py-1.5 px-2 text-right tabular-nums">₱{numFmt(netPricePerUnit)}</td>
+                                    <td className="py-1.5 px-2 text-right tabular-nums">{numFmt(line.orderedQuantity)}</td>
+                                    <td className="py-1.5 px-2 text-right tabular-nums text-emerald-600 dark:text-emerald-400">
+                                      {numFmt(line.allocatedQuantity)}
+                                    </td>
+                                    <td className="py-1.5 px-2 text-right tabular-nums">
+                                      {gap > 0 ? (
+                                        <span className="text-rose-600 dark:text-rose-400 font-medium">
+                                          {numFmt(gap)}
+                                        </span>
+                                      ) : (
+                                        <span className="text-emerald-600 dark:text-emerald-400">—</span>
+                                      )}
+                                    </td>
+                                    <td className="py-1.5 px-2 text-right tabular-nums">
+                                      {varianceAmount > 0 ? (
+                                        <span className="text-rose-600 dark:text-rose-400 font-medium">
+                                          ₱{numFmt(varianceAmount)}
+                                        </span>
+                                      ) : (
+                                        <span className="text-emerald-600 dark:text-emerald-400">—</span>
+                                      )}
+                                    </td>
+                                  </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        </td>
+                      </tr>
                     )}
-                  </td>
-                  <td className="py-2.5 px-2">
-                    <span className="block truncate" title={row.supplierName}>
-                      {row.supplierName}
-                    </span>
-                  </td>
-                  <td className="py-2.5 px-2 text-right text-muted-foreground">
-                    {row.productCount}
-                  </td>
-                  <td className="py-2.5 px-2 text-right tabular-nums">
-                    {numFmt(row.totalOrdered)}
-                  </td>
-                  <td className="py-2.5 pr-4 pl-2 text-right tabular-nums">
-                    ₱{numFmt(row.netAmount)}
-                  </td>
-                </tr>
-              ))}
+                  </React.Fragment>
+                );
+              })}
             </tbody>
           </table>
         </div>
       </CardContent>
+
       <div className="flex items-center justify-between px-4 py-4 border-t dark:border-zinc-700">
         <div className="flex items-center gap-4">
           <select
@@ -428,3 +513,5 @@ export function OrdersTab({ canonicalOrders }: Props) {
     </Card>
   );
 }
+
+

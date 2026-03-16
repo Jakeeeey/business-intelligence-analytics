@@ -103,7 +103,10 @@ export default function OrderedvsConsolidatedModule() {
               </TabsContent>
 
               <TabsContent value="orders">
-                <OrdersTab canonicalOrders={hook.canonicalOrders} />
+                <OrdersTab
+                  canonicalOrders={hook.canonicalOrders}
+                  filteredData={hook.filteredData}
+                />
               </TabsContent>
             </Tabs>
           )}

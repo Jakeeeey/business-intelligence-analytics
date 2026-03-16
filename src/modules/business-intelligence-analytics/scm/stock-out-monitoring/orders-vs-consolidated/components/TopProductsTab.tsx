@@ -1043,6 +1043,40 @@ export function TopProductsTab({ productSummaries }: Props) {
                   </tr>
                 ))}
               </tbody>
+              {filteredSorted.length > 0 && (() => {
+                const totalOrdered = filteredSorted.reduce((s, r) => s + r.totalOrdered, 0);
+                const totalConsolidated = filteredSorted.reduce((s, r) => s + ((r as unknown as ProductOrdersSummary).totalConsolidated ?? 0), 0);
+                const avgRate = totalOrdered > 0 ? (totalConsolidated / totalOrdered) * 100 : 0;
+                const totalOrders = filteredSorted.reduce((s, r) => s + r.orderCount, 0);
+                const totalNet = filteredSorted.reduce((s, r) => s + r.netAmount, 0);
+                return (
+                  <tfoot>
+                    <tr className="border-t-2 border-zinc-300 dark:border-zinc-600 bg-muted/40 font-semibold text-sm">
+                      <td className="py-2.5 pl-4 pr-2" colSpan={4}>
+                        Total ({filteredSorted.length} products)
+                      </td>
+                      <td className="py-2.5 px-2 text-right tabular-nums">
+                        {numFmt(totalOrdered)}
+                      </td>
+                      <td className="py-2.5 px-2 text-right tabular-nums">
+                        {numFmt(totalConsolidated)}
+                      </td>
+                      <td className="py-2.5 px-2 text-right text-xs">
+                        {pctFmt(avgRate)}
+                      </td>
+                      <td className="py-2.5 px-2 text-right tabular-nums">
+                        {numFmt(totalOrders)}
+                      </td>
+                      <td className="py-2.5 px-2 text-right text-xs">
+                        
+                      </td>
+                      <td className="py-2.5 pr-4 pl-2 text-right tabular-nums">
+                        ₱{numFmt(totalNet)}
+                      </td>
+                    </tr>
+                  </tfoot>
+                );
+              })()}
             </table>
           </div>
         </CardContent>

@@ -264,21 +264,30 @@ export function useOrderedvsConsolidated() {
   // ── Unique filter lists (from date-filtered data) ────────────────────────
   const uniqueSuppliers = React.useMemo(
     () =>
-      [...new Set(dateFilteredData.map((r) => r.supplierName))].filter(Boolean).sort(),
+      [...new Set(dateFilteredData.map((r) => r.supplierName))]
+        .filter(Boolean)
+        .sort(),
     [dateFilteredData],
   );
   const uniqueBrands = React.useMemo(
-    () => [...new Set(dateFilteredData.map((r) => r.brandName))].filter(Boolean).sort(),
+    () =>
+      [...new Set(dateFilteredData.map((r) => r.brandName))]
+        .filter(Boolean)
+        .sort(),
     [dateFilteredData],
   );
   const uniqueCategories = React.useMemo(
     () =>
-      [...new Set(dateFilteredData.map((r) => r.categoryName))].filter(Boolean).sort(),
+      [...new Set(dateFilteredData.map((r) => r.categoryName))]
+        .filter(Boolean)
+        .sort(),
     [dateFilteredData],
   );
   const uniqueStatuses = React.useMemo(
     () =>
-      [...new Set(dateFilteredData.map((r) => r.orderStatus))].filter(Boolean).sort(),
+      [...new Set(dateFilteredData.map((r) => r.orderStatus))]
+        .filter(Boolean)
+        .sort(),
     [dateFilteredData],
   );
 
@@ -307,10 +316,14 @@ export function useOrderedvsConsolidated() {
     if (filters.statuses.length > 0)
       base = base.filter((r) => filters.statuses.includes(r.orderStatus));
     const counts: Record<string, number> = {};
-    for (const r of base)
-      counts[r.brandName] = (counts[r.brandName] || 0) + 1;
+    for (const r of base) counts[r.brandName] = (counts[r.brandName] || 0) + 1;
     return counts;
-  }, [dateFilteredData, filters.suppliers, filters.categories, filters.statuses]);
+  }, [
+    dateFilteredData,
+    filters.suppliers,
+    filters.categories,
+    filters.statuses,
+  ]);
 
   const categoryCounts = React.useMemo(() => {
     // faceted: filter by suppliers + brands + statuses (NOT categories)
@@ -403,6 +416,9 @@ export function useOrderedvsConsolidated() {
         consolidationRate: 0,
         totalNetAmount: 0,
         totalOrderedQuantity: 0,
+        totalConsolidatedQuantity: 0,
+        varianceQty: 0,
+        varianceAmount: 0,
       };
 
     const totalOrders = canonicalOrders.length;
@@ -418,6 +434,18 @@ export function useOrderedvsConsolidated() {
       (s, r) => s + (r.orderedQuantity ?? 0),
       0,
     );
+    const totalConsolidatedQuantity = filteredData.reduce(
+      (s, r) => s + (r.allocatedQuantity ?? 0),
+      0,
+    );
+    const varianceQty = totalOrderedQuantity - totalConsolidatedQuantity;
+    const varianceAmount = filteredData.reduce(
+      (s, r) => {
+        const netPricePerUnit = r.orderedQuantity > 0 ? (r.netAmount ?? 0) / r.orderedQuantity : 0;
+        return s + (r.orderedQuantity - r.allocatedQuantity) * netPricePerUnit;
+      },
+      0,
+    );
 
     return {
       totalOrders,
@@ -427,6 +455,9 @@ export function useOrderedvsConsolidated() {
         totalOrders > 0 ? (totalConsolidated / totalOrders) * 100 : 0,
       totalNetAmount,
       totalOrderedQuantity,
+      totalConsolidatedQuantity,
+      varianceQty,
+      varianceAmount,
     };
   }, [canonicalOrders, filteredData]);
 
