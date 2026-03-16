@@ -874,7 +874,7 @@ export function OverviewTab({
                   tickLine={false}
                   axisLine={false}
                   interval={0}
-                  height={70}
+                  height={5}
                 />
                 <YAxis
                   tickFormatter={(v) => numFmt(v)}
@@ -994,7 +994,7 @@ export function OverviewTab({
                   tickLine={false}
                   axisLine={false}
                   interval={0}
-                  height={70}
+                  height={1}
                 />
                 <YAxis
                   tickFormatter={(v) => numFmt(v)}

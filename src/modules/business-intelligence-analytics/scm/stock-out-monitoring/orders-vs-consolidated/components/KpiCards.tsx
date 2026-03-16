@@ -125,7 +125,7 @@ export function KpiCards({ kpis }: Props) {
       />
 
       <KpiCard
-        title="Pending"
+        title="For Consolidation"
         value={numFmt.format(kpis.pendingOrders)}
         icon={PackageSearch}
         tooltip="Orders still in 'For Consolidation' status — these are the processing backlog that need attention."
