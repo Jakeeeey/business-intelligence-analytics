@@ -160,7 +160,7 @@ export function OrdersTab({ canonicalOrders }: Props) {
                   variant="outline"
                   className="text-xs border-amber-500 text-amber-600 dark:text-amber-400"
                 >
-                  {pendingCount} pending
+                  {pendingCount} For Consolidation
                 </Badge>
               )}
             </div>
@@ -343,7 +343,7 @@ export function OrdersTab({ canonicalOrders }: Props) {
                         variant="outline"
                         className="text-xs border-amber-500 text-amber-600 dark:text-amber-400"
                       >
-                        Pending
+                        For Consolidation
                       </Badge>
                     )}
                   </td>

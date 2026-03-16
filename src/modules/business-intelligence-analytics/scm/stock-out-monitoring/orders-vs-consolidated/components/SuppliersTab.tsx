@@ -753,7 +753,7 @@ export function SuppliersTab({ supplierSummaries }: Props) {
                     className="py-3 px-2 text-right font-medium text-muted-foreground cursor-pointer hover:text-foreground"
                     onClick={() => handleSort("pendingOrders")}
                   >
-                    Pending {sortIcon("pendingOrders")}
+                    For Consolidation {sortIcon("pendingOrders")}
                   </th>
                   <th className="py-3 px-2 text-right font-medium text-muted-foreground">
                     Rate
@@ -899,7 +899,7 @@ export function SuppliersTab({ supplierSummaries }: Props) {
                 color="text-emerald-600 dark:text-emerald-400"
               />
               <InsightStat
-                label="Pending"
+                label="For Consolidation"
                 value={numFmt(modalSupplier.pendingOrders)}
                 color={
                   modalSupplier.pendingOrders > 0

@@ -148,6 +148,23 @@ export function getDateRangeFromPreset(
   }
 }
 
+// ── Deduplication ────────────────────────────────────────────────────────────
+
+/**
+ * Remove duplicate rows by (orderId, productId).
+ * The API join can produce Cartesian-product duplicates; keeping only the
+ * first occurrence per unique key prevents inflated KPIs/charts.
+ */
+function deduplicateRecords(records: OrdersRecord[]): OrdersRecord[] {
+  const seen = new Set<string>();
+  return records.filter((r) => {
+    const key = `${r.orderId}:${r.productId}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 // ── Hook ────────────────────────────────────────────────────────────────────
 
 export function useOrderedvsConsolidated() {
@@ -636,103 +653,98 @@ export function useOrderedvsConsolidated() {
   }, [filteredData, granularity]);
 
   // ── Data loading — no date params; filtering is client-side ─────────────
-  const loadData = React.useCallback(
-    async () => {
-      abortControllerRef.current?.abort();
-      if (activeToastRef.current !== null)
-        toast.dismiss(activeToastRef.current);
+  const loadData = React.useCallback(async () => {
+    abortControllerRef.current?.abort();
+    if (activeToastRef.current !== null) toast.dismiss(activeToastRef.current);
 
-      abortControllerRef.current = new AbortController();
-      setLoading(true);
+    abortControllerRef.current = new AbortController();
+    setLoading(true);
 
-      const MAX_RETRIES = 5;
-      let lastError: unknown = null;
-      let cachedDataAvailable = false;
-      let loadingToast: string | number = "";
-      let hasShownCacheToast = false;
+    const MAX_RETRIES = 5;
+    let lastError: unknown = null;
+    let cachedDataAvailable = false;
+    let loadingToast: string | number = "";
+    let hasShownCacheToast = false;
 
-      try {
-        loadingToast = toast.loading("Loading data...");
-        activeToastRef.current = loadingToast;
+    try {
+      loadingToast = toast.loading("Loading data...");
+      activeToastRef.current = loadingToast;
 
-        for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-          if (abortControllerRef.current?.signal.aborted) return;
-          try {
-            const data = await fetchOrdersConsolidatedData(
-              undefined,
-              undefined,
-              abortControllerRef.current.signal,
-              {
-                onCacheData: (cached) => {
-                  setRawData(cached);
-                  setLoadedOnce(true);
-                  cachedDataAvailable = true;
-                  if (!hasShownCacheToast) {
-                    toast.info("Showing cached data, updating...", {
-                      id: loadingToast,
-                      duration: 10000,
-                    });
-                    hasShownCacheToast = true;
-                  }
-                },
+      for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        if (abortControllerRef.current?.signal.aborted) return;
+        try {
+          const data = await fetchOrdersConsolidatedData(
+            undefined,
+            undefined,
+            abortControllerRef.current.signal,
+            {
+              onCacheData: (cached) => {
+                setRawData(deduplicateRecords(cached));
+                setLoadedOnce(true);
+                cachedDataAvailable = true;
+                if (!hasShownCacheToast) {
+                  toast.info("Showing cached data, updating...", {
+                    id: loadingToast,
+                    duration: 10000,
+                  });
+                  hasShownCacheToast = true;
+                }
               },
-            );
+            },
+          );
 
-            setRawData(data);
-            setLoadedOnce(true);
-            toast.success("Data loaded successfully.", {
-              id: loadingToast,
-              duration: 5000,
-            });
-            activeToastRef.current = null;
-            return;
-          } catch (e: unknown) {
-            lastError = e;
-            const err = e as { name?: string; status?: number };
-            if (
-              err.name === "AbortError" ||
-              abortControllerRef.current?.signal.aborted
-            )
-              return;
-            const shouldRetry =
-              (!err?.status || (err.status >= 500 && err.status < 600)) &&
-              attempt < MAX_RETRIES;
-            if (shouldRetry) {
-              toast.loading(
-                cachedDataAvailable
-                  ? `Showing cached data, retrying ${attempt}/${MAX_RETRIES}...`
-                  : `Fetching data ${attempt}/${MAX_RETRIES}...`,
-                { id: loadingToast },
-              );
-            } else break;
-          }
-        }
-        throw lastError;
-      } catch (e: unknown) {
-        const err = e as { name?: string; message?: string; status?: number };
-        if (
-          err.name === "AbortError" ||
-          abortControllerRef.current?.signal.aborted
-        )
+          setRawData(deduplicateRecords(data));
+          setLoadedOnce(true);
+          toast.success("Data loaded successfully.", {
+            id: loadingToast,
+            duration: 5000,
+          });
+          activeToastRef.current = null;
           return;
-        if (err.status === 401) {
-          toast.error("Session expired. Please log in again.", {
-            id: loadingToast,
-            duration: 4000,
-          });
-        } else {
-          toast.error(err.message || "Failed to load data. Please try again.", {
-            id: loadingToast,
-            duration: 6000,
-          });
+        } catch (e: unknown) {
+          lastError = e;
+          const err = e as { name?: string; status?: number };
+          if (
+            err.name === "AbortError" ||
+            abortControllerRef.current?.signal.aborted
+          )
+            return;
+          const shouldRetry =
+            (!err?.status || (err.status >= 500 && err.status < 600)) &&
+            attempt < MAX_RETRIES;
+          if (shouldRetry) {
+            toast.loading(
+              cachedDataAvailable
+                ? `Showing cached data, retrying ${attempt}/${MAX_RETRIES}...`
+                : `Fetching data ${attempt}/${MAX_RETRIES}...`,
+              { id: loadingToast },
+            );
+          } else break;
         }
-      } finally {
-        setLoading(false);
       }
-    },
-    
-    [],
-  );
+      throw lastError;
+    } catch (e: unknown) {
+      const err = e as { name?: string; message?: string; status?: number };
+      if (
+        err.name === "AbortError" ||
+        abortControllerRef.current?.signal.aborted
+      )
+        return;
+      if (err.status === 401) {
+        toast.error("Session expired. Please log in again.", {
+          id: loadingToast,
+          duration: 4000,
+        });
+      } else {
+        toast.error(err.message || "Failed to load data. Please try again.", {
+          id: loadingToast,
+          duration: 6000,
+        });
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   // ── Auto-fetch once on mount — date filtering is done client-side ────────
   React.useEffect(() => {
