@@ -1046,36 +1046,36 @@ export function TopProductsTab({ productSummaries }: Props) {
             </table>
           </div>
         </CardContent>
-        {filteredTotalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-4 border-t dark:border-zinc-700">
-            <div className="flex items-center gap-4">
-              <NativeSelect
-                size="sm"
-                value={String(itemsPerPage)}
-                onChange={(e) => {
-                  setItemsPerPage(Number(e.target.value));
-                  setCurrentPage(1);
-                }}
-                className="w-20"
-              >
-                <NativeSelectOption value="10">10</NativeSelectOption>
-                <NativeSelectOption value="25">25</NativeSelectOption>
-                <NativeSelectOption value="50">50</NativeSelectOption>
-                <NativeSelectOption value="100">100</NativeSelectOption>
-              </NativeSelect>
-              <span className="text-sm text-muted-foreground">
-                Showing {(currentPage - 1) * itemsPerPage + 1}–
-                {Math.min(currentPage * itemsPerPage, filteredSorted.length)} of{" "}
-                {filteredSorted.length}
-              </span>
-            </div>
+        <div className="flex items-center justify-between px-4 py-4 border-t dark:border-zinc-700">
+          <div className="flex items-center gap-4">
+            <NativeSelect
+              size="sm"
+              value={String(itemsPerPage)}
+              onChange={(e) => {
+                setItemsPerPage(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              className="w-20"
+            >
+              <NativeSelectOption value="10">10</NativeSelectOption>
+              <NativeSelectOption value="25">25</NativeSelectOption>
+              <NativeSelectOption value="50">50</NativeSelectOption>
+              <NativeSelectOption value="100">100</NativeSelectOption>
+            </NativeSelect>
+            <span className="text-sm text-muted-foreground">
+              Showing {(currentPage - 1) * itemsPerPage + 1}–
+              {Math.min(currentPage * itemsPerPage, filteredSorted.length)} of{" "}
+              {filteredSorted.length}
+            </span>
+          </div>
+          {filteredTotalPages > 1 && (
             <Pagination
               page={currentPage}
               total={filteredTotalPages}
               onChange={setCurrentPage}
             />
-          </div>
-        )}
+          )}
+        </div>
       </Card>
 
       {/* ── Product Modal ── */}
