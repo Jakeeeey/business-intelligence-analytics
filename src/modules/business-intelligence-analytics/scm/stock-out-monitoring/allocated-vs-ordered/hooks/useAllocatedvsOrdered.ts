@@ -265,21 +265,30 @@ export function useAllocatedvsOrdered() {
   // ── Unique filter lists (from date-filtered data) ────────────────────────
   const uniqueSuppliers = React.useMemo(
     () =>
-      [...new Set(dateFilteredData.map((r) => r.supplierName))].filter(Boolean).sort(),
+      [...new Set(dateFilteredData.map((r) => r.supplierName))]
+        .filter(Boolean)
+        .sort(),
     [dateFilteredData],
   );
   const uniqueBrands = React.useMemo(
-    () => [...new Set(dateFilteredData.map((r) => r.brandName))].filter(Boolean).sort(),
+    () =>
+      [...new Set(dateFilteredData.map((r) => r.brandName))]
+        .filter(Boolean)
+        .sort(),
     [dateFilteredData],
   );
   const uniqueCategories = React.useMemo(
     () =>
-      [...new Set(dateFilteredData.map((r) => r.categoryName))].filter(Boolean).sort(),
+      [...new Set(dateFilteredData.map((r) => r.categoryName))]
+        .filter(Boolean)
+        .sort(),
     [dateFilteredData],
   );
   const uniqueStatuses = React.useMemo(
     () =>
-      [...new Set(dateFilteredData.map((r) => r.orderStatus))].filter(Boolean).sort(),
+      [...new Set(dateFilteredData.map((r) => r.orderStatus))]
+        .filter(Boolean)
+        .sort(),
     [dateFilteredData],
   );
 
@@ -309,10 +318,14 @@ export function useAllocatedvsOrdered() {
     if (filters.statuses.length > 0)
       base = base.filter((r) => filters.statuses.includes(r.orderStatus));
     const counts: Record<string, number> = {};
-    for (const r of base)
-      counts[r.brandName] = (counts[r.brandName] || 0) + 1;
+    for (const r of base) counts[r.brandName] = (counts[r.brandName] || 0) + 1;
     return counts;
-  }, [dateFilteredData, filters.suppliers, filters.categories, filters.statuses]);
+  }, [
+    dateFilteredData,
+    filters.suppliers,
+    filters.categories,
+    filters.statuses,
+  ]);
 
   const categoryCounts = React.useMemo(() => {
     // filter by suppliers + brands + statuses (NOT categories)

@@ -99,11 +99,33 @@ export function Filters({
       )
     : uniqueCategories;
 
+  const STATUS_ORDER = [
+    "For Approval",
+    "For Consolidation",
+    "For Picking",
+    "For Invoicing",
+    "For Loading",
+    "For Shipping",
+    "En Route",
+    "Delivered",
+    "On Hold",
+    "Cancelled",
+    "Not Fulfilled",
+  ];
+  const sortedStatuses = [...uniqueStatuses].sort((a, b) => {
+    const ai = STATUS_ORDER.indexOf(a);
+    const bi = STATUS_ORDER.indexOf(b);
+    if (ai === -1 && bi === -1) return a.localeCompare(b);
+    if (ai === -1) return 1;
+    if (bi === -1) return -1;
+    return ai - bi;
+  });
+
   const filteredStatuses = statusSearch
-    ? uniqueStatuses.filter((s) =>
+    ? sortedStatuses.filter((s) =>
         s.toLowerCase().includes(statusSearch.toLowerCase()),
       )
-    : uniqueStatuses;
+    : sortedStatuses;
 
   const hasActiveFilters =
     filters.suppliers.length > 0 ||

@@ -30,10 +30,11 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { useTheme } from "next-themes";
+import { ChevronRight } from "lucide-react";
 // import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { ProductAllocationSummary } from "../types";
+import type { ProductAllocationSummary, AllocatedOrderedRecord } from "../types";
 
 /* ─── Helpers ───────────────────────────────────────────────── */
 
@@ -43,6 +44,17 @@ function numFmt(n: number) {
 function pctFmt(n: number) {
   return `${n.toFixed(1)}%`;
 }
+// //es
+// function fmtDate(d: string) {
+//   const dt = new Date(d + "T00:00:00");
+//   return isNaN(dt.getTime())
+//     ? d
+//     : dt.toLocaleDateString("en-PH", {
+//         year: "numeric",
+//         month: "short",
+//         day: "numeric",
+//       });
+// }
 
 /* ─── Colors ─────────────────────────────────────────────────── */
 
@@ -243,11 +255,12 @@ function SortIcon({
 
 type Props = {
   productSummaries: ProductAllocationSummary[];
+  filteredData: AllocatedOrderedRecord[];
 };
 
 /* ─── Component ──────────────────────────────────────────────── */
 
-export function TopProductsTab({ productSummaries }: Props) {
+export function TopProductsTab({ productSummaries, filteredData }: Props) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
   const activeChartColors = isDark ? chartColorsDark : chartColors;
@@ -278,6 +291,27 @@ export function TopProductsTab({ productSummaries }: Props) {
   const [modal, setModal] = React.useState<ProductAllocationSummary | null>(
     null,
   );
+
+  /* ─── Expandable rows ────────────────────────────────────── */
+  const [expandedProducts, setExpandedProducts] = React.useState<Set<number>>(
+    new Set(),
+  );
+  const linesByProduct = React.useMemo(() => {
+    const map = new Map<number, AllocatedOrderedRecord[]>();
+    for (const r of filteredData) {
+      if (!map.has(r.productId)) map.set(r.productId, []);
+      map.get(r.productId)!.push(r);
+    }
+    return map;
+  }, [filteredData]);
+  const toggleProduct = (productId: number) => {
+    setExpandedProducts((prev) => {
+      const next = new Set(prev);
+      if (next.has(productId)) next.delete(productId);
+      else next.add(productId);
+      return next;
+    });
+  };
 
   /* ─── Sort handler ───────────────────────────────────────── */
   const handleSort = React.useCallback(
@@ -657,18 +691,20 @@ export function TopProductsTab({ productSummaries }: Props) {
             {/* table-layout: fixed prevents column width shifting on sort */}
             <table className="w-full text-sm" style={{ tableLayout: "fixed" }}>
               <colgroup>
-                <col style={{ width: 240 }} /> {/* Product */}
+                <col style={{ width: 36 }} />  {/* expand */}
+                <col style={{ width: 230 }} /> {/* Product */}
                 <col style={{ width: 120 }} /> {/* Brand */}
                 <col style={{ width: 120 }} /> {/* Category */}
-                <col style={{ width: 64 }} /> {/* Unit */}
-                <col style={{ width: 90 }} /> {/* Ordered */}
-                <col style={{ width: 90 }} /> {/* Allocated */}
-                <col style={{ width: 80 }} /> {/* Gap */}
-                <col style={{ width: 80 }} /> {/* Rate */}
+                <col style={{ width: 64 }} />  {/* Unit */}
+                <col style={{ width: 90 }} />  {/* Ordered */}
+                <col style={{ width: 90 }} />  {/* Allocated */}
+                <col style={{ width: 80 }} />  {/* Gap */}
+                <col style={{ width: 80 }} />  {/* Rate */}
                 <col style={{ width: 110 }} /> {/* Net Amount */}
               </colgroup>
               <thead>
                 <tr className="border-b dark:border-zinc-700 bg-muted/30">
+                  <th className="py-3 pl-3" /> {/* expand col */}
                   <th
                     className="py-3 pl-4 px-2 text-left font-medium text-muted-foreground cursor-pointer hover:text-foreground select-none"
                     onClick={() => handleSort("productName")}
@@ -766,72 +802,162 @@ export function TopProductsTab({ productSummaries }: Props) {
                 {paginatedItems.map((row) => {
                   const isShortage = row.allocationGap > 0;
                   const isFullyAllocated = row.allocationGap === 0;
+                  const isExpanded = expandedProducts.has(row.productId);
+                  const lines = linesByProduct.get(row.productId) ?? [];
                   return (
-                    <tr
-                      key={row.productId}
-                      className={[
-                        "border-b dark:border-zinc-800 hover:bg-muted/30 transition-colors",
-                        isShortage ? "bg-rose-50/40 dark:bg-rose-950/20" : "",
-                        isFullyAllocated
-                          ? "bg-emerald-50/30 dark:bg-emerald-950/10"
-                          : "",
-                      ].join(" ")}
-                    >
-                      <td className="py-2.5 pl-4 px-2 font-medium overflow-hidden">
-                        <span
-                          className="block truncate"
-                          title={row.productName}
-                        >
-                          {row.productName}
-                        </span>
-                      </td>
-                      <td className="py-2.5 px-2 text-sm text-muted-foreground overflow-hidden">
-                        <span className="block truncate">{row.brandName}</span>
-                      </td>
-                      <td className="py-2.5 px-2 text-sm text-muted-foreground overflow-hidden">
-                        <span className="block truncate">
-                          {row.categoryName}
-                        </span>
-                      </td>
-                      <td className="py-2.5 px-2 text-xs text-muted-foreground">
-                        {row.unit}
-                      </td>
-                      <td className="py-2.5 px-2 text-right tabular-nums">
-                        {numFmt(row.totalOrdered)}
-                      </td>
-                      <td className="py-2.5 px-2 text-right tabular-nums text-emerald-600 dark:text-emerald-400">
-                        {numFmt(row.totalAllocated)}
-                      </td>
-                      <td className="py-2.5 px-2 text-right tabular-nums">
-                        {row.allocationGap > 0 ? (
-                          <span className="text-rose-600 dark:text-rose-400 font-medium">
-                            {numFmt(row.allocationGap)}
+                    <React.Fragment key={row.productId}>
+                      {/* ── Parent row ── */}
+                      <tr
+                        className={[
+                          "border-b dark:border-zinc-800 hover:bg-muted/30 transition-colors cursor-pointer select-none",
+                          isShortage ? "bg-rose-50/40 dark:bg-rose-950/20" : "",
+                          isFullyAllocated
+                            ? "bg-emerald-50/30 dark:bg-emerald-950/10"
+                            : "",
+                        ].join(" ")}
+                        onClick={() => toggleProduct(row.productId)}
+                      >
+                        <td className="py-2.5 pl-3">
+                          <ChevronRight
+                            className={`h-4 w-4 text-muted-foreground transition-transform duration-150 ${isExpanded ? "rotate-90" : ""}`}
+                          />
+                        </td>
+                        <td className="py-2.5 pl-2 px-2 font-medium overflow-hidden">
+                          <span
+                            className="block truncate"
+                            title={row.productName}
+                          >
+                            {row.productName}
                           </span>
-                        ) : (
-                          <span className="text-emerald-600 dark:text-emerald-400">
-                            0
+                        </td>
+                        <td className="py-2.5 px-2 text-sm text-muted-foreground overflow-hidden">
+                          <span className="block truncate">{row.brandName}</span>
+                        </td>
+                        <td className="py-2.5 px-2 text-sm text-muted-foreground overflow-hidden">
+                          <span className="block truncate">
+                            {row.categoryName}
                           </span>
-                        )}
-                      </td>
-                      <td className="py-2.5 px-2 text-right">
-                        <Badge
-                          variant="outline"
-                          className={[
-                            "text-xs font-medium",
-                            row.allocationRate >= 90
-                              ? "border-emerald-500 text-emerald-600 dark:text-emerald-400"
-                              : row.allocationRate >= 70
-                                ? "border-amber-500 text-amber-600 dark:text-amber-400"
-                                : "border-rose-500 text-rose-600 dark:text-rose-400",
-                          ].join(" ")}
-                        >
-                          {pctFmt(row.allocationRate)}
-                        </Badge>
-                      </td>
-                      <td className="py-2.5 pr-4 pl-2 text-right tabular-nums">
-                        ₱{numFmt(row.netAmount)}
-                      </td>
-                    </tr>
+                        </td>
+                        <td className="py-2.5 px-2 text-xs text-muted-foreground">
+                          {row.unit}
+                        </td>
+                        <td className="py-2.5 px-2 text-right tabular-nums">
+                          {numFmt(row.totalOrdered)}
+                        </td>
+                        <td className="py-2.5 px-2 text-right tabular-nums text-emerald-600 dark:text-emerald-400">
+                          {numFmt(row.totalAllocated)}
+                        </td>
+                        <td className="py-2.5 px-2 text-right tabular-nums">
+                          {row.allocationGap > 0 ? (
+                            <span className="text-rose-600 dark:text-rose-400 font-medium">
+                              {numFmt(row.allocationGap)}
+                            </span>
+                          ) : (
+                            <span className="text-emerald-600 dark:text-emerald-400">
+                              0
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-2.5 px-2 text-right">
+                          <Badge
+                            variant="outline"
+                            className={[
+                              "text-xs font-medium",
+                              row.allocationRate >= 90
+                                ? "border-emerald-500 text-emerald-600 dark:text-emerald-400"
+                                : row.allocationRate >= 70
+                                  ? "border-amber-500 text-amber-600 dark:text-amber-400"
+                                  : "border-rose-500 text-rose-600 dark:text-rose-400",
+                            ].join(" ")}
+                          >
+                            {pctFmt(row.allocationRate)}
+                          </Badge>
+                        </td>
+                        <td className="py-2.5 pr-4 pl-2 text-right tabular-nums">
+                          ₱{numFmt(row.netAmount)}
+                        </td>
+                      </tr>
+
+                      {/* ── Expanded order lines ── */}
+                      {isExpanded && (
+                        <tr className="border-b dark:border-zinc-800 bg-muted/10">
+                          <td colSpan={10} className="p-0">
+                            <div className="px-10 py-3 overflow-x-auto">
+                              <table
+                                className="w-full text-xs"
+                                style={{ tableLayout: "fixed", minWidth: 700 }}
+                              >
+                                 <colgroup>
+                                  <col style={{ width: 100 }} /> {/* Brand */}
+                                  <col style={{ width: 110 }} /> {/* Category */}
+                                  <col style={{ width: 200 }} /> {/* Product Name */}
+                                  <col style={{ width: 55 }} />  {/* Unit */}
+                                  <col style={{ width: 90 }} />  {/* Net Price */}
+                                  <col style={{ width: 65 }} />  {/* Ordered */}
+                                  <col style={{ width: 65 }} />  {/* Allocated */}
+                                  <col style={{ width: 55 }} />  {/* Gap */}
+                                  <col style={{ width: 100 }} /> {/* Variance Amount */}
+                                </colgroup>
+                                <thead>
+                                  <tr className="border-b dark:border-zinc-700 text-muted-foreground">
+                                    <th className="py-2 pl-2 pr-1 text-left font-medium">Brand</th>
+                                    <th className="py-2 px-1 text-left font-medium">Category</th>
+                                    <th className="py-2 px-1 text-left font-medium">Product Name</th>
+                                    <th className="py-2 px-1 text-left font-medium">Unit</th>
+                                    <th className="py-2 px-1 text-right font-medium">Net Price</th>
+                                    <th className="py-2 px-1 text-right font-medium">Ordered</th>
+                                    <th className="py-2 px-1 text-right font-medium">Allocated</th>
+                                    <th className="py-2 px-1 text-right font-medium">Gap</th>
+                                    <th className="py-2 pl-1 pr-2 text-right font-medium">Variance Amount</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {lines.map((line, li) => {
+                                    const netPricePerUnit = line.orderedQuantity > 0 ? line.netAmount / line.orderedQuantity : 0;
+                                    const gap = line.orderedQuantity - line.allocatedQuantity;
+                                    const varianceAmount = gap * netPricePerUnit;
+                                    return (
+                                    <tr
+                                      key={li}
+                                      className="border-b dark:border-zinc-800/50 last:border-0 hover:bg-muted/20"
+                                    >
+                                      <td className="py-1.5 pl-2 pr-1 text-muted-foreground">
+                                        <span className="block truncate">{line.brandName}</span>
+                                      </td>
+                                      <td className="py-1.5 px-1 text-muted-foreground">
+                                        <span className="block truncate">{line.categoryName}</span>
+                                      </td>
+                                      <td className="py-1.5 px-1 font-medium">
+                                        <span className="block truncate" title={line.productName}>{line.productName}</span>
+                                      </td>
+                                      <td className="py-1.5 px-1 text-muted-foreground">{line.unit}</td>
+                                      <td className="py-1.5 px-1 text-right tabular-nums">₱{numFmt(netPricePerUnit)}</td>
+                                      <td className="py-1.5 px-1 text-right tabular-nums">{numFmt(line.orderedQuantity)}</td>
+                                      <td className="py-1.5 px-1 text-right tabular-nums text-emerald-600 dark:text-emerald-400">{numFmt(line.allocatedQuantity)}</td>
+                                      <td className="py-1.5 px-1 text-right tabular-nums">
+                                        {gap > 0 ? (
+                                          <span className="text-rose-600 dark:text-rose-400 font-medium">{numFmt(gap)}</span>
+                                        ) : (
+                                          <span className="text-emerald-600 dark:text-emerald-400">—</span>
+                                        )}
+                                      </td>
+                                      <td className="py-1.5 pl-1 pr-2 text-right tabular-nums">
+                                        {varianceAmount > 0 ? (
+                                          <span className="text-rose-600 dark:text-rose-400 font-medium">₱{numFmt(varianceAmount)}</span>
+                                        ) : (
+                                          <span className="text-emerald-600 dark:text-emerald-400">—</span>
+                                        )}
+                                      </td>
+                                    </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
                   );
                 })}
               </tbody>
