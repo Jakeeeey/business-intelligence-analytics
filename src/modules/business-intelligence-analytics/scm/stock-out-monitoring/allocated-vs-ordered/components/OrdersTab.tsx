@@ -195,16 +195,16 @@ export function OrdersTab({ orderSummaries }: Props) {
             style={{ tableLayout: "fixed", minWidth: 980 }}
           >
             <colgroup>
-              <col style={{ width: 120 }} /> {/* Order No */}
+              <col style={{ width: 150 }} /> {/* Order No */}
               <col style={{ width: 110 }} /> {/* Date */}
               <col style={{ width: 120 }} /> {/* Status */}
-              <col style={{ width: 260 }} /> {/* Supplier */}
+              <col style={{ width: 280 }} /> {/* Supplier */}
               <col style={{ width: 80 }} /> {/* Products */}
-              <col style={{ width: 100 }} /> {/* Ordered */}
-              <col style={{ width: 100 }} /> {/* Allocated */}
-              <col style={{ width: 90 }} /> {/* Gap */}
-              <col style={{ width: 90 }} /> {/* Rate */}
-              <col style={{ width: 120 }} /> {/* Net Amount */}
+              <col style={{ width: 80 }} /> {/* Ordered */}
+              <col style={{ width: 80 }} /> {/* Allocated */}
+              <col style={{ width: 60 }} /> {/* Gap */}
+              <col style={{ width: 60 }} /> {/* Rate */}
+              <col style={{ width: 100 }} /> {/* Net Amount */}
             </colgroup>
             <thead>
               <tr className="border-b dark:border-zinc-700 bg-muted/30">
