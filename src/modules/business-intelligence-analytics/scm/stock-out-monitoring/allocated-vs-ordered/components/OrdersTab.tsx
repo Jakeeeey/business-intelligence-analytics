@@ -3,13 +3,14 @@
 import * as React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-// import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { OrderAllocationSummary } from "../types";
+import { ChevronRight } from "lucide-react";
+import type { OrderAllocationSummary, AllocatedOrderedRecord } from "../types";
 
 type Props = {
   orderSummaries: OrderAllocationSummary[];
+  filteredData: AllocatedOrderedRecord[];
 };
 
 function numFmt(n: number) {
@@ -29,17 +30,37 @@ function fmtDate(d: string) {
       });
 }
 
-export function OrdersTab({ orderSummaries }: Props) {
+export function OrdersTab({ orderSummaries, filteredData }: Props) {
   const [sortKey, setSortKey] =
     React.useState<keyof OrderAllocationSummary>("orderDate");
   const [sortDir, setSortDir] = React.useState<"asc" | "desc">("desc");
   const [currentPage, setCurrentPage] = React.useState(1);
   const [itemsPerPage, setItemsPerPage] = React.useState(10);
-
   const [searchQuery, setSearchQuery] = React.useState("");
   const [appliedSearch, setAppliedSearch] = React.useState("");
-  const [showFullyConsolidated] =
-    React.useState<boolean>(true);
+  const [showFullyConsolidated] = React.useState<boolean>(true);
+  const [expandedOrders, setExpandedOrders] = React.useState<Set<number>>(
+    new Set(),
+  );
+
+  // ── Map orderId → product lines ────────────────────────────────────────────
+  const linesByOrder = React.useMemo(() => {
+    const map = new Map<number, AllocatedOrderedRecord[]>();
+    for (const r of filteredData) {
+      if (!map.has(r.orderId)) map.set(r.orderId, []);
+      map.get(r.orderId)!.push(r);
+    }
+    return map;
+  }, [filteredData]);
+
+  const toggleExpanded = (orderId: number) => {
+    setExpandedOrders((prev) => {
+      const next = new Set(prev);
+      if (next.has(orderId)) next.delete(orderId);
+      else next.add(orderId);
+      return next;
+    });
+  };
 
   const handleSort = React.useCallback(
     (key: keyof OrderAllocationSummary) => {
@@ -54,7 +75,6 @@ export function OrdersTab({ orderSummaries }: Props) {
   );
 
   const sorted = React.useMemo(() => {
-    // Apply search and toggle filters before sorting
     let data = orderSummaries;
     if (appliedSearch && appliedSearch.trim() !== "") {
       const q = appliedSearch.trim().toLowerCase();
@@ -76,14 +96,12 @@ export function OrdersTab({ orderSummaries }: Props) {
     return [...data].sort((a, b) => {
       const va = a[sortKey] as number | string | boolean;
       const vb = b[sortKey] as number | string | boolean;
-      if (typeof va === "boolean") {
+      if (typeof va === "boolean")
         return sortDir === "asc"
           ? Number(va) - Number(vb)
           : Number(vb) - Number(va);
-      }
-      if (typeof va === "number" && typeof vb === "number") {
+      if (typeof va === "number" && typeof vb === "number")
         return sortDir === "asc" ? va - vb : vb - va;
-      }
       return sortDir === "asc"
         ? String(va).localeCompare(String(vb))
         : String(vb).localeCompare(String(va));
@@ -104,7 +122,6 @@ export function OrdersTab({ orderSummaries }: Props) {
     [sorted, currentPage, itemsPerPage],
   );
 
-  // Debounce appliedSearch from searchQuery
   React.useEffect(() => {
     const id = setTimeout(() => {
       setAppliedSearch(searchQuery);
@@ -151,10 +168,9 @@ export function OrdersTab({ orderSummaries }: Props) {
               </span>
             </div>
           </div>
-
           <div className="flex flex-wrap items-center gap-2">
             <Input
-              placeholder="Search order no or supplier "
+              placeholder="Search order no or supplier"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="h-8 w-64"
@@ -172,44 +188,33 @@ export function OrdersTab({ orderSummaries }: Props) {
                 Clear
               </Button>
             ) : null}
-
-            {/* <div className="flex items-center gap-2 ml-4">
-              <span className="text-sm text-muted-foreground">
-                Show fully allocated
-              </span>
-              <Switch
-                checked={showFullyConsolidated}
-                onCheckedChange={(v) => {
-                  setShowFullyConsolidated(Boolean(v));
-                  setCurrentPage(1);
-                }}
-              />
-            </div> */}
           </div>
         </div>
       </CardHeader>
+
       <CardContent className="p-0">
         <div className="overflow-x-auto">
           <table
             className="w-full text-sm"
-            style={{ tableLayout: "fixed", minWidth: 980 }}
+            style={{ tableLayout: "fixed", minWidth: 960 }}
           >
             <colgroup>
-              <col style={{ width: 120 }} /> {/* Order No */}
+              <col style={{ width: 36 }} /> {/* expand toggle */}
+              <col style={{ width: 130 }} /> {/* Order No */}
               <col style={{ width: 110 }} /> {/* Date */}
-              <col style={{ width: 120 }} /> {/* Status */}
-              <col style={{ width: 260 }} /> {/* Supplier */}
-              <col style={{ width: 80 }} /> {/* Products */}
-              <col style={{ width: 100 }} /> {/* Ordered */}
-              <col style={{ width: 100 }} /> {/* Allocated */}
-              <col style={{ width: 90 }} /> {/* Gap */}
-              <col style={{ width: 90 }} /> {/* Rate */}
-              <col style={{ width: 120 }} /> {/* Net Amount */}
+              <col style={{ width: 130 }} /> {/* Status */}
+              <col style={{ width: 200 }} /> {/* Supplier */}
+              <col style={{ width: 90 }} /> {/* Ordered */}
+              <col style={{ width: 90 }} /> {/* Allocated */}
+              <col style={{ width: 80 }} /> {/* Gap */}
+              <col style={{ width: 80 }} /> {/* Rate */}
+              <col style={{ width: 110 }} /> {/* Net Amount */}
             </colgroup>
             <thead>
               <tr className="border-b dark:border-zinc-700 bg-muted/30">
+                <th className="py-3 pl-3" />
                 <th
-                  className="py-3 pl-4 pr-2 text-left font-medium text-muted-foreground cursor-pointer hover:text-foreground select-none"
+                  className="py-3 pl-2 pr-2 text-left font-medium text-muted-foreground cursor-pointer hover:text-foreground select-none"
                   onClick={() => handleSort("orderNo")}
                 >
                   Order No. {sortIcon("orderNo")}
@@ -231,12 +236,6 @@ export function OrdersTab({ orderSummaries }: Props) {
                   onClick={() => handleSort("supplierName")}
                 >
                   Supplier {sortIcon("supplierName")}
-                </th>
-                <th
-                  className="py-3 px-2 text-right font-medium text-muted-foreground cursor-pointer hover:text-foreground select-none"
-                  onClick={() => handleSort("productCount")}
-                >
-                  Products {sortIcon("productCount")}
                 </th>
                 <th
                   className="py-3 px-2 text-right font-medium text-muted-foreground cursor-pointer hover:text-foreground select-none"
@@ -271,96 +270,243 @@ export function OrdersTab({ orderSummaries }: Props) {
               </tr>
             </thead>
             <tbody>
-              {paginatedItems.map((row) => (
-                <tr
-                  key={row.orderId}
-                  className={[
-                    "border-b dark:border-zinc-800 hover:bg-muted/30 transition-colors",
-                    row.isShortage
-                      ? "bg-rose-50/40 dark:bg-rose-950/20"
-                      : "bg-emerald-50/20 dark:bg-emerald-950/5",
-                  ].join(" ")}
-                >
-                  <td className="py-2.5 pl-4 pr-2 font-medium">
-                    {row.orderNo}
-                  </td>
-                  <td className="py-2.5 px-2 text-muted-foreground text-xs whitespace-nowrap">
-                    {fmtDate(row.orderDate)}
-                  </td>
-                  <td className="py-2.5 px-2">
-                    <Badge variant="outline" className="text-xs">
-                      {row.orderStatus}
-                    </Badge>
-                  </td>
-                  <td className="py-2.5 px-2 max-w-55">
-                    <span className="block truncate">{row.supplierName}</span>
-                  </td>
-                  <td className="py-2.5 px-2 text-right text-muted-foreground">
-                    {row.productCount}
-                  </td>
-                  <td className="py-2.5 px-2 text-right tabular-nums">
-                    {numFmt(row.totalOrdered)}
-                  </td>
-                  <td className="py-2.5 px-2 text-right tabular-nums text-emerald-600 dark:text-emerald-400">
-                    {numFmt(row.totalAllocated)}
-                  </td>
-                  <td className="py-2.5 px-2 text-right tabular-nums">
-                    {row.allocationGap > 0 ? (
-                      <span className="text-rose-600 dark:text-rose-400 font-medium">
-                        {numFmt(row.allocationGap)}
-                      </span>
-                    ) : (
-                      <span className="text-emerald-600 dark:text-emerald-400 text-xs">
-                        —
-                      </span>
-                    )}
-                  </td>
-                  <td className="py-2.5 px-2 text-right">
-                    <Badge
-                      variant="outline"
+              {paginatedItems.map((row) => {
+                const isExpanded = expandedOrders.has(row.orderId);
+                const lines = linesByOrder.get(row.orderId) ?? [];
+                return (
+                  <React.Fragment key={row.orderId}>
+                    {/* ── Parent row ── */}
+                    <tr
                       className={[
-                        "text-xs font-medium",
-                        row.allocationRate >= 90
-                          ? "border-emerald-500 text-emerald-600 dark:text-emerald-400"
-                          : row.allocationRate >= 70
-                            ? "border-amber-500 text-amber-600 dark:text-amber-400"
-                            : "border-rose-500 text-rose-600 dark:text-rose-400",
+                        "border-b dark:border-zinc-800 hover:bg-muted/30 transition-colors cursor-pointer select-none",
+                        row.isShortage
+                          ? "bg-rose-50/40 dark:bg-rose-950/20"
+                          : "bg-emerald-50/20 dark:bg-emerald-950/5",
                       ].join(" ")}
+                      onClick={() => toggleExpanded(row.orderId)}
                     >
-                      {pctFmt(row.allocationRate)}
-                    </Badge>
-                  </td>
-                  <td className="py-2.5 pr-4 pl-2 text-right tabular-nums">
-                    ₱{numFmt(row.netAmount)}
-                  </td>
-                </tr>
-              ))}
+                      <td className="py-2.5 pl-3">
+                        <ChevronRight
+                          className={`h-4 w-4 text-muted-foreground transition-transform duration-150 ${isExpanded ? "rotate-90" : ""}`}
+                        />
+                      </td>
+                      <td className="py-2.5 pl-2 pr-2 font-medium">
+                        {row.orderNo}
+                      </td>
+                      <td className="py-2.5 px-2 text-muted-foreground text-xs whitespace-nowrap">
+                        {fmtDate(row.orderDate)}
+                      </td>
+                      <td className="py-2.5 px-2">
+                        <Badge variant="outline" className="text-xs">
+                          {row.orderStatus}
+                        </Badge>
+                      </td>
+                      <td className="py-2.5 px-2">
+                        <span className="block truncate">
+                          {row.supplierName}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-2 text-right tabular-nums">
+                        {numFmt(row.totalOrdered)}
+                      </td>
+                      <td className="py-2.5 px-2 text-right tabular-nums text-emerald-600 dark:text-emerald-400">
+                        {numFmt(row.totalAllocated)}
+                      </td>
+                      <td className="py-2.5 px-2 text-right tabular-nums">
+                        {row.allocationGap > 0 ? (
+                          <span className="text-rose-600 dark:text-rose-400 font-medium">
+                            {numFmt(row.allocationGap)}
+                          </span>
+                        ) : (
+                          <span className="text-emerald-600 dark:text-emerald-400 text-xs">
+                            —
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-2.5 px-2 text-right">
+                        <Badge
+                          variant="outline"
+                          className={[
+                            "text-xs font-medium",
+                            row.allocationRate >= 90
+                              ? "border-emerald-500 text-emerald-600 dark:text-emerald-400"
+                              : row.allocationRate >= 70
+                                ? "border-amber-500 text-amber-600 dark:text-amber-400"
+                                : "border-rose-500 text-rose-600 dark:text-rose-400",
+                          ].join(" ")}
+                        >
+                          {pctFmt(row.allocationRate)}
+                        </Badge>
+                      </td>
+                      <td className="py-2.5 pr-4 pl-2 text-right tabular-nums">
+                        ₱{numFmt(row.netAmount)}
+                      </td>
+                    </tr>
+
+                    {/* ── Expanded product lines ── */}
+                    {isExpanded && (
+                      <tr className="border-b dark:border-zinc-800 bg-muted/10">
+                        <td colSpan={10} className="p-0">
+                          <div className="px-10 py-3 overflow-x-auto">
+                            <table
+                              className="w-full text-xs"
+                              style={{
+                                tableLayout: "fixed",
+                                minWidth: 860,
+                              }}
+                            >
+                              <colgroup>
+                                <col style={{ width: 100 }} />
+                                {/* Brand */}
+                                <col style={{ width: 110 }} />
+                                {/* Category */}
+                                <col style={{ width: 220 }} />
+                                {/* Product Name */}
+                                <col style={{ width: 55 }} />
+                                {/* Unit */}
+                                <col style={{ width: 80 }} />
+                                {/* Net Price */}
+                                <col style={{ width: 65 }} />
+                                {/* Ordered */}
+                                <col style={{ width: 65 }} />
+                                {/* Allocated */}
+                                <col style={{ width: 55 }} />
+                                {/* Gap */}
+                                <col style={{ width: 100 }} />
+                                {/* Variance Amount */}
+                              </colgroup>
+                              <thead>
+                                <tr className="border-b dark:border-zinc-700 text-muted-foreground">
+                                  <th className="py-2 pl-2 pr-1 text-left font-medium">
+                                    Brand
+                                  </th>
+                                  <th className="py-2 px-1 text-left font-medium">
+                                    Category
+                                  </th>
+                                  <th className="py-2 px-1 text-left font-medium">
+                                    Product Name
+                                  </th>
+                                  <th className="py-2 px-1 text-left font-medium">
+                                    Unit
+                                  </th>
+                                  <th className="py-2 px-1 text-right font-medium">
+                                    Net Price
+                                  </th>
+                                  <th className="py-2 px-1 text-right font-medium">
+                                    Ordered
+                                  </th>
+                                  <th className="py-2 px-1 text-right font-medium">
+                                    Allocated
+                                  </th>
+                                  <th className="py-2 px-1 text-right font-medium">
+                                    Gap
+                                  </th>
+                                  <th className="py-2 pl-1 pr-2 text-right font-medium">
+                                    Variance Amount
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {lines.map((line, li) => {
+                                  const netPricePerUnit = line.orderedQuantity > 0 ? line.netAmount / line.orderedQuantity : 0;
+                                  const gap = line.orderedQuantity - line.allocatedQuantity;
+                                  const varianceAmount = gap * netPricePerUnit;
+                                  return (
+                                  <tr
+                                    key={li}
+                                    className="border-b dark:border-zinc-800/50 last:border-0 hover:bg-muted/20"
+                                  >
+                                    <td className="py-1.5 pl-2 pr-1 text-muted-foreground">
+                                      <span className="block truncate">
+                                        {line.brandName}
+                                      </span>
+                                    </td>
+                                    <td className="py-1.5 px-1 text-muted-foreground">
+                                      <span className="block truncate">
+                                        {line.categoryName}
+                                      </span>
+                                    </td>
+                                    <td className="py-1.5 px-1 font-medium">
+                                      <span
+                                        className="block truncate"
+                                        title={line.productName}
+                                      >
+                                        {line.productName}
+                                      </span>
+                                    </td>
+                                    <td className="py-1.5 px-1 text-muted-foreground">
+                                      {line.unit}
+                                    </td>
+                                    <td className="py-1.5 px-1 text-right tabular-nums">
+                                      ₱{numFmt(netPricePerUnit)}
+                                    </td>
+                                    <td className="py-1.5 px-1 text-right tabular-nums">
+                                      {numFmt(line.orderedQuantity)}
+                                    </td>
+                                    <td className="py-1.5 px-1 text-right tabular-nums text-emerald-600 dark:text-emerald-400">
+                                      {numFmt(line.allocatedQuantity)}
+                                    </td>
+                                    <td className="py-1.5 px-1 text-right tabular-nums">
+                                      {gap > 0 ? (
+                                        <span className="text-rose-600 dark:text-rose-400 font-medium">
+                                          {numFmt(gap)}
+                                        </span>
+                                      ) : (
+                                        <span className="text-emerald-600 dark:text-emerald-400">
+                                          —
+                                        </span>
+                                      )}
+                                    </td>
+                                    <td className="py-1.5 pl-1 pr-2 text-right tabular-nums">
+                                      {varianceAmount > 0 ? (
+                                        <span className="text-rose-600 dark:text-rose-400 font-medium">
+                                          ₱{numFmt(varianceAmount)}
+                                        </span>
+                                      ) : (
+                                        <span className="text-emerald-600 dark:text-emerald-400">
+                                          —
+                                        </span>
+                                      )}
+                                    </td>
+                                  </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                );
+              })}
             </tbody>
           </table>
         </div>
       </CardContent>
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between px-4 py-4 border-t dark:border-zinc-700">
-          <div className="flex items-center gap-4">
-            <select
-              className="h-8 rounded-md border border-input bg-background px-3 py-1 text-sm dark:border-zinc-700"
-              value={itemsPerPage}
-              onChange={(e) => {
-                setItemsPerPage(Number(e.target.value));
-                setCurrentPage(1);
-              }}
-            >
-              <option value={10}>10</option>
-              <option value={25}>25</option>
-              <option value={50}>50</option>
-              <option value={100}>100</option>
-            </select>
-            <span className="text-sm text-muted-foreground">
-              Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
-              {Math.min(currentPage * itemsPerPage, sorted.length)} of{" "}
-              {sorted.length} items
-            </span>
-          </div>
+
+      <div className="flex items-center justify-between px-4 py-4 border-t dark:border-zinc-700">
+        <div className="flex items-center gap-4">
+          <select
+            className="h-8 rounded-md border border-input bg-background px-3 py-1 text-sm dark:border-zinc-700"
+            value={itemsPerPage}
+            onChange={(e) => {
+              setItemsPerPage(Number(e.target.value));
+              setCurrentPage(1);
+            }}
+          >
+            <option value={10}>10</option>
+            <option value={25}>25</option>
+            <option value={50}>50</option>
+            <option value={100}>100</option>
+          </select>
+          <span className="text-sm text-muted-foreground">
+            Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
+            {Math.min(currentPage * itemsPerPage, sorted.length)} of{" "}
+            {sorted.length} items
+          </span>
+        </div>
+        {totalPages > 1 && (
           <div className="flex gap-1">
             <button
               className="inline-flex items-center justify-center rounded-md border border-input bg-background px-3 h-8 text-sm dark:border-zinc-700 disabled:opacity-50"
@@ -395,8 +541,8 @@ export function OrdersTab({ orderSummaries }: Props) {
               Next
             </button>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </Card>
   );
 }

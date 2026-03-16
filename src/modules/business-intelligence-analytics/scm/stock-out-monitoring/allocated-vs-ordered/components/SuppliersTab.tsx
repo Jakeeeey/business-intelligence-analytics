@@ -317,8 +317,7 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
   >(null);
   const [searchQuery, setSearchQuery] = React.useState("");
   const [appliedSearch, setAppliedSearch] = React.useState("");
-  const [showFullyAllocated] =
-    React.useState<boolean>(true);
+  const [showFullyAllocated] = React.useState<boolean>(true);
 
   const handleSort = React.useCallback(
     (key: keyof SupplierAllocationSummary) => {
@@ -1076,35 +1075,35 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
             </table>
           </div>
         </CardContent>
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-4 border-t dark:border-zinc-700">
-            <div className="flex items-center gap-4">
-              <select
-                className="h-8 rounded-md border border-input bg-background px-3 py-1 text-sm dark:border-zinc-700"
-                value={itemsPerPage}
-                onChange={(e) => {
-                  setItemsPerPage(Number(e.target.value));
-                  setCurrentPage(1);
-                }}
-              >
-                <option value={10}>10</option>
-                <option value={25}>25</option>
-                <option value={50}>50</option>
-                <option value={100}>100</option>
-              </select>
-              <span className="text-sm text-muted-foreground">
-                Showing {(currentPage - 1) * itemsPerPage + 1}–
-                {Math.min(currentPage * itemsPerPage, sorted.length)} of{" "}
-                {sorted.length}
-              </span>
-            </div>
+        <div className="flex items-center justify-between px-4 py-4 border-t dark:border-zinc-700">
+          <div className="flex items-center gap-4">
+            <select
+              className="h-8 rounded-md border border-input bg-background px-3 py-1 text-sm dark:border-zinc-700"
+              value={itemsPerPage}
+              onChange={(e) => {
+                setItemsPerPage(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+            >
+              <option value={10}>10</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+            <span className="text-sm text-muted-foreground">
+              Showing {(currentPage - 1) * itemsPerPage + 1}–
+              {Math.min(currentPage * itemsPerPage, sorted.length)} of{" "}
+              {sorted.length}
+            </span>
+          </div>
+          {totalPages > 1 && (
             <Pagination
               page={currentPage}
               total={totalPages}
               onChange={setCurrentPage}
             />
-          </div>
-        )}
+          )}
+        </div>
       </Card>
 
       {/* ── Supplier Modal ── */}

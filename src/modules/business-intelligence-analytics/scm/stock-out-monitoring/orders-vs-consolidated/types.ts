@@ -52,6 +52,12 @@ export type OrdersKpis = {
   totalNetAmount: number;
   /** SUM of orderedQuantity across all rows */
   totalOrderedQuantity: number;
+  /** SUM of allocatedQuantity across all rows */
+  totalConsolidatedQuantity: number;
+  /** totalOrderedQuantity - totalConsolidatedQuantity */
+  varianceQty: number;
+  /** SUM((orderedQuantity - allocatedQuantity) * (netAmount / orderedQuantity)) */
+  varianceAmount: number;
 };
 
 export type OrdersByPeriod = {

@@ -245,28 +245,7 @@ export function useOrderedvsConsolidated() {
     filters.statuses,
   ]);
 
-  // ── Unique filter lists ──────────────────────────────────────────────────
-  const uniqueSuppliers = React.useMemo(
-    () =>
-      [...new Set(rawData.map((r) => r.supplierName))].filter(Boolean).sort(),
-    [rawData],
-  );
-  const uniqueBrands = React.useMemo(
-    () => [...new Set(rawData.map((r) => r.brandName))].filter(Boolean).sort(),
-    [rawData],
-  );
-  const uniqueCategories = React.useMemo(
-    () =>
-      [...new Set(rawData.map((r) => r.categoryName))].filter(Boolean).sort(),
-    [rawData],
-  );
-  const uniqueStatuses = React.useMemo(
-    () =>
-      [...new Set(rawData.map((r) => r.orderStatus))].filter(Boolean).sort(),
-    [rawData],
-  );
-
-  // ── Date-only filtered data (for filter option counts) ──────────────────
+  // ── Date-only filtered data (base for faceted counts) ──────────────────
   const dateFilteredData = React.useMemo(() => {
     let d = rawData;
     const fromDate = parseDateLocal(filters.dateFrom);
@@ -282,57 +261,99 @@ export function useOrderedvsConsolidated() {
     return d;
   }, [rawData, filters.dateFrom, filters.dateTo]);
 
+  // ── Unique filter lists (from date-filtered data) ────────────────────────
+  const uniqueSuppliers = React.useMemo(
+    () =>
+      [...new Set(dateFilteredData.map((r) => r.supplierName))]
+        .filter(Boolean)
+        .sort(),
+    [dateFilteredData],
+  );
+  const uniqueBrands = React.useMemo(
+    () =>
+      [...new Set(dateFilteredData.map((r) => r.brandName))]
+        .filter(Boolean)
+        .sort(),
+    [dateFilteredData],
+  );
+  const uniqueCategories = React.useMemo(
+    () =>
+      [...new Set(dateFilteredData.map((r) => r.categoryName))]
+        .filter(Boolean)
+        .sort(),
+    [dateFilteredData],
+  );
+  const uniqueStatuses = React.useMemo(
+    () =>
+      [...new Set(dateFilteredData.map((r) => r.orderStatus))]
+        .filter(Boolean)
+        .sort(),
+    [dateFilteredData],
+  );
+
   const supplierCounts = React.useMemo(() => {
-    const map = new Map<string, Set<number>>();
-    for (const r of dateFilteredData) {
-      if (!map.has(r.supplierName)) map.set(r.supplierName, new Set());
-      map.get(r.supplierName)!.add(r.orderId);
-    }
-    const out: Record<string, number> = {};
-    map.forEach((v, k) => {
-      out[k] = v.size;
-    });
-    return out;
-  }, [dateFilteredData]);
+    // faceted: filter by brands + categories + statuses (NOT suppliers)
+    let base = dateFilteredData;
+    if (filters.brands.length > 0)
+      base = base.filter((r) => filters.brands.includes(r.brandName));
+    if (filters.categories.length > 0)
+      base = base.filter((r) => filters.categories.includes(r.categoryName));
+    if (filters.statuses.length > 0)
+      base = base.filter((r) => filters.statuses.includes(r.orderStatus));
+    const counts: Record<string, number> = {};
+    for (const r of base)
+      counts[r.supplierName] = (counts[r.supplierName] || 0) + 1;
+    return counts;
+  }, [dateFilteredData, filters.brands, filters.categories, filters.statuses]);
 
   const brandCounts = React.useMemo(() => {
-    const map = new Map<string, Set<number>>();
-    for (const r of dateFilteredData) {
-      if (!map.has(r.brandName)) map.set(r.brandName, new Set());
-      map.get(r.brandName)!.add(r.orderId);
-    }
-    const out: Record<string, number> = {};
-    map.forEach((v, k) => {
-      out[k] = v.size;
-    });
-    return out;
-  }, [dateFilteredData]);
+    // faceted: filter by suppliers + categories + statuses (NOT brands)
+    let base = dateFilteredData;
+    if (filters.suppliers.length > 0)
+      base = base.filter((r) => filters.suppliers.includes(r.supplierName));
+    if (filters.categories.length > 0)
+      base = base.filter((r) => filters.categories.includes(r.categoryName));
+    if (filters.statuses.length > 0)
+      base = base.filter((r) => filters.statuses.includes(r.orderStatus));
+    const counts: Record<string, number> = {};
+    for (const r of base) counts[r.brandName] = (counts[r.brandName] || 0) + 1;
+    return counts;
+  }, [
+    dateFilteredData,
+    filters.suppliers,
+    filters.categories,
+    filters.statuses,
+  ]);
 
   const categoryCounts = React.useMemo(() => {
-    const map = new Map<string, Set<number>>();
-    for (const r of dateFilteredData) {
-      if (!map.has(r.categoryName)) map.set(r.categoryName, new Set());
-      map.get(r.categoryName)!.add(r.orderId);
-    }
-    const out: Record<string, number> = {};
-    map.forEach((v, k) => {
-      out[k] = v.size;
-    });
-    return out;
-  }, [dateFilteredData]);
+    // faceted: filter by suppliers + brands + statuses (NOT categories)
+    let base = dateFilteredData;
+    if (filters.suppliers.length > 0)
+      base = base.filter((r) => filters.suppliers.includes(r.supplierName));
+    if (filters.brands.length > 0)
+      base = base.filter((r) => filters.brands.includes(r.brandName));
+    if (filters.statuses.length > 0)
+      base = base.filter((r) => filters.statuses.includes(r.orderStatus));
+    const counts: Record<string, number> = {};
+    for (const r of base)
+      counts[r.categoryName] = (counts[r.categoryName] || 0) + 1;
+    return counts;
+  }, [dateFilteredData, filters.suppliers, filters.brands, filters.statuses]);
 
   const statusCounts = React.useMemo(() => {
-    const map = new Map<string, Set<number>>();
-    for (const r of dateFilteredData) {
-      if (!map.has(r.orderStatus)) map.set(r.orderStatus, new Set());
-      map.get(r.orderStatus)!.add(r.orderId);
-    }
-    const out: Record<string, number> = {};
-    map.forEach((v, k) => {
-      out[k] = v.size;
-    });
-    return out;
-  }, [dateFilteredData]);
+    // faceted: filter by suppliers + brands + categories (NOT statuses)
+    let base = dateFilteredData;
+    if (filters.suppliers.length > 0)
+      base = base.filter((r) => filters.suppliers.includes(r.supplierName));
+    if (filters.brands.length > 0)
+      base = base.filter((r) => filters.brands.includes(r.brandName));
+    if (filters.categories.length > 0)
+      base = base.filter((r) => filters.categories.includes(r.categoryName));
+    const counts: Record<string, number> = {};
+    for (const r of base)
+      counts[r.orderStatus] = (counts[r.orderStatus] || 0) + 1;
+    return counts;
+  }, [dateFilteredData, filters.suppliers, filters.brands, filters.categories]);
 
   // ── Canonical orders (deduplicated) ───────────────────────────────────────
   const canonicalOrders = React.useMemo<CanonicalOrder[]>(() => {
@@ -395,6 +416,9 @@ export function useOrderedvsConsolidated() {
         consolidationRate: 0,
         totalNetAmount: 0,
         totalOrderedQuantity: 0,
+        totalConsolidatedQuantity: 0,
+        varianceQty: 0,
+        varianceAmount: 0,
       };
 
     const totalOrders = canonicalOrders.length;
@@ -410,6 +434,18 @@ export function useOrderedvsConsolidated() {
       (s, r) => s + (r.orderedQuantity ?? 0),
       0,
     );
+    const totalConsolidatedQuantity = filteredData.reduce(
+      (s, r) => s + (r.allocatedQuantity ?? 0),
+      0,
+    );
+    const varianceQty = totalOrderedQuantity - totalConsolidatedQuantity;
+    const varianceAmount = filteredData.reduce(
+      (s, r) => {
+        const netPricePerUnit = r.orderedQuantity > 0 ? (r.netAmount ?? 0) / r.orderedQuantity : 0;
+        return s + (r.orderedQuantity - r.allocatedQuantity) * netPricePerUnit;
+      },
+      0,
+    );
 
     return {
       totalOrders,
@@ -419,6 +455,9 @@ export function useOrderedvsConsolidated() {
         totalOrders > 0 ? (totalConsolidated / totalOrders) * 100 : 0,
       totalNetAmount,
       totalOrderedQuantity,
+      totalConsolidatedQuantity,
+      varianceQty,
+      varianceAmount,
     };
   }, [canonicalOrders, filteredData]);
 

@@ -247,28 +247,28 @@ export function PendingTab({ pendingOrders }: Props) {
             </table>
           </div>
         </CardContent>
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-4 border-t dark:border-zinc-700">
-            <div className="flex items-center gap-4">
-              <select
-                className="h-8 rounded-md border border-input bg-background px-3 py-1 text-sm dark:border-zinc-700"
-                value={itemsPerPage}
-                onChange={(e) => {
-                  setItemsPerPage(Number(e.target.value));
-                  setCurrentPage(1);
-                }}
-              >
-                <option value={10}>10</option>
-                <option value={25}>25</option>
-                <option value={50}>50</option>
-                <option value={100}>100</option>
-              </select>
-              <span className="text-sm text-muted-foreground">
-                Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
-                {Math.min(currentPage * itemsPerPage, sorted.length)} of{" "}
-                {sorted.length} items
-              </span>
-            </div>
+        <div className="flex items-center justify-between px-4 py-4 border-t dark:border-zinc-700">
+          <div className="flex items-center gap-4">
+            <select
+              className="h-8 rounded-md border border-input bg-background px-3 py-1 text-sm dark:border-zinc-700"
+              value={itemsPerPage}
+              onChange={(e) => {
+                setItemsPerPage(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+            >
+              <option value={10}>10</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+            <span className="text-sm text-muted-foreground">
+              Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
+              {Math.min(currentPage * itemsPerPage, sorted.length)} of{" "}
+              {sorted.length} items
+            </span>
+          </div>
+          {totalPages > 1 && (
             <div className="flex gap-1">
               <button
                 className="inline-flex items-center justify-center rounded-md border border-input bg-background px-3 h-8 text-sm dark:border-zinc-700 disabled:opacity-50"
@@ -305,8 +305,8 @@ export function PendingTab({ pendingOrders }: Props) {
                 Next
               </button>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </Card>
     </div>
   );
