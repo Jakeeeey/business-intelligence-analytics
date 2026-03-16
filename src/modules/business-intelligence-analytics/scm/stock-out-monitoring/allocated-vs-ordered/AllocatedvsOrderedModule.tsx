@@ -42,14 +42,6 @@ export default function AllocatedvsOrderedModule() {
         brandCounts={hook.brandCounts}
         categoryCounts={hook.categoryCounts}
         statusCounts={hook.statusCounts}
-        records={hook.rawData}
-        recordFieldNames={{
-          date: "orderDate",
-          supplier: "supplierName",
-          brand: "brandName",
-          category: "categoryName",
-          status: "orderStatus",
-        }}
       />
 
       {/* Data loaded */}

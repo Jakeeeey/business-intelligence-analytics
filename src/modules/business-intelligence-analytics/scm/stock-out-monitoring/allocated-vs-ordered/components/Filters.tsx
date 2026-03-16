@@ -29,18 +29,6 @@ type FiltersProps = {
   brandCounts?: Record<string, number>;
   categoryCounts?: Record<string, number>;
   statusCounts?: Record<string, number>;
-  // Optional: provide raw records so this component can compute counts
-  // taking the currently selected date range into account.
-  records?: Record<string, unknown>[];
-  // If your record fields use different names, override these.
-  recordFieldNames?: {
-    date?: string;
-    supplier?: string;
-    brand?: string;
-    category?: string;
-    status?: string;
-    orderId?: string;
-  };
 };
 
 export function Filters({
@@ -54,19 +42,7 @@ export function Filters({
   brandCounts,
   categoryCounts,
   statusCounts,
-  records,
-  recordFieldNames,
 }: FiltersProps) {
-  // Debug incoming raw records + mapping
-  // React.useEffect(() => {
-  //   console.log(
-  //     "Filters mounted/updated — records count:",
-  //     records?.length ?? 0,
-  //   );
-  //   console.log("Records sample:", records ? records.slice(0, 3) : []);
-  //   console.log("recordFieldNames:", recordFieldNames);
-  // }, [records, recordFieldNames]);
-
   // Search states
   const [supplierSearch, setSupplierSearch] = React.useState("");
   const [brandSearch, setBrandSearch] = React.useState("");
@@ -134,278 +110,6 @@ export function Filters({
     filters.brands.length > 0 ||
     filters.categories.length > 0 ||
     filters.statuses.length > 0;
-
-  // Helpers to derive a date range from filters (presets or custom)
-  const parseISO = (s?: string) => (s ? new Date(s) : undefined);
-  const getDateRange = React.useCallback(() => {
-    const now = new Date();
-    const startOf = (d: Date) =>
-      new Date(d.getFullYear(), d.getMonth(), d.getDate());
-    switch (filters.dateRangePreset) {
-      case "yesterday": {
-        const d = new Date(now);
-        d.setDate(d.getDate() - 1);
-        const from = startOf(d);
-        const to = new Date(from);
-        to.setHours(23, 59, 59, 999);
-        return { from, to };
-      }
-      case "this-week": {
-        // assume week starts Monday
-        const d = startOf(now);
-        const day = d.getDay() || 7; // Sunday -> 7
-        const from = new Date(d);
-        from.setDate(d.getDate() - (day - 1));
-        const to = new Date(from);
-        to.setDate(from.getDate() + 6);
-        to.setHours(23, 59, 59, 999);
-        return { from, to };
-      }
-      case "this-month": {
-        const from = new Date(now.getFullYear(), now.getMonth(), 1);
-        const to = new Date(
-          now.getFullYear(),
-          now.getMonth() + 1,
-          0,
-          23,
-          59,
-          59,
-          999,
-        );
-        return { from, to };
-      }
-      case "this-year": {
-        const from = new Date(now.getFullYear(), 0, 1);
-        const to = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
-        return { from, to };
-      }
-      case "custom": {
-        const from = parseISO(filters.dateFrom);
-        const to = parseISO(filters.dateTo);
-        if (from && to) {
-          to.setHours(23, 59, 59, 999);
-        }
-        return { from, to };
-      }
-      default:
-        return { from: undefined, to: undefined };
-    }
-  }, [filters.dateRangePreset, filters.dateFrom, filters.dateTo]);
-
-  // const setDatePreset = React.useCallback(
-  //   (preset: DateRangePreset) => {
-  //     // console.log("dateRangePreset selected:", preset);
-  //     onChange({ ...filters, dateRangePreset: preset });
-  //   },
-  //   [filters, onChange],
-  // );
-
-  // If records are provided, compute counts scoped to the selected date range.
-  const computedSupplierCounts: Record<string, number> | undefined =
-    React.useMemo(() => {
-      if (!records || records.length === 0) return undefined;
-      const names = {
-        date: "date",
-        supplier: "supplier",
-        brand: "brand",
-        category: "category",
-        status: "status",
-        orderId: "orderId",
-        ...(recordFieldNames || {}),
-      };
-      const { from, to } = getDateRange();
-      const inRange = (d?: unknown) => {
-        if (d === undefined || d === null) return false;
-        const dt = d instanceof Date ? d : new Date(String(d));
-        if (!(dt instanceof Date) || Number.isNaN(dt.getTime())) return false;
-        if (from && dt < from) return false;
-        if (to && dt > to) return false;
-        return true;
-      };
-
-      // Count unique orderIds per supplier when possible; fallback to row count.
-      const map = new Map<string, Set<string | number>>();
-      const orderKey = names.orderId ?? "orderId";
-      for (let i = 0; i < records.length; i++) {
-        const r = records[i] as Record<string, unknown>;
-        const dtRaw = r[names.date] as unknown;
-        if (from || to) {
-          if (!inRange(dtRaw)) continue;
-        }
-        const keyRaw = r[names.supplier] as unknown;
-        const key = keyRaw == null ? undefined : String(keyRaw);
-        if (!key) continue;
-        const idRaw = r[orderKey] as unknown;
-        const id =
-          idRaw == null
-            ? undefined
-            : typeof idRaw === "number"
-              ? idRaw
-              : String(idRaw);
-        if (!map.has(key)) map.set(key, new Set());
-        if (id !== undefined) map.get(key)!.add(id);
-        else map.get(key)!.add(`__row_${i}`);
-      }
-      const out: Record<string, number> = {};
-      map.forEach((set, k) => {
-        out[k] = set.size;
-      });
-      // console.log("computedSupplierCounts:", { from, to, counts: out });
-      return out;
-    }, [records, recordFieldNames, getDateRange]);
-
-  const computedBrandCounts: Record<string, number> | undefined =
-    React.useMemo(() => {
-      if (!records || records.length === 0) return undefined;
-      const names = {
-        date: "date",
-        supplier: "supplier",
-        brand: "brand",
-        category: "category",
-        status: "status",
-        ...(recordFieldNames || {}),
-      };
-      const { from, to } = getDateRange();
-      const inRange = (d?: unknown) => {
-        if (d === undefined || d === null) return false;
-        const dt = d instanceof Date ? d : new Date(String(d));
-        if (!(dt instanceof Date) || Number.isNaN(dt.getTime())) return false;
-        if (from && dt < from) return false;
-        if (to && dt > to) return false;
-        return true;
-      };
-      // Deduplicate by orderId when available
-      const map = new Map<string, Set<string | number>>();
-      const orderKey = names.orderId ?? "orderId";
-      for (let i = 0; i < records.length; i++) {
-        const r = records[i] as Record<string, unknown>;
-        const dtRaw = r[names.date] as unknown;
-        if (from || to) {
-          if (!inRange(dtRaw)) continue;
-        }
-        const keyRaw = r[names.brand] as unknown;
-        const key = keyRaw == null ? undefined : String(keyRaw);
-        if (!key) continue;
-        const idRaw = r[orderKey] as unknown;
-        const id =
-          idRaw == null
-            ? undefined
-            : typeof idRaw === "number"
-              ? idRaw
-              : String(idRaw);
-        if (!map.has(key)) map.set(key, new Set());
-        if (id !== undefined) map.get(key)!.add(id);
-        else map.get(key)!.add(`__row_${i}`);
-      }
-      const out: Record<string, number> = {};
-      map.forEach((set, k) => {
-        out[k] = set.size;
-      });
-      // console.log("computedBrandCounts:", { from, to, counts: out });
-      return out;
-    }, [records, recordFieldNames, getDateRange]);
-
-  const computedCategoryCounts: Record<string, number> | undefined =
-    React.useMemo(() => {
-      if (!records || records.length === 0) return undefined;
-      const names = {
-        date: "date",
-        supplier: "supplier",
-        brand: "brand",
-        category: "category",
-        status: "status",
-        ...(recordFieldNames || {}),
-      };
-      const { from, to } = getDateRange();
-      const inRange = (d?: unknown) => {
-        if (d === undefined || d === null) return false;
-        const dt = d instanceof Date ? d : new Date(String(d));
-        if (!(dt instanceof Date) || Number.isNaN(dt.getTime())) return false;
-        if (from && dt < from) return false;
-        if (to && dt > to) return false;
-        return true;
-      };
-      // Deduplicate by orderId when available
-      const map = new Map<string, Set<string | number>>();
-      const orderKey = names.orderId ?? "orderId";
-      for (let i = 0; i < records.length; i++) {
-        const r = records[i] as Record<string, unknown>;
-        const dtRaw = r[names.date] as unknown;
-        if (from || to) {
-          if (!inRange(dtRaw)) continue;
-        }
-        const keyRaw = r[names.category] as unknown;
-        const key = keyRaw == null ? undefined : String(keyRaw);
-        if (!key) continue;
-        const idRaw = r[orderKey] as unknown;
-        const id =
-          idRaw == null
-            ? undefined
-            : typeof idRaw === "number"
-              ? idRaw
-              : String(idRaw);
-        if (!map.has(key)) map.set(key, new Set());
-        if (id !== undefined) map.get(key)!.add(id);
-        else map.get(key)!.add(`__row_${i}`);
-      }
-      const out: Record<string, number> = {};
-      map.forEach((set, k) => {
-        out[k] = set.size;
-      });
-      // console.log("computedCategoryCounts:", { from, to, counts: out });
-      return out;
-    }, [records, recordFieldNames, getDateRange]);
-
-  const computedStatusCounts: Record<string, number> | undefined =
-    React.useMemo(() => {
-      if (!records || records.length === 0) return undefined;
-      const names = {
-        date: "date",
-        supplier: "supplier",
-        brand: "brand",
-        category: "category",
-        status: "status",
-        ...(recordFieldNames || {}),
-      };
-      const { from, to } = getDateRange();
-      const inRange = (d?: unknown) => {
-        if (d === undefined || d === null) return false;
-        const dt = d instanceof Date ? d : new Date(String(d));
-        if (!(dt instanceof Date) || Number.isNaN(dt.getTime())) return false;
-        if (from && dt < from) return false;
-        if (to && dt > to) return false;
-        return true;
-      };
-      // Deduplicate by orderId when available
-      const map = new Map<string, Set<string | number>>();
-      const orderKey = names.orderId ?? "orderId";
-      for (let i = 0; i < records.length; i++) {
-        const r = records[i] as Record<string, unknown>;
-        const dtRaw = r[names.date] as unknown;
-        if (from || to) {
-          if (!inRange(dtRaw)) continue;
-        }
-        const keyRaw = r[names.status] as unknown;
-        const key = keyRaw == null ? undefined : String(keyRaw);
-        if (!key) continue;
-        const idRaw = r[orderKey] as unknown;
-        const id =
-          idRaw == null
-            ? undefined
-            : typeof idRaw === "number"
-              ? idRaw
-              : String(idRaw);
-        if (!map.has(key)) map.set(key, new Set());
-        if (id !== undefined) map.get(key)!.add(id);
-        else map.get(key)!.add(`__row_${i}`);
-      }
-      const out: Record<string, number> = {};
-      map.forEach((set, k) => {
-        out[k] = set.size;
-      });
-      // console.log("computedStatusCounts:", { from, to, counts: out });
-      return out;
-    }, [records, recordFieldNames, getDateRange]);
 
   return (
     <Card className="dark:border-zinc-700 dark:bg-white/13">
@@ -544,11 +248,9 @@ export function Filters({
                           >
                             {supplier}
                           </label>
-                          {(computedSupplierCounts || supplierCounts) && (
+                          {supplierCounts && (
                             <span className="text-xs tabular-nums text-muted-foreground">
-                              {computedSupplierCounts?.[supplier] ??
-                                supplierCounts?.[supplier] ??
-                                0}
+                              {supplierCounts[supplier] ?? 0}
                             </span>
                           )}
                         </div>
@@ -625,11 +327,9 @@ export function Filters({
                           >
                             {brand}
                           </label>
-                          {(computedBrandCounts || brandCounts) && (
+                          {brandCounts && (
                             <span className="text-xs tabular-nums text-muted-foreground">
-                              {computedBrandCounts?.[brand] ??
-                                brandCounts?.[brand] ??
-                                0}
+                              {brandCounts[brand] ?? 0}
                             </span>
                           )}
                         </div>
@@ -706,11 +406,9 @@ export function Filters({
                           >
                             {category}
                           </label>
-                          {(computedCategoryCounts || categoryCounts) && (
+                          {categoryCounts && (
                             <span className="text-xs tabular-nums text-muted-foreground">
-                              {computedCategoryCounts?.[category] ??
-                                categoryCounts?.[category] ??
-                                0}
+                              {categoryCounts[category] ?? 0}
                             </span>
                           )}
                         </div>
@@ -787,11 +485,9 @@ export function Filters({
                           >
                             {status}
                           </label>
-                          {(computedStatusCounts || statusCounts) && (
+                          {statusCounts && (
                             <span className="text-xs tabular-nums text-muted-foreground">
-                              {computedStatusCounts?.[status] ??
-                                statusCounts?.[status] ??
-                                0}
+                              {statusCounts[status] ?? 0}
                             </span>
                           )}
                         </div>

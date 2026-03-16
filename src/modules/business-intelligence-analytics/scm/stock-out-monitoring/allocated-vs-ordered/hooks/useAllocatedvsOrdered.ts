@@ -249,55 +249,100 @@ export function useAllocatedvsOrdered() {
     filters.statuses,
   ]);
 
-  // ── Unique filter lists (from full rawData) ──────────────────────────────
+  // ── Date-filtered base (shared by faceted counts) ───────────────────────
+  const dateFilteredData = React.useMemo(() => {
+    const fromDate = parseDateLocal(filters.dateFrom);
+    const toDate = parseDateLocal(filters.dateTo);
+    if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) return rawData;
+    const toEnd = new Date(toDate);
+    toEnd.setHours(23, 59, 59, 999);
+    return rawData.filter((r) => {
+      const d = parseDateLocal(r.orderDate);
+      return !isNaN(d.getTime()) && d >= fromDate && d <= toEnd;
+    });
+  }, [rawData, filters.dateFrom, filters.dateTo]);
+
+  // ── Unique filter lists (from date-filtered data) ────────────────────────
   const uniqueSuppliers = React.useMemo(
     () =>
-      [...new Set(rawData.map((r) => r.supplierName))].filter(Boolean).sort(),
-    [rawData],
+      [...new Set(dateFilteredData.map((r) => r.supplierName))].filter(Boolean).sort(),
+    [dateFilteredData],
   );
   const uniqueBrands = React.useMemo(
-    () => [...new Set(rawData.map((r) => r.brandName))].filter(Boolean).sort(),
-    [rawData],
+    () => [...new Set(dateFilteredData.map((r) => r.brandName))].filter(Boolean).sort(),
+    [dateFilteredData],
   );
   const uniqueCategories = React.useMemo(
     () =>
-      [...new Set(rawData.map((r) => r.categoryName))].filter(Boolean).sort(),
-    [rawData],
+      [...new Set(dateFilteredData.map((r) => r.categoryName))].filter(Boolean).sort(),
+    [dateFilteredData],
   );
   const uniqueStatuses = React.useMemo(
     () =>
-      [...new Set(rawData.map((r) => r.orderStatus))].filter(Boolean).sort(),
-    [rawData],
+      [...new Set(dateFilteredData.map((r) => r.orderStatus))].filter(Boolean).sort(),
+    [dateFilteredData],
   );
 
-  // ── Record counts per filter option (from rawData) ───────────────────────
+  // ── Faceted counts: each dimension counted from data filtered by all OTHER active filters ──
   const supplierCounts = React.useMemo(() => {
+    // filter by brands + categories + statuses (NOT suppliers)
+    let base = dateFilteredData;
+    if (filters.brands.length > 0)
+      base = base.filter((r) => filters.brands.includes(r.brandName));
+    if (filters.categories.length > 0)
+      base = base.filter((r) => filters.categories.includes(r.categoryName));
+    if (filters.statuses.length > 0)
+      base = base.filter((r) => filters.statuses.includes(r.orderStatus));
     const counts: Record<string, number> = {};
-    for (const r of rawData)
+    for (const r of base)
       counts[r.supplierName] = (counts[r.supplierName] || 0) + 1;
     return counts;
-  }, [rawData]);
+  }, [dateFilteredData, filters.brands, filters.categories, filters.statuses]);
 
   const brandCounts = React.useMemo(() => {
+    // filter by suppliers + categories + statuses (NOT brands)
+    let base = dateFilteredData;
+    if (filters.suppliers.length > 0)
+      base = base.filter((r) => filters.suppliers.includes(r.supplierName));
+    if (filters.categories.length > 0)
+      base = base.filter((r) => filters.categories.includes(r.categoryName));
+    if (filters.statuses.length > 0)
+      base = base.filter((r) => filters.statuses.includes(r.orderStatus));
     const counts: Record<string, number> = {};
-    for (const r of rawData)
+    for (const r of base)
       counts[r.brandName] = (counts[r.brandName] || 0) + 1;
     return counts;
-  }, [rawData]);
+  }, [dateFilteredData, filters.suppliers, filters.categories, filters.statuses]);
 
   const categoryCounts = React.useMemo(() => {
+    // filter by suppliers + brands + statuses (NOT categories)
+    let base = dateFilteredData;
+    if (filters.suppliers.length > 0)
+      base = base.filter((r) => filters.suppliers.includes(r.supplierName));
+    if (filters.brands.length > 0)
+      base = base.filter((r) => filters.brands.includes(r.brandName));
+    if (filters.statuses.length > 0)
+      base = base.filter((r) => filters.statuses.includes(r.orderStatus));
     const counts: Record<string, number> = {};
-    for (const r of rawData)
+    for (const r of base)
       counts[r.categoryName] = (counts[r.categoryName] || 0) + 1;
     return counts;
-  }, [rawData]);
+  }, [dateFilteredData, filters.suppliers, filters.brands, filters.statuses]);
 
   const statusCounts = React.useMemo(() => {
+    // filter by suppliers + brands + categories (NOT statuses)
+    let base = dateFilteredData;
+    if (filters.suppliers.length > 0)
+      base = base.filter((r) => filters.suppliers.includes(r.supplierName));
+    if (filters.brands.length > 0)
+      base = base.filter((r) => filters.brands.includes(r.brandName));
+    if (filters.categories.length > 0)
+      base = base.filter((r) => filters.categories.includes(r.categoryName));
     const counts: Record<string, number> = {};
-    for (const r of rawData)
+    for (const r of base)
       counts[r.orderStatus] = (counts[r.orderStatus] || 0) + 1;
     return counts;
-  }, [rawData]);
+  }, [dateFilteredData, filters.suppliers, filters.brands, filters.categories]);
 
   // ── KPIs ─────────────────────────────────────────────────────────────────
   const kpis = React.useMemo<AllocationKpis>(() => {
