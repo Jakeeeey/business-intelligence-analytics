@@ -135,7 +135,7 @@ export function Filters({
     filters.statuses.length > 0;
 
   return (
-    <Card className="dark:border-zinc-700 dark:bg-white/13">
+    <Card className="">
       <CardContent className="p-4">
         <div className="flex flex-col gap-4">
           {/* Title */}
@@ -166,7 +166,7 @@ export function Filters({
               ).map((preset) => (
                 <Button
                   key={preset}
-                  className="dark:border-zinc-700"
+                  className=""
                   variant={
                     filters.dateRangePreset === preset ? "default" : "outline"
                   }
@@ -196,7 +196,7 @@ export function Filters({
                   <Input
                     id="ovc-dateFrom"
                     type="date"
-                    className="dark:border-zinc-700"
+                    className=""
                     value={filters.dateFrom}
                     onChange={(e) =>
                       onChange({ ...filters, dateFrom: e.target.value })
@@ -208,7 +208,7 @@ export function Filters({
                   <Input
                     id="ovc-dateTo"
                     type="date"
-                    className="dark:border-zinc-700"
+                    className=""
                     value={filters.dateTo}
                     onChange={(e) =>
                       onChange({ ...filters, dateTo: e.target.value })
@@ -226,29 +226,26 @@ export function Filters({
               <Label>Supplier</Label>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-between dark:border-zinc-700"
-                  >
+                  <Button variant="outline" className="w-full justify-between ">
                     {filters.suppliers.length > 0
                       ? `${filters.suppliers.length} selected`
                       : "All Suppliers"}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent
-                  className="w-80 max-w-[20rem] p-0 dark:border-zinc-700 overflow-hidden"
+                  className="w-80 max-w-[20rem] p-0  overflow-hidden"
                   align="start"
                 >
-                  <div className="p-2 border-b dark:border-zinc-700 dark:bg-white/13">
+                  <div className="p-2 border-b ">
                     <Input
                       placeholder="Search suppliers..."
                       value={supplierSearch}
                       onChange={(e) => setSupplierSearch(e.target.value)}
-                      className="h-8 dark:border-zinc-700"
+                      className="h-8 "
                     />
                   </div>
                   <ScrollArea className="h-64  ">
-                    <div className="p-2 space-y-1 dark:bg-white/13">
+                    <div className="p-2 space-y-1 ">
                       {filteredSuppliers.map((supplier) => (
                         <div
                           key={supplier}
@@ -256,7 +253,7 @@ export function Filters({
                         >
                           <div className="flex items-center space-x-2 min-w-0 flex-1 overflow-hidden">
                             <Checkbox
-                              className="dark:border-zinc-700 shrink-0"
+                              className=" shrink-0"
                               id={`ovc-supplier-${supplier}`}
                               checked={filters.suppliers.includes(supplier)}
                               onCheckedChange={(checked) =>
@@ -305,29 +302,26 @@ export function Filters({
               <Label>Brand</Label>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-between dark:border-zinc-700"
-                  >
+                  <Button variant="outline" className="w-full justify-between ">
                     {filters.brands.length > 0
                       ? `${filters.brands.length} selected`
                       : "All Brands"}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent
-                  className="w-80 max-w-[20rem] p-0 dark:border-zinc-700 overflow-hidden"
+                  className="w-80 max-w-[20rem] p-0  overflow-hidden"
                   align="start"
                 >
-                  <div className="p-2 border-b dark:border-zinc-700 dark:bg-white/13">
+                  <div className="p-2 border-b ">
                     <Input
                       placeholder="Search brands..."
                       value={brandSearch}
                       onChange={(e) => setBrandSearch(e.target.value)}
-                      className="h-8 dark:border-zinc-700"
+                      className="h-8 "
                     />
                   </div>
                   <ScrollArea className="h-64 w-full">
-                    <div className="p-2 space-y-1 dark:bg-white/13">
+                    <div className="p-2 space-y-1 ">
                       {filteredBrands.map((brand) => (
                         <div
                           key={brand}
@@ -335,7 +329,7 @@ export function Filters({
                         >
                           <div className="flex items-center space-x-2 min-w-0 flex-1 overflow-hidden">
                             <Checkbox
-                              className="dark:border-zinc-700 shrink-0"
+                              className=" shrink-0"
                               id={`ovc-brand-${brand}`}
                               checked={filters.brands.includes(brand)}
                               onCheckedChange={(checked) =>
@@ -384,29 +378,26 @@ export function Filters({
               <Label>Category</Label>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-between dark:border-zinc-700"
-                  >
+                  <Button variant="outline" className="w-full justify-between ">
                     {filters.categories.length > 0
                       ? `${filters.categories.length} selected`
                       : "All Categories"}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent
-                  className="w-80 max-w-[20rem] p-0 dark:border-zinc-700 overflow-hidden"
+                  className="w-80 max-w-[20rem] p-0  overflow-hidden"
                   align="start"
                 >
-                  <div className="p-2 border-b dark:border-zinc-700 dark:bg-white/13">
+                  <div className="p-2 border-b ">
                     <Input
                       placeholder="Search categories..."
                       value={categorySearch}
                       onChange={(e) => setCategorySearch(e.target.value)}
-                      className="h-8 dark:border-zinc-700"
+                      className="h-8 "
                     />
                   </div>
                   <ScrollArea className="h-64 w-full">
-                    <div className="p-2 space-y-1 dark:bg-white/13">
+                    <div className="p-2 space-y-1 ">
                       {filteredCategories.map((category) => (
                         <div
                           key={category}
@@ -414,7 +405,7 @@ export function Filters({
                         >
                           <div className="flex items-center space-x-2 min-w-0 flex-1 overflow-hidden">
                             <Checkbox
-                              className="dark:border-zinc-700 shrink-0"
+                              className=" shrink-0"
                               id={`ovc-category-${category}`}
                               checked={filters.categories.includes(category)}
                               onCheckedChange={(checked) =>
@@ -463,29 +454,26 @@ export function Filters({
               <Label>Status</Label>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-between dark:border-zinc-700"
-                  >
+                  <Button variant="outline" className="w-full justify-between ">
                     {filters.statuses.length > 0
                       ? `${filters.statuses.length} selected`
                       : "All Statuses"}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent
-                  className="w-80 max-w-[20rem] p-0 dark:border-zinc-700 overflow-hidden"
+                  className="w-80 max-w-[20rem] p-0  overflow-hidden"
                   align="start"
                 >
-                  <div className="p-2 border-b dark:border-zinc-700 dark:bg-white/13">
+                  <div className="p-2 border-b ">
                     <Input
                       placeholder="Search statuses..."
                       value={statusSearch}
                       onChange={(e) => setStatusSearch(e.target.value)}
-                      className="h-8 dark:border-zinc-700"
+                      className="h-8 "
                     />
                   </div>
                   <ScrollArea className="h-64 w-full">
-                    <div className="p-2 space-y-1 dark:bg-white/13">
+                    <div className="p-2 space-y-1 ">
                       {filteredStatuses.map((status) => (
                         <div
                           key={status}
@@ -493,7 +481,7 @@ export function Filters({
                         >
                           <div className="flex items-center space-x-2 min-w-0 flex-1 overflow-hidden">
                             <Checkbox
-                              className="dark:border-zinc-700 shrink-0"
+                              className=" shrink-0"
                               id={`ovc-status-${status}`}
                               checked={filters.statuses.includes(status)}
                               onCheckedChange={(checked) =>

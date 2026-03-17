@@ -259,7 +259,7 @@ function Pagination({
   return (
     <div className="flex gap-1">
       <button
-        className="inline-flex items-center justify-center rounded-md border border-input bg-background px-3 h-8 text-sm dark:border-zinc-700 disabled:opacity-50"
+        className="inline-flex items-center justify-center rounded-md border border-input bg-background px-3 h-8 text-sm  disabled:opacity-50"
         onClick={() => onChange(Math.max(1, page - 1))}
         disabled={page === 1}
       >
@@ -268,14 +268,14 @@ function Pagination({
       {pages.map((p) => (
         <button
           key={p}
-          className={`inline-flex items-center justify-center rounded-md border px-3 h-8 text-sm dark:border-zinc-700 ${page === p ? "bg-primary text-primary-foreground border-primary" : "border-input bg-background"}`}
+          className={`inline-flex items-center justify-center rounded-md border px-3 h-8 text-sm  ${page === p ? "bg-primary text-primary-foreground border-primary" : "border-input bg-background"}`}
           onClick={() => onChange(p)}
         >
           {p}
         </button>
       ))}
       <button
-        className="inline-flex items-center justify-center rounded-md border border-input bg-background px-3 h-8 text-sm dark:border-zinc-700 disabled:opacity-50"
+        className="inline-flex items-center justify-center rounded-md border border-input bg-background px-3 h-8 text-sm  disabled:opacity-50"
         onClick={() => onChange(Math.min(total, page + 1))}
         disabled={page === total}
       >
@@ -491,7 +491,7 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
 
   if (supplierSummaries.length === 0) {
     return (
-      <Card className="border-muted dark:border-zinc-700 dark:bg-white/13">
+      <Card className="border-muted ">
         <CardContent className="py-12 text-center text-sm text-muted-foreground">
           No supplier data available. Generate a report to see results.
         </CardContent>
@@ -503,7 +503,7 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
     <div className="space-y-4">
       {/* ── Chart 1: Allocation Gap by Supplier ── */}
       {top10ByGap.length > 0 && (
-        <Card className="border-muted dark:border-zinc-700 dark:bg-white/13">
+        <Card className="border-muted ">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">
               Allocation Gap by Supplier
@@ -595,7 +595,7 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
       )}
 
       {/* ── Chart 2: Ordered vs Allocated by Supplier ── */}
-      <Card className="border-muted dark:border-zinc-700 dark:bg-white/13">
+      <Card className="border-muted ">
         <CardHeader className="pb-2">
           <CardTitle className="text-base">
             Ordered vs Allocated by Supplier
@@ -706,7 +706,7 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
       </Card>
 
       {/* ── Chart 3: Allocation Rate by Supplier (lowest first) ── */}
-      {/* <Card className="border-muted dark:border-zinc-700 dark:bg-white/13">
+      {/* <Card className="border-muted ">
         <CardHeader className="pb-2">
           <CardTitle className="text-base">
             Allocation Rate by Supplier
@@ -787,7 +787,7 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
       </Card> */}
 
       {/* ── Supplier Table ── */}
-      <Card className="border-muted dark:border-zinc-700 dark:bg-white/13">
+      <Card className="border-muted ">
         <CardHeader className="pb-2">
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
@@ -841,14 +841,14 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
                 <col style={{ width: 200 }} />
                 <col style={{ width: 80 }} />
                 <col style={{ width: 110 }} />
-                <col style={{ width: 115 }} />
+                <col style={{ width: 80 }} />
                 <col style={{ width: 80 }} />
                 <col style={{ width: 80 }} />
                 <col style={{ width: 90 }} />
                 <col style={{ width: 110 }} />
               </colgroup>
               <thead>
-                <tr className="border-b dark:border-zinc-700 bg-muted/30">
+                <tr className="border-b  bg-muted/30">
                   <th
                     className="py-3 pl-4 px-2 text-left font-medium text-muted-foreground cursor-pointer hover:text-foreground"
                     onClick={() => handleSort("supplierName")}
@@ -859,13 +859,13 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
                     className="py-3 px-2 text-right font-medium text-muted-foreground cursor-pointer hover:text-foreground"
                     onClick={() => handleSort("orderCount")}
                   >
-                    Orders {sortIcon("orderCount")}
+                    Total Orders {sortIcon("orderCount")}
                   </th>
                   <th
                     className="py-3 px-2 text-right font-medium text-muted-foreground cursor-pointer hover:text-foreground"
                     onClick={() => handleSort("totalOrdered")}
                   >
-                    Total Ordered {sortIcon("totalOrdered")}
+                    Total Ordered Quantity {sortIcon("totalOrdered")}
                   </th>
                   <th
                     className="py-3 px-2 text-right font-medium text-muted-foreground cursor-pointer hover:text-foreground"
@@ -883,7 +883,7 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
                     className="py-3 px-2 text-right font-medium text-muted-foreground cursor-pointer hover:text-foreground"
                     onClick={() => handleSort("allocationRate")}
                   >
-                    Rate {sortIcon("allocationRate")}
+                    Gap Rate {sortIcon("allocationRate")}
                   </th>
                   <th
                     className="py-3 px-2 text-right font-medium text-muted-foreground cursor-pointer hover:text-foreground"
@@ -983,13 +983,13 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
                                 No product data found.
                               </p>
                             ) : (
-                              <div className="overflow-x-auto rounded border dark:border-zinc-700">
+                              <div className="overflow-x-auto rounded border ">
                                 <table
                                   className="w-full text-xs"
                                   style={{ tableLayout: "auto" }}
                                 >
                                   <thead>
-                                    <tr className="border-b dark:border-zinc-700 bg-muted/40">
+                                    <tr className="border-b  bg-muted/40">
                                       <th className="py-1.5 pl-3 pr-2 text-left font-medium text-muted-foreground">
                                         Product
                                       </th>
@@ -1075,10 +1075,10 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
             </table>
           </div>
         </CardContent>
-        <div className="flex items-center justify-between px-4 py-4 border-t dark:border-zinc-700">
+        <div className="flex items-center justify-between px-4 py-4 border-t ">
           <div className="flex items-center gap-4">
             <select
-              className="h-8 rounded-md border border-input bg-background px-3 py-1 text-sm dark:border-zinc-700"
+              className="h-8 rounded-md border border-input bg-background px-3 py-1 text-sm "
               value={itemsPerPage}
               onChange={(e) => {
                 setItemsPerPage(Number(e.target.value));
@@ -1116,7 +1116,7 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
           }
         }}
       >
-        <DialogContent className="max-w-md dark:border-zinc-700">
+        <DialogContent className="max-w-md ">
           <DialogHeader>
             <DialogTitle>{modalSupplier?.supplierName}</DialogTitle>
             <DialogDescription>Supplier allocation insights</DialogDescription>

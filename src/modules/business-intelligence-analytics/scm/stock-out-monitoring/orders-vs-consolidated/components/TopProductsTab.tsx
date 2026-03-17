@@ -210,7 +210,7 @@ function Pagination({
   return (
     <div className="flex gap-1">
       <button
-        className="inline-flex items-center justify-center rounded-md border border-input bg-background px-3 h-8 text-sm dark:border-zinc-700 disabled:opacity-50"
+        className="inline-flex items-center justify-center rounded-md border border-input bg-background px-3 h-8 text-sm  disabled:opacity-50"
         onClick={() => onChange(Math.max(1, page - 1))}
         disabled={page === 1}
       >
@@ -219,14 +219,14 @@ function Pagination({
       {pages.map((p) => (
         <button
           key={p}
-          className={`inline-flex items-center justify-center rounded-md border px-3 h-8 text-sm dark:border-zinc-700 ${page === p ? "bg-primary text-primary-foreground border-primary" : "border-input bg-background"}`}
+          className={`inline-flex items-center justify-center rounded-md border px-3 h-8 text-sm  ${page === p ? "bg-primary text-primary-foreground border-primary" : "border-input bg-background"}`}
           onClick={() => onChange(p)}
         >
           {p}
         </button>
       ))}
       <button
-        className="inline-flex items-center justify-center rounded-md border border-input bg-background px-3 h-8 text-sm dark:border-zinc-700 disabled:opacity-50"
+        className="inline-flex items-center justify-center rounded-md border border-input bg-background px-3 h-8 text-sm  disabled:opacity-50"
         onClick={() => onChange(Math.min(total, page + 1))}
         disabled={page === total}
       >
@@ -428,7 +428,7 @@ export function TopProductsTab({ productSummaries }: Props) {
 
   if (productSummaries.length === 0) {
     return (
-      <Card className="border-muted dark:border-zinc-700 dark:bg-white/13">
+      <Card className="border-muted ">
         <CardContent className="py-12 text-center text-sm text-muted-foreground">
           No product data available. Generate a report to see results.
         </CardContent>
@@ -441,10 +441,10 @@ export function TopProductsTab({ productSummaries }: Props) {
       {/* ── Chart Row 1: Qty + Order Count ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Top 10 by Qty Ordered */}
-        <Card className="border-muted dark:border-zinc-700 dark:bg-white/13">
+        <Card className="border-muted ">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">
-              Top Products by Qty Ordered
+              Top Products by Quantity Ordered
             </CardTitle>
             <CardDescription>Click a bar for insights</CardDescription>
           </CardHeader>
@@ -495,15 +495,17 @@ export function TopProductsTab({ productSummaries }: Props) {
                       }
                       valueKey="totalOrdered"
                       nameKey="productName"
-                      valueLabel="Qty Ordered"
+                      valueLabel="Quantity Ordered"
                     />
                   )}
                 />
                 <Bar
                   dataKey="totalOrdered"
-                  name="Qty Ordered"
+                  name="Quantity Ordered"
                   radius={[4, 4, 0, 0]}
-                  onMouseEnter={(d) => setHoveredBar(`qty::${d.productName}`)}
+                  onMouseEnter={(d) =>
+                    setHoveredBar(`quantity::${d.productName}`)
+                  }
                   onMouseLeave={() => setHoveredBar(null)}
                   onClick={(d) => {
                     setSelectedProduct((prev) =>
@@ -525,7 +527,7 @@ export function TopProductsTab({ productSummaries }: Props) {
                           ? 0.25
                           : 1
                       }
-                      style={cellStyle("qty", e.productName)}
+                      style={cellStyle("quantity", e.productName)}
                     />
                   ))}
                 </Bar>
@@ -535,7 +537,7 @@ export function TopProductsTab({ productSummaries }: Props) {
         </Card>
 
         {/* Top 10 by Order Count */}
-        <Card className="border-muted dark:border-zinc-700 dark:bg-white/13">
+        <Card className="border-muted ">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">
               Top Products by Order Count
@@ -630,7 +632,7 @@ export function TopProductsTab({ productSummaries }: Props) {
       </div>
 
       {/* ── Chart Row 2: Brands ── */}
-      {/* <Card className="border-muted dark:border-zinc-700 dark:bg-white/13">
+      {/* <Card className="border-muted ">
         <CardHeader className="pb-2">
           <CardTitle className="text-base">Ordered Quantity by Brand</CardTitle>
           <CardDescription>Click a bar for insights</CardDescription>
@@ -712,7 +714,7 @@ export function TopProductsTab({ productSummaries }: Props) {
       </Card> */}
 
       {/* ── Product Table ── */}
-      <Card className="border-muted dark:border-zinc-700 dark:bg-white/13">
+      <Card className="border-muted ">
         <CardHeader className="pb-2">
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
@@ -738,7 +740,7 @@ export function TopProductsTab({ productSummaries }: Props) {
                       setCurrentPage(1);
                     }
                   }}
-                  className="max-w-sm dark:border-zinc-700"
+                  className="max-w-sm "
                 />
                 {/* <Button
                   variant="outline"
@@ -791,25 +793,25 @@ export function TopProductsTab({ productSummaries }: Props) {
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
-                    className="min-w-40 justify-between dark:border-zinc-700"
+                    className="min-w-40 justify-between "
                   >
                     {drillBrand !== "all" ? drillBrand : "All Brands"}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent
-                  className="w-80 max-w-[20rem] p-0 dark:border-zinc-700 overflow-hidden"
+                  className="w-80 max-w-[20rem] p-0  overflow-hidden"
                   align="start"
                 >
-                  <div className="p-2 border-b dark:border-zinc-700 dark:bg-white/13">
+                  <div className="p-2 border-b ">
                     <Input
                       placeholder="Search brands..."
                       value={brandSearch}
                       onChange={(e) => setBrandSearch(e.target.value)}
-                      className="h-8 dark:border-zinc-700"
+                      className="h-8 "
                     />
                   </div>
                   <ScrollArea className="h-64 w-full">
-                    <div className="p-2 space-y-1 dark:bg-white/13">
+                    <div className="p-2 space-y-1 ">
                       <div
                         className="px-2 py-1 hover:bg-muted rounded cursor-pointer"
                         onClick={() => {
@@ -844,25 +846,25 @@ export function TopProductsTab({ productSummaries }: Props) {
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
-                    className="min-w-40 justify-between dark:border-zinc-700"
+                    className="min-w-40 justify-between "
                   >
                     {drillCategory !== "all" ? drillCategory : "All Categories"}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent
-                  className="w-80 max-w-[20rem] p-0 dark:border-zinc-700 overflow-hidden"
+                  className="w-80 max-w-[20rem] p-0  overflow-hidden"
                   align="start"
                 >
-                  <div className="p-2 border-b dark:border-zinc-700 dark:bg-white/13">
+                  <div className="p-2 border-b ">
                     <Input
                       placeholder="Search categories..."
                       value={categorySearch}
                       onChange={(e) => setCategorySearch(e.target.value)}
-                      className="h-8 dark:border-zinc-700"
+                      className="h-8 "
                     />
                   </div>
                   <ScrollArea className="h-64 w-full">
-                    <div className="p-2 space-y-1 dark:bg-white/13">
+                    <div className="p-2 space-y-1 ">
                       <div
                         className="px-2 py-1 hover:bg-muted rounded cursor-pointer"
                         onClick={() => {
@@ -935,7 +937,7 @@ export function TopProductsTab({ productSummaries }: Props) {
                 <col style={{ width: 120 }} />
               </colgroup>
               <thead>
-                <tr className="border-b dark:border-zinc-700 bg-muted/30">
+                <tr className="border-b  bg-muted/30">
                   <th
                     className="py-3 pl-4 pr-2 text-left font-medium text-muted-foreground cursor-pointer hover:text-foreground"
                     onClick={() => handleSort("productName")}
@@ -961,7 +963,7 @@ export function TopProductsTab({ productSummaries }: Props) {
                     className="py-3 px-2 text-right font-medium text-muted-foreground cursor-pointer hover:text-foreground"
                     onClick={() => handleSort("totalOrdered")}
                   >
-                    Qty Ordered {sortIcon("totalOrdered")}
+                    Quantity Ordered {sortIcon("totalOrdered")}
                   </th>
                   <th
                     className="py-3 px-2 text-right font-medium text-muted-foreground cursor-pointer hover:text-foreground"
@@ -1043,44 +1045,61 @@ export function TopProductsTab({ productSummaries }: Props) {
                   </tr>
                 ))}
               </tbody>
-              {filteredSorted.length > 0 && (() => {
-                const totalOrdered = filteredSorted.reduce((s, r) => s + r.totalOrdered, 0);
-                const totalConsolidated = filteredSorted.reduce((s, r) => s + ((r as unknown as ProductOrdersSummary).totalConsolidated ?? 0), 0);
-                const avgRate = totalOrdered > 0 ? (totalConsolidated / totalOrdered) * 100 : 0;
-                const totalOrders = filteredSorted.reduce((s, r) => s + r.orderCount, 0);
-                const totalNet = filteredSorted.reduce((s, r) => s + r.netAmount, 0);
-                return (
-                  <tfoot>
-                    <tr className="border-t-2 border-zinc-300 dark:border-zinc-600 bg-muted/40 font-semibold text-sm">
-                      <td className="py-2.5 pl-4 pr-2" colSpan={4}>
-                        Total ({filteredSorted.length} products)
-                      </td>
-                      <td className="py-2.5 px-2 text-right tabular-nums">
-                        {numFmt(totalOrdered)}
-                      </td>
-                      <td className="py-2.5 px-2 text-right tabular-nums">
-                        {numFmt(totalConsolidated)}
-                      </td>
-                      <td className="py-2.5 px-2 text-right text-xs">
-                        {pctFmt(avgRate)}
-                      </td>
-                      <td className="py-2.5 px-2 text-right tabular-nums">
-                        {numFmt(totalOrders)}
-                      </td>
-                      <td className="py-2.5 px-2 text-right text-xs">
-                        
-                      </td>
-                      <td className="py-2.5 pr-4 pl-2 text-right tabular-nums">
-                        ₱{numFmt(totalNet)}
-                      </td>
-                    </tr>
-                  </tfoot>
-                );
-              })()}
+              {filteredSorted.length > 0 &&
+                (() => {
+                  const totalOrdered = filteredSorted.reduce(
+                    (s, r) => s + r.totalOrdered,
+                    0,
+                  );
+                  const totalConsolidated = filteredSorted.reduce(
+                    (s, r) =>
+                      s +
+                      ((r as unknown as ProductOrdersSummary)
+                        .totalConsolidated ?? 0),
+                    0,
+                  );
+                  const avgRate =
+                    totalOrdered > 0
+                      ? (totalConsolidated / totalOrdered) * 100
+                      : 0;
+                  const totalOrders = filteredSorted.reduce(
+                    (s, r) => s + r.orderCount,
+                    0,
+                  );
+                  const totalNet = filteredSorted.reduce(
+                    (s, r) => s + r.netAmount,
+                    0,
+                  );
+                  return (
+                    <tfoot>
+                      <tr className="border-t-2 border-zinc-300 dark:border-zinc-600 bg-muted/40 font-semibold text-sm">
+                        <td className="py-2.5 pl-4 pr-2" colSpan={4}>
+                          Total ({filteredSorted.length} products)
+                        </td>
+                        <td className="py-2.5 px-2 text-right tabular-nums">
+                          {numFmt(totalOrdered)}
+                        </td>
+                        <td className="py-2.5 px-2 text-right tabular-nums">
+                          {numFmt(totalConsolidated)}
+                        </td>
+                        <td className="py-2.5 px-2 text-right text-xs">
+                          {pctFmt(avgRate)}
+                        </td>
+                        <td className="py-2.5 px-2 text-right tabular-nums">
+                          {numFmt(totalOrders)}
+                        </td>
+                        <td className="py-2.5 px-2 text-right text-xs"></td>
+                        <td className="py-2.5 pr-4 pl-2 text-right tabular-nums">
+                          ₱{numFmt(totalNet)}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  );
+                })()}
             </table>
           </div>
         </CardContent>
-        <div className="flex items-center justify-between px-4 py-4 border-t dark:border-zinc-700">
+        <div className="flex items-center justify-between px-4 py-4 border-t ">
           <div className="flex items-center gap-4">
             <NativeSelect
               size="sm"
@@ -1122,7 +1141,7 @@ export function TopProductsTab({ productSummaries }: Props) {
           }
         }}
       >
-        <DialogContent className="max-w-md dark:border-zinc-700">
+        <DialogContent className="max-w-md ">
           <DialogHeader>
             <DialogTitle className="leading-snug">
               {modalProduct?.productName}
@@ -1141,7 +1160,7 @@ export function TopProductsTab({ productSummaries }: Props) {
               />
               <InsightStat label="Unit" value={modalProduct.unit || "—"} />
               <InsightStat
-                label="Qty Ordered"
+                label="Quantity Ordered"
                 value={numFmt(modalProduct.totalOrdered)}
               />
               <InsightStat

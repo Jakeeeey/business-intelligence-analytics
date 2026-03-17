@@ -73,7 +73,7 @@ export default function AllocatedvsOrderedModule() {
               onValueChange={setActiveTab}
               className="space-y-4"
             >
-              <TabsList className="grid w-full grid-cols-4 dark:bg-white/18 dark:border-zinc-700">
+              <TabsList className="grid w-full grid-cols-4 ">
                 <TabsTrigger value="overview">Allocation Overview</TabsTrigger>
                 <TabsTrigger value="suppliers">Supplier Allocation</TabsTrigger>
                 <TabsTrigger value="products">Product Allocation</TabsTrigger>
@@ -102,11 +102,17 @@ export default function AllocatedvsOrderedModule() {
               </TabsContent>
 
               <TabsContent value="products">
-                <TopProductsTab productSummaries={hook.productSummaries} filteredData={hook.filteredData} />
+                <TopProductsTab
+                  productSummaries={hook.productSummaries}
+                  filteredData={hook.filteredData}
+                />
               </TabsContent>
 
               <TabsContent value="orders">
-                <OrdersTab orderSummaries={hook.orderSummaries} filteredData={hook.filteredData} />
+                <OrdersTab
+                  orderSummaries={hook.orderSummaries}
+                  filteredData={hook.filteredData}
+                />
               </TabsContent>
             </Tabs>
           )}
