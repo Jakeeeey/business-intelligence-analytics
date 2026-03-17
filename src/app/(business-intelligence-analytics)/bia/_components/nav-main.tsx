@@ -4,7 +4,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { cva, type VariantProps } from "class-variance-authority";
+import { cva } from "class-variance-authority";
 import {
     ChevronRight,
     ChevronDown,
@@ -149,7 +149,7 @@ const subBtnVariants = cva(
     }
 );
 
-type SubBtnVariant = VariantProps<typeof subBtnVariants>;
+
 
 /* ---------------------------------- icons --------------------------------- */
 
@@ -194,10 +194,10 @@ export function NavMain({ items }: { items: NavNode[] }) {
         applyFromStorage();
 
         const onThemeSettingsChanged = () => applyFromStorage();
-        window.addEventListener(THEME_SETTINGS_EVENT, onThemeSettingsChanged as any);
+        window.addEventListener(THEME_SETTINGS_EVENT, onThemeSettingsChanged as EventListener);
 
         return () => {
-            window.removeEventListener(THEME_SETTINGS_EVENT, onThemeSettingsChanged as any);
+            window.removeEventListener(THEME_SETTINGS_EVENT, onThemeSettingsChanged as EventListener);
         };
     }, []);
 

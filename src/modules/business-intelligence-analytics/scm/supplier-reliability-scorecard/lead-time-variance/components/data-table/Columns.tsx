@@ -59,9 +59,9 @@ export const columns: ColumnDef<LeadTimeVarianceTableData>[] = [
       return (
         <span
           className={
-            days > 7
+            days > 1
               ? "text-destructive font-bold"
-              : days < 3
+              : days <= 1
                 ? "text-emerald-600 font-bold"
                 : "font-medium"
           }
@@ -92,16 +92,11 @@ export const columns: ColumnDef<LeadTimeVarianceTableData>[] = [
         "outline";
       let className = "bg-emerald-50 text-emerald-700 border-emerald-200";
 
-      if (days > 7) {
+      if (days > 1) {
         status = "Delayed";
         variant = "destructive";
         className = "";
-      } else if (days > 4) {
-        status = "Warning";
-        variant = "secondary";
-        className = "bg-orange-50 text-orange-700 border-orange-200";
       }
-
       return (
         <Badge variant={variant} className={className}>
           {status}

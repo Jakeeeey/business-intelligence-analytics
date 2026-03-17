@@ -7,16 +7,16 @@ export const dynamic = "force-dynamic";
 const COOKIE_NAME = "vos_access_token";
 const COOKIE_MAX_AGE_CAP = 60 * 60 * 24 * 7; // 7 days cap
 
-function pickToken(payload: any): string | null {
+function pickToken(payload: Record<string, unknown> | null): string | null {
   if (!payload) return null;
-  if (typeof payload === "string") return payload.trim() || null;
+  if (typeof payload === "string") return (payload as string).trim() || null;
   const t =
     payload.token ?? payload.accessToken ?? payload.access_token ?? payload.jwt;
   return typeof t === "string" && t.trim() ? t.trim() : null;
 }
 
 // Base64URL decode for JWT header/payload (no verification)
-function b64urlDecodeToJson(part: string): any | null {
+function b64urlDecodeToJson(part: string): Record<string, unknown> | null {
   try {
     let s = part.replace(/-/g, "+").replace(/_/g, "/");
     // pad to multiple of 4
@@ -93,11 +93,12 @@ export async function POST(req: NextRequest) {
       signal: controller.signal,
       cache: "no-store",
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const errorObj = err as Error & { cause?: { code?: string; message?: string }; code?: string };
     // ✅ Log details server-side only
     console.error("[auth/login] Upstream fetch error:", {
-      code: err?.cause?.code || err?.code,
-      message: err?.cause?.message || err?.message,
+      code: errorObj?.cause?.code || errorObj?.code,
+      message: errorObj?.cause?.message || errorObj?.message,
     });
 
     // ✅ Return generic message to client (no internal URL/IP)
@@ -113,11 +114,11 @@ export async function POST(req: NextRequest) {
   console.log("[auth/login] Upstream response status:", springRes.status);
   console.log("[auth/login] Raw response length:", raw?.length);
 
-  let data: any = null;
+  let data: Record<string, unknown> | null = null;
   try {
     data = raw ? JSON.parse(raw) : null;
   } catch {
-    data = raw;
+    data = raw as unknown as Record<string, unknown> | null;
   }
 
   if (!springRes.ok) {

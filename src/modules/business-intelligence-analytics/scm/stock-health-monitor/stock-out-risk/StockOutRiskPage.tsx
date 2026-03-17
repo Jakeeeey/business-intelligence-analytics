@@ -6,11 +6,11 @@ import { StockOutRiskAlert } from "./components/StockOutRiskAlert";
 import { DataTable } from "@/components/ui/new-data-table";
 import { columns } from "./components/Columns";
 import { StockOutRiskCharts } from "./components/StockOutRiskCharts";
-import { ScmAdvancedFilters } from "@/modules/business-intelligence-analytics/scm/components/filters/ScmAdvancedFilters";
+import { ScmAdvancedFilters } from "./components/ScmAdvancedFilters";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function StockOutRiskPage() {
-  const { data, criticalItems, isLoading, error } = useStockOutRisk();
+  const { data, criticalItems, isLoading } = useStockOutRisk();
 
   // Extract unique suppliers and branches for filters
   const suppliers = React.useMemo(() => {

@@ -1,7 +1,7 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { SlobAging } from "../../types/stock-health.schema";
+import { SlobAging } from "../types";
 import { Badge } from "@/components/ui/badge";
 
 const formatPHP = (value: number) => {

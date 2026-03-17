@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React from "react";
 import {
   Bar,
   BarChart,
@@ -37,14 +37,11 @@ interface FulfillmentRateChartProps {
 const chartConfig = {
   fulfillmentRate: {
     label: "Fulfillment Rate",
-    color: "hsl(var(--primary))",
+    color: "var(--primary)",
   },
 } satisfies ChartConfig;
 
 export function FulfillmentRateChart({ data }: FulfillmentRateChartProps) {
-  // Slice to bottom 10 performers for optimal UI/UX
-  const slicedData = useMemo(() => data.slice(0, 10), [data]);
-
   const avgRate =
     data.length > 0
       ? data.reduce((acc, curr) => acc + curr.fulfillmentRate, 0) / data.length
@@ -54,15 +51,15 @@ export function FulfillmentRateChart({ data }: FulfillmentRateChartProps) {
     <Card className="shadow-xs gap-4">
       <CardHeader className="flex flex-row items-start justify-between space-y-0">
         <div className="space-y-1">
-          <CardTitle>Bottom 10 Performers</CardTitle>
+          <CardTitle>Supplier Performance</CardTitle>
           <CardDescription>
-            Suppliers with the lowest fulfillment rates (Target: 95%)
+            Fulfillment rates per supplier (Target: 100%)
           </CardDescription>
         </div>
-        {avgRate < 95 && (
+        {avgRate < 100 && (
           <div className="flex items-center gap-2 text-destructive text-sm font-medium bg-destructive/5 px-2 py-1 rounded-md border border-destructive/10">
             <AlertCircle className="h-4 w-4" />
-            Below 95% Target
+            Below 100% Target
           </div>
         )}
       </CardHeader>
@@ -70,7 +67,7 @@ export function FulfillmentRateChart({ data }: FulfillmentRateChartProps) {
         <ChartContainer config={chartConfig} className="w-full h-[400px]">
           <BarChart
             accessibilityLayer
-            data={slicedData}
+            data={data}
             margin={{ top: 30, right: 10, left: 0, bottom: 60 }}
           >
             <CartesianGrid vertical={false} strokeDasharray="3 3" />
@@ -93,20 +90,20 @@ export function FulfillmentRateChart({ data }: FulfillmentRateChartProps) {
             />
             <ChartTooltip content={<ChartTooltipContent />} />
             <ReferenceLine
-              y={95}
-              stroke="hsl(var(--destructive))"
+              y={100}
+              stroke="#f97316"
               strokeDasharray="4 4"
               label={{
-                value: "95% Target",
+                value: "100% Target",
                 position: "insideTopRight",
-                fill: "hsl(var(--destructive))",
+                fill: "#f97316",
                 fontSize: 10,
                 fontWeight: 500,
                 offset: 10,
               }}
             />
             <Bar dataKey="fulfillmentRate" radius={6} minPointSize={2}>
-              {slicedData.map(
+              {data.map(
                 (
                   entry: { name: string; fulfillmentRate: number },
                   index: number,
@@ -114,9 +111,11 @@ export function FulfillmentRateChart({ data }: FulfillmentRateChartProps) {
                   <Cell
                     key={`cell-${index}`}
                     fill={
-                      entry.fulfillmentRate < 95
+                      entry.fulfillmentRate < 80 || entry.fulfillmentRate >= 120
                         ? "hsl(var(--destructive))"
-                        : "hsl(var(--primary))"
+                        : entry.fulfillmentRate < 100
+                          ? "#f97316" // Orange for Warning
+                          : "hsl(var(--primary))" // Blue for Good
                     }
                     fillOpacity={0.8}
                   />
@@ -135,7 +134,7 @@ export function FulfillmentRateChart({ data }: FulfillmentRateChartProps) {
       </CardContent>
       <CardFooter className="flex-col items-start gap-2 text-sm">
         <div className="flex gap-2 font-medium leading-none">
-          {avgRate >= 95 ? (
+          {avgRate >= 100 ? (
             <>
               Overall performance is on target{" "}
               <TrendingUp className="h-4 w-4 text-emerald-500" />
@@ -148,7 +147,7 @@ export function FulfillmentRateChart({ data }: FulfillmentRateChartProps) {
           )}
         </div>
         <div className="text-muted-foreground leading-none">
-          Showing worst 10 out of {data.length} total suppliers
+          Showing all {data.length} suppliers
         </div>
       </CardFooter>
     </Card>

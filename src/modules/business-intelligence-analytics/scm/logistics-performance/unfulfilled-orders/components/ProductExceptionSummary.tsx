@@ -196,7 +196,7 @@ export const ProductExceptionSummary = ({data, isLoading}: Props) => {
 
                                 {/* Products inside Supplier */}
                                 <ul className="divide-y divide-border">
-                                    {group.items.map((item, pIdx) => {
+                                    {group.items.map((item) => {
                                         const uiKey = `${group.supplierName}-${item.name}-${item.status}`;
                                         const isExpanded = !!expandedItemKeys[uiKey];
                                         const customers = Object.values(item.customers).sort((a, b) => b.missingQty - a.missingQty);

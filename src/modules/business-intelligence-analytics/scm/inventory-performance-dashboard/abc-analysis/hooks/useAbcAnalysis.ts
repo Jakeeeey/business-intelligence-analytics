@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { format } from "date-fns";
-import { useScmFilters } from "@/modules/business-intelligence-analytics/scm/providers/ScmFilterProvider";
+import { useScmFilters } from "../providers/ScmFilterProvider";
 import { fetchAbcAnalysisData } from "../services/abc-analysis";
 import { AbcProduct } from "../types/abc-analysis.schema";
 
@@ -29,9 +29,10 @@ export function useAbcAnalysis() {
 
                 const result = await fetchAbcAnalysisData(params);
                 setData(result);
-            } catch (err: any) {
+            } catch (err) {
                 console.error("Failed to fetch ABC Analysis data:", err);
-                setError(err.message || "Failed to load data. Please check your connection.");
+                const message = err instanceof Error ? err.message : "Failed to load data. Please check your connection.";
+                setError(message);
             } finally {
                 setIsLoading(false);
             }
@@ -67,7 +68,7 @@ export function useAbcAnalysis() {
         const totalValue = sorted.reduce((sum, item) => sum + item.outValue, 0);
 
         let cumulativeValue = 0;
-        return sorted.map((item) => {
+        return sorted.map((item, i) => {
             cumulativeValue += item.outValue;
             const cumulativePct = totalValue > 0 ? (cumulativeValue / totalValue) * 100 : 0;
 
@@ -75,7 +76,12 @@ export function useAbcAnalysis() {
             if (cumulativePct <= 70) abcClass = "A";
             else if (cumulativePct <= 90) abcClass = "B";
 
-            return { ...item, abcClass, cumulativePct };
+            return {
+                ...item,
+                abcClass,
+                classRank: i + 1,
+                cumulativePct
+            };
         });
     }, [data, selectedSupplier, selectedBranch]);
 
@@ -85,9 +91,9 @@ export function useAbcAnalysis() {
         const totalVolume = enrichedData.reduce((sum, item) => sum + item.outQtyBase, 0);
 
         const categories = {
-            A: enrichedData.filter(d => (d as any).abcClass === "A"),
-            B: enrichedData.filter(d => (d as any).abcClass === "B"),
-            C: enrichedData.filter(d => (d as any).abcClass === "C"),
+            A: enrichedData.filter(d => d.abcClass === "A"),
+            B: enrichedData.filter(d => d.abcClass === "B"),
+            C: enrichedData.filter(d => d.abcClass === "C"),
         };
 
         return {

@@ -4,7 +4,7 @@ import React, { useMemo } from "react";
 
 import { DataTable } from "@/components/ui/new-data-table";
 
-import { useScmFilters } from "@/modules/business-intelligence-analytics/scm/providers/ScmFilterProvider";
+import { useScmFilters } from "./providers/ScmFilterProvider";
 import { useLeadTimeVariance } from "./hooks/useLeadTimeVariance";
 import LeadTimeVarianceSkeleton from "@/app/(business-intelligence-analytics)/bia/_components/LeadTimeVarianceSkeleton";
 import { ErrorPage } from "@/app/(business-intelligence-analytics)/bia/_components/ErrorPage";
@@ -12,7 +12,7 @@ import { ErrorPage } from "@/app/(business-intelligence-analytics)/bia/_componen
 import { LeadTimeVarianceMetricsCard } from "./components/cards/LeadTimeVarianceMetricsCard";
 import { LeadTimeVarianceChart } from "./components/charts/LeadTimeVarianceChart";
 import { columns } from "./components/data-table/Columns";
-import { ScmAdvancedFilters } from "@/modules/business-intelligence-analytics/scm/components/filters/ScmAdvancedFilters";
+import { ScmAdvancedFilters } from "./components/ScmAdvancedFilters";
 
 import {
   calculateLeadTimeVarianceMetrics,
@@ -86,7 +86,7 @@ export default function LeadTimeVariancePage() {
       <DataTable
         columns={columns}
         data={tableData}
-        searchKey="supplierName"
+        searchKey="purchaseOrderNo"
         isLoading={isLoading}
       />
     </div>

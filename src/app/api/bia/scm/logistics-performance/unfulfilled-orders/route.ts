@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
 
         // Return exactly what Spring returns (the raw JSON array), matching your pattern
         return NextResponse.json(await springRes.json());
-    } catch (err) {
+    } catch {
         return NextResponse.json({ ok: false }, { status: 502 });
     }
 }

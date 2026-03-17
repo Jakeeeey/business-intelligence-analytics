@@ -4,26 +4,47 @@ import React from "react";
 import { ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/new-data-table";
+import { Button } from "@/components/ui/button";
+import { ArrowUpDown } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { AbcProduct } from "../types/abc-analysis.schema";
 
 interface AbcDataTableProps {
-    data: any[];
+    data: AbcProduct[];
     isLoading: boolean;
 }
 
 export function AbcDataTable({ data, isLoading }: AbcDataTableProps) {
-    const columns: ColumnDef<any>[] = [
+    const columns: ColumnDef<AbcProduct>[] = [
         {
-            accessorKey: "rankByValue",
-            header: "Rank",
+            accessorKey: "classRank",
+            header: ({ column }) => (
+                <Button
+                    variant="ghost"
+                    onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+                    className="p-0 font-bold hover:bg-transparent"
+                >
+                    Rank
+                    <ArrowUpDown className="ml-2 h-4 w-4" />
+                </Button>
+            ),
             cell: ({ row }) => (
-                <span className="font-mono font-medium">#{row.original.rankByValue}</span>
+                <span className="font-mono font-medium">#{row.original.classRank}</span>
             ),
         },
         {
             accessorKey: "abcClass",
-            header: "Class",
+            header: ({ column }) => (
+                <Button
+                    variant="ghost"
+                    onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+                    className="p-0 font-bold hover:bg-transparent"
+                >
+                    Class
+                    <ArrowUpDown className="ml-2 h-4 w-4" />
+                </Button>
+            ),
             cell: ({ row }) => {
                 const val = row.original.abcClass;
                 return (
@@ -79,7 +100,7 @@ export function AbcDataTable({ data, isLoading }: AbcDataTableProps) {
             header: "Cum. %",
             cell: ({ row }) => (
                 <span className="text-xs text-muted-foreground italic">
-                    {row.original.cumulativePct.toFixed(1)}%
+                    {(row.original.cumulativePct ?? 0).toFixed(1)}%
                 </span>
             ),
         },
@@ -99,6 +120,7 @@ export function AbcDataTable({ data, isLoading }: AbcDataTableProps) {
                     data={data}
                     searchKey="productName"
                     isLoading={isLoading}
+                    sorting={[{ id: "classRank", desc: false }]}
                 />
             </div>
         </Card>

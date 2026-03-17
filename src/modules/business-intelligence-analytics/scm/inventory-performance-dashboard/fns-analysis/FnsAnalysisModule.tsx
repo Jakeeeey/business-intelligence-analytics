@@ -15,8 +15,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
-import { useScmFilters } from "@/modules/business-intelligence-analytics/scm/providers/ScmFilterProvider";
-import { ScmAdvancedFilters } from "@/modules/business-intelligence-analytics/scm/components/filters/ScmAdvancedFilters";
+import { useScmFilters } from "./providers/ScmFilterProvider";
+import { ScmAdvancedFilters } from "./components/ScmAdvancedFilters";
 import { useFnsAnalysis } from "./hooks/useFnsAnalysis";
 import { FnsDistributionTab } from "./components/FnsDistributionTab";
 import { FnsDataTable } from "./components/FnsDataTable";

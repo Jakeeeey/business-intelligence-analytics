@@ -4,8 +4,7 @@ import { cookies } from "next/headers";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const SPRING_API_BASE_URL =
-  process.env.SPRING_API_BASE_URL || "http://100.81.225.79:8083";
+const SPRING_API_BASE_URL = process.env.SPRING_API_BASE_URL;
 const COOKIE_NAME = "vos_access_token";
 
 export async function GET(req: NextRequest) {
@@ -20,8 +19,16 @@ export async function GET(req: NextRequest) {
   }
 
   const { searchParams } = new URL(req.url);
+  if (!SPRING_API_BASE_URL) {
+    console.error("[Fulfillment-API] SPRING_API_BASE_URL is not defined in environment variables");
+    return NextResponse.json(
+      { ok: false, error: "Server Configuration Error" },
+      { status: 500 },
+    );
+  }
+
   const targetUrl = new URL(
-    `${SPRING_API_BASE_URL}/api/view-supplier-fulfillment-rate-po/all`,
+    `${SPRING_API_BASE_URL.replace(/\/$/, "")}/api/view-supplier-fulfillment-rate-po/all`,
   );
 
   // Pass query params if any
@@ -44,7 +51,7 @@ export async function GET(req: NextRequest) {
 
     const data = await springRes.json();
     return NextResponse.json(data);
-  } catch (err) {
+  } catch {
     return NextResponse.json(
       { ok: false, error: "Gateway Error" },
       { status: 502 },

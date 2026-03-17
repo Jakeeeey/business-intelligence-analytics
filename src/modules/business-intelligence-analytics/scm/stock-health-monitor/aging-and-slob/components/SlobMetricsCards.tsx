@@ -3,7 +3,6 @@
 import React from "react";
 import { AlertCircle, CheckCircle2, TrendingDown, Package } from "lucide-react";
 import { Card, CardContent, CardHeader, CardDescription, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 
 interface SlobMetricsCardsProps {
   metrics: {

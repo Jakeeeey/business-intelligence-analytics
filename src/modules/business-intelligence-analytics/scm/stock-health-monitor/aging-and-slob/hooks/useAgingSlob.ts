@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { fetchAgingSlobData } from "../services/aging-slob";
-import { SlobAging } from "../../types/stock-health.schema";
-import { useScmFilters } from "@/modules/business-intelligence-analytics/scm/providers/ScmFilterProvider";
+import { SlobAging } from "../types";
+import { useScmFilters } from "../providers/ScmFilterProvider";
 import { parse, isWithinInterval } from "date-fns";
 
 export function useAgingSlob() {
@@ -16,8 +16,8 @@ export function useAgingSlob() {
       const result = await fetchAgingSlobData();
       setData(result);
       setError(null);
-    } catch (err: any) {
-      setError(err.message || "Failed to fetch Aging & SLOB data");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to fetch Aging & SLOB data");
     } finally {
       setIsLoading(false);
     }

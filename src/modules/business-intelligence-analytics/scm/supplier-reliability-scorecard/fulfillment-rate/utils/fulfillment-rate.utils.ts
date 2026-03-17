@@ -52,40 +52,42 @@ export function calculateFulfillmentRateMetrics(
     };
   }
 
-  const poFulfillmentRates = data.map((d) =>
-    d.totalOrderedQty > 0 ? (d.totalReceivedQty / d.totalOrderedQty) * 100 : 0,
+  const totals = data.reduce(
+    (acc, d) => ({
+      ordered: acc.ordered + d.totalOrderedQty,
+      received: acc.received + d.totalReceivedQty,
+    }),
+    { ordered: 0, received: 0 },
   );
 
-  const totalFulfillment = poFulfillmentRates.reduce(
-    (acc, curr) => acc + curr,
-    0,
-  );
-  const avgFulfillmentRate = totalFulfillment / data.length;
-
-  const supplierStats = new Map<string, { totalPct: number; count: number }>();
+  const supplierStats = new Map<
+    string,
+    { totalOrdered: number; totalReceived: number }
+  >();
   data.forEach((d) => {
     const current = supplierStats.get(d.supplierName) || {
-      totalPct: 0,
-      count: 0,
+      totalOrdered: 0,
+      totalReceived: 0,
     };
-    const poRate =
-      d.totalOrderedQty > 0
-        ? (d.totalReceivedQty / d.totalOrderedQty) * 100
-        : 0;
     supplierStats.set(d.supplierName, {
-      totalPct: current.totalPct + poRate,
-      count: current.count + 1,
+      totalOrdered: current.totalOrdered + d.totalOrderedQty,
+      totalReceived: current.totalReceived + d.totalReceivedQty,
     });
   });
 
-  let below95Count = 0;
+  const avgFulfillmentRate =
+    totals.ordered > 0 ? (totals.received / totals.ordered) * 100 : 0;
+
+  let belowTargetCount = 0;
   supplierStats.forEach((val) => {
-    if (val.totalPct / val.count < 95) below95Count++;
+    const rate =
+      val.totalOrdered > 0 ? (val.totalReceived / val.totalOrdered) * 100 : 0;
+    if (rate < 100) belowTargetCount++;
   });
 
   return {
     avgFulfillmentRate,
-    suppliersBelow95Count: below95Count,
+    suppliersBelow95Count: belowTargetCount, // Keeping property name for schema compatibility but using 100% threshold
     totalSuppliers: supplierStats.size,
     totalPOs: data.length,
     totalFulfillmentPct: avgFulfillmentRate,
@@ -96,27 +98,31 @@ export function calculateFulfillmentRateMetrics(
  * Prepares data for the fulfillment rate bar chart.
  */
 export function prepareSupplierChartData(data: FulfillmentRatePo[]) {
-  const supplierMap = new Map<string, { totalPct: number; count: number }>();
+  const supplierMap = new Map<
+    string,
+    { totalOrdered: number; totalReceived: number }
+  >();
   data.forEach((d) => {
     const current = supplierMap.get(d.supplierName) || {
-      totalPct: 0,
-      count: 0,
+      totalOrdered: 0,
+      totalReceived: 0,
     };
-    const poRate =
-      d.totalOrderedQty > 0
-        ? (d.totalReceivedQty / d.totalOrderedQty) * 100
-        : 0;
     supplierMap.set(d.supplierName, {
-      totalPct: current.totalPct + poRate,
-      count: current.count + 1,
+      totalOrdered: current.totalOrdered + d.totalOrderedQty,
+      totalReceived: current.totalReceived + d.totalReceivedQty,
     });
   });
 
   return Array.from(supplierMap.entries())
-    .map(([name, val]) => ({
-      name,
-      fulfillmentRate: val.totalPct / val.count,
-    }))
+    .map(([name, val]) => {
+      const fulfillmentRate =
+        val.totalOrdered > 0 ? (val.totalReceived / val.totalOrdered) * 100 : 0;
+
+      return {
+        name,
+        fulfillmentRate,
+      };
+    })
     .sort((a, b) => a.fulfillmentRate - b.fulfillmentRate);
 }
 
@@ -132,7 +138,6 @@ export function prepareSupplierTableData(
       totalPOs: number;
       totalOrdered: number;
       totalReceived: number;
-      totalFulfillmentPct: number;
     }
   >();
 
@@ -141,24 +146,18 @@ export function prepareSupplierTableData(
       totalPOs: 0,
       totalOrdered: 0,
       totalReceived: 0,
-      totalFulfillmentPct: 0,
     };
-
-    const poRate =
-      d.totalOrderedQty > 0
-        ? (d.totalReceivedQty / d.totalOrderedQty) * 100
-        : 0;
 
     supplierMap.set(d.supplierName, {
       totalPOs: current.totalPOs + 1,
       totalOrdered: current.totalOrdered + d.totalOrderedQty,
       totalReceived: current.totalReceived + d.totalReceivedQty,
-      totalFulfillmentPct: current.totalFulfillmentPct + poRate,
     });
   });
 
   return Array.from(supplierMap.entries()).map(([name, val]) => {
-    const rate = val.totalFulfillmentPct / val.totalPOs;
+    const rate =
+      val.totalOrdered > 0 ? (val.totalReceived / val.totalOrdered) * 100 : 0;
     const shortfall = val.totalOrdered - val.totalReceived;
     return {
       supplierName: name,
@@ -167,7 +166,16 @@ export function prepareSupplierTableData(
       totalOrdered: val.totalOrdered,
       totalReceived: val.totalReceived,
       shortfall: shortfall > 0 ? shortfall : 0,
-      status: rate >= 95 ? "Good" : "Below Target",
+      status:
+        rate >= 120
+          ? "Critical"
+          : rate >= 100
+            ? "Good"
+            : rate >= 80
+              ? "Warning"
+              : rate >= 0
+                ? "Poor"
+                : "",
     };
   });
 }
