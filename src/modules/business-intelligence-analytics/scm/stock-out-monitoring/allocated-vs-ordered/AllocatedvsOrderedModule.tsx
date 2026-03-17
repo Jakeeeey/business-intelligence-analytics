@@ -102,11 +102,17 @@ export default function AllocatedvsOrderedModule() {
               </TabsContent>
 
               <TabsContent value="products">
-                <TopProductsTab productSummaries={hook.productSummaries} filteredData={hook.filteredData} />
+                <TopProductsTab
+                  productSummaries={hook.productSummaries}
+                  filteredData={hook.filteredData}
+                />
               </TabsContent>
 
               <TabsContent value="orders">
-                <OrdersTab orderSummaries={hook.orderSummaries} filteredData={hook.filteredData} />
+                <OrdersTab
+                  orderSummaries={hook.orderSummaries}
+                  filteredData={hook.filteredData}
+                />
               </TabsContent>
             </Tabs>
           )}

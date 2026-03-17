@@ -100,21 +100,21 @@ export function KpiCards({ kpis }: KpiCardsProps) {
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-6">
       <KpiCard
-        title="Total Ordered Qty"
+        title="Total Ordered Quantity"
         value={numFmt.format(kpis.totalOrderedQuantity)}
         icon={PackageOpen}
         tooltip="Total quantity of items requested across all orders within the selected filters."
         tooltipLines={[
           { label: "Unique Orders", val: numFmt.format(kpis.totalOrders) },
           {
-            label: "Ordered Qty",
+            label: "Ordered Quantity",
             val: numFmt.format(kpis.totalOrderedQuantity),
           },
         ]}
       />
 
       <KpiCard
-        title="Total Allocated Qty"
+        title="Total Allocated Quantity"
         value={numFmt.format(kpis.totalAllocatedQuantity)}
         icon={PackageCheck}
         tooltip="Total quantity of inventory currently reserved or allocated to fulfill orders."

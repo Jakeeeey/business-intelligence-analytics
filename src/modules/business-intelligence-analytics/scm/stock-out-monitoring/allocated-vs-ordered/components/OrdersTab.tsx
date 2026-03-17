@@ -408,67 +408,72 @@ export function OrdersTab({ orderSummaries, filteredData }: Props) {
                               </thead>
                               <tbody>
                                 {lines.map((line, li) => {
-                                  const netPricePerUnit = line.orderedQuantity > 0 ? line.netAmount / line.orderedQuantity : 0;
-                                  const gap = line.orderedQuantity - line.allocatedQuantity;
+                                  const netPricePerUnit =
+                                    line.orderedQuantity > 0
+                                      ? line.netAmount / line.orderedQuantity
+                                      : 0;
+                                  const gap =
+                                    line.orderedQuantity -
+                                    line.allocatedQuantity;
                                   const varianceAmount = gap * netPricePerUnit;
                                   return (
-                                  <tr
-                                    key={li}
-                                    className="border-b dark:border-zinc-800/50 last:border-0 hover:bg-muted/20"
-                                  >
-                                    <td className="py-1.5 pl-2 pr-1 text-muted-foreground">
-                                      <span className="block truncate">
-                                        {line.brandName}
-                                      </span>
-                                    </td>
-                                    <td className="py-1.5 px-1 text-muted-foreground">
-                                      <span className="block truncate">
-                                        {line.categoryName}
-                                      </span>
-                                    </td>
-                                    <td className="py-1.5 px-1 font-medium">
-                                      <span
-                                        className="block truncate"
-                                        title={line.productName}
-                                      >
-                                        {line.productName}
-                                      </span>
-                                    </td>
-                                    <td className="py-1.5 px-1 text-muted-foreground">
-                                      {line.unit}
-                                    </td>
-                                    <td className="py-1.5 px-1 text-right tabular-nums">
-                                      ₱{numFmt(netPricePerUnit)}
-                                    </td>
-                                    <td className="py-1.5 px-1 text-right tabular-nums">
-                                      {numFmt(line.orderedQuantity)}
-                                    </td>
-                                    <td className="py-1.5 px-1 text-right tabular-nums text-emerald-600 dark:text-emerald-400">
-                                      {numFmt(line.allocatedQuantity)}
-                                    </td>
-                                    <td className="py-1.5 px-1 text-right tabular-nums">
-                                      {gap > 0 ? (
-                                        <span className="text-rose-600 dark:text-rose-400 font-medium">
-                                          {numFmt(gap)}
+                                    <tr
+                                      key={li}
+                                      className="border-b dark:border-zinc-800/50 last:border-0 hover:bg-muted/20"
+                                    >
+                                      <td className="py-1.5 pl-2 pr-1 text-muted-foreground">
+                                        <span className="block truncate">
+                                          {line.brandName}
                                         </span>
-                                      ) : (
-                                        <span className="text-emerald-600 dark:text-emerald-400">
-                                          —
+                                      </td>
+                                      <td className="py-1.5 px-1 text-muted-foreground">
+                                        <span className="block truncate">
+                                          {line.categoryName}
                                         </span>
-                                      )}
-                                    </td>
-                                    <td className="py-1.5 pl-1 pr-2 text-right tabular-nums">
-                                      {varianceAmount > 0 ? (
-                                        <span className="text-rose-600 dark:text-rose-400 font-medium">
-                                          ₱{numFmt(varianceAmount)}
+                                      </td>
+                                      <td className="py-1.5 px-1 font-medium">
+                                        <span
+                                          className="block truncate"
+                                          title={line.productName}
+                                        >
+                                          {line.productName}
                                         </span>
-                                      ) : (
-                                        <span className="text-emerald-600 dark:text-emerald-400">
-                                          —
-                                        </span>
-                                      )}
-                                    </td>
-                                  </tr>
+                                      </td>
+                                      <td className="py-1.5 px-1 text-muted-foreground">
+                                        {line.unit}
+                                      </td>
+                                      <td className="py-1.5 px-1 text-right tabular-nums">
+                                        ₱{numFmt(netPricePerUnit)}
+                                      </td>
+                                      <td className="py-1.5 px-1 text-right tabular-nums">
+                                        {numFmt(line.orderedQuantity)}
+                                      </td>
+                                      <td className="py-1.5 px-1 text-right tabular-nums text-emerald-600 dark:text-emerald-400">
+                                        {numFmt(line.allocatedQuantity)}
+                                      </td>
+                                      <td className="py-1.5 px-1 text-right tabular-nums">
+                                        {gap > 0 ? (
+                                          <span className="text-rose-600 dark:text-rose-400 font-medium">
+                                            {numFmt(gap)}
+                                          </span>
+                                        ) : (
+                                          <span className="text-emerald-600 dark:text-emerald-400">
+                                            —
+                                          </span>
+                                        )}
+                                      </td>
+                                      <td className="py-1.5 pl-1 pr-2 text-right tabular-nums">
+                                        {varianceAmount > 0 ? (
+                                          <span className="text-rose-600 dark:text-rose-400 font-medium">
+                                            ₱{numFmt(varianceAmount)}
+                                          </span>
+                                        ) : (
+                                          <span className="text-emerald-600 dark:text-emerald-400">
+                                            —
+                                          </span>
+                                        )}
+                                      </td>
+                                    </tr>
                                   );
                                 })}
                               </tbody>

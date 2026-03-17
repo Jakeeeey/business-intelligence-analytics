@@ -1255,11 +1255,11 @@ export function OverviewTab({
                 value={numFmt(supplierModal.orderCount)}
               />
               <InsightStat
-                label="Total Ordered Qty"
+                label="Total Ordered Quantity"
                 value={numFmt(supplierModal.totalOrdered)}
               />
               <InsightStat
-                label="Total Allocated Qty"
+                label="Total Allocated Quantity"
                 value={numFmt(supplierModal.totalAllocated)}
                 color="text-emerald-600 dark:text-emerald-400"
               />

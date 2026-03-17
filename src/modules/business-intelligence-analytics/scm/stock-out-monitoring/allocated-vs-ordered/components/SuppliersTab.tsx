@@ -841,7 +841,7 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
                 <col style={{ width: 200 }} />
                 <col style={{ width: 80 }} />
                 <col style={{ width: 110 }} />
-                <col style={{ width: 115 }} />
+                <col style={{ width: 80 }} />
                 <col style={{ width: 80 }} />
                 <col style={{ width: 80 }} />
                 <col style={{ width: 90 }} />
@@ -859,13 +859,13 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
                     className="py-3 px-2 text-right font-medium text-muted-foreground cursor-pointer hover:text-foreground"
                     onClick={() => handleSort("orderCount")}
                   >
-                    Orders {sortIcon("orderCount")}
+                    Total Orders {sortIcon("orderCount")}
                   </th>
                   <th
                     className="py-3 px-2 text-right font-medium text-muted-foreground cursor-pointer hover:text-foreground"
                     onClick={() => handleSort("totalOrdered")}
                   >
-                    Total Ordered {sortIcon("totalOrdered")}
+                    Total Ordered Quantity {sortIcon("totalOrdered")}
                   </th>
                   <th
                     className="py-3 px-2 text-right font-medium text-muted-foreground cursor-pointer hover:text-foreground"
@@ -883,7 +883,7 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
                     className="py-3 px-2 text-right font-medium text-muted-foreground cursor-pointer hover:text-foreground"
                     onClick={() => handleSort("allocationRate")}
                   >
-                    Rate {sortIcon("allocationRate")}
+                    Gap Rate {sortIcon("allocationRate")}
                   </th>
                   <th
                     className="py-3 px-2 text-right font-medium text-muted-foreground cursor-pointer hover:text-foreground"

@@ -17,7 +17,7 @@ export type AllocatedOrderedRecord = {
   unitPrice: number;
   orderedQuantity: number;
   allocatedQuantity: number;
-  discrepancyGap: number; // orderedQuantity - allocatedQuantity
+  discrepancyGap: number; // API-provided value (metrics derive gap from orderedQuantity - allocatedQuantity)
   netAmount: number;
 };
 
