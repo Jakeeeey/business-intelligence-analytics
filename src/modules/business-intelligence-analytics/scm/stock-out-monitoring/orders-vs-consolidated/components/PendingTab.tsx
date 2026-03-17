@@ -82,7 +82,7 @@ export function PendingTab({ pendingOrders }: Props) {
 
   if (pendingOrders.length === 0) {
     return (
-      <Card className="border-muted dark:border-zinc-700 dark:bg-white/13">
+      <Card className="border-muted ">
         <CardContent className="py-16 flex flex-col items-center text-center gap-3">
           <div className="text-4xl">✅</div>
           <p className="font-medium">No pending orders</p>
@@ -125,7 +125,7 @@ export function PendingTab({ pendingOrders }: Props) {
         </div>
       </div>
 
-      <Card className="border-muted dark:border-zinc-700 dark:bg-white/13">
+      <Card className="border-muted ">
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base">
@@ -140,7 +140,7 @@ export function PendingTab({ pendingOrders }: Props) {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b dark:border-zinc-700 bg-muted/30">
+                <tr className="border-b  bg-muted/30">
                   <th
                     className="py-3 pl-4 pr-2 text-left font-medium text-muted-foreground cursor-pointer hover:text-foreground"
                     onClick={() => handleSort("orderNo")}
@@ -247,10 +247,10 @@ export function PendingTab({ pendingOrders }: Props) {
             </table>
           </div>
         </CardContent>
-        <div className="flex items-center justify-between px-4 py-4 border-t dark:border-zinc-700">
+        <div className="flex items-center justify-between px-4 py-4 border-t ">
           <div className="flex items-center gap-4">
             <select
-              className="h-8 rounded-md border border-input bg-background px-3 py-1 text-sm dark:border-zinc-700"
+              className="h-8 rounded-md border border-input bg-background px-3 py-1 text-sm "
               value={itemsPerPage}
               onChange={(e) => {
                 setItemsPerPage(Number(e.target.value));
@@ -271,7 +271,7 @@ export function PendingTab({ pendingOrders }: Props) {
           {totalPages > 1 && (
             <div className="flex gap-1">
               <button
-                className="inline-flex items-center justify-center rounded-md border border-input bg-background px-3 h-8 text-sm dark:border-zinc-700 disabled:opacity-50"
+                className="inline-flex items-center justify-center rounded-md border border-input bg-background px-3 h-8 text-sm  disabled:opacity-50"
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
               >
@@ -288,7 +288,7 @@ export function PendingTab({ pendingOrders }: Props) {
                 return (
                   <button
                     key={pageNum}
-                    className={`inline-flex items-center justify-center rounded-md border px-3 h-8 text-sm dark:border-zinc-700 ${currentPage === pageNum ? "bg-primary text-primary-foreground border-primary" : "border-input bg-background"}`}
+                    className={`inline-flex items-center justify-center rounded-md border px-3 h-8 text-sm  ${currentPage === pageNum ? "bg-primary text-primary-foreground border-primary" : "border-input bg-background"}`}
                     onClick={() => setCurrentPage(pageNum)}
                   >
                     {pageNum}
@@ -296,7 +296,7 @@ export function PendingTab({ pendingOrders }: Props) {
                 );
               })}
               <button
-                className="inline-flex items-center justify-center rounded-md border border-input bg-background px-3 h-8 text-sm dark:border-zinc-700 disabled:opacity-50"
+                className="inline-flex items-center justify-center rounded-md border border-input bg-background px-3 h-8 text-sm  disabled:opacity-50"
                 onClick={() =>
                   setCurrentPage((p) => Math.min(totalPages, p + 1))
                 }

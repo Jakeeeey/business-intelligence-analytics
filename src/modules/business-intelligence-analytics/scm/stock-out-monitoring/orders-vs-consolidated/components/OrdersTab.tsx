@@ -143,7 +143,7 @@ export function OrdersTab({ canonicalOrders, filteredData }: Props) {
 
   if (canonicalOrders.length === 0) {
     return (
-      <Card className="border-muted dark:border-zinc-700 dark:bg-white/13">
+      <Card className="border-muted ">
         <CardContent className="py-12 text-center text-sm text-muted-foreground">
           No order data available. Generate a report to see results.
         </CardContent>
@@ -154,7 +154,7 @@ export function OrdersTab({ canonicalOrders, filteredData }: Props) {
   const pendingCount = canonicalOrders.filter((o) => !o.isConsolidated).length;
 
   return (
-    <Card className="border-muted dark:border-zinc-700 dark:bg-white/13">
+    <Card className="border-muted ">
       <CardHeader className="pb-2">
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
@@ -238,7 +238,7 @@ export function OrdersTab({ canonicalOrders, filteredData }: Props) {
               <col style={{ width: 150 }} /> {/* Net Amount */}
             </colgroup>
             <thead>
-              <tr className="border-b dark:border-zinc-700 bg-muted/30">
+              <tr className="border-b  bg-muted/30">
                 <th className="py-3 pl-3" />
                 <th
                   className="py-3 pl-2 pr-2 text-left font-medium text-muted-foreground cursor-pointer hover:text-foreground"
@@ -384,7 +384,7 @@ export function OrdersTab({ canonicalOrders, filteredData }: Props) {
                                 {/* Variance Amount */}
                               </colgroup>
                               <thead>
-                                <tr className="border-b dark:border-zinc-700 text-muted-foreground">
+                                <tr className="border-b  text-muted-foreground">
                                   <th className="py-2 px-2 text-left font-medium">
                                     Brand
                                   </th>
@@ -498,10 +498,10 @@ export function OrdersTab({ canonicalOrders, filteredData }: Props) {
         </div>
       </CardContent>
 
-      <div className="flex items-center justify-between px-4 py-4 border-t dark:border-zinc-700">
+      <div className="flex items-center justify-between px-4 py-4 border-t ">
         <div className="flex items-center gap-4">
           <select
-            className="h-8 rounded-md border border-input bg-background px-3 py-1 text-sm dark:border-zinc-700"
+            className="h-8 rounded-md border border-input bg-background px-3 py-1 text-sm "
             value={itemsPerPage}
             onChange={(e) => {
               setItemsPerPage(Number(e.target.value));
@@ -522,7 +522,7 @@ export function OrdersTab({ canonicalOrders, filteredData }: Props) {
         {totalPages > 1 && (
           <div className="flex gap-1">
             <button
-              className="inline-flex items-center justify-center rounded-md border border-input bg-background px-3 h-8 text-sm dark:border-zinc-700 disabled:opacity-50"
+              className="inline-flex items-center justify-center rounded-md border border-input bg-background px-3 h-8 text-sm  disabled:opacity-50"
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               disabled={currentPage === 1}
             >
@@ -539,7 +539,7 @@ export function OrdersTab({ canonicalOrders, filteredData }: Props) {
               return (
                 <button
                   key={pageNum}
-                  className={`inline-flex items-center justify-center rounded-md border px-3 h-8 text-sm dark:border-zinc-700 ${currentPage === pageNum ? "bg-primary text-primary-foreground border-primary" : "border-input bg-background"}`}
+                  className={`inline-flex items-center justify-center rounded-md border px-3 h-8 text-sm  ${currentPage === pageNum ? "bg-primary text-primary-foreground border-primary" : "border-input bg-background"}`}
                   onClick={() => setCurrentPage(pageNum)}
                 >
                   {pageNum}
@@ -547,7 +547,7 @@ export function OrdersTab({ canonicalOrders, filteredData }: Props) {
               );
             })}
             <button
-              className="inline-flex items-center justify-center rounded-md border border-input bg-background px-3 h-8 text-sm dark:border-zinc-700 disabled:opacity-50"
+              className="inline-flex items-center justify-center rounded-md border border-input bg-background px-3 h-8 text-sm  disabled:opacity-50"
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages}
             >

@@ -71,7 +71,7 @@ export default function OrderedvsConsolidatedModule() {
               onValueChange={setActiveTab}
               className="space-y-4"
             >
-              <TabsList className="grid w-full grid-cols-4 dark:bg-white/18 dark:border-zinc-700">
+              <TabsList className="grid w-full grid-cols-4 ">
                 <TabsTrigger value="overview">Overview</TabsTrigger>
                 <TabsTrigger value="suppliers">Supplier Insights</TabsTrigger>
                 <TabsTrigger value="products">Product Insights</TabsTrigger>
