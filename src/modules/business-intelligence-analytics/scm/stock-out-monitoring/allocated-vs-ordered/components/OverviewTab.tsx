@@ -420,24 +420,24 @@ export function OverviewTab({
   // supplierSummaries,
   granularity,
   setGranularity,
-   // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   onNavigateToTab,
 }: OverviewTabProps) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
-   // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const activeChartColors = isDark ? chartColorsDark : chartColors;
 
   /* ─── Bar hover ──────────────────────────────────────────── */
-   // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [hoveredBar, setHoveredBar] = React.useState<string | null>(null);
 
   /* ─── Selected bars ──────────────────────────────────────── */
-   // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [selectedProduct, setSelectedProduct] = React.useState<string | null>(
     null,
   );
-   // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [selectedSupplier, setSelectedSupplier] = React.useState<string | null>(
     null,
   );
@@ -593,7 +593,7 @@ export function OverviewTab({
   return (
     <div className="space-y-4">
       {/* ── Ordered vs Allocated Trend ── */}
-      <Card className="border-muted dark:border-zinc-700 dark:bg-white/13">
+      <Card className="border-muted ">
         <CardHeader>
           <CardTitle>Ordered vs Allocated Quantity Trend</CardTitle>
           <CardDescription>
@@ -605,7 +605,7 @@ export function OverviewTab({
                 key={g}
                 size="sm"
                 variant={granularity === g ? "default" : "outline"}
-                className="dark:border-zinc-700"
+                className=""
                 onClick={() => setGranularity(g)}
               >
                 {GRANULARITY_LABELS[g]}
@@ -771,7 +771,7 @@ export function OverviewTab({
       {/* ── Gap Trend + Status Distribution ── */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         {/* Gap Trend */}
-        <Card className="lg:col-span-3 border-muted dark:border-zinc-700 dark:bg-white/13">
+        <Card className="lg:col-span-3 border-muted ">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Allocation Gap Trend</CardTitle>
             <CardDescription>Unallocated quantity over time</CardDescription>
@@ -847,7 +847,7 @@ export function OverviewTab({
         </Card>
 
         {/* Status Distribution Donut */}
-        <Card className="lg:col-span-2 border-muted dark:border-zinc-700 dark:bg-white/13">
+        <Card className="lg:col-span-2 border-muted ">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Allocation Status</CardTitle>
             <CardDescription>Hover or click a segment or label</CardDescription>
@@ -913,7 +913,7 @@ export function OverviewTab({
       </div>
 
       {/* ── Top Products Bar Chart — hidden (covered by Product Allocation tab) ── */}
-      {/* <Card className="border-muted dark:border-zinc-700 dark:bg-white/13">
+      {/* <Card className="border-muted ">
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
             <div>
@@ -929,7 +929,7 @@ export function OverviewTab({
                 <Button
                   variant="outline"
                   size="sm"
-                  className="dark:border-zinc-700"
+                  className=""
                   onClick={() => setSelectedProduct(null)}
                 >
                   Clear Selection
@@ -1027,7 +1027,7 @@ export function OverviewTab({
       </Card> */}
 
       {/* ── Top Suppliers Horizontal Bar — hidden (covered by Supplier Allocation tab) ── */}
-      {/* <Card className="border-muted dark:border-zinc-700 dark:bg-white/13">
+      {/* <Card className="border-muted ">
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
             <div>
@@ -1043,7 +1043,7 @@ export function OverviewTab({
                 <Button
                   variant="outline"
                   size="sm"
-                  className="dark:border-zinc-700"
+                  className=""
                   onClick={() => setSelectedSupplier(null)}
                 >
                   Clear Selection

@@ -14,7 +14,7 @@ import {
   PackageOpen,
   PackageCheck,
   AlertTriangle,
-   // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   BarChart2,
   ShoppingCart,
   TrendingDown,
@@ -52,7 +52,7 @@ const KpiCard = React.memo(
     <TooltipProvider delayDuration={100}>
       <Tooltip>
         <TooltipTrigger asChild>
-          <Card className="dark:border-zinc-700 dark:bg-white/13 cursor-default hover:shadow-md transition-shadow">
+          <Card className=" cursor-default hover:shadow-md transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
               <CardTitle className="text-sm font-medium leading-tight">
                 {title}
@@ -89,7 +89,7 @@ const KpiCard = React.memo(
 KpiCard.displayName = "KpiCard";
 
 /** Color class based on allocation rate health */
- // eslint-disable-next-line @typescript-eslint/no-unused-vars
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function rateColorClass(rate: number): string {
   if (rate >= 90) return "text-green-600 dark:text-green-400";
   if (rate >= 70) return "text-yellow-600 dark:text-yellow-400";

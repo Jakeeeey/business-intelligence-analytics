@@ -73,7 +73,7 @@ export default function AllocatedvsOrderedModule() {
               onValueChange={setActiveTab}
               className="space-y-4"
             >
-              <TabsList className="grid w-full grid-cols-4 dark:bg-white/18 dark:border-zinc-700">
+              <TabsList className="grid w-full grid-cols-4 ">
                 <TabsTrigger value="overview">Allocation Overview</TabsTrigger>
                 <TabsTrigger value="suppliers">Supplier Allocation</TabsTrigger>
                 <TabsTrigger value="products">Product Allocation</TabsTrigger>
