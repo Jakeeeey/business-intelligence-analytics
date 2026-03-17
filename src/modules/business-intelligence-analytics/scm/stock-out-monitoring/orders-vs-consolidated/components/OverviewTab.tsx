@@ -893,13 +893,13 @@ export function OverviewTab({
                       }
                       valueKey="totalOrdered"
                       nameKey="name"
-                      valueLabel="Qty Ordered"
+                      valueLabel="Quantity Ordered"
                     />
                   )}
                 />
                 <Bar
                   dataKey="totalOrdered"
-                  name="Qty Ordered"
+                  name="Quantity Ordered"
                   radius={[4, 4, 0, 0]}
                   onMouseEnter={(data) => setHoveredBar(`cat::${data.name}`)}
                   onMouseLeave={() => setHoveredBar(null)}
@@ -1013,13 +1013,13 @@ export function OverviewTab({
                       }
                       valueKey="totalOrdered"
                       nameKey="productName"
-                      valueLabel="Qty Ordered"
+                      valueLabel="Quantity Ordered"
                     />
                   )}
                 />
                 <Bar
                   dataKey="totalOrdered"
-                  name="Qty Ordered"
+                  name="Quantity Ordered"
                   radius={[4, 4, 0, 0]}
                   onMouseEnter={(data) =>
                     setHoveredBar(`prod::${data.productName}`)
@@ -1076,7 +1076,7 @@ export function OverviewTab({
               />
               <InsightStat label="Unit" value={productModal.unit || "—"} />
               <InsightStat
-                label="Qty Ordered"
+                label="Quantity Ordered"
                 value={numFmt(productModal.totalOrdered)}
               />
               <InsightStat
@@ -1135,7 +1135,7 @@ export function OverviewTab({
                           yAxisId="left"
                           type="monotone"
                           dataKey="totalOrdered"
-                          name="Qty Ordered"
+                          name="Quantity Ordered"
                           stroke={COLORS.total}
                           strokeWidth={2}
                           dot={false}
@@ -1213,7 +1213,7 @@ export function OverviewTab({
                 )}
               />
               <InsightStat
-                label="Qty Ordered"
+                label="Quantity Ordered"
                 value={numFmt(supplierModal.totalOrdered)}
               />
               <InsightStat
@@ -1248,7 +1248,7 @@ export function OverviewTab({
           {categoryModal && (
             <div className="space-y-0.5 pt-1">
               <InsightStat
-                label="Total Ordered Qty"
+                label="Total Ordered Quantity"
                 value={numFmt(categoryModal.totalOrdered)}
               />
               <InsightStat

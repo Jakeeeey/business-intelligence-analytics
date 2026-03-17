@@ -593,13 +593,13 @@ export function SuppliersTab({ supplierSummaries }: Props) {
                     }
                     valueKey="totalOrdered"
                     nameKey="supplierName"
-                    valueLabel="Qty Ordered"
+                    valueLabel="Quantity Ordered"
                   />
                 )}
               />
               <Bar
                 dataKey="totalOrdered"
-                name="Qty Ordered"
+                name="Quantity Ordered"
                 radius={[0, 4, 4, 0]}
                 onMouseEnter={(d) => setHoveredBar(`qty::${d.supplierName}`)}
                 onMouseLeave={() => setHoveredBar(null)}
@@ -615,7 +615,7 @@ export function SuppliersTab({ supplierSummaries }: Props) {
                         ? 0.25
                         : 1
                     }
-                    style={cellStyle("qty", e.supplierName)}
+                    style={cellStyle("quantity", e.supplierName)}
                   />
                 ))}
               </Bar>
@@ -762,7 +762,7 @@ export function SuppliersTab({ supplierSummaries }: Props) {
                     className="py-3 px-2 text-right font-medium text-muted-foreground cursor-pointer hover:text-foreground"
                     onClick={() => handleSort("totalOrdered")}
                   >
-                    Qty Ordered {sortIcon("totalOrdered")}
+                    Quantity Ordered {sortIcon("totalOrdered")}
                   </th>
                   <th
                     className="py-3 px-2 text-right font-medium text-muted-foreground cursor-pointer hover:text-foreground"
@@ -918,7 +918,7 @@ export function SuppliersTab({ supplierSummaries }: Props) {
                 )}
               />
               <InsightStat
-                label="Qty Ordered"
+                label="Quantity Ordered"
                 value={numFmt(modalSupplier.totalOrdered)}
               />
               <InsightStat

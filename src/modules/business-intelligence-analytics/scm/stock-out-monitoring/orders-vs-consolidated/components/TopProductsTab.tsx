@@ -444,7 +444,7 @@ export function TopProductsTab({ productSummaries }: Props) {
         <Card className="border-muted dark:border-zinc-700 dark:bg-white/13">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">
-              Top Products by Qty Ordered
+              Top Products by Quantity Ordered
             </CardTitle>
             <CardDescription>Click a bar for insights</CardDescription>
           </CardHeader>
@@ -495,15 +495,15 @@ export function TopProductsTab({ productSummaries }: Props) {
                       }
                       valueKey="totalOrdered"
                       nameKey="productName"
-                      valueLabel="Qty Ordered"
+                      valueLabel="Quantity Ordered"
                     />
                   )}
                 />
                 <Bar
                   dataKey="totalOrdered"
-                  name="Qty Ordered"
+                  name="Quantity Ordered"
                   radius={[4, 4, 0, 0]}
-                  onMouseEnter={(d) => setHoveredBar(`qty::${d.productName}`)}
+                  onMouseEnter={(d) => setHoveredBar(`quantity::${d.productName}`)}
                   onMouseLeave={() => setHoveredBar(null)}
                   onClick={(d) => {
                     setSelectedProduct((prev) =>
@@ -525,7 +525,7 @@ export function TopProductsTab({ productSummaries }: Props) {
                           ? 0.25
                           : 1
                       }
-                      style={cellStyle("qty", e.productName)}
+                      style={cellStyle("quantity", e.productName)}
                     />
                   ))}
                 </Bar>
@@ -961,7 +961,7 @@ export function TopProductsTab({ productSummaries }: Props) {
                     className="py-3 px-2 text-right font-medium text-muted-foreground cursor-pointer hover:text-foreground"
                     onClick={() => handleSort("totalOrdered")}
                   >
-                    Qty Ordered {sortIcon("totalOrdered")}
+                    Quantity Ordered {sortIcon("totalOrdered")}
                   </th>
                   <th
                     className="py-3 px-2 text-right font-medium text-muted-foreground cursor-pointer hover:text-foreground"
@@ -1043,40 +1043,57 @@ export function TopProductsTab({ productSummaries }: Props) {
                   </tr>
                 ))}
               </tbody>
-              {filteredSorted.length > 0 && (() => {
-                const totalOrdered = filteredSorted.reduce((s, r) => s + r.totalOrdered, 0);
-                const totalConsolidated = filteredSorted.reduce((s, r) => s + ((r as unknown as ProductOrdersSummary).totalConsolidated ?? 0), 0);
-                const avgRate = totalOrdered > 0 ? (totalConsolidated / totalOrdered) * 100 : 0;
-                const totalOrders = filteredSorted.reduce((s, r) => s + r.orderCount, 0);
-                const totalNet = filteredSorted.reduce((s, r) => s + r.netAmount, 0);
-                return (
-                  <tfoot>
-                    <tr className="border-t-2 border-zinc-300 dark:border-zinc-600 bg-muted/40 font-semibold text-sm">
-                      <td className="py-2.5 pl-4 pr-2" colSpan={4}>
-                        Total ({filteredSorted.length} products)
-                      </td>
-                      <td className="py-2.5 px-2 text-right tabular-nums">
-                        {numFmt(totalOrdered)}
-                      </td>
-                      <td className="py-2.5 px-2 text-right tabular-nums">
-                        {numFmt(totalConsolidated)}
-                      </td>
-                      <td className="py-2.5 px-2 text-right text-xs">
-                        {pctFmt(avgRate)}
-                      </td>
-                      <td className="py-2.5 px-2 text-right tabular-nums">
-                        {numFmt(totalOrders)}
-                      </td>
-                      <td className="py-2.5 px-2 text-right text-xs">
-                        
-                      </td>
-                      <td className="py-2.5 pr-4 pl-2 text-right tabular-nums">
-                        ₱{numFmt(totalNet)}
-                      </td>
-                    </tr>
-                  </tfoot>
-                );
-              })()}
+              {filteredSorted.length > 0 &&
+                (() => {
+                  const totalOrdered = filteredSorted.reduce(
+                    (s, r) => s + r.totalOrdered,
+                    0,
+                  );
+                  const totalConsolidated = filteredSorted.reduce(
+                    (s, r) =>
+                      s +
+                      ((r as unknown as ProductOrdersSummary)
+                        .totalConsolidated ?? 0),
+                    0,
+                  );
+                  const avgRate =
+                    totalOrdered > 0
+                      ? (totalConsolidated / totalOrdered) * 100
+                      : 0;
+                  const totalOrders = filteredSorted.reduce(
+                    (s, r) => s + r.orderCount,
+                    0,
+                  );
+                  const totalNet = filteredSorted.reduce(
+                    (s, r) => s + r.netAmount,
+                    0,
+                  );
+                  return (
+                    <tfoot>
+                      <tr className="border-t-2 border-zinc-300 dark:border-zinc-600 bg-muted/40 font-semibold text-sm">
+                        <td className="py-2.5 pl-4 pr-2" colSpan={4}>
+                          Total ({filteredSorted.length} products)
+                        </td>
+                        <td className="py-2.5 px-2 text-right tabular-nums">
+                          {numFmt(totalOrdered)}
+                        </td>
+                        <td className="py-2.5 px-2 text-right tabular-nums">
+                          {numFmt(totalConsolidated)}
+                        </td>
+                        <td className="py-2.5 px-2 text-right text-xs">
+                          {pctFmt(avgRate)}
+                        </td>
+                        <td className="py-2.5 px-2 text-right tabular-nums">
+                          {numFmt(totalOrders)}
+                        </td>
+                        <td className="py-2.5 px-2 text-right text-xs"></td>
+                        <td className="py-2.5 pr-4 pl-2 text-right tabular-nums">
+                          ₱{numFmt(totalNet)}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  );
+                })()}
             </table>
           </div>
         </CardContent>
@@ -1141,7 +1158,7 @@ export function TopProductsTab({ productSummaries }: Props) {
               />
               <InsightStat label="Unit" value={modalProduct.unit || "—"} />
               <InsightStat
-                label="Qty Ordered"
+                label="Quantity Ordered"
                 value={numFmt(modalProduct.totalOrdered)}
               />
               <InsightStat

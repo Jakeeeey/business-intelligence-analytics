@@ -178,7 +178,7 @@ export function PendingTab({ pendingOrders }: Props) {
                     className="py-3 px-2 text-right font-medium text-muted-foreground cursor-pointer hover:text-foreground"
                     onClick={() => handleSort("totalOrdered")}
                   >
-                    Qty Ordered {sortIcon("totalOrdered")}
+                    Quantity Ordered {sortIcon("totalOrdered")}
                   </th>
                   <th
                     className="py-3 pr-4 pl-2 text-right font-medium text-muted-foreground cursor-pointer hover:text-foreground"
