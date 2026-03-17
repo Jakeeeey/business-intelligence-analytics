@@ -174,7 +174,7 @@ const data = {
                     ],
                 },
                 {
-                    title: "Stock Out Monitoring",
+                    title: "Out of Stock Monitoring",
                     url: "#",
                     icon: BadgeAlert,
                     items: [
