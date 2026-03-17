@@ -174,7 +174,7 @@ export async function GET(req: NextRequest) {
     }
 
     // group by employee_id
-    const groups = new Map<number, { employee_id: number; employee: string; accounts: AnyRec[] }>();
+    const groups = new Map<number, { employee_id: number; employee_name: string; accounts: AnyRec[] }>();
 
     for (const s of sm.data) {
       const empId = Number(s?.employee_id ?? 0);
@@ -183,23 +183,23 @@ export async function GET(req: NextRequest) {
       const salesmanName = String(s?.salesman_name ?? "").trim() || `Employee #${empId}`;
 
       const acc = {
-        id: Number(s?.id),
+        salesman_id: Number(s?.id),
         employee_id: empId,
         salesman_code: String(s?.salesman_code ?? "").trim(),
         salesman_name: salesmanName,
       };
 
-      if (!Number.isFinite(acc.id)) continue;
+      if (!Number.isFinite(acc.salesman_id)) continue;
 
       const g = groups.get(empId) ?? {
         employee_id: empId,
-        employee: salesmanName, // ✅ SHOW THIS IN DROPDOWN
+        employee_name: salesmanName, // ✅ SHOW THIS IN DROPDOWN
         accounts: [],
       };
 
       // keep the first non-empty name as the employee display
-      if (!g.employee || g.employee.startsWith("Employee #")) {
-        g.employee = salesmanName;
+      if (!g.employee_name || g.employee_name.startsWith("Employee #")) {
+        g.employee_name = salesmanName;
       }
 
       g.accounts.push(acc);
@@ -207,10 +207,10 @@ export async function GET(req: NextRequest) {
     }
 
     const employees = Array.from(groups.values())
-      .sort((a, b) => String(a.employee).localeCompare(String(b.employee)))
+      .sort((a, b) => String(a.employee_name).localeCompare(String(b.employee_name)))
       .map((g) => ({
         employee_id: g.employee_id,
-        employee: g.employee,
+        employee_name: g.employee_name,
         accounts: g.accounts
           .slice()
           .sort((a, b) => String(a.salesman_code).localeCompare(String(b.salesman_code))),
