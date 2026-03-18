@@ -119,7 +119,7 @@ export async function fetchProductReturnsData(
   (filters.statuses ?? []).forEach((s) => params.append("statuses", s));
   (filters.suppliers ?? []).forEach((s) => params.append("suppliers", s));
 
-  const url = `/api/bia/sales-report/product-returns-performance${
+  const url = `/api/bia/crm/sales-report/product-returns-performance${
     params.toString() ? `?${params.toString()}` : ""
   }`;
 

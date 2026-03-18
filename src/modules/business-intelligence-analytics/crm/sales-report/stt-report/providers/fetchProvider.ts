@@ -101,8 +101,9 @@ export async function fetchSTTReportData(
   (filters.statuses ?? []).forEach((s) => params.append("statuses", s));
   (filters.suppliers ?? []).forEach((s) => params.append("suppliers", s));
 
-  // Server route currently lives at /api/bia/sales-report/stt-report
-  const url = `/api/bia/sales-report/stt-report${
+  // Server route currently lives at /api/bia/crm/sales-report/stt-report
+  // Use the CRM route segment so client requests hit the correct server route
+  const url = `/api/bia/crm/sales-report/stt-report${
     params.toString() ? `?${params.toString()}` : ""
   }`;
 
