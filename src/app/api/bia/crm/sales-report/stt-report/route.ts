@@ -1,4 +1,4 @@
-// src/app/api/bia/sales-report/stt-report/route.ts
+// src/app/api/bia/crm/sales-report/stt-report/route.ts
 import { NextRequest, NextResponse } from "next/server";
 
 const SPRING_API_BASE = process.env.SPRING_API_BASE_URL;
