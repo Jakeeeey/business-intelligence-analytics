@@ -7,6 +7,7 @@ import { DataTable } from "@/components/ui/new-data-table";
 import { Button } from "@/components/ui/button";
 import { ArrowUpDown } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { AbcProduct } from "../types/abc-analysis.schema";
 
@@ -63,11 +64,11 @@ export function AbcDataTable({ data, isLoading }: AbcDataTableProps) {
             },
         },
         {
-            accessorKey: "productName",
+            accessorKey: "productDescription",
             header: "Product",
             cell: ({ row }) => (
                 <div className="flex flex-col">
-                    <span className="font-medium line-clamp-1">{row.original.productName}</span>
+                    <span className="font-medium line-clamp-1">{row.original.productDescription}</span>
                     <span className="text-xs text-muted-foreground">{row.original.productId}</span>
                 </div>
             ),
@@ -76,9 +77,16 @@ export function AbcDataTable({ data, isLoading }: AbcDataTableProps) {
             accessorKey: "supplierName",
             header: "Supplier",
             cell: ({ row }) => (
-                <span className="text-sm truncate max-w-[150px] inline-block">
-                    {row.original.supplierName}
-                </span>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <span className="text-sm truncate max-w-[150px] inline-block cursor-help">
+                            {row.original.supplierName}
+                        </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-[300px]">
+                        {row.original.supplierName}
+                    </TooltipContent>
+                </Tooltip>
             ),
         },
         {
@@ -118,7 +126,7 @@ export function AbcDataTable({ data, isLoading }: AbcDataTableProps) {
                 <DataTable
                     columns={columns}
                     data={data}
-                    searchKey="productName"
+                    searchKey="productDescription"
                     isLoading={isLoading}
                     sorting={[{ id: "classRank", desc: false }]}
                 />
