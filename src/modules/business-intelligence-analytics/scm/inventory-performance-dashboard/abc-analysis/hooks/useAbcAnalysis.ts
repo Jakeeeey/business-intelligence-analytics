@@ -63,8 +63,26 @@ export function useAbcAnalysis() {
             filtered = filtered.filter((item) => item.branchName === selectedBranch);
         }
 
+        // Aggregate by productId
+        const aggregatedMap = new Map<number, AbcProduct>();
+        
+        filtered.forEach(item => {
+            const existing = aggregatedMap.get(item.productId);
+            if (existing) {
+                existing.outQtyBase += item.outQtyBase;
+                existing.outValue += item.outValue;
+                // Add logic for costPerUnit? If cost varies per transaction, we might need to recalculate?
+                // But generally, for ABC analysis we care about total volume and total value in the period.
+            } else {
+                // Clone the item to avoid mutating original state
+                aggregatedMap.set(item.productId, { ...item });
+            }
+        });
+
+        const aggregatedList = Array.from(aggregatedMap.values());
+
         // Sort by value descending
-        const sorted = [...filtered].sort((a, b) => b.outValue - a.outValue);
+        const sorted = [...aggregatedList].sort((a, b) => b.outValue - a.outValue);
         const totalValue = sorted.reduce((sum, item) => sum + item.outValue, 0);
 
         let cumulativeValue = 0;
