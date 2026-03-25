@@ -141,7 +141,7 @@ export function Filters({
     "Not Fulfilled",
   ];
 
-  const [showAllStatuses, setShowAllStatuses] = React.useState(false);
+  const [showAllStatuses] = React.useState(false);
 
   const displayedStatuses = showAllStatuses
     ? filteredStatuses
