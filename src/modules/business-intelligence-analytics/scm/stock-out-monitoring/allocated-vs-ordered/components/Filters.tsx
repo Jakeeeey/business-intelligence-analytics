@@ -127,6 +127,26 @@ export function Filters({
       )
     : sortedStatuses;
 
+  // Module-relevant default statuses for Allocated vs Ordered
+  const DEFAULT_MODULE_STATUSES = [
+    "For Approval",
+    "For Consolidation",
+    "For Picking",
+    "For Loading",
+    "For Shipping",
+    "En Route",
+    "Delivered",
+    "On Hold",
+    "Cancelled",
+    "Not Fulfilled",
+  ];
+
+  const [showAllStatuses] = React.useState(false);
+
+  const displayedStatuses = showAllStatuses
+    ? filteredStatuses
+    : filteredStatuses.filter((s) => DEFAULT_MODULE_STATUSES.includes(s));
+
   const hasActiveFilters =
     filters.suppliers.length > 0 ||
     filters.brands.length > 0 ||
@@ -457,10 +477,20 @@ export function Filters({
                       onChange={(e) => setStatusSearch(e.target.value)}
                       className="h-8 "
                     />
+                    {/* <div className="flex items-center gap-2 pt-2">
+                      <Checkbox
+                        id="avo-show-all-statuses"
+                        checked={showAllStatuses}
+                        onCheckedChange={(v) => setShowAllStatuses(!!v)}
+                      />
+                      <label htmlFor="avo-show-all-statuses" className="text-xs">
+                        Show all statuses
+                      </label>
+                    </div> */}
                   </div>
                   <ScrollArea className="h-64">
                     <div className="p-2 space-y-1 ">
-                      {filteredStatuses.map((status) => (
+                      {displayedStatuses.map((status) => (
                         <div
                           key={status}
                           className="flex items-center space-x-2 px-2 py-1 hover:bg-muted rounded"
