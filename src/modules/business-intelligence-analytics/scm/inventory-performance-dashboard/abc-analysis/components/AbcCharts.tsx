@@ -42,9 +42,9 @@ export function AbcCharts({ stats, data }: AbcChartsProps) {
 
     const barChartData = useMemo(() => {
         return data.slice(0, 10).map(item => ({
-            name: item.productName.substring(0, 15) + "...",
+            name: item.productDescription.substring(0, 15) + "...",
             value: item.outValue,
-            fullName: item.productName
+            fullName: item.productDescription
         }));
     }, [data]);
 
