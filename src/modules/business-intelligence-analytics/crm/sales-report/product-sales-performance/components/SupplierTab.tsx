@@ -79,6 +79,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { TruncateText } from "./TruncateText";
 import {
   Collapsible,
   CollapsibleContent,
@@ -949,14 +950,15 @@ export function SupplierTab({
                               Products
                             </p>
                             <div className="rounded-md border dark:border-zinc-700">
-                              <Table className="table-fixed dark:border-zinc-700 dark:bg-white/3">
+                              <Table className="table-fixed w-full dark:border-zinc-700 dark:bg-white/3">
                                 <TableHeader>
                                   <TableRow>
-                                    <TableHead>
+                                    <TableHead className="w-[42%]">
                                       <Button
                                         variant="ghost"
                                         size="sm"
                                         className="-ml-2 h-7 text-xs font-semibold"
+                                        title="Sort by product name"
                                         onClick={() =>
                                           toggleProductSubSort(
                                             supplier.supplier,
@@ -968,11 +970,12 @@ export function SupplierTab({
                                         <ArrowUpDown className="ml-1 h-3 w-3" />
                                       </Button>
                                     </TableHead>
-                                    <TableHead className="text-right">
+                                    <TableHead className="text-right w-[29%]">
                                       <Button
                                         variant="ghost"
                                         size="sm"
                                         className="-mr-2 h-7 text-xs font-semibold"
+                                        title="Sort by revenue"
                                         onClick={() =>
                                           toggleProductSubSort(
                                             supplier.supplier,
@@ -984,11 +987,12 @@ export function SupplierTab({
                                         <ArrowUpDown className="ml-1 h-3 w-3" />
                                       </Button>
                                     </TableHead>
-                                    <TableHead className="text-right">
+                                    <TableHead className="text-right w-[29%]">
                                       <Button
                                         variant="ghost"
                                         size="sm"
                                         className="-mr-2 h-7 text-xs font-semibold"
+                                        title="Sort by percentage of supplier"
                                         onClick={() =>
                                           toggleProductSubSort(
                                             supplier.supplier,
@@ -1007,8 +1011,14 @@ export function SupplierTab({
                                     <TableRow
                                       key={product.name || `product-${pi}`}
                                     >
-                                      <TableCell>
-                                        {product.name || "Unknown Product"}
+                                      <TableCell className="max-w-0">
+                                        <TruncateText
+                                          title={
+                                            product.name || "Unknown Product"
+                                          }
+                                        >
+                                          {product.name || "Unknown Product"}
+                                        </TruncateText>
                                       </TableCell>
                                       <TableCell className="text-right">
                                         {formatCurrency(product.revenue)}
@@ -1140,14 +1150,15 @@ export function SupplierTab({
                                 Salesmen
                               </p>
                               <div className="rounded-md border dark:border-zinc-700">
-                                <Table className="table-fixed">
+                                <Table className="table-fixed w-full">
                                   <TableHeader>
                                     <TableRow>
-                                      <TableHead>
+                                      <TableHead className="w-[42%]">
                                         <Button
                                           variant="ghost"
                                           size="sm"
                                           className="-ml-2 h-7 text-xs font-semibold"
+                                          title="Sort by salesman"
                                           onClick={() =>
                                             toggleSalesmanSubSort(
                                               supplier.supplier,
@@ -1159,11 +1170,12 @@ export function SupplierTab({
                                           <ArrowUpDown className="ml-1 h-3 w-3" />
                                         </Button>
                                       </TableHead>
-                                      <TableHead className="text-right">
+                                      <TableHead className="text-right w-[20%]">
                                         <Button
                                           variant="ghost"
                                           size="sm"
                                           className="-mr-2 h-7 text-xs font-semibold"
+                                          title="Sort by revenue"
                                           onClick={() =>
                                             toggleSalesmanSubSort(
                                               supplier.supplier,
@@ -1175,11 +1187,12 @@ export function SupplierTab({
                                           <ArrowUpDown className="ml-1 h-3 w-3" />
                                         </Button>
                                       </TableHead>
-                                      <TableHead className="text-right">
+                                      <TableHead className="text-right w-[20%]">
                                         <Button
                                           variant="ghost"
                                           size="sm"
                                           className="-mr-2 h-7 text-xs font-semibold"
+                                          title="Sort by transactions"
                                           onClick={() =>
                                             toggleSalesmanSubSort(
                                               supplier.supplier,
@@ -1191,7 +1204,7 @@ export function SupplierTab({
                                           <ArrowUpDown className="ml-1 h-3 w-3" />
                                         </Button>
                                       </TableHead>
-                                      <TableHead className="text-right">
+                                      <TableHead className="text-right w-[18%]">
                                         % of Supplier
                                       </TableHead>
                                     </TableRow>
@@ -1201,8 +1214,12 @@ export function SupplierTab({
                                       <TableRow
                                         key={s.name || `salesman-${si}`}
                                       >
-                                        <TableCell>
-                                          {s.name || "Unknown Salesman"}
+                                        <TableCell className="max-w-0">
+                                          <TruncateText
+                                            title={s.name || "Unknown Salesman"}
+                                          >
+                                            {s.name || "Unknown Salesman"}
+                                          </TruncateText>
                                         </TableCell>
                                         <TableCell className="text-right">
                                           {formatCurrency(s.revenue)}
@@ -1340,14 +1357,15 @@ export function SupplierTab({
                                 Customers
                               </p>
                               <div className="rounded-md border dark:border-zinc-700">
-                                <Table className="table-fixed">
+                                <Table className="table-fixed w-full">
                                   <TableHeader>
                                     <TableRow>
-                                      <TableHead>
+                                      <TableHead className="w-[42%]">
                                         <Button
                                           variant="ghost"
                                           size="sm"
                                           className="-ml-2 h-7 text-xs font-semibold"
+                                          title="Sort by customer"
                                           onClick={() =>
                                             toggleCustomerSubSort(
                                               supplier.supplier,
@@ -1359,11 +1377,12 @@ export function SupplierTab({
                                           <ArrowUpDown className="ml-1 h-3 w-3" />
                                         </Button>
                                       </TableHead>
-                                      <TableHead className="text-right">
+                                      <TableHead className="text-right w-[20%]">
                                         <Button
                                           variant="ghost"
                                           size="sm"
                                           className="-mr-2 h-7 text-xs font-semibold"
+                                          title="Sort by revenue"
                                           onClick={() =>
                                             toggleCustomerSubSort(
                                               supplier.supplier,
@@ -1375,11 +1394,12 @@ export function SupplierTab({
                                           <ArrowUpDown className="ml-1 h-3 w-3" />
                                         </Button>
                                       </TableHead>
-                                      <TableHead className="text-right">
+                                      <TableHead className="text-right w-[20%]">
                                         <Button
                                           variant="ghost"
                                           size="sm"
                                           className="-mr-2 h-7 text-xs font-semibold"
+                                          title="Sort by transactions"
                                           onClick={() =>
                                             toggleCustomerSubSort(
                                               supplier.supplier,
@@ -1391,7 +1411,7 @@ export function SupplierTab({
                                           <ArrowUpDown className="ml-1 h-3 w-3" />
                                         </Button>
                                       </TableHead>
-                                      <TableHead className="text-right">
+                                      <TableHead className="text-right w-[18%]">
                                         % of Supplier
                                       </TableHead>
                                     </TableRow>
@@ -1401,8 +1421,12 @@ export function SupplierTab({
                                       <TableRow
                                         key={c.name || `customer-${ci}`}
                                       >
-                                        <TableCell>
-                                          {c.name || "Unknown Customer"}
+                                        <TableCell className="max-w-0">
+                                          <TruncateText
+                                            title={c.name || "Unknown Customer"}
+                                          >
+                                            {c.name || "Unknown Customer"}
+                                          </TruncateText>
                                         </TableCell>
                                         <TableCell className="text-right">
                                           {formatCurrency(c.revenue)}

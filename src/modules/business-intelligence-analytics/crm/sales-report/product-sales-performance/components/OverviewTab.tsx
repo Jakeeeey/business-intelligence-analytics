@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { TruncateText } from "./TruncateText";
 import type {
   RevenueByPeriod,
   TopItem,
@@ -228,16 +229,16 @@ function DateInsightModal({
                   Top Products this period
                 </p>
                 <div className="rounded-md border dark:border-zinc-700 overflow-hidden">
-                  <table className="w-full text-xs">
+                  <table className="w-full table-fixed text-xs">
                     <thead>
                       <tr className="border-b dark:border-zinc-700 bg-muted/30">
-                        <th className="text-left px-3 py-2 font-medium text-muted-foreground">
+                        <th className="w-[58%] text-left px-3 py-2 font-medium text-muted-foreground">
                           Product
                         </th>
-                        <th className="text-right px-3 py-2 font-medium text-muted-foreground">
+                        <th className="w-[20%] text-right px-3 py-2 font-medium text-muted-foreground">
                           Transactions
                         </th>
-                        <th className="text-right px-3 py-2 font-medium text-muted-foreground">
+                        <th className="w-[22%] text-right px-3 py-2 font-medium text-muted-foreground">
                           Revenue
                         </th>
                       </tr>
@@ -248,7 +249,9 @@ function DateInsightModal({
                           key={p.name}
                           className={i % 2 === 0 ? "" : "bg-muted/20"}
                         >
-                          <td className="px-3 py-2">{p.name}</td>
+                          <td className="px-3 py-2 max-w-0">
+                            <TruncateText title={p.name}>{p.name}</TruncateText>
+                          </td>
                           <td className="px-3 py-2 text-right">
                             {p.transactions}
                           </td>
@@ -352,7 +355,7 @@ export function OverviewTab({
   const getYAxisWidth = React.useCallback((data: { revenue?: number }[]) => {
     if (!data?.length) return 60;
     const max = Math.max(...data.map((d) => d.revenue || 0));
-    return Math.max(60, fmtPHP(max).length * 8);
+    return Math.max(60, fmtPHP(max).length * 13);
   }, []);
 
   const formatPeriodLabel = React.useCallback(
@@ -975,7 +978,7 @@ export function OverviewTab({
                     tickFormatter={fmt}
                   />
                   <YAxis
-                    width={getYAxisWidth(topProducts) + 20}
+                    width={getYAxisWidth(topProducts)}
                     dataKey="name"
                     type="category"
                     tickFormatter={(v) => v.substring(0, 20)}
