@@ -93,6 +93,8 @@ const _phpFmtLoc = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 2,
 });
 const formatCurrency = (v: number) => _phpFmtLoc.format(v);
+const formatShare = (value: number, total: number) =>
+  total > 0 ? `${((value / total) * 100).toFixed(1)}%` : "0.0%";
 
 type LocationTabProps = {
   locationReturns: LocationReturn[];
@@ -130,6 +132,36 @@ export function LocationTab({ filteredData }: LocationTabProps) {
   const [locSalesmanPage, setLocSalesmanPage] = React.useState(1);
   const [locCustomerPage, setLocCustomerPage] = React.useState(1);
   const [locItemsPerPage, setLocItemsPerPage] = React.useState(5);
+  const [detailProductSortBy, setDetailProductSortBy] = React.useState<
+    "returnValue" | "returnCount" | "avg"
+  >("returnValue");
+  const [detailProductSortOrder, setDetailProductSortOrder] = React.useState<
+    "asc" | "desc"
+  >("desc");
+  const [detailSalesmanSortBy, setDetailSalesmanSortBy] = React.useState<
+    "returnValue" | "returnCount"
+  >("returnValue");
+  const [detailSalesmanSortOrder, setDetailSalesmanSortOrder] = React.useState<
+    "asc" | "desc"
+  >("desc");
+  const [detailCustomerSortBy, setDetailCustomerSortBy] = React.useState<
+    "returnValue" | "returnCount"
+  >("returnValue");
+  const [detailCustomerSortOrder, setDetailCustomerSortOrder] = React.useState<
+    "asc" | "desc"
+  >("desc");
+  const [cityProductSortBy, setCityProductSortBy] = React.useState<
+    "returnValue" | "returnCount" | "avg"
+  >("returnValue");
+  const [cityProductSortOrder, setCityProductSortOrder] = React.useState<
+    "asc" | "desc"
+  >("desc");
+  const [cityCustomerSortBy, setCityCustomerSortBy] = React.useState<
+    "returnValue" | "returnCount"
+  >("returnValue");
+  const [cityCustomerSortOrder, setCityCustomerSortOrder] = React.useState<
+    "asc" | "desc"
+  >("desc");
   const [hoveredProvince, setHoveredProvince] = React.useState<string | null>(
     null,
   );
@@ -548,11 +580,66 @@ export function LocationTab({ filteredData }: LocationTabProps) {
     return sortedProvinces.slice(start, start + itemsPerPage);
   }, [sortedProvinces, currentPage, itemsPerPage]);
 
+  const provinceTotalCount = React.useMemo(
+    () => provinceData.reduce((sum, province) => sum + province.returnCount, 0),
+    [provinceData],
+  );
+  const provinceTotalValue = React.useMemo(
+    () => provinceData.reduce((sum, province) => sum + province.returnValue, 0),
+    [provinceData],
+  );
+
   const topProductsForLocation = React.useMemo(() => {
     if (!selectedLocation) return [];
     const [locCity, locProvince] = selectedLocation.split("|||");
     return getProductsForLocation(locCity, locProvince);
   }, [selectedLocation, getProductsForLocation]);
+
+  const sortedTopProductsForLocation = React.useMemo(() => {
+    return [...topProductsForLocation].sort((a, b) => {
+      let cmp = 0;
+      if (detailProductSortBy === "returnValue")
+        cmp = a.returnValue - b.returnValue;
+      else if (detailProductSortBy === "returnCount")
+        cmp = a.returnCount - b.returnCount;
+      else cmp = a.avg - b.avg;
+      return detailProductSortOrder === "asc" ? cmp : -cmp;
+    });
+  }, [topProductsForLocation, detailProductSortBy, detailProductSortOrder]);
+  const sortedLocationSalesmen = React.useMemo(() => {
+    if (!selectedLocation) return [];
+    const [locCity, locProvince] = selectedLocation.split("|||");
+    const rows = getSalesmenForLocation(locCity, locProvince);
+    return [...rows].sort((a, b) => {
+      const cmp =
+        detailSalesmanSortBy === "returnValue"
+          ? a.returnValue - b.returnValue
+          : a.returnCount - b.returnCount;
+      return detailSalesmanSortOrder === "asc" ? cmp : -cmp;
+    });
+  }, [
+    selectedLocation,
+    getSalesmenForLocation,
+    detailSalesmanSortBy,
+    detailSalesmanSortOrder,
+  ]);
+  const sortedLocationCustomers = React.useMemo(() => {
+    if (!selectedLocation) return [];
+    const [locCity, locProvince] = selectedLocation.split("|||");
+    const rows = getCustomersForLocation(locCity, locProvince);
+    return [...rows].sort((a, b) => {
+      const cmp =
+        detailCustomerSortBy === "returnValue"
+          ? a.returnValue - b.returnValue
+          : a.returnCount - b.returnCount;
+      return detailCustomerSortOrder === "asc" ? cmp : -cmp;
+    });
+  }, [
+    selectedLocation,
+    getCustomersForLocation,
+    detailCustomerSortBy,
+    detailCustomerSortOrder,
+  ]);
   // Stable handlers
   const handleClearProvinceSelection = React.useCallback(
     () => setSelectedProvince(null),
@@ -1068,11 +1155,32 @@ export function LocationTab({ filteredData }: LocationTabProps) {
       {selectedLocation &&
         (() => {
           const [locCity, locProvince] = selectedLocation.split("|||");
-          const locationProducts = topProductsForLocation;
-          const locationSalesmen = getSalesmenForLocation(locCity, locProvince);
-          const locationCustomers = getCustomersForLocation(
-            locCity,
-            locProvince,
+          const locationProducts = sortedTopProductsForLocation;
+          const locationSalesmen = sortedLocationSalesmen;
+          const locationCustomers = sortedLocationCustomers;
+          const locationProductsTotalCount = locationProducts.reduce(
+            (sum, product) => sum + product.returnCount,
+            0,
+          );
+          const locationProductsTotalValue = locationProducts.reduce(
+            (sum, product) => sum + product.returnValue,
+            0,
+          );
+          const locationSalesmenTotalCount = locationSalesmen.reduce(
+            (sum, salesman) => sum + salesman.returnCount,
+            0,
+          );
+          const locationSalesmenTotalValue = locationSalesmen.reduce(
+            (sum, salesman) => sum + salesman.returnValue,
+            0,
+          );
+          const locationCustomersTotalCount = locationCustomers.reduce(
+            (sum, customer) => sum + customer.returnCount,
+            0,
+          );
+          const locationCustomersTotalValue = locationCustomers.reduce(
+            (sum, customer) => sum + customer.returnValue,
+            0,
           );
 
           const locProdTotalPgs = Math.ceil(
@@ -1131,15 +1239,87 @@ export function LocationTab({ filteredData }: LocationTabProps) {
                       Top Products
                     </p>
                     <div className="rounded-md border">
-                      <Table className="dark:border-y-zinc-700 dark:bg-white/3">
+                      <Table className="table-fixed w-full dark:border-y-zinc-700 dark:bg-white/3">
                         <TableHeader>
                           <TableRow>
                             <TableHead>Rank</TableHead>
                             <TableHead>Product</TableHead>
                             <TableHead className="text-right">
-                              Return Value
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 gap-1 text-xs font-medium"
+                                onClick={() => {
+                                  if (detailProductSortBy === "returnValue") {
+                                    setDetailProductSortOrder((o) =>
+                                      o === "asc" ? "desc" : "asc",
+                                    );
+                                  } else {
+                                    setDetailProductSortBy("returnValue");
+                                    setDetailProductSortOrder("desc");
+                                  }
+                                }}
+                              >
+                                Return Value
+                              </Button>
                             </TableHead>
-                            <TableHead className="text-right">Count</TableHead>
+                            <TableHead className="text-right">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8  text-xs font-medium"
+                                onClick={() => {
+                                  if (detailProductSortBy === "returnCount") {
+                                    setDetailProductSortOrder((o) =>
+                                      o === "asc" ? "desc" : "asc",
+                                    );
+                                  } else {
+                                    setDetailProductSortBy("returnCount");
+                                    setDetailProductSortOrder("desc");
+                                  }
+                                }}
+                              >
+                                Count Share (%)
+                              </Button>
+                            </TableHead>
+                            <TableHead className="text-right">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8  text-xs font-medium"
+                                onClick={() => {
+                                  if (detailProductSortBy === "returnValue") {
+                                    setDetailProductSortOrder((o) =>
+                                      o === "asc" ? "desc" : "asc",
+                                    );
+                                  } else {
+                                    setDetailProductSortBy("returnValue");
+                                    setDetailProductSortOrder("desc");
+                                  }
+                                }}
+                              >
+                                Value Share (%)
+                              </Button>
+                            </TableHead>
+                            <TableHead className="text-right">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 gap-1 text-xs font-medium"
+                                onClick={() => {
+                                  if (detailProductSortBy === "returnCount") {
+                                    setDetailProductSortOrder((o) =>
+                                      o === "asc" ? "desc" : "asc",
+                                    );
+                                  } else {
+                                    setDetailProductSortBy("returnCount");
+                                    setDetailProductSortOrder("desc");
+                                  }
+                                }}
+                              >
+                                Count
+                              </Button>
+                            </TableHead>
                             <TableHead className="text-right">Avg</TableHead>
                           </TableRow>
                         </TableHeader>
@@ -1165,6 +1345,18 @@ export function LocationTab({ filteredData }: LocationTabProps) {
                                 <TableCell>{p.name}</TableCell>
                                 <TableCell className="text-right">
                                   {formatCurrency(p.returnValue)}
+                                </TableCell>
+                                <TableCell className="text-right text-muted-foreground">
+                                  {formatShare(
+                                    p.returnCount,
+                                    locationProductsTotalCount,
+                                  )}
+                                </TableCell>
+                                <TableCell className="text-right text-muted-foreground">
+                                  {formatShare(
+                                    p.returnValue,
+                                    locationProductsTotalValue,
+                                  )}
                                 </TableCell>
                                 <TableCell className="text-right">
                                   {p.returnCount}
@@ -1205,14 +1397,86 @@ export function LocationTab({ filteredData }: LocationTabProps) {
                       Salesmen
                     </p>
                     <div className="rounded-md border">
-                      <Table className="dark:border-y-zinc-700 dark:bg-white/3">
+                      <Table className="table-fixed w-full dark:border-y-zinc-700 dark:bg-white/3">
                         <TableHeader>
                           <TableRow>
                             <TableHead>Salesman</TableHead>
                             <TableHead className="text-right">
-                              Return Value
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 gap-1 text-xs font-medium"
+                                onClick={() => {
+                                  if (detailSalesmanSortBy === "returnValue") {
+                                    setDetailSalesmanSortOrder((o) =>
+                                      o === "asc" ? "desc" : "asc",
+                                    );
+                                  } else {
+                                    setDetailSalesmanSortBy("returnValue");
+                                    setDetailSalesmanSortOrder("desc");
+                                  }
+                                }}
+                              >
+                                Return Value
+                              </Button>
                             </TableHead>
-                            <TableHead className="text-right">Count</TableHead>
+                            <TableHead className="text-right">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8  text-xs font-medium"
+                                onClick={() => {
+                                  if (detailSalesmanSortBy === "returnCount") {
+                                    setDetailSalesmanSortOrder((o) =>
+                                      o === "asc" ? "desc" : "asc",
+                                    );
+                                  } else {
+                                    setDetailSalesmanSortBy("returnCount");
+                                    setDetailSalesmanSortOrder("desc");
+                                  }
+                                }}
+                              >
+                                Count Share (%)
+                              </Button>
+                            </TableHead>
+                            <TableHead className="text-right">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8  text-xs font-medium"
+                                onClick={() => {
+                                  if (detailSalesmanSortBy === "returnValue") {
+                                    setDetailSalesmanSortOrder((o) =>
+                                      o === "asc" ? "desc" : "asc",
+                                    );
+                                  } else {
+                                    setDetailSalesmanSortBy("returnValue");
+                                    setDetailSalesmanSortOrder("desc");
+                                  }
+                                }}
+                              >
+                                Value Share (%)
+                              </Button>
+                            </TableHead>
+                            <TableHead className="text-right">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 gap-1 text-xs font-medium"
+                                onClick={() => {
+                                  if (detailSalesmanSortBy === "returnCount") {
+                                    setDetailSalesmanSortOrder((o) =>
+                                      o === "asc" ? "desc" : "asc",
+                                    );
+                                  } else {
+                                    setDetailSalesmanSortBy("returnCount");
+                                    setDetailSalesmanSortOrder("desc");
+                                  }
+                                }}
+                              >
+                                Count
+                              </Button>
+                            </TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -1221,6 +1485,18 @@ export function LocationTab({ filteredData }: LocationTabProps) {
                               <TableCell>{s.name}</TableCell>
                               <TableCell className="text-right">
                                 {formatCurrency(s.returnValue)}
+                              </TableCell>
+                              <TableCell className="text-right text-muted-foreground">
+                                {formatShare(
+                                  s.returnCount,
+                                  locationSalesmenTotalCount,
+                                )}
+                              </TableCell>
+                              <TableCell className="text-right text-muted-foreground">
+                                {formatShare(
+                                  s.returnValue,
+                                  locationSalesmenTotalValue,
+                                )}
                               </TableCell>
                               <TableCell className="text-right">
                                 {s.returnCount}
@@ -1257,14 +1533,86 @@ export function LocationTab({ filteredData }: LocationTabProps) {
                       Customers
                     </p>
                     <div className="rounded-md border">
-                      <Table className="dark:border-y-zinc-700 dark:bg-white/3">
+                      <Table className="table-fixed w-full dark:border-y-zinc-700 dark:bg-white/3">
                         <TableHeader>
                           <TableRow>
                             <TableHead>Customer</TableHead>
                             <TableHead className="text-right">
-                              Return Value
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 gap-1 text-xs font-medium"
+                                onClick={() => {
+                                  if (detailCustomerSortBy === "returnValue") {
+                                    setDetailCustomerSortOrder((o) =>
+                                      o === "asc" ? "desc" : "asc",
+                                    );
+                                  } else {
+                                    setDetailCustomerSortBy("returnValue");
+                                    setDetailCustomerSortOrder("desc");
+                                  }
+                                }}
+                              >
+                                Return Value
+                              </Button>
                             </TableHead>
-                            <TableHead className="text-right">Count</TableHead>
+                            <TableHead className="text-right">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8  text-xs font-medium"
+                                onClick={() => {
+                                  if (detailCustomerSortBy === "returnCount") {
+                                    setDetailCustomerSortOrder((o) =>
+                                      o === "asc" ? "desc" : "asc",
+                                    );
+                                  } else {
+                                    setDetailCustomerSortBy("returnCount");
+                                    setDetailCustomerSortOrder("desc");
+                                  }
+                                }}
+                              >
+                                Count Share (%)
+                              </Button>
+                            </TableHead>
+                            <TableHead className="text-right">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8  text-xs font-medium"
+                                onClick={() => {
+                                  if (detailCustomerSortBy === "returnValue") {
+                                    setDetailCustomerSortOrder((o) =>
+                                      o === "asc" ? "desc" : "asc",
+                                    );
+                                  } else {
+                                    setDetailCustomerSortBy("returnValue");
+                                    setDetailCustomerSortOrder("desc");
+                                  }
+                                }}
+                              >
+                                Value Share (%)
+                              </Button>
+                            </TableHead>
+                            <TableHead className="text-right">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 gap-1 text-xs font-medium"
+                                onClick={() => {
+                                  if (detailCustomerSortBy === "returnCount") {
+                                    setDetailCustomerSortOrder((o) =>
+                                      o === "asc" ? "desc" : "asc",
+                                    );
+                                  } else {
+                                    setDetailCustomerSortBy("returnCount");
+                                    setDetailCustomerSortOrder("desc");
+                                  }
+                                }}
+                              >
+                                Count
+                              </Button>
+                            </TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -1273,6 +1621,18 @@ export function LocationTab({ filteredData }: LocationTabProps) {
                               <TableCell>{c.name}</TableCell>
                               <TableCell className="text-right">
                                 {formatCurrency(c.returnValue)}
+                              </TableCell>
+                              <TableCell className="text-right text-muted-foreground">
+                                {formatShare(
+                                  c.returnCount,
+                                  locationCustomersTotalCount,
+                                )}
+                              </TableCell>
+                              <TableCell className="text-right text-muted-foreground">
+                                {formatShare(
+                                  c.returnValue,
+                                  locationCustomersTotalValue,
+                                )}
                               </TableCell>
                               <TableCell className="text-right">
                                 {c.returnCount}
@@ -1349,7 +1709,7 @@ export function LocationTab({ filteredData }: LocationTabProps) {
                     size="sm"
                     onClick={() => handleSort(field)}
                   >
-                    {labels[field]} <ArrowUpDown className="ml-1 h-4 w-4" />
+                    {labels[field]}
                   </Button>
                 );
               })}
@@ -1358,13 +1718,51 @@ export function LocationTab({ filteredData }: LocationTabProps) {
         </CardHeader>
         <CardContent className="px-6">
           <div className="overflow-x-auto rounded-md border">
-            <Table className="dark:border-y-zinc-700 dark:bg-white/3">
+            <Table className="table-fixed w-full dark:border-y-zinc-700 dark:bg-white/3">
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-8" />
                   <TableHead>Province</TableHead>
-                  <TableHead className="text-right">Count</TableHead>
-                  <TableHead className="text-right">Return Value</TableHead>
+                  <TableHead className="text-right">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 gap-1 text-xs font-medium"
+                      onClick={() => handleSort("returnCount")}
+                    >
+                      Count
+                    </Button>
+                  </TableHead>
+                  <TableHead className="text-right">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 gap-1 text-xs font-medium"
+                      onClick={() => handleSort("returnValue")}
+                    >
+                      Return Value
+                    </Button>
+                  </TableHead>
+                  <TableHead className="text-right">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8  text-xs font-medium"
+                      onClick={() => handleSort("returnCount")}
+                    >
+                      Count Share (%)
+                    </Button>
+                  </TableHead>
+                  <TableHead className="text-right">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8  text-xs font-medium"
+                      onClick={() => handleSort("returnValue")}
+                    >
+                      Value Share (%)
+                    </Button>
+                  </TableHead>
                   <TableHead className="text-right">Avg</TableHead>
                 </TableRow>
               </TableHeader>
@@ -1372,7 +1770,7 @@ export function LocationTab({ filteredData }: LocationTabProps) {
                 {paginatedProvinces.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={5}
+                      colSpan={7}
                       className="py-8 text-center text-muted-foreground"
                     >
                       No data
@@ -1405,6 +1803,18 @@ export function LocationTab({ filteredData }: LocationTabProps) {
                             {formatCurrency(province.returnValue)}
                           </TableCell>
                           <TableCell className="text-right text-muted-foreground">
+                            {formatShare(
+                              province.returnCount,
+                              provinceTotalCount,
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right text-muted-foreground">
+                            {formatShare(
+                              province.returnValue,
+                              provinceTotalValue,
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right text-muted-foreground">
                             {formatCurrency(province.avg)}
                           </TableCell>
                         </TableRow>
@@ -1425,7 +1835,18 @@ export function LocationTab({ filteredData }: LocationTabProps) {
                             const prodTotalPages = Math.ceil(
                               products.length / subTableItemsPerPage,
                             );
-                            const paginatedProds = products.slice(
+                            const sortedProds = [...products].sort((a, b) => {
+                              let cmp = 0;
+                              if (cityProductSortBy === "returnValue")
+                                cmp = a.returnValue - b.returnValue;
+                              else if (cityProductSortBy === "returnCount")
+                                cmp = a.returnCount - b.returnCount;
+                              else cmp = a.avg - b.avg;
+                              return cityProductSortOrder === "asc"
+                                ? cmp
+                                : -cmp;
+                            });
+                            const paginatedProds = sortedProds.slice(
                               (prodPage - 1) * subTableItemsPerPage,
                               prodPage * subTableItemsPerPage,
                             );
@@ -1433,7 +1854,16 @@ export function LocationTab({ filteredData }: LocationTabProps) {
                             const custTotalPages = Math.ceil(
                               customers.length / subTableItemsPerPage,
                             );
-                            const paginatedCusts = customers.slice(
+                            const sortedCusts = [...customers].sort((a, b) => {
+                              const cmp =
+                                cityCustomerSortBy === "returnValue"
+                                  ? a.returnValue - b.returnValue
+                                  : a.returnCount - b.returnCount;
+                              return cityCustomerSortOrder === "asc"
+                                ? cmp
+                                : -cmp;
+                            });
+                            const paginatedCusts = sortedCusts.slice(
                               (custPage - 1) * subTableItemsPerPage,
                               custPage * subTableItemsPerPage,
                             );
@@ -1472,6 +1902,18 @@ export function LocationTab({ filteredData }: LocationTabProps) {
                                     {formatCurrency(city.returnValue)}
                                   </TableCell>
                                   <TableCell className="text-right text-muted-foreground">
+                                    {formatShare(
+                                      city.returnCount,
+                                      provinceTotalCount,
+                                    )}
+                                  </TableCell>
+                                  <TableCell className="text-right text-muted-foreground">
+                                    {formatShare(
+                                      city.returnValue,
+                                      provinceTotalValue,
+                                    )}
+                                  </TableCell>
+                                  <TableCell className="text-right text-muted-foreground">
                                     {formatCurrency(city.avg)}
                                   </TableCell>
                                 </TableRow>
@@ -1480,7 +1922,7 @@ export function LocationTab({ filteredData }: LocationTabProps) {
                                 {expandedCities.has(cityKey) && (
                                   <TableRow>
                                     <TableCell
-                                      colSpan={5}
+                                      colSpan={7}
                                       className="bg-background p-0 pl-15"
                                     >
                                       <div className="mx-4 my-2 space-y-4 overflow-x-auto">
@@ -1493,15 +1935,151 @@ export function LocationTab({ filteredData }: LocationTabProps) {
                                             <Table>
                                               <TableHeader>
                                                 <TableRow>
-                                                  <TableHead>Product</TableHead>
-                                                  <TableHead className="text-right">
-                                                    Count
+                                                  <TableHead >Product</TableHead>
+                                                  <TableHead className="text-right w-60">
+                                                    <Button
+                                                      variant="ghost"
+                                                      size="sm"
+                                                      className="h-8 gap-1 text-xs font-medium"
+                                                      onClick={() => {
+                                                        if (
+                                                          cityProductSortBy ===
+                                                          "returnCount"
+                                                        ) {
+                                                          setCityProductSortOrder(
+                                                            (o) =>
+                                                              o === "asc"
+                                                                ? "desc"
+                                                                : "asc",
+                                                          );
+                                                        } else {
+                                                          setCityProductSortBy(
+                                                            "returnCount",
+                                                          );
+                                                          setCityProductSortOrder(
+                                                            "desc",
+                                                          );
+                                                        }
+                                                      }}
+                                                    >
+                                                      Count
+                                                    </Button>
                                                   </TableHead>
-                                                  <TableHead className="text-right">
-                                                    Return Value
+                                                  <TableHead className="text-right w-60">
+                                                    <Button
+                                                      variant="ghost"
+                                                      size="sm"
+                                                      className="h-8 gap-1 text-xs font-medium "
+                                                      onClick={() => {
+                                                        if (
+                                                          cityProductSortBy ===
+                                                          "returnValue"
+                                                        ) {
+                                                          setCityProductSortOrder(
+                                                            (o) =>
+                                                              o === "asc"
+                                                                ? "desc"
+                                                                : "asc",
+                                                          );
+                                                        } else {
+                                                          setCityProductSortBy(
+                                                            "returnValue",
+                                                          );
+                                                          setCityProductSortOrder(
+                                                            "desc",
+                                                          );
+                                                        }
+                                                      }}
+                                                    >
+                                                      Return Value
+                                                    </Button>
                                                   </TableHead>
-                                                  <TableHead className="text-right">
-                                                    Avg
+                                                  <TableHead className="text-right w-60">
+                                                    <Button
+                                                      variant="ghost"
+                                                      size="sm"
+                                                      className="h-8 gap-1 text-xs font-medium"
+                                                      onClick={() => {
+                                                        if (
+                                                          cityProductSortBy ===
+                                                          "returnCount"
+                                                        ) {
+                                                          setCityProductSortOrder(
+                                                            (o) =>
+                                                              o === "asc"
+                                                                ? "desc"
+                                                                : "asc",
+                                                          );
+                                                        } else {
+                                                          setCityProductSortBy(
+                                                            "returnCount",
+                                                          );
+                                                          setCityProductSortOrder(
+                                                            "desc",
+                                                          );
+                                                        }
+                                                      }}
+                                                    >
+                                                      Count Share (%){" "}
+                                                    </Button>
+                                                  </TableHead>
+                                                  <TableHead className="text-right w-60">
+                                                    <Button
+                                                      variant="ghost"
+                                                      size="sm"
+                                                      className="h-8 gap-1 text-xs font-medium"
+                                                      onClick={() => {
+                                                        if (
+                                                          cityProductSortBy ===
+                                                          "returnValue"
+                                                        ) {
+                                                          setCityProductSortOrder(
+                                                            (o) =>
+                                                              o === "asc"
+                                                                ? "desc"
+                                                                : "asc",
+                                                          );
+                                                        } else {
+                                                          setCityProductSortBy(
+                                                            "returnValue",
+                                                          );
+                                                          setCityProductSortOrder(
+                                                            "desc",
+                                                          );
+                                                        }
+                                                      }}
+                                                    >
+                                                      Value Share (%){" "}
+                                                    </Button>
+                                                  </TableHead>
+                                                  <TableHead className="text-right w-60">
+                                                    <Button
+                                                      variant="ghost"
+                                                      size="sm"
+                                                      className="h-8 gap-1 text-xs font-medium"
+                                                      onClick={() => {
+                                                        if (
+                                                          cityProductSortBy ===
+                                                          "avg"
+                                                        ) {
+                                                          setCityProductSortOrder(
+                                                            (o) =>
+                                                              o === "asc"
+                                                                ? "desc"
+                                                                : "asc",
+                                                          );
+                                                        } else {
+                                                          setCityProductSortBy(
+                                                            "avg",
+                                                          );
+                                                          setCityProductSortOrder(
+                                                            "desc",
+                                                          );
+                                                        }
+                                                      }}
+                                                    >
+                                                      Avg{" "}
+                                                    </Button>
                                                   </TableHead>
                                                 </TableRow>
                                               </TableHeader>
@@ -1517,6 +2095,28 @@ export function LocationTab({ filteredData }: LocationTabProps) {
                                                     <TableCell className="text-right text-sm ">
                                                       {formatCurrency(
                                                         p.returnValue,
+                                                      )}
+                                                    </TableCell>
+                                                    <TableCell className="text-right text-sm text-muted-foreground">
+                                                      {formatShare(
+                                                        p.returnCount,
+                                                        products.reduce(
+                                                          (sum, product) =>
+                                                            sum +
+                                                            product.returnCount,
+                                                          0,
+                                                        ),
+                                                      )}
+                                                    </TableCell>
+                                                    <TableCell className="text-right text-sm text-muted-foreground">
+                                                      {formatShare(
+                                                        p.returnValue,
+                                                        products.reduce(
+                                                          (sum, product) =>
+                                                            sum +
+                                                            product.returnValue,
+                                                          0,
+                                                        ),
                                                       )}
                                                     </TableCell>
                                                     <TableCell className="text-right text-sm text-muted-foreground">
@@ -1637,10 +2237,120 @@ export function LocationTab({ filteredData }: LocationTabProps) {
                                                       Customer
                                                     </TableHead>
                                                     <TableHead className="text-right">
-                                                      Count
+                                                      <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-8 gap-1 text-xs font-medium"
+                                                        onClick={() => {
+                                                          if (
+                                                            cityCustomerSortBy ===
+                                                            "returnCount"
+                                                          ) {
+                                                            setCityCustomerSortOrder(
+                                                              (o) =>
+                                                                o === "asc"
+                                                                  ? "desc"
+                                                                  : "asc",
+                                                            );
+                                                          } else {
+                                                            setCityCustomerSortBy(
+                                                              "returnCount",
+                                                            );
+                                                            setCityCustomerSortOrder(
+                                                              "desc",
+                                                            );
+                                                          }
+                                                        }}
+                                                      >
+                                                        Count
+                                                      </Button>
                                                     </TableHead>
-                                                    <TableHead className="text-right">
-                                                      Return Value
+                                                    <TableHead className="text-right w-60">
+                                                      <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-8 gap-1 text-xs font-medium"
+                                                        onClick={() => {
+                                                          if (
+                                                            cityCustomerSortBy ===
+                                                            "returnValue"
+                                                          ) {
+                                                            setCityCustomerSortOrder(
+                                                              (o) =>
+                                                                o === "asc"
+                                                                  ? "desc"
+                                                                  : "asc",
+                                                            );
+                                                          } else {
+                                                            setCityCustomerSortBy(
+                                                              "returnValue",
+                                                            );
+                                                            setCityCustomerSortOrder(
+                                                              "desc",
+                                                            );
+                                                          }
+                                                        }}
+                                                      >
+                                                        Return Value
+                                                      </Button>
+                                                    </TableHead>
+                                                    <TableHead className="text-right w-60">
+                                                      <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-8 gap-1 text-xs font-medium"
+                                                        onClick={() => {
+                                                          if (
+                                                            cityCustomerSortBy ===
+                                                            "returnCount"
+                                                          ) {
+                                                            setCityCustomerSortOrder(
+                                                              (o) =>
+                                                                o === "asc"
+                                                                  ? "desc"
+                                                                  : "asc",
+                                                            );
+                                                          } else {
+                                                            setCityCustomerSortBy(
+                                                              "returnCount",
+                                                            );
+                                                            setCityCustomerSortOrder(
+                                                              "desc",
+                                                            );
+                                                          }
+                                                        }}
+                                                      >
+                                                        Count Share (%){" "}
+                                                      </Button>
+                                                    </TableHead>
+                                                    <TableHead className="text-right w-60">
+                                                      <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-8 gap-1 text-xs font-medium"
+                                                        onClick={() => {
+                                                          if (
+                                                            cityCustomerSortBy ===
+                                                            "returnValue"
+                                                          ) {
+                                                            setCityCustomerSortOrder(
+                                                              (o) =>
+                                                                o === "asc"
+                                                                  ? "desc"
+                                                                  : "asc",
+                                                            );
+                                                          } else {
+                                                            setCityCustomerSortBy(
+                                                              "returnValue",
+                                                            );
+                                                            setCityCustomerSortOrder(
+                                                              "desc",
+                                                            );
+                                                          }
+                                                        }}
+                                                      >
+                                                        Value Share (%){" "}
+                                                      </Button>
                                                     </TableHead>
                                                   </TableRow>
                                                 </TableHeader>
@@ -1656,6 +2366,28 @@ export function LocationTab({ filteredData }: LocationTabProps) {
                                                       <TableCell className="text-right text-sm ">
                                                         {formatCurrency(
                                                           c.returnValue,
+                                                        )}
+                                                      </TableCell>
+                                                      <TableCell className="text-right text-sm text-muted-foreground">
+                                                        {formatShare(
+                                                          c.returnCount,
+                                                          customers.reduce(
+                                                            (sum, customer) =>
+                                                              sum +
+                                                              customer.returnCount,
+                                                            0,
+                                                          ),
+                                                        )}
+                                                      </TableCell>
+                                                      <TableCell className="text-right text-sm text-muted-foreground">
+                                                        {formatShare(
+                                                          c.returnValue,
+                                                          customers.reduce(
+                                                            (sum, customer) =>
+                                                              sum +
+                                                              customer.returnValue,
+                                                            0,
+                                                          ),
                                                         )}
                                                       </TableCell>
                                                     </TableRow>
