@@ -395,7 +395,7 @@ export default function Filters({
         </div>
 
         {/* Multi-select Filters */}
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-2">
           {/* Employee/Payee */}
           <div className="space-y-1">
             <Label className="text-xs">Employee/Payee Name</Label>
@@ -456,6 +456,129 @@ export default function Filters({
             </Popover>
           </div>
 
+
+
+          {/* Chart of Account */}
+          <div className="space-y-1">
+            <Label className="text-xs">Chart of Account</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-between"
+                >
+                  <span className="truncate">
+                    {filters.coaAccounts.length > 0
+                      ? `${filters.coaAccounts.length} selected`
+                      : "All Chart of Accounts"}
+                  </span>
+                  <ChevronDown className="ml-2 h-4 w-4 shrink-0" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-full p-0" align="start">
+                <div className="p-2">
+                  <Input
+                    placeholder="Search COA..."
+                    value={coaSearch}
+                    onChange={(e) => setCoaSearch(e.target.value)}
+                  />
+                </div>
+                <ScrollArea className="h-64">
+                  <div className="p-2 space-y-1">
+                    {filteredCoaAccounts.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-2">
+                        No COA found
+                      </p>
+                    ) : (
+                      filteredCoaAccounts.map((coa) => (
+                        <div key={coa} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`coa-${coa}`}
+                            checked={filters.coaAccounts.includes(coa)}
+                            onCheckedChange={() =>
+                              toggleArrayFilter("coaAccounts", coa)
+                            }
+                          />
+                          <label
+                            htmlFor={`coa-${coa}`}
+                            className="text-sm cursor-pointer flex-1"
+                          >
+                            {coa}
+                          </label>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </ScrollArea>
+              </PopoverContent>
+            </Popover>
+          </div>
+
+
+
+        </div>
+
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          {/* Encoder */}
+          <div className="space-y-1">
+            <Label className="text-xs">Encoder</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-between"
+                >
+                  <span className="truncate">
+                    {filters.encoders.length > 0
+                      ? `${filters.encoders.length} selected`
+                      : "All Encoders"}
+                  </span>
+                  <ChevronDown className="ml-2 h-4 w-4 shrink-0" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className=" w-full p-0" align="start">
+                <div className="p-2">
+                  <Input
+                    placeholder="Search encoders..."
+                    value={encoderSearch}
+                    onChange={(e) => setEncoderSearch(e.target.value)}
+                  />
+                </div>
+                <ScrollArea className="h-64">
+                  <div className="p-2 space-y-1">
+                    {filteredEncoders.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-2">
+                        No encoders found
+                      </p>
+                    ) : (
+                      filteredEncoders.map((encoder) => (
+                        <div
+                          key={encoder}
+                          className="flex items-center space-x-2"
+                        >
+                          <Checkbox
+                            id={`encoder-${encoder}`}
+                            checked={filters.encoders.includes(encoder)}
+                            onCheckedChange={() =>
+                              toggleArrayFilter("encoders", encoder)
+                            }
+                          />
+                          <label
+                            htmlFor={`encoder-${encoder}`}
+                            className="text-sm cursor-pointer flex-1"
+                          >
+                            {encoder}
+                          </label>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </ScrollArea>
+              </PopoverContent>
+            </Popover>
+          </div>
           {/* Division */}
           <div className="space-y-1">
             <Label className="text-xs">Division</Label>
@@ -516,123 +639,6 @@ export default function Filters({
             </Popover>
           </div>
 
-          {/* Encoder */}
-          <div className="space-y-1">
-            <Label className="text-xs">Encoder</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-between"
-                >
-                  <span className="truncate">
-                    {filters.encoders.length > 0
-                      ? `${filters.encoders.length} selected`
-                      : "All Encoders"}
-                  </span>
-                  <ChevronDown className="ml-2 h-4 w-4 shrink-0" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className=" w-full p-0" align="start">
-                <div className="p-2">
-                  <Input
-                    placeholder="Search encoders..."
-                    value={encoderSearch}
-                    onChange={(e) => setEncoderSearch(e.target.value)}
-                  />
-                </div>
-                <ScrollArea className="h-64">
-                  <div className="p-2 space-y-1">
-                    {filteredEncoders.length === 0 ? (
-                      <p className="text-sm text-muted-foreground text-center py-2">
-                        No encoders found
-                      </p>
-                    ) : (
-                      filteredEncoders.map((encoder) => (
-                        <div
-                          key={encoder}
-                          className="flex items-center space-x-2"
-                        >
-                          <Checkbox
-                            id={`encoder-${encoder}`}
-                            checked={filters.encoders.includes(encoder)}
-                            onCheckedChange={() =>
-                              toggleArrayFilter("encoders", encoder)
-                            }
-                          />
-                          <label
-                            htmlFor={`encoder-${encoder}`}
-                            className="text-sm cursor-pointer flex-1"
-                          >
-                            {encoder}
-                          </label>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </ScrollArea>
-              </PopoverContent>
-            </Popover>
-          </div>
-
-          {/* Chart of Account */}
-          <div className="space-y-1">
-            <Label className="text-xs">Chart of Account</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-between"
-                >
-                  <span className="truncate">
-                    {filters.coaAccounts.length > 0
-                      ? `${filters.coaAccounts.length} selected`
-                      : "All Chart of Accounts"}
-                  </span>
-                  <ChevronDown className="ml-2 h-4 w-4 shrink-0" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-full p-0" align="start">
-                <div className="p-2">
-                  <Input
-                    placeholder="Search COA..."
-                    value={coaSearch}
-                    onChange={(e) => setCoaSearch(e.target.value)}
-                  />
-                </div>
-                <ScrollArea className="h-64">
-                  <div className="p-2 space-y-1">
-                    {filteredCoaAccounts.length === 0 ? (
-                      <p className="text-sm text-muted-foreground text-center py-2">
-                        No COA found
-                      </p>
-                    ) : (
-                      filteredCoaAccounts.map((coa) => (
-                        <div key={coa} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`coa-${coa}`}
-                            checked={filters.coaAccounts.includes(coa)}
-                            onCheckedChange={() =>
-                              toggleArrayFilter("coaAccounts", coa)
-                            }
-                          />
-                          <label
-                            htmlFor={`coa-${coa}`}
-                            className="text-sm cursor-pointer flex-1"
-                          >
-                            {coa}
-                          </label>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </ScrollArea>
-              </PopoverContent>
-            </Popover>
-          </div>
-
           {/* Transaction Type */}
           <div className="space-y-1">
             <Label className="text-xs">Transaction Type</Label>
@@ -659,33 +665,33 @@ export default function Filters({
                     onChange={(e) => setTransactionTypeSearch(e.target.value)}
                   />
                 </div> */}
-                <ScrollArea className="h-64">
-                  <div className="p-2 space-y-1">
-                    {filteredTransactionTypes.length === 0 ? (
-                      <p className="text-sm text-muted-foreground text-center py-2">
-                        No transaction types found
-                      </p>
-                    ) : (
-                      filteredTransactionTypes.map((type) => (
-                        <div key={type} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`type-${type}`}
-                            checked={filters.transactionTypes.includes(type)}
-                            onCheckedChange={() =>
-                              toggleArrayFilter("transactionTypes", type)
-                            }
-                          />
-                          <label
-                            htmlFor={`type-${type}`}
-                            className="text-sm cursor-pointer flex-1"
-                          >
-                            {type}
-                          </label>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </ScrollArea>
+                {/* <ScrollArea className="h-64"> */}
+                <div className="p-2 space-y-1">
+                  {filteredTransactionTypes.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-2">
+                      No transaction types found
+                    </p>
+                  ) : (
+                    filteredTransactionTypes.map((type) => (
+                      <div key={type} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`type-${type}`}
+                          checked={filters.transactionTypes.includes(type)}
+                          onCheckedChange={() =>
+                            toggleArrayFilter("transactionTypes", type)
+                          }
+                        />
+                        <label
+                          htmlFor={`type-${type}`}
+                          className="text-sm cursor-pointer flex-1"
+                        >
+                          {type}
+                        </label>
+                      </div>
+                    ))
+                  )}
+                </div>
+                {/* </ScrollArea> */}
               </PopoverContent>
             </Popover>
           </div>
@@ -732,7 +738,6 @@ export default function Filters({
             </Popover>
           </div>
         </div>
-
         {/* Active Filters */}
         {(filters.employees.length > 0 ||
           filters.divisions.length > 0 ||

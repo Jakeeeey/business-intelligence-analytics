@@ -35,19 +35,33 @@ export async function fetchDisbursements(
  * Calculate KPIs from filtered disbursement records
  */
 export function calculateKpis(records: DisbursementRecord[]): ExpenseKpis {
-  const totalDisbursementAmount = records.reduce(
+  // Deduplicate records by disbursementId to avoid counting header-level totals multiple times
+  // (multiple line items with the same disbursementId share the same totalAmount/paidAmount)
+  const uniqueDocuments = new Map<number, DisbursementRecord>();
+  records.forEach((r) => {
+    if (!uniqueDocuments.has(r.disbursementId)) {
+      uniqueDocuments.set(r.disbursementId, r);
+    }
+  });
+
+  const uniqueRecords = Array.from(uniqueDocuments.values());
+
+  const totalDisbursementAmount = uniqueRecords.reduce(
     (sum, r) => sum + (r.totalAmount || 0),
     0,
   );
-  const totalPaidAmount = records.reduce(
+  const totalPaidAmount = uniqueRecords.reduce(
     (sum, r) => sum + (r.paidAmount || 0),
     0,
   );
   const outstandingBalance = totalDisbursementAmount - totalPaidAmount;
-  const totalTransactions = records.length;
-  const postedTransactions = records.filter((r) => r.isPosted === 1).length;
-  const pendingApprovalsCount = records.filter(
-    (r) => r.approverId === null && r.isPosted === 0,
+  const totalTransactions = uniqueRecords.length;
+  const totalLineTransaction = new Set(records.map((r) => r.lineId)).size;
+  const postedTransactions = uniqueRecords.filter(
+    (r) => r.isPosted === 1,
+  ).length;
+  const pendingApprovalsCount = uniqueRecords.filter(
+    (r) => r.isPosted === 0,
   ).length;
 
   // Calculate tax withholding impact:
@@ -68,6 +82,7 @@ export function calculateKpis(records: DisbursementRecord[]): ExpenseKpis {
     totalPaidAmount,
     outstandingBalance,
     totalTransactions,
+    totalLineTransaction,
     postedTransactions,
     pendingApprovalsCount,
     taxWithholdingImpact,
@@ -96,7 +111,7 @@ export function getFilterOptions(records: DisbursementRecord[]) {
   const statuses = Array.from(
     new Set(
       records
-        .map((r) => (r.isPosted === 1 ? "Posted" : "Draft"))
+        .map((r) => (r.isPosted === 1 ? "Posted" : "Pending"))
         .filter(Boolean),
     ),
   ).sort();
@@ -160,7 +175,7 @@ export function filterRecords(
     }
 
     // Status filter
-    const recordStatus = record.isPosted === 1 ? "Posted" : "Draft";
+    const recordStatus = record.isPosted === 1 ? "Posted" : "Pending";
     if (
       filters.statuses.length > 0 &&
       !filters.statuses.includes(recordStatus)
@@ -210,10 +225,19 @@ export function calculateExpensesByCategory(
 export function calculateExpensesByEmployee(
   records: DisbursementRecord[],
 ): ExpenseByEmployee[] {
+  // Deduplicate by document number first
+  const uniqueByDoc = new Map<string, DisbursementRecord>();
+  for (const r of records) {
+    const key = r.docNo || String(r.disbursementId);
+    if (!uniqueByDoc.has(key)) uniqueByDoc.set(key, r);
+  }
+  const deduped = Array.from(uniqueByDoc.values());
+
+  // Aggregate by payee
   const grouped = new Map<string, { totalAmount: number; count: number }>();
   let total = 0;
 
-  records.forEach((record) => {
+  deduped.forEach((record) => {
     const amount = record.totalAmount || 0;
     const current = grouped.get(record.payeeName) || {
       totalAmount: 0,
@@ -226,6 +250,7 @@ export function calculateExpensesByEmployee(
     total += amount;
   });
 
+  // Return sorted array
   return Array.from(grouped.entries())
     .map(([payeeName, data]) => ({
       payeeName,
@@ -242,10 +267,19 @@ export function calculateExpensesByEmployee(
 export function calculateExpensesByDivision(
   records: DisbursementRecord[],
 ): ExpenseByDivision[] {
+  // Deduplicate by document number first
+  const uniqueByDoc = new Map<string, DisbursementRecord>();
+  for (const r of records) {
+    const key = r.docNo || String(r.disbursementId);
+    if (!uniqueByDoc.has(key)) uniqueByDoc.set(key, r);
+  }
+  const deduped = Array.from(uniqueByDoc.values());
+
+  // Aggregate totals by division
   const grouped = new Map<string, { totalAmount: number; count: number }>();
   let total = 0;
 
-  records.forEach((record) => {
+  deduped.forEach((record) => {
     const amount = record.totalAmount || 0;
     const current = grouped.get(record.divisionName) || {
       totalAmount: 0,
@@ -258,6 +292,7 @@ export function calculateExpensesByDivision(
     total += amount;
   });
 
+  // Return sorted array
   return Array.from(grouped.entries())
     .map(([divisionName, data]) => ({
       divisionName,
@@ -267,7 +302,6 @@ export function calculateExpensesByDivision(
     }))
     .sort((a, b) => b.totalAmount - a.totalAmount);
 }
-
 /**
  * Calculate expenses grouped by time period
  */
@@ -324,7 +358,18 @@ export function getDisbursementSummariesGroupedByCoA(
 
   return Array.from(grouped.entries())
     .map(([coaTitle, coaRecords]) => {
-      const total = coaRecords.reduce((sum, r) => sum + (r.lineAmount || 0), 0);
+      // Get unique documents by disbursementId for COA total
+      const uniqueDocs = new Map<number, DisbursementRecord>();
+      coaRecords.forEach((r) => {
+        if (!uniqueDocs.has(r.disbursementId)) {
+          uniqueDocs.set(r.disbursementId, r);
+        }
+      });
+      // Sum header-level totalAmount for each unique document
+      const total = Array.from(uniqueDocs.values()).reduce(
+        (sum, r) => sum + (r.totalAmount || 0),
+        0,
+      );
 
       // Group by document number within this COA to produce document-level summaries
       const docsMap = new Map<string, DisbursementRecord[]>();
@@ -338,13 +383,12 @@ export function getDisbursementSummariesGroupedByCoA(
         docsMap.entries(),
       ).map(([docNo, docLines]) => {
         const first = docLines[0];
-        const docTotal = docLines.reduce((s, d) => s + (d.lineAmount || 0), 0);
-        const paidAmount = docLines.reduce(
-          (s, d) => s + (d.paidAmount || 0),
-          0,
-        );
+        // Use header-level totalAmount and paidAmount from first record
+        // (same for all records with same disbursementId)
+        const totalAmount = first.totalAmount || 0;
+        const paidAmount = first.paidAmount || 0;
 
-        const balance = docTotal - paidAmount;
+        const balance = totalAmount - paidAmount;
 
         return {
           disbursementId: first.disbursementId,
@@ -352,11 +396,11 @@ export function getDisbursementSummariesGroupedByCoA(
           payeeName: first.payeeName,
           divisionName: first.divisionName,
           coaTitle: first.coaTitle,
-          totalAmount: docTotal,
+          totalAmount: totalAmount,
           paidAmount: paidAmount,
           balance,
           transactionDate: first.transactionDate,
-          status: first.isPosted === 1 ? "Posted" : "Draft",
+          status: first.isPosted === 1 ? "Posted" : "Pending",
           encoderName: first.encoderName,
           lineRemarks: first.lineRemarks,
           lines: docLines,

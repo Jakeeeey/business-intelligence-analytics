@@ -105,7 +105,7 @@ export async function exportToPDF2({
     ["Outstanding Balance:", safeCurrency(kpis.outstandingBalance)],
     ["Total Transactions:", kpis.totalTransactions.toString()],
     ["Posted Transactions:", kpis.postedTransactions.toString()],
-    ["Pending Approvals:", kpis.pendingApprovalsCount.toString()],
+    ["Pending:", kpis.pendingApprovalsCount.toString()],
     ["Tax Withholding Impact:", safeCurrency(kpis.taxWithholdingImpact)],
   ];
 
@@ -261,7 +261,7 @@ export async function exportToPDF2({
           r.payeeName,
           r.lineRemarks || "-",
           safeCurrency(r.lineAmount),
-          r.isPosted === 1 ? "Posted" : "Draft",
+          r.isPosted === 1 ? "Posted" : "Pending",
         ]),
         theme: "striped",
         styles: { fontSize: 8 },
@@ -296,7 +296,7 @@ export async function exportToPDF2({
             formatDateLong(new Date(record.transactionDate)),
           ],
           ["Payable Date:", formatDateLong(new Date(record.lineDate))],
-          ["Status:", record.isPosted === 1 ? "Posted" : "Draft"],
+          ["Status:", record.isPosted === 1 ? "Posted" : "Pending"],
           ["Encoder:", record.encoderName],
           ["Approver:", record.approverName || "Pending"],
           ["Posted By:", record.postedByName || "Not Posted"],

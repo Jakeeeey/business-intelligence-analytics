@@ -89,6 +89,16 @@ const monthYearLabel = (dateValue: string) =>
     year: "numeric",
   }).format(new Date(dateValue));
 
+const dedupeByDocument = (records: DisbursementRecord[]) => {
+  const uniqueByDoc = new Map<number, DisbursementRecord>();
+  records.forEach((record) => {
+    if (!uniqueByDoc.has(record.disbursementId)) {
+      uniqueByDoc.set(record.disbursementId, record);
+    }
+  });
+  return Array.from(uniqueByDoc.values());
+};
+
 const groupRecords = (
   records: DisbursementRecord[],
   groupBy: DetailedGroupBy,
@@ -119,12 +129,13 @@ const summarizeBy = (
   records: DisbursementRecord[],
   keySelector: (record: DisbursementRecord) => string,
 ): SummaryRow[] => {
+  const dedupedRecords = dedupeByDocument(records);
   const map = new Map<
     string,
     { transactions: number; totalAmount: number; paidAmount: number }
   >();
 
-  records.forEach((record) => {
+  dedupedRecords.forEach((record) => {
     const key = keySelector(record) || "Unspecified";
     const current = map.get(key) ?? {
       transactions: 0,
@@ -151,12 +162,13 @@ const summarizeBy = (
 };
 
 const buildOverallSummary = (records: DisbursementRecord[]) => {
-  const totalTransactions = records.length;
-  const totalAmount = records.reduce(
+  const dedupedRecords = dedupeByDocument(records);
+  const totalTransactions = dedupedRecords.length;
+  const totalAmount = dedupedRecords.reduce(
     (sum, record) => sum + (record.totalAmount || 0),
     0,
   );
-  const totalPaid = records.reduce(
+  const totalPaid = dedupedRecords.reduce(
     (sum, record) => sum + (record.paidAmount || 0),
     0,
   );
@@ -170,12 +182,13 @@ const buildOverallSummary = (records: DisbursementRecord[]) => {
 };
 
 const buildCoverMetrics = (records: DisbursementRecord[]): CoverMetric[] => {
-  const totalTransactions = records.length;
-  const totalAmount = records.reduce(
+  const dedupedRecords = dedupeByDocument(records);
+  const totalTransactions = dedupedRecords.length;
+  const totalAmount = dedupedRecords.reduce(
     (sum, record) => sum + (record.totalAmount || 0),
     0,
   );
-  const totalPaid = records.reduce(
+  const totalPaid = dedupedRecords.reduce(
     (sum, record) => sum + (record.paidAmount || 0),
     0,
   );
@@ -209,9 +222,10 @@ const buildChartRows = (
   records: DisbursementRecord[],
   keySelector: (record: DisbursementRecord) => string,
 ): ChartRow[] => {
+  const dedupedRecords = dedupeByDocument(records);
   const map = new Map<string, number>();
 
-  records.forEach((record) => {
+  dedupedRecords.forEach((record) => {
     const key = keySelector(record) || "Unspecified";
     map.set(key, (map.get(key) || 0) + (record.totalAmount || 0));
   });
@@ -227,9 +241,10 @@ const buildChartRows = (
 };
 
 const buildStatusRows = (records: DisbursementRecord[]) => {
+  const dedupedRecords = dedupeByDocument(records);
   const map = new Map<string, number>();
 
-  records.forEach((record) => {
+  dedupedRecords.forEach((record) => {
     const status =
       record.isPosted === 1
         ? "Posted"
@@ -657,7 +672,6 @@ const addCoverPage = async (doc: jsPDF, options: ExportOptions) => {
     (options.companyName || DEFAULT_COMPANY_NAME).toUpperCase(),
   );
   drawPageHeader(doc, options.companyName);
-
 
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();

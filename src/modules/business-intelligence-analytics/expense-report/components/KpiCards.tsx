@@ -31,11 +31,11 @@ type KpiCardData = {
 };
 
 export default function KpiCards({ kpis }: KpiCardsProps) {
-  const balance = kpis.totalPaidAmount - kpis.totalDisbursementAmount;
+  const balance = kpis.totalDisbursementAmount - kpis.totalPaidAmount;
   const balanceLabel =
-    balance < 0
+    balance > 0
       ? "Outstanding Balance"
-      : balance > 0
+      : balance < 0
         ? "Overpayment"
         : "Balanced";
 
@@ -77,6 +77,9 @@ export default function KpiCards({ kpis }: KpiCardsProps) {
         <div>
           <div className="text-2xl font-bold">
             {formatNumber(kpis.totalTransactions, "en-PH", 0)}
+          </div>
+          <div className="text-xs opacity-50 pl-1">
+             {formatNumber(kpis.totalLineTransaction, "en-PH", 0)} Total Line Items
           </div>
         </div>
       ),
@@ -132,7 +135,7 @@ export default function KpiCards({ kpis }: KpiCardsProps) {
                   <Card className="cursor-pointer transition-all shadow-sm hover:shadow-md">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0">
                       <CardTitle className="text-sm font-medium leading-tight">
-                        {kpi.title}
+                        {kpi.title} 
                       </CardTitle>
                       <Icon className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>

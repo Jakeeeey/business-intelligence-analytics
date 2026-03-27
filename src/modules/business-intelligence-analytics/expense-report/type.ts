@@ -54,7 +54,7 @@ export type ExpenseFilters = {
   encoders: string[]; // encoderNames
   coaAccounts: string[]; // coaTitles
   transactionTypes: string[]; // transactionTypeNames
-  statuses: string[]; // ["Posted", "Draft", "Pending Approval"]
+  statuses: string[]; // ["Posted", "Pending", "Pending"]
 };
 
 export type ExpenseKpis = {
@@ -62,6 +62,7 @@ export type ExpenseKpis = {
   totalPaidAmount: number;
   outstandingBalance: number;
   totalTransactions: number;
+  totalLineTransaction:number;
   postedTransactions: number;
   pendingApprovalsCount: number;
   taxWithholdingImpact: number; // placeholder
@@ -97,7 +98,7 @@ export type DisbursementSummary = {
   paidAmount: number;
   balance?: number;
   transactionDate: string;
-  status: string; // "Posted" | "Draft" | "Pending Approval"
+  status: string; // "Posted" | "Pending" | "Pending"
   encoderName: string;
   lineRemarks: string;
   // Optional: include the original line-level records for multi-level views

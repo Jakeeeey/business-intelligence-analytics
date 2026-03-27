@@ -141,16 +141,27 @@ export default function Charts({
   const statusData = React.useMemo(() => {
     if (!records || records.length === 0)
       return [] as { name: string; value: number }[];
-    const map = new Map<string, number>();
+
+    // Deduplicate by docNo
+    const uniqueByDoc = new Map<string, DisbursementRecord>();
     for (const r of records) {
+      const key = r.docNo || String(r.disbursementId);
+      if (!uniqueByDoc.has(key)) uniqueByDoc.set(key, r);
+    }
+    const dedupedRecords = Array.from(uniqueByDoc.values());
+
+    // Aggregate status counts per unique document
+    const map = new Map<string, number>();
+    for (const r of dedupedRecords) {
       const status =
         r.isPosted === 1
           ? "Posted"
-          : r.approverId != null
-            ? "Pending Approval"
-            : "Draft";
+          // : r.approverId != null
+          //   ? "Draft"
+            : "Pending";
       map.set(status, (map.get(status) || 0) + 1);
     }
+
     return Array.from(map.entries()).map(([name, value]) => ({ name, value }));
   }, [records]);
 
