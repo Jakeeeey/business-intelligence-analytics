@@ -10,7 +10,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowUpDown, ChevronDown, ChevronRight, MapPin } from "lucide-react";
+import { ChevronDown, ChevronRight, MapPin } from "lucide-react";
 import { useTheme } from "next-themes";
 import type { LocationReturn, ProductReturnRecord } from "../types";
 import { ChartContainer, ChartTooltip } from "@/components/ui/chart";

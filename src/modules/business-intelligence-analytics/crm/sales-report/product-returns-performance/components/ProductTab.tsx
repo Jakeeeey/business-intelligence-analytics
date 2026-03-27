@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, ArrowUpDown, ChevronRight, ChevronDown } from "lucide-react";
+import { Search, ChevronRight, ChevronDown } from "lucide-react";
 import type { ProductReturnTrend, ProductReturnRecord } from "../types";
 import { ChartContainer, ChartTooltip } from "@/components/ui/chart";
 import {
