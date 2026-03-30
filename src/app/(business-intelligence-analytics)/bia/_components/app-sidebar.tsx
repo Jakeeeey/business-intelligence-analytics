@@ -134,8 +134,8 @@ const data = {
                     ],
                 },
 {
-                    title: "Lead Time Report",
-                    url: "/bia/crm/lead-time-report",
+                    title: "Lead Time tracker",
+                    url: "/bia/crm/lead-time-tracker",
                     icon: ClipboardClock,
                     items:[
                         
