@@ -49,7 +49,7 @@ const KpiCard = React.memo(
     valueClassName?: string;
   }) => {
     return (
-      <TooltipProvider delayDuration={100}>
+      <TooltipProvider delayDuration={300}>
         <Tooltip>
           <TooltipTrigger asChild>
             <Card className="dark:border-zinc-700 dark:bg-white/13 cursor-default hover:shadow-md transition-shadow">

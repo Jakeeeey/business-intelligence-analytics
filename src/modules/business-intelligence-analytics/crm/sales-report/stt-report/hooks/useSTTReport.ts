@@ -40,6 +40,15 @@ function fmtLocalDate(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
+// Toggle: when true, derive paymentStatus from numeric fields when the source
+// `paymentStatus` is null. This is a code-only flag (no UI exposure) — change
+// the value here to enable/disable the derivation logic.
+const ENABLE_DERIVE_PAYMENT_STATUS = true;
+
+// Toggle: when true, derive transactionStatus from invoice fields when the
+// source `transactionStatus` is null. Code-only flag.
+const ENABLE_DERIVE_TRANSACTION_STATUS = true;
+
 const getDefaultFilters = (): STTReportFilters => {
   const now = new Date();
   // Use local date formatting — toISOString() returns UTC and shifts dates in UTC+N timezones
@@ -146,6 +155,15 @@ export function useSTTReport(opts?: { prefetchKeysOnly?: boolean }) {
   const aggregationCacheRef = React.useRef<
     Map<string, import("../types").SalesByPeriod[]>
   >(new Map());
+  const lastPrefetchMetaRef = React.useRef<{
+    from: string;
+    to: string;
+    branches: string[];
+    salesmen: string[];
+    statuses: string[];
+    suppliers: string[];
+    keysOnly: boolean;
+  } | null>(null);
   const activeToastRef = React.useRef<string | number | null>(null);
   const isFirstMountRef = React.useRef(true);
   const hasCompletedFirstLoadRef = React.useRef(false);
@@ -318,7 +336,7 @@ export function useSTTReport(opts?: { prefetchKeysOnly?: boolean }) {
               toast.error("Server is down. Please try again later.", {
                 duration: 5000,
               });
-            }else if (err.status === 401) {
+            } else if (err.status === 401) {
               toast.error("Unauthorized. Please log in again.", {
                 id: loadingToast,
                 duration: 5000,
@@ -359,50 +377,243 @@ export function useSTTReport(opts?: { prefetchKeysOnly?: boolean }) {
     filters.suppliers,
   ]);
 
-  // Prefetch lightweight keys (Sep 2025 → today) to populate filter dropdowns
+  // Prefetch lightweight keys to populate filter dropdowns.
+  // Previously used a hard-coded range (Sep 2025 → today). Change: use the
+  // current `filters` preset (or custom range) so filter options reload when
+  // the user picks a different preset or custom dates.
   React.useEffect(() => {
     const controller = new AbortController();
     let cancelled = false;
     let loadingToast: string | number | undefined = undefined;
-    const preFrom = "2025-09-01";
-    const preTo = fmtLocalDate(new Date());
+
+    // Compute prefetch date range from current UI filters' preset. This
+    // ensures filter options reflect the user's selected preset/custom range.
+    const { from: preFrom, to: preTo } = getDateRangeFromPreset(
+      filters.dateRangePreset,
+      filters.dateFrom,
+      filters.dateTo,
+    );
 
     loadingToast = toast.loading("Loading Filter options...");
 
     (async () => {
       try {
+        // Use the existing server-side route as a proxy for Directus to avoid CORS.
+        // The route will accept a `directusCollection` query param and forward
+        // the request to the Directus /items/:collection endpoint.
+        const proxyBase = "/api/bia/crm/sales-report/stt-report";
+
+        // If keys-only prefetch is requested, load filter lookup lists from Directus
+        // via our server proxy so dropdowns accurately reflect values from the content model.
+        if (prefetchKeysOnly) {
+          const STATUSES = [
+            "Dispatched",
+            "En Route",
+            "For Delivery",
+            "Newly Synced",
+            "Not Fulfilled",
+          ];
+
+          try {
+            const [branchesRes, salesmenRes, suppliersRes] = await Promise.all([
+              fetch(
+                `${proxyBase}?directusCollection=branches&fields=branch_name&limit=-1`,
+                {
+                  signal: controller.signal,
+                  cache: "no-store",
+                },
+              ),
+              fetch(
+                `${proxyBase}?directusCollection=salesman&fields=id,salesman_name&limit=-1`,
+                {
+                  signal: controller.signal,
+                  cache: "no-store",
+                },
+              ),
+              fetch(
+                `${proxyBase}?directusCollection=suppliers&fields=supplier_name,supplier_type&limit=-1`,
+                {
+                  signal: controller.signal,
+                  cache: "no-store",
+                },
+              ),
+            ]);
+
+            if (controller.signal.aborted || cancelled) return;
+
+            // safe JSON parser that returns null for empty bodies
+            const safeParse = async (res: Response) => {
+              try {
+                const txt = await res.text();
+                if (!txt) return null;
+                return JSON.parse(txt);
+              } catch {
+                return null;
+              }
+            };
+
+            const branchesJson = branchesRes.ok
+              ? await safeParse(branchesRes)
+              : null;
+            const salesmenJson = salesmenRes.ok
+              ? await safeParse(salesmenRes)
+              : null;
+            const suppliersJson = suppliersRes.ok
+              ? await safeParse(suppliersRes)
+              : null;
+
+            // Debug: log directus fetch results so we can verify in browser console
+            // that Directus endpoints returned data (or empty body).
+
+            console.debug("Directus prefetch results:", {
+              branchesStatus: branchesRes.status,
+              salesmenStatus: salesmenRes.status,
+              suppliersStatus: suppliersRes.status,
+              branchesLength: Array.isArray(branchesJson?.data || branchesJson)
+                ? Array.isArray(branchesJson.data)
+                  ? branchesJson.data.length
+                  : branchesJson.length
+                : 0,
+              salesmenLength: Array.isArray(salesmenJson?.data || salesmenJson)
+                ? Array.isArray(salesmenJson.data)
+                  ? salesmenJson.data.length
+                  : salesmenJson.length
+                : 0,
+              suppliersLength: Array.isArray(
+                suppliersJson?.data || suppliersJson,
+              )
+                ? Array.isArray(suppliersJson.data)
+                  ? suppliersJson.data.length
+                  : suppliersJson.length
+                : 0,
+            });
+
+            const branchObjs: { branch?: string }[] = [];
+            if (Array.isArray(branchesJson?.data || branchesJson)) {
+              const list = Array.isArray(branchesJson.data)
+                ? branchesJson.data
+                : branchesJson;
+              for (const b of list) {
+                if (b?.branch_name)
+                  branchObjs.push({ branch: String(b.branch_name) });
+              }
+            }
+
+            const salesmanObjs: { salesman?: string }[] = [];
+            if (Array.isArray(salesmenJson?.data || salesmenJson)) {
+              const list = Array.isArray(salesmenJson.data)
+                ? salesmenJson.data
+                : salesmenJson;
+              for (const s of list) {
+                if (s?.id != null && s?.salesman_name) {
+                  salesmanObjs.push({
+                    salesman: `${s.id} - ${String(s.salesman_name)}`,
+                  });
+                }
+              }
+            }
+
+            const supplierObjs: { productSupplier?: string }[] = [];
+            if (Array.isArray(suppliersJson?.data || suppliersJson)) {
+              const list = Array.isArray(suppliersJson.data)
+                ? suppliersJson.data
+                : suppliersJson;
+              for (const sp of list) {
+                if (sp?.supplier_type === "TRADE" && sp?.supplier_name) {
+                  supplierObjs.push({
+                    productSupplier: String(sp.supplier_name),
+                  });
+                }
+              }
+            }
+
+            const statusObjs = STATUSES.map((s) => ({ transactionStatus: s }));
+
+            if (
+              branchObjs.length ||
+              salesmanObjs.length ||
+              supplierObjs.length ||
+              statusObjs.length
+            ) {
+              setRawKeysForFilters([
+                ...branchObjs,
+                ...salesmanObjs,
+                ...statusObjs,
+                ...supplierObjs,
+              ]);
+            }
+
+            lastPrefetchMetaRef.current = {
+              from: preFrom,
+              to: preTo,
+              branches: filters.branches ?? [],
+              salesmen: filters.salesmen ?? [],
+              statuses: filters.statuses ?? [],
+              suppliers: filters.suppliers ?? [],
+              keysOnly: true,
+            };
+
+            toast.success("Filter options loaded...", {
+              id: loadingToast,
+              duration: 3000,
+            });
+            return;
+          } catch (e) {
+            // fall back to server-side prefetch if directus calls fail
+            // continue to the fetchSTTReportData fallback below
+
+            console.warn("Directus filter prefetch failed, falling back:", e);
+          }
+        }
+
+        // Fallback: use existing backend prefetch (full rows or keys-only)
         const res = await fetchSTTReportData(
           preFrom,
           preTo,
           controller.signal,
           {
             filters: {
-              branches: [],
-              salesmen: [],
-              statuses: [],
-              suppliers: [],
+              branches: filters.branches,
+              salesmen: filters.salesmen,
+              statuses: filters.statuses,
+              suppliers: filters.suppliers,
             },
             keysOnly: prefetchKeysOnly,
             onCacheData: (cached) => {
               if (cancelled) return;
               if (prefetchKeysOnly && Array.isArray(cached)) {
                 setRawKeysForFilters(
-                  cached.map(
-                    (r: {
-                      branch?: string;
-                      salesman?: string;
-                      transactionStatus?: string;
-                      productSupplier?: string;
-                    }) => ({
-                      branch: r.branch,
-                      salesman: r.salesman,
-                      transactionStatus: r.transactionStatus,
-                      productSupplier: r.productSupplier,
-                    }),
-                  ),
+                  cached.map((r: unknown) => {
+                    const obj = (r as Record<string, unknown>) || {};
+                    return {
+                      branch:
+                        typeof obj.branch === "string" ? obj.branch : undefined,
+                      salesman:
+                        typeof obj.salesman === "string"
+                          ? obj.salesman
+                          : undefined,
+                      transactionStatus:
+                        typeof obj.transactionStatus === "string"
+                          ? obj.transactionStatus
+                          : undefined,
+                      productSupplier:
+                        typeof obj.productSupplier === "string"
+                          ? obj.productSupplier
+                          : undefined,
+                    };
+                  }),
                 );
               } else if (Array.isArray(cached)) {
                 setRawDataForFilters(cached as STTReportRecord[]);
+                lastPrefetchMetaRef.current = {
+                  from: preFrom,
+                  to: preTo,
+                  branches: filters.branches ?? [],
+                  salesmen: filters.salesmen ?? [],
+                  statuses: filters.statuses ?? [],
+                  suppliers: filters.suppliers ?? [],
+                  keysOnly: !!prefetchKeysOnly,
+                };
               }
             },
           },
@@ -412,22 +623,43 @@ export function useSTTReport(opts?: { prefetchKeysOnly?: boolean }) {
 
         if (prefetchKeysOnly && Array.isArray(res)) {
           setRawKeysForFilters(
-            res.map(
-              (r: {
-                branch?: string;
-                salesman?: string;
-                transactionStatus?: string;
-                productSupplier?: string;
-              }) => ({
-                branch: r.branch,
-                salesman: r.salesman,
-                transactionStatus: r.transactionStatus,
-                productSupplier: r.productSupplier,
-              }),
-            ),
+            res.map((r: unknown) => {
+              const obj = (r as Record<string, unknown>) || {};
+              return {
+                branch: typeof obj.branch === "string" ? obj.branch : undefined,
+                salesman:
+                  typeof obj.salesman === "string" ? obj.salesman : undefined,
+                transactionStatus:
+                  typeof obj.transactionStatus === "string"
+                    ? obj.transactionStatus
+                    : undefined,
+                productSupplier:
+                  typeof obj.productSupplier === "string"
+                    ? obj.productSupplier
+                    : undefined,
+              };
+            }),
           );
+          lastPrefetchMetaRef.current = {
+            from: preFrom,
+            to: preTo,
+            branches: filters.branches ?? [],
+            salesmen: filters.salesmen ?? [],
+            statuses: filters.statuses ?? [],
+            suppliers: filters.suppliers ?? [],
+            keysOnly: true,
+          };
         } else if (Array.isArray(res)) {
           setRawDataForFilters(res as STTReportRecord[]);
+          lastPrefetchMetaRef.current = {
+            from: preFrom,
+            to: preTo,
+            branches: filters.branches ?? [],
+            salesmen: filters.salesmen ?? [],
+            statuses: filters.statuses ?? [],
+            suppliers: filters.suppliers ?? [],
+            keysOnly: !!prefetchKeysOnly,
+          };
         }
 
         // replace loading toast with success
@@ -436,12 +668,7 @@ export function useSTTReport(opts?: { prefetchKeysOnly?: boolean }) {
           duration: 3000,
         });
       } catch {
-        // if (controller.signal.aborted || cancelled) return;
-        // // Dismiss loading toast on error and continue silently
-        // toast.error("Failed to load filter options", {
-        //   id: loadingToast,
-        //   duration: 3000,
-        // });
+        // silent
       }
     })();
 
@@ -450,7 +677,16 @@ export function useSTTReport(opts?: { prefetchKeysOnly?: boolean }) {
       controller.abort();
       toast.dismiss(loadingToast);
     };
-  }, [prefetchKeysOnly]);
+  }, [
+    prefetchKeysOnly,
+    filters.dateRangePreset,
+    filters.dateFrom,
+    filters.dateTo,
+    filters.branches,
+    filters.salesmen,
+    filters.statuses,
+    filters.suppliers,
+  ]);
   // the UI `filters` represent draft selections. This ensures visuals remain
   // unchanged while the user adjusts filters until they click Generate Report.
   React.useEffect(() => {
@@ -990,11 +1226,70 @@ export function useSTTReport(opts?: { prefetchKeysOnly?: boolean }) {
 
   // Expose a generateReport() function which toggles visualization and fetches actual data
   const generateReport = React.useCallback(async () => {
+    // Compute the concrete date range for the current UI preset/custom dates
+    const { from, to } = getDateRangeFromPreset(
+      filters.dateRangePreset,
+      filters.dateFrom,
+      filters.dateTo,
+    );
+
+    const fromDate = parseDateLocal(from);
+    const toDate = parseDateLocal(to);
+
+    // If we previously prefetched FULL rows (rawDataForFilters) and they
+    // already cover the requested date range, reuse them and skip a network
+    // fetch. Note: when prefetchKeysOnly === true we won't have full rows.
+    const meta = lastPrefetchMetaRef.current;
+    const arraysEqual = (a: string[] | undefined, b: string[] | undefined) => {
+      const aa = (a || []).slice().sort();
+      const bb = (b || []).slice().sort();
+      if (aa.length !== bb.length) return false;
+      for (let i = 0; i < aa.length; i++) if (aa[i] !== bb[i]) return false;
+      return true;
+    };
+
+    if (
+      meta &&
+      meta.keysOnly === false &&
+      rawDataForFilters.length > 0 &&
+      !isNaN(fromDate.getTime()) &&
+      !isNaN(toDate.getTime()) &&
+      meta.from <= from &&
+      meta.to >= to &&
+      arraysEqual(meta.branches, filters.branches) &&
+      arraysEqual(meta.salesmen, filters.salesmen) &&
+      arraysEqual(meta.statuses, filters.statuses) &&
+      arraysEqual(meta.suppliers, filters.suppliers)
+    ) {
+      let minD = new Date(8640000000000000);
+      let maxD = new Date(-8640000000000000);
+      for (const r of rawDataForFilters) {
+        const d = parseDateLocal(r.invoiceDate ?? "");
+        if (isNaN(d.getTime())) continue;
+        if (d.getTime() < minD.getTime()) minD = d;
+        if (d.getTime() > maxD.getTime()) maxD = d;
+      }
+
+      if (
+        !isNaN(minD.getTime()) &&
+        !isNaN(maxD.getTime()) &&
+        minD.getTime() <= fromDate.getTime() &&
+        maxD.getTime() >= toDate.getTime()
+      ) {
+        // Reuse prefetched full rows
+        setRawData(rawDataForFilters);
+        setLoadedOnce(true);
+        setActiveFilters(filters);
+        setShowVisualization(true);
+        return;
+      }
+    }
+
+    // Fallback: fetch actual data from server
     setShowVisualization(true);
-    // Make the current UI filters the active filters and fetch using them.
     setActiveFilters(filters);
     await loadData(filters);
-  }, [loadData, filters]);
+  }, [loadData, filters, rawDataForFilters]);
 
   // ── Customer Summaries ───────────────────────────────────────────────────
 
@@ -1208,6 +1503,73 @@ export function useSTTReport(opts?: { prefetchKeysOnly?: boolean }) {
     const seen = new Map<number, InvoiceSummary>();
     filteredData.forEach((r) => {
       if (!seen.has(r.invoiceId)) {
+        // Compute invoice-level net amount (total minus discount) as fallback
+        const netAmount = (r.totalAmount ?? 0) - (r.discountAmount ?? 0);
+
+        // If paymentStatus is null/undefined, optionally derive from collection vs netAmount
+        let derivedPaymentStatus: string | null = r.paymentStatus ?? null;
+        if (derivedPaymentStatus == null && ENABLE_DERIVE_PAYMENT_STATUS) {
+          const coll = Number(r.collection ?? 0);
+          if (coll >= netAmount && netAmount > 0) {
+            derivedPaymentStatus = "Paid";
+          } else if (coll > 0) {
+            derivedPaymentStatus = "Partially Paid";
+          } else {
+            derivedPaymentStatus = "Unpaid";
+          }
+        }
+
+        // Determine whether we can derive payment status from available numeric fields
+        const hasNumericData =
+          typeof r.totalAmount === "number" ||
+          typeof r.discountAmount === "number" ||
+          typeof r.collection === "number";
+
+        let derivedFlag: boolean | null = null;
+        // If original paymentStatus exists, mark derived=false; if not and we have numeric data
+        // we will mark derived=true (or leave null if no data to derive)
+        if (r.paymentStatus != null) {
+          derivedFlag = false;
+        } else if (hasNumericData && ENABLE_DERIVE_PAYMENT_STATUS) {
+          derivedFlag = true;
+        }
+
+        // Derive transaction status when null using invoice fields (code-only toggle)
+        let derivedTransactionStatus: string | null =
+          r.transactionStatus ?? null;
+        const hasTransactionCandidate =
+          Number(r.isDispatched) === 1 ||
+          Boolean(r.dispatchDate) ||
+          Boolean(r.invoiceDate) ||
+          Boolean(r.orderId);
+
+        let transDerivedFlag: boolean | null = null;
+        if (r.transactionStatus != null) {
+          transDerivedFlag = false;
+        } else if (
+          hasTransactionCandidate &&
+          ENABLE_DERIVE_TRANSACTION_STATUS
+        ) {
+          transDerivedFlag = true;
+        }
+
+        if (
+          derivedTransactionStatus == null &&
+          ENABLE_DERIVE_TRANSACTION_STATUS
+        ) {
+          if (Number(r.isDispatched) === 1) {
+            derivedTransactionStatus = "Dispatched";
+          } else if (r.dispatchDate) {
+            derivedTransactionStatus = "En Route";
+          } else if (r.invoiceDate) {
+            derivedTransactionStatus = "For Delivery";
+          } else if (r.orderId) {
+            derivedTransactionStatus = "Newly Synced";
+          } else {
+            derivedTransactionStatus = "Not Fulfilled";
+          }
+        }
+
         seen.set(r.invoiceId, {
           invoiceId: r.invoiceId,
           invoiceNo: r.invoiceNo,
@@ -1219,10 +1581,23 @@ export function useSTTReport(opts?: { prefetchKeysOnly?: boolean }) {
           totalAmount: r.totalAmount,
           collection: r.collection,
           discountAmount: r.discountAmount || 0,
-          transactionStatus: r.transactionStatus,
-          paymentStatus: r.paymentStatus,
+          transactionStatus: derivedTransactionStatus,
+          paymentStatus: derivedPaymentStatus,
+          paymentStatusDerived: derivedFlag,
+          transactionStatusDerived: transDerivedFlag,
           divisionName: r.divisionName,
         });
+        // If paymentStatus was originally null and we performed derivation but the
+        // initial flag wasn't set above (older code path), ensure it's marked.
+        if (
+          r.paymentStatus == null &&
+          hasNumericData &&
+          ENABLE_DERIVE_PAYMENT_STATUS &&
+          seen.get(r.invoiceId)?.paymentStatusDerived !== true
+        ) {
+          const entry = seen.get(r.invoiceId)!;
+          entry.paymentStatusDerived = true;
+        }
       }
     });
     return Array.from(seen.values()).sort(
@@ -1268,18 +1643,20 @@ export function useSTTReport(opts?: { prefetchKeysOnly?: boolean }) {
     [productSummaries],
   );
 
+  // Status distribution must reflect the deduplicated invoice-level summaries
+  // (these summaries include derived transactionStatus/paymentStatus when the
+  // code-only toggles are enabled). Use `invoiceSummaries` as the single
+  // source of truth for charts so counts match the table.
   const statusDistribution = React.useMemo(() => {
     const map = new Map<string, number>();
-    const invoiceSeen = new Set<number>();
-    filteredData.forEach((r) => {
-      if (invoiceSeen.has(r.invoiceId)) return;
-      invoiceSeen.add(r.invoiceId);
-      map.set(r.transactionStatus, (map.get(r.transactionStatus) || 0) + 1);
-    });
+    for (const inv of invoiceSummaries) {
+      const status = inv.transactionStatus ?? "N/A";
+      map.set(status, (map.get(status) || 0) + 1);
+    }
     return Array.from(map.entries())
       .map(([status, count]) => ({ status, count }))
       .sort((a, b) => b.count - a.count);
-  }, [filteredData]);
+  }, [invoiceSummaries]);
 
   const branchSummaries = React.useMemo((): BranchSummary[] => {
     const map = new Map<
