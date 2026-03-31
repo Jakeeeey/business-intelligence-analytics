@@ -231,6 +231,10 @@ const data = {
                             title: "Movement Reviewer",
                             url: "/bia/scm/logistics-performance/movement-reviewer",
                             icon: ClipboardList
+                        }, {
+                            title: "Driver KPI",
+                            url: "/bia/scm/logistics-performance/driver-kpi",
+                            icon: ClipboardList
                         },
                     ],
                 },
