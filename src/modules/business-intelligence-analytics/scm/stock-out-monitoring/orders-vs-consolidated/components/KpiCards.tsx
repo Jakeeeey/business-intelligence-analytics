@@ -27,10 +27,10 @@ export function KpiCards({ kpis }: Props) {
       <TooltipProvider delayDuration={100}>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Card className="dark:border-zinc-700 dark:bg-white/13 cursor-default hover:shadow-md transition-shadow">
+            <Card className=" cursor-default hover:shadow-md transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0">
                 <CardTitle className="text-sm font-medium leading-tight">
-                  Total Ordered Qty
+                  Total Ordered Quantity
                 </CardTitle>
                 <Box className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
@@ -47,10 +47,10 @@ export function KpiCards({ kpis }: Props) {
           >
             <div className="space-y-1">
               <span className="font-medium text-foreground">
-                Total Ordered Qty
+                Total Ordered Quantity
               </span>
               <div className="flex justify-between gap-6">
-                <span className="text-muted-foreground">Ordered Qty</span>
+                <span className="text-muted-foreground">Ordered Quantity</span>
                 <span className="font-medium tabular-nums">
                   {numFmt.format(kpis.totalOrderedQuantity)}
                 </span>
@@ -64,10 +64,10 @@ export function KpiCards({ kpis }: Props) {
       <TooltipProvider delayDuration={100}>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Card className="dark:border-zinc-700 dark:bg-white/13 cursor-default hover:shadow-md transition-shadow">
+            <Card className=" cursor-default hover:shadow-md transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0">
                 <CardTitle className="text-sm font-medium leading-tight">
-                  Consolidated Qty
+                  Consolidated Quantity
                 </CardTitle>
                 <PackageCheck className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
@@ -84,10 +84,10 @@ export function KpiCards({ kpis }: Props) {
           >
             <div className="space-y-1">
               <span className="font-medium text-foreground">
-                Consolidated Qty
+                Consolidated Quantity
               </span>
               <div className="flex justify-between gap-6">
-                <span className="text-muted-foreground">Consolidated Qty</span>
+                <span className="text-muted-foreground">Consolidated Quantity</span>
                 <span className="font-medium tabular-nums">
                   {numFmt.format(kpis.totalConsolidatedQuantity)}
                 </span>
@@ -101,24 +101,30 @@ export function KpiCards({ kpis }: Props) {
       <TooltipProvider delayDuration={100}>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Card className="dark:border-zinc-700 dark:bg-white/13 cursor-default hover:shadow-md transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0">
-                <CardTitle className="text-sm font-medium leading-tight">
+            <Card className=" cursor-default hover:shadow-md transition-shadow gap-2">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 ">
+                <CardTitle className="text-sm font-medium  leading-tight">
                   Variance
                 </CardTitle>
                 <AlertTriangle className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent className="pt-1">
-                <div className="flex items-start justify-start gap-25">
+                <div className="2xl:flex items-start justify-start gap-28">
                   <div>
-                    <p className="text-xs text-muted-foreground mb-0.5 text-start">Quantity</p>
-                    <div className={`text-2xl font-bold tabular-nums ${kpis.varianceQty > 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"}`}>
+                    <p className="text-xs text-muted-foreground mb-0.5">Quantity</p>
+                    <div
+                      className={`text-2xl font-bold tabular-nums ${kpis.varianceQty > 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"}`}
+                    >
                       {numFmt.format(kpis.varianceQty)}
                     </div>
                   </div>
-                  <div className="text-start">
-                    <p className="text-xs text-muted-foreground mb-0.5 text-start">Amount</p>
-                    <div className={`text-2xl font-bold tabular-nums  ${kpis.varianceAmount > 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"}`}>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-0.5">
+                      Amount
+                    </p>
+                    <div
+                      className={`text-2xl font-bold tabular-nums ${kpis.varianceAmount > 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"}`}
+                    >
                       {phpFmt.format(kpis.varianceAmount)}
                     </div>
                   </div>
@@ -133,7 +139,7 @@ export function KpiCards({ kpis }: Props) {
             <div className="space-y-1">
               <span className="font-medium text-foreground">Variance</span>
               <div className="flex justify-between gap-6">
-                <span className="text-muted-foreground">Variance Qty</span>
+                <span className="text-muted-foreground">Variance Quantity</span>
                 <span className="font-medium tabular-nums">
                   {numFmt.format(kpis.varianceQty)}
                 </span>

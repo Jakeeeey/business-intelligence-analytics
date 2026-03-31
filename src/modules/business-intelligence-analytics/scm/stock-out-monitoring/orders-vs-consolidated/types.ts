@@ -86,7 +86,7 @@ export type ProductOrdersSummary = {
   categoryName: string;
   unit: string;
   totalOrdered: number;
-  /** Sum of ordered quantity for rows whose order is consolidated */
+  /** Sum of allocatedQuantity across filtered rows */
   totalConsolidated: number;
   /** Percentage: (totalConsolidated / totalOrdered) * 100 */
   consolidationRate: number;

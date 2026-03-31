@@ -43,6 +43,8 @@ import {
     Award,          // For Executive Scorecard
     Map,            // For Branch Risk Matrix
     TrendingUp, RussianRuble,     // For Shrinkage vs Revenue
+    FileText,
+    ClipboardClock,     
 } from "lucide-react";
 
 import {NavMain} from "./nav-main";
@@ -61,6 +63,7 @@ import {
 
 const data = {
     navMain: [
+        // CRM Tree
         {
             title: "CRM",
             url: "#",
@@ -130,6 +133,14 @@ const data = {
                         {title: "Audit Trail", url: "/bia/crm/target-setting/ts-audit-trail", icon: History},
                     ],
                 },
+{
+                    title: "Lead Time tracker",
+                    url: "/bia/crm/lead-time-tracker",
+                    icon: ClipboardClock,
+                    items:[
+                        
+                    ]
+                },
             ],
         },
 
@@ -174,7 +185,7 @@ const data = {
                     ],
                 },
                 {
-                    title: "Stock Out Monitoring",
+                    title: "Out of Stock Monitoring",
                     url: "#",
                     icon: BadgeAlert,
                     items: [
@@ -275,6 +286,11 @@ const data = {
                 },
             ],
         },
+        {
+            title: "Expense Report",
+            url: "/bia/expense-report",
+            icon: FileText
+        }
     ],
 };
 
@@ -311,7 +327,7 @@ export function AppSidebar({className, ...props}: React.ComponentProps<typeof Si
     const filteredNavMain = React.useMemo(() => {
         return data.navMain.map((group) => {
             if (group.title === "CRM") {
-                const updatedItems = group.items.map((subGroup) => {
+                const updatedItems = group.items?.map((subGroup) => {
                     if (subGroup.title === "Target Settings") {
                         const filteredSubItems = subGroup.items.filter((item) => {
                             if (item.title === "Target Approval") {

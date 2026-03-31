@@ -166,6 +166,10 @@ function deduplicateRecords(
   });
 }
 
+function getDerivedGap(r: AllocatedOrderedRecord): number {
+  return (r.orderedQuantity ?? 0) - (r.allocatedQuantity ?? 0);
+}
+
 // ── Hook ────────────────────────────────────────────────────────────────────
 
 export function useAllocatedvsOrdered() {
@@ -378,12 +382,13 @@ export function useAllocatedvsOrdered() {
     const shortageOrderIds = new Set<number>();
 
     for (const r of filteredData) {
+      const lineGap = getDerivedGap(r);
       totalOrdered += r.orderedQuantity;
       totalAllocated += r.allocatedQuantity;
-      allocationGap += r.discrepancyGap;
+      allocationGap += lineGap;
       totalNetAmount += r.netAmount;
       uniqueOrderIds.add(r.orderId);
-      if (r.discrepancyGap > 0) shortageOrderIds.add(r.orderId);
+      if (lineGap > 0) shortageOrderIds.add(r.orderId);
     }
 
     return {
@@ -406,11 +411,12 @@ export function useAllocatedvsOrdered() {
     >();
 
     for (const r of filteredData) {
+      const lineGap = getDerivedGap(r);
       const e = map.get(r.productId);
       if (e) {
         e.totalOrdered += r.orderedQuantity;
         e.totalAllocated += r.allocatedQuantity;
-        e.allocationGap += r.discrepancyGap;
+        e.allocationGap += lineGap;
         e.netAmount += r.netAmount;
       } else {
         map.set(r.productId, {
@@ -421,7 +427,7 @@ export function useAllocatedvsOrdered() {
           unit: r.unit,
           totalOrdered: r.orderedQuantity,
           totalAllocated: r.allocatedQuantity,
-          allocationGap: r.discrepancyGap,
+          allocationGap: lineGap,
           netAmount: r.netAmount,
         });
       }
@@ -454,11 +460,12 @@ export function useAllocatedvsOrdered() {
     >();
 
     for (const r of filteredData) {
+      const lineGap = getDerivedGap(r);
       const e = map.get(r.supplierId);
       if (e) {
         e.totalOrdered += r.orderedQuantity;
         e.totalAllocated += r.allocatedQuantity;
-        e.allocationGap += r.discrepancyGap;
+        e.allocationGap += lineGap;
         e.netAmount += r.netAmount;
         e.orderIds.add(r.orderId);
       } else {
@@ -467,7 +474,7 @@ export function useAllocatedvsOrdered() {
           supplierName: r.supplierName,
           totalOrdered: r.orderedQuantity,
           totalAllocated: r.allocatedQuantity,
-          allocationGap: r.discrepancyGap,
+          allocationGap: lineGap,
           orderCount: 1,
           netAmount: r.netAmount,
           orderIds: new Set([r.orderId]),
@@ -507,14 +514,15 @@ export function useAllocatedvsOrdered() {
     >();
 
     for (const r of filteredData) {
+      const lineGap = getDerivedGap(r);
       const e = map.get(r.orderId);
       if (e) {
         e.totalOrdered += r.orderedQuantity;
         e.totalAllocated += r.allocatedQuantity;
-        e.allocationGap += r.discrepancyGap;
+        e.allocationGap += lineGap;
         e.netAmount += r.netAmount;
         e.productIds.add(r.productId);
-        if (r.discrepancyGap > 0) e.isShortage = true;
+        if (lineGap > 0) e.isShortage = true;
       } else {
         map.set(r.orderId, {
           orderId: r.orderId,
@@ -526,9 +534,9 @@ export function useAllocatedvsOrdered() {
           productCount: 1,
           totalOrdered: r.orderedQuantity,
           totalAllocated: r.allocatedQuantity,
-          allocationGap: r.discrepancyGap,
+          allocationGap: lineGap,
           netAmount: r.netAmount,
-          isShortage: r.discrepancyGap > 0,
+          isShortage: lineGap > 0,
           allocationRate: 0,
           productIds: new Set([r.productId]),
         });
@@ -593,6 +601,7 @@ export function useAllocatedvsOrdered() {
     >();
 
     for (const r of filteredData) {
+      const lineGap = getDerivedGap(r);
       const date = parseDateLocal(r.orderDate);
       if (isNaN(date.getTime())) continue;
       const key = getBucketKey(date, granularity);
@@ -601,14 +610,14 @@ export function useAllocatedvsOrdered() {
       if (e) {
         e.totalOrdered += r.orderedQuantity;
         e.totalAllocated += r.allocatedQuantity;
-        e.allocationGap += r.discrepancyGap;
-        if (r.discrepancyGap > 0) e.shortageOrderIds.add(r.orderId);
+        e.allocationGap += lineGap;
+        if (lineGap > 0) e.shortageOrderIds.add(r.orderId);
       } else {
         buckets.set(key, {
           totalOrdered: r.orderedQuantity,
           totalAllocated: r.allocatedQuantity,
-          allocationGap: r.discrepancyGap,
-          shortageOrderIds: new Set(r.discrepancyGap > 0 ? [r.orderId] : []),
+          allocationGap: lineGap,
+          shortageOrderIds: new Set(lineGap > 0 ? [r.orderId] : []),
         });
       }
     }

@@ -191,7 +191,7 @@ function Pagination({
   return (
     <div className="flex gap-1">
       <button
-        className="inline-flex items-center justify-center rounded-md border border-input bg-background px-3 h-8 text-sm dark:border-zinc-700 disabled:opacity-50"
+        className="inline-flex items-center justify-center rounded-md border border-input bg-background px-3 h-8 text-sm  disabled:opacity-50"
         onClick={() => onChange(Math.max(1, page - 1))}
         disabled={page === 1}
       >
@@ -200,14 +200,14 @@ function Pagination({
       {pages.map((p) => (
         <button
           key={p}
-          className={`inline-flex items-center justify-center rounded-md border px-3 h-8 text-sm dark:border-zinc-700 ${page === p ? "bg-primary text-primary-foreground border-primary" : "border-input bg-background"}`}
+          className={`inline-flex items-center justify-center rounded-md border px-3 h-8 text-sm  ${page === p ? "bg-primary text-primary-foreground border-primary" : "border-input bg-background"}`}
           onClick={() => onChange(p)}
         >
           {p}
         </button>
       ))}
       <button
-        className="inline-flex items-center justify-center rounded-md border border-input bg-background px-3 h-8 text-sm dark:border-zinc-700 disabled:opacity-50"
+        className="inline-flex items-center justify-center rounded-md border border-input bg-background px-3 h-8 text-sm  disabled:opacity-50"
         onClick={() => onChange(Math.min(total, page + 1))}
         disabled={page === total}
       >
@@ -370,7 +370,7 @@ export function SuppliersTab({ supplierSummaries }: Props) {
 
   if (supplierSummaries.length === 0) {
     return (
-      <Card className="border-muted dark:border-zinc-700 dark:bg-white/13">
+      <Card className="border-muted ">
         <CardContent className="py-12 text-center text-sm text-muted-foreground">
           No supplier data available. Generate a report to see results.
         </CardContent>
@@ -381,7 +381,7 @@ export function SuppliersTab({ supplierSummaries }: Props) {
   return (
     <div className="space-y-4">
       {/* ── Chart Row 1: Orders by Supplier ── */}
-      <Card className="border-muted dark:border-zinc-700 dark:bg-white/13">
+      <Card className="border-muted ">
         <CardHeader className="pb-2">
           <CardTitle className="text-base">Orders by Supplier</CardTitle>
           <CardDescription>
@@ -460,7 +460,7 @@ export function SuppliersTab({ supplierSummaries }: Props) {
 
       {/* ── Chart Row 2: For Consolidation Orders by Supplier ── */}
       {top10ByPending.length > 0 && (
-        <Card className="border-muted dark:border-zinc-700 dark:bg-white/13">
+        <Card className="border-muted ">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">
               For Consolidation Orders by Supplier
@@ -545,7 +545,7 @@ export function SuppliersTab({ supplierSummaries }: Props) {
       )}
 
       {/* ── Chart Row 3: Ordered Qty by Supplier ── */}
-      <Card className="border-muted dark:border-zinc-700 dark:bg-white/13">
+      <Card className="border-muted ">
         <CardHeader className="pb-2">
           <CardTitle className="text-base">
             Ordered Quantity by Supplier
@@ -593,13 +593,13 @@ export function SuppliersTab({ supplierSummaries }: Props) {
                     }
                     valueKey="totalOrdered"
                     nameKey="supplierName"
-                    valueLabel="Qty Ordered"
+                    valueLabel="Quantity Ordered"
                   />
                 )}
               />
               <Bar
                 dataKey="totalOrdered"
-                name="Qty Ordered"
+                name="Quantity Ordered"
                 radius={[0, 4, 4, 0]}
                 onMouseEnter={(d) => setHoveredBar(`qty::${d.supplierName}`)}
                 onMouseLeave={() => setHoveredBar(null)}
@@ -615,7 +615,7 @@ export function SuppliersTab({ supplierSummaries }: Props) {
                         ? 0.25
                         : 1
                     }
-                    style={cellStyle("qty", e.supplierName)}
+                    style={cellStyle("quantity", e.supplierName)}
                   />
                 ))}
               </Bar>
@@ -625,7 +625,7 @@ export function SuppliersTab({ supplierSummaries }: Props) {
       </Card>
 
       {/* ── Suppliers Table ── */}
-      <Card className="border-muted dark:border-zinc-700 dark:bg-white/13">
+      <Card className="border-muted ">
         <CardHeader className="pb-2">
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
@@ -641,7 +641,7 @@ export function SuppliersTab({ supplierSummaries }: Props) {
             {/* Drill-down filters */}
             {/* <div className="flex flex-wrap items-center gap-2">
               <select
-                className="h-8 rounded-md border border-input bg-background px-3 py-1 text-sm dark:border-zinc-700"
+                className="h-8 rounded-md border border-input bg-background px-3 py-1 text-sm "
                 value={drillSupplier}
                 onChange={(e) => {
                   setDrillSupplier(e.target.value);
@@ -656,7 +656,7 @@ export function SuppliersTab({ supplierSummaries }: Props) {
                 ))}
               </select>
               <select
-                className="h-8 rounded-md border border-input bg-background px-3 py-1 text-sm dark:border-zinc-700"
+                className="h-8 rounded-md border border-input bg-background px-3 py-1 text-sm "
                 value={drillStatus}
                 onChange={(e) => {
                   setDrillStatus(e.target.value);
@@ -730,7 +730,7 @@ export function SuppliersTab({ supplierSummaries }: Props) {
                 <col style={{ width: 130 }} />
               </colgroup>
               <thead>
-                <tr className="border-b dark:border-zinc-700 bg-muted/30">
+                <tr className="border-b  bg-muted/30">
                   <th
                     className="py-3 pl-4 pr-2 text-left font-medium text-muted-foreground cursor-pointer hover:text-foreground"
                     onClick={() => handleSort("supplierName")}
@@ -762,7 +762,7 @@ export function SuppliersTab({ supplierSummaries }: Props) {
                     className="py-3 px-2 text-right font-medium text-muted-foreground cursor-pointer hover:text-foreground"
                     onClick={() => handleSort("totalOrdered")}
                   >
-                    Qty Ordered {sortIcon("totalOrdered")}
+                    Quantity Ordered {sortIcon("totalOrdered")}
                   </th>
                   <th
                     className="py-3 px-2 text-right font-medium text-muted-foreground cursor-pointer hover:text-foreground"
@@ -839,10 +839,10 @@ export function SuppliersTab({ supplierSummaries }: Props) {
             </table>
           </div>
         </CardContent>
-        <div className="flex items-center justify-between px-4 py-4 border-t dark:border-zinc-700">
+        <div className="flex items-center justify-between px-4 py-4 border-t ">
           <div className="flex items-center gap-4">
             <select
-              className="h-8 rounded-md border border-input bg-background px-3 py-1 text-sm dark:border-zinc-700"
+              className="h-8 rounded-md border border-input bg-background px-3 py-1 text-sm "
               value={itemsPerPage}
               onChange={(e) => {
                 setItemsPerPage(Number(e.target.value));
@@ -880,7 +880,7 @@ export function SuppliersTab({ supplierSummaries }: Props) {
           }
         }}
       >
-        <DialogContent className="max-w-md dark:border-zinc-700">
+        <DialogContent className="max-w-md ">
           <DialogHeader>
             <DialogTitle>{modalSupplier?.supplierName}</DialogTitle>
             <DialogDescription>
@@ -918,7 +918,7 @@ export function SuppliersTab({ supplierSummaries }: Props) {
                 )}
               />
               <InsightStat
-                label="Qty Ordered"
+                label="Quantity Ordered"
                 value={numFmt(modalSupplier.totalOrdered)}
               />
               <InsightStat

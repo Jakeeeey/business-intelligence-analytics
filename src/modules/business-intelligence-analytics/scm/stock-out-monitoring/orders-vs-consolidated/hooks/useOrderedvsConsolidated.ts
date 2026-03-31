@@ -439,13 +439,11 @@ export function useOrderedvsConsolidated() {
       0,
     );
     const varianceQty = totalOrderedQuantity - totalConsolidatedQuantity;
-    const varianceAmount = filteredData.reduce(
-      (s, r) => {
-        const netPricePerUnit = r.orderedQuantity > 0 ? (r.netAmount ?? 0) / r.orderedQuantity : 0;
-        return s + (r.orderedQuantity - r.allocatedQuantity) * netPricePerUnit;
-      },
-      0,
-    );
+    const varianceAmount = filteredData.reduce((s, r) => {
+      const netPricePerUnit =
+        r.orderedQuantity > 0 ? (r.netAmount ?? 0) / r.orderedQuantity : 0;
+      return s + (r.orderedQuantity - r.allocatedQuantity) * netPricePerUnit;
+    }, 0);
 
     return {
       totalOrders,
@@ -491,8 +489,7 @@ export function useOrderedvsConsolidated() {
         e.totalOrdered += r.orderedQuantity;
         e.netAmount += r.netAmount;
         e.orderIds.add(r.orderId);
-        if (r.orderStatus !== PENDING_STATUS)
-          e.totalConsolidated += r.orderedQuantity;
+        e.totalConsolidated += r.allocatedQuantity;
       } else {
         map.set(r.productId, {
           productId: r.productId,
@@ -501,13 +498,10 @@ export function useOrderedvsConsolidated() {
           categoryName: r.categoryName,
           unit: r.unit,
           totalOrdered: r.orderedQuantity,
-          totalConsolidated:
-            r.orderStatus !== PENDING_STATUS ? r.orderedQuantity : 0,
+          totalConsolidated: r.allocatedQuantity,
           consolidationRate:
-            r.orderStatus !== PENDING_STATUS
-              ? r.orderedQuantity > 0
-                ? (r.orderedQuantity / r.orderedQuantity) * 100
-                : 0
+            r.orderedQuantity > 0
+              ? (r.allocatedQuantity / r.orderedQuantity) * 100
               : 0,
           orderCount: 1,
           netAmount: r.netAmount,
@@ -658,18 +652,17 @@ export function useOrderedvsConsolidated() {
       if (isNaN(date.getTime())) continue;
       const period = getBucketKey(date, granularity);
       const key = `${r.productId}||${period}`;
-      const isConsolidated = r.orderStatus !== PENDING_STATUS;
       const e = map.get(key);
       if (e) {
         e.totalOrdered += r.orderedQuantity;
-        if (isConsolidated) e.totalConsolidated += r.orderedQuantity;
+        e.totalConsolidated += r.allocatedQuantity;
       } else {
         map.set(key, {
           productId: r.productId,
           productName: r.productName,
           period,
           totalOrdered: r.orderedQuantity,
-          totalConsolidated: isConsolidated ? r.orderedQuantity : 0,
+          totalConsolidated: r.allocatedQuantity,
         });
       }
     }

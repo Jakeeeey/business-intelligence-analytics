@@ -34,7 +34,10 @@ import { ChevronRight } from "lucide-react";
 // import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { ProductAllocationSummary, AllocatedOrderedRecord } from "../types";
+import type {
+  ProductAllocationSummary,
+  AllocatedOrderedRecord,
+} from "../types";
 
 /* ─── Helpers ───────────────────────────────────────────────── */
 
@@ -431,7 +434,7 @@ export function TopProductsTab({ productSummaries, filteredData }: Props) {
   /* ─── Empty state ────────────────────────────────────────── */
   if (productSummaries.length === 0) {
     return (
-      <Card className="border-muted dark:border-zinc-700 dark:bg-white/13">
+      <Card className="border-muted ">
         <CardContent className="py-12 text-center text-sm text-muted-foreground">
           No product data available.
         </CardContent>
@@ -484,7 +487,7 @@ export function TopProductsTab({ productSummaries, filteredData }: Props) {
       {/* ── Charts row ── */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         {/* Bar: Top 10 products by gap */}
-        <Card className="lg:col-span-3 border-muted dark:border-zinc-700 dark:bg-white/13">
+        <Card className="lg:col-span-3 border-muted ">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">
               Top 10 Products by Allocation Gap
@@ -574,7 +577,7 @@ export function TopProductsTab({ productSummaries, filteredData }: Props) {
         </Card>
 
         {/* Donut: Allocation status distribution */}
-        <Card className="lg:col-span-2 border-muted dark:border-zinc-700 dark:bg-white/13">
+        <Card className="lg:col-span-2 border-muted ">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">
               Product Allocation Status
@@ -637,7 +640,7 @@ export function TopProductsTab({ productSummaries, filteredData }: Props) {
       </div>
 
       {/* ── Table ── */}
-      <Card className="border-muted dark:border-zinc-700 dark:bg-white/13">
+      <Card className="border-muted ">
         <CardHeader className="pb-2">
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
@@ -691,19 +694,19 @@ export function TopProductsTab({ productSummaries, filteredData }: Props) {
             {/* table-layout: fixed prevents column width shifting on sort */}
             <table className="w-full text-sm" style={{ tableLayout: "fixed" }}>
               <colgroup>
-                <col style={{ width: 36 }} />  {/* expand */}
+                <col style={{ width: 36 }} /> {/* expand */}
                 <col style={{ width: 230 }} /> {/* Product */}
                 <col style={{ width: 120 }} /> {/* Brand */}
                 <col style={{ width: 120 }} /> {/* Category */}
-                <col style={{ width: 64 }} />  {/* Unit */}
-                <col style={{ width: 90 }} />  {/* Ordered */}
-                <col style={{ width: 90 }} />  {/* Allocated */}
-                <col style={{ width: 80 }} />  {/* Gap */}
-                <col style={{ width: 80 }} />  {/* Rate */}
+                <col style={{ width: 64 }} /> {/* Unit */}
+                <col style={{ width: 90 }} /> {/* Ordered */}
+                <col style={{ width: 90 }} /> {/* Allocated */}
+                <col style={{ width: 80 }} /> {/* Gap */}
+                <col style={{ width: 80 }} /> {/* Rate */}
                 <col style={{ width: 110 }} /> {/* Net Amount */}
               </colgroup>
               <thead>
-                <tr className="border-b dark:border-zinc-700 bg-muted/30">
+                <tr className="border-b  bg-muted/30">
                   <th className="py-3 pl-3" /> {/* expand col */}
                   <th
                     className="py-3 pl-4 px-2 text-left font-medium text-muted-foreground cursor-pointer hover:text-foreground select-none"
@@ -802,6 +805,7 @@ export function TopProductsTab({ productSummaries, filteredData }: Props) {
                 {paginatedItems.map((row) => {
                   const isShortage = row.allocationGap > 0;
                   const isFullyAllocated = row.allocationGap === 0;
+                  const gapValue = row.allocationGap;
                   const isExpanded = expandedProducts.has(row.productId);
                   const lines = linesByProduct.get(row.productId) ?? [];
                   return (
@@ -831,7 +835,9 @@ export function TopProductsTab({ productSummaries, filteredData }: Props) {
                           </span>
                         </td>
                         <td className="py-2.5 px-2 text-sm text-muted-foreground overflow-hidden">
-                          <span className="block truncate">{row.brandName}</span>
+                          <span className="block truncate">
+                            {row.brandName}
+                          </span>
                         </td>
                         <td className="py-2.5 px-2 text-sm text-muted-foreground overflow-hidden">
                           <span className="block truncate">
@@ -848,13 +854,19 @@ export function TopProductsTab({ productSummaries, filteredData }: Props) {
                           {numFmt(row.totalAllocated)}
                         </td>
                         <td className="py-2.5 px-2 text-right tabular-nums">
-                          {row.allocationGap > 0 ? (
-                            <span className="text-rose-600 dark:text-rose-400 font-medium">
-                              {numFmt(row.allocationGap)}
+                          {gapValue === 0 ? (
+                            <span className="text-emerald-600 dark:text-emerald-400">
+                              —
                             </span>
                           ) : (
-                            <span className="text-emerald-600 dark:text-emerald-400">
-                              0
+                            <span
+                              className={`tabular-nums font-medium ${
+                                gapValue > 0
+                                  ? "text-rose-600 dark:text-rose-400"
+                                  : "text-emerald-600 dark:text-emerald-400"
+                              }`}
+                            >
+                              {numFmt(gapValue)}
                             </span>
                           )}
                         </td>
@@ -887,68 +899,134 @@ export function TopProductsTab({ productSummaries, filteredData }: Props) {
                                 className="w-full text-xs"
                                 style={{ tableLayout: "fixed", minWidth: 700 }}
                               >
-                                 <colgroup>
+                                <colgroup>
                                   <col style={{ width: 100 }} /> {/* Brand */}
-                                  <col style={{ width: 110 }} /> {/* Category */}
-                                  <col style={{ width: 200 }} /> {/* Product Name */}
-                                  <col style={{ width: 55 }} />  {/* Unit */}
-                                  <col style={{ width: 90 }} />  {/* Net Price */}
-                                  <col style={{ width: 65 }} />  {/* Ordered */}
-                                  <col style={{ width: 65 }} />  {/* Allocated */}
-                                  <col style={{ width: 55 }} />  {/* Gap */}
-                                  <col style={{ width: 100 }} /> {/* Variance Amount */}
+                                  <col style={{ width: 110 }} />{" "}
+                                  {/* Category */}
+                                  <col style={{ width: 200 }} />{" "}
+                                  {/* Product Name */}
+                                  <col style={{ width: 55 }} /> {/* Unit */}
+                                  <col style={{ width: 90 }} />{" "}
+                                  {/* Net Price */}
+                                  <col style={{ width: 65 }} /> {/* Ordered */}
+                                  <col style={{ width: 65 }} />{" "}
+                                  {/* Allocated */}
+                                  <col style={{ width: 55 }} /> {/* Gap */}
+                                  <col style={{ width: 100 }} />{" "}
+                                  {/* Variance Amount */}
                                 </colgroup>
                                 <thead>
-                                  <tr className="border-b dark:border-zinc-700 text-muted-foreground">
-                                    <th className="py-2 pl-2 pr-1 text-left font-medium">Brand</th>
-                                    <th className="py-2 px-1 text-left font-medium">Category</th>
-                                    <th className="py-2 px-1 text-left font-medium">Product Name</th>
-                                    <th className="py-2 px-1 text-left font-medium">Unit</th>
-                                    <th className="py-2 px-1 text-right font-medium">Net Price</th>
-                                    <th className="py-2 px-1 text-right font-medium">Ordered</th>
-                                    <th className="py-2 px-1 text-right font-medium">Allocated</th>
-                                    <th className="py-2 px-1 text-right font-medium">Gap</th>
-                                    <th className="py-2 pl-1 pr-2 text-right font-medium">Variance Amount</th>
+                                  <tr className="border-b  text-muted-foreground">
+                                    <th className="py-2 pl-2 pr-1 text-left font-medium">
+                                      Brand
+                                    </th>
+                                    <th className="py-2 px-1 text-left font-medium">
+                                      Category
+                                    </th>
+                                    <th className="py-2 px-1 text-left font-medium">
+                                      Product Name
+                                    </th>
+                                    <th className="py-2 px-1 text-left font-medium">
+                                      Unit
+                                    </th>
+                                    <th className="py-2 px-1 text-right font-medium">
+                                      Net Price
+                                    </th>
+                                    <th className="py-2 px-1 text-right font-medium">
+                                      Ordered
+                                    </th>
+                                    <th className="py-2 px-1 text-right font-medium">
+                                      Allocated
+                                    </th>
+                                    <th className="py-2 px-1 text-right font-medium">
+                                      Gap
+                                    </th>
+                                    <th className="py-2 pl-1 pr-2 text-right font-medium">
+                                      Variance Amount
+                                    </th>
                                   </tr>
                                 </thead>
                                 <tbody>
                                   {lines.map((line, li) => {
-                                    const netPricePerUnit = line.orderedQuantity > 0 ? line.netAmount / line.orderedQuantity : 0;
-                                    const gap = line.orderedQuantity - line.allocatedQuantity;
-                                    const varianceAmount = gap * netPricePerUnit;
+                                    const netPricePerUnit =
+                                      line.orderedQuantity > 0
+                                        ? line.netAmount / line.orderedQuantity
+                                        : 0;
+                                    const gap =
+                                      line.orderedQuantity -
+                                      line.allocatedQuantity;
+                                    const varianceAmount =
+                                      gap * netPricePerUnit;
                                     return (
-                                    <tr
-                                      key={li}
-                                      className="border-b dark:border-zinc-800/50 last:border-0 hover:bg-muted/20"
-                                    >
-                                      <td className="py-1.5 pl-2 pr-1 text-muted-foreground">
-                                        <span className="block truncate">{line.brandName}</span>
-                                      </td>
-                                      <td className="py-1.5 px-1 text-muted-foreground">
-                                        <span className="block truncate">{line.categoryName}</span>
-                                      </td>
-                                      <td className="py-1.5 px-1 font-medium">
-                                        <span className="block truncate" title={line.productName}>{line.productName}</span>
-                                      </td>
-                                      <td className="py-1.5 px-1 text-muted-foreground">{line.unit}</td>
-                                      <td className="py-1.5 px-1 text-right tabular-nums">₱{numFmt(netPricePerUnit)}</td>
-                                      <td className="py-1.5 px-1 text-right tabular-nums">{numFmt(line.orderedQuantity)}</td>
-                                      <td className="py-1.5 px-1 text-right tabular-nums text-emerald-600 dark:text-emerald-400">{numFmt(line.allocatedQuantity)}</td>
-                                      <td className="py-1.5 px-1 text-right tabular-nums">
-                                        {gap > 0 ? (
-                                          <span className="text-rose-600 dark:text-rose-400 font-medium">{numFmt(gap)}</span>
-                                        ) : (
-                                          <span className="text-emerald-600 dark:text-emerald-400">—</span>
-                                        )}
-                                      </td>
-                                      <td className="py-1.5 pl-1 pr-2 text-right tabular-nums">
-                                        {varianceAmount > 0 ? (
-                                          <span className="text-rose-600 dark:text-rose-400 font-medium">₱{numFmt(varianceAmount)}</span>
-                                        ) : (
-                                          <span className="text-emerald-600 dark:text-emerald-400">—</span>
-                                        )}
-                                      </td>
-                                    </tr>
+                                      <tr
+                                        key={li}
+                                        className="border-b dark:border-zinc-800/50 last:border-0 hover:bg-muted/20"
+                                      >
+                                        <td className="py-1.5 pl-2 pr-1 text-muted-foreground">
+                                          <span className="block truncate">
+                                            {line.brandName}
+                                          </span>
+                                        </td>
+                                        <td className="py-1.5 px-1 text-muted-foreground">
+                                          <span className="block truncate">
+                                            {line.categoryName}
+                                          </span>
+                                        </td>
+                                        <td className="py-1.5 px-1 font-medium">
+                                          <span
+                                            className="block truncate"
+                                            title={line.productName}
+                                          >
+                                            {line.productName}
+                                          </span>
+                                        </td>
+                                        <td className="py-1.5 px-1 text-muted-foreground">
+                                          {line.unit}
+                                        </td>
+                                        <td className="py-1.5 px-1 text-right tabular-nums">
+                                          ₱{numFmt(netPricePerUnit)}
+                                        </td>
+                                        <td className="py-1.5 px-1 text-right tabular-nums">
+                                          {numFmt(line.orderedQuantity)}
+                                        </td>
+                                        <td className="py-1.5 px-1 text-right tabular-nums text-emerald-600 dark:text-emerald-400">
+                                          {numFmt(line.allocatedQuantity)}
+                                        </td>
+                                        <td className="py-1.5 px-1 text-right tabular-nums">
+                                          {gap === 0 ? (
+                                            <span className="text-emerald-600 dark:text-emerald-400">
+                                              —
+                                            </span>
+                                          ) : (
+                                            <span
+                                              className={`tabular-nums font-medium ${
+                                                gap > 0
+                                                  ? "text-rose-600 dark:text-rose-400"
+                                                  : "text-emerald-600 dark:text-emerald-400"
+                                              }`}
+                                            >
+                                              {numFmt(gap)}
+                                            </span>
+                                          )}
+                                        </td>
+                                        <td className="py-1.5 pl-1 pr-2 text-right tabular-nums">
+                                          {varianceAmount === 0 ? (
+                                            <span className="text-emerald-600 dark:text-emerald-400">
+                                              —
+                                            </span>
+                                          ) : (
+                                            <span
+                                              className={`tabular-nums font-medium ${
+                                                varianceAmount > 0
+                                                  ? "text-rose-600 dark:text-rose-400"
+                                                  : "text-emerald-600 dark:text-emerald-400"
+                                              }`}
+                                            >
+                                              ₱{numFmt(varianceAmount)}
+                                            </span>
+                                          )}
+                                        </td>
+                                      </tr>
                                     );
                                   })}
                                 </tbody>
@@ -966,10 +1044,10 @@ export function TopProductsTab({ productSummaries, filteredData }: Props) {
         </CardContent>
 
         {/* Pagination */}
-        <div className="flex items-center justify-between px-4 py-4 border-t dark:border-zinc-700">
+        <div className="flex items-center justify-between px-4 py-4 border-t ">
           <div className="flex items-center gap-4">
             <select
-              className="h-8 rounded-md border border-input bg-background px-3 py-1 text-sm dark:border-zinc-700"
+              className="h-8 rounded-md border border-input bg-background px-3 py-1 text-sm "
               value={itemsPerPage}
               onChange={(e) => {
                 setItemsPerPage(Number(e.target.value));
@@ -990,7 +1068,7 @@ export function TopProductsTab({ productSummaries, filteredData }: Props) {
           {totalPages > 1 && (
             <div className="flex gap-1">
               <button
-                className="inline-flex items-center justify-center rounded-md border border-input bg-background px-3 h-8 text-sm dark:border-zinc-700 disabled:opacity-50"
+                className="inline-flex items-center justify-center rounded-md border border-input bg-background px-3 h-8 text-sm  disabled:opacity-50"
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
               >
@@ -1007,7 +1085,7 @@ export function TopProductsTab({ productSummaries, filteredData }: Props) {
                 return (
                   <button
                     key={pageNum}
-                    className={`inline-flex items-center justify-center rounded-md border px-3 h-8 text-sm dark:border-zinc-700 ${currentPage === pageNum ? "bg-primary text-primary-foreground border-primary" : "border-input bg-background"}`}
+                    className={`inline-flex items-center justify-center rounded-md border px-3 h-8 text-sm  ${currentPage === pageNum ? "bg-primary text-primary-foreground border-primary" : "border-input bg-background"}`}
                     onClick={() => setCurrentPage(pageNum)}
                   >
                     {pageNum}
@@ -1015,7 +1093,7 @@ export function TopProductsTab({ productSummaries, filteredData }: Props) {
                 );
               })}
               <button
-                className="inline-flex items-center justify-center rounded-md border border-input bg-background px-3 h-8 text-sm dark:border-zinc-700 disabled:opacity-50"
+                className="inline-flex items-center justify-center rounded-md border border-input bg-background px-3 h-8 text-sm  disabled:opacity-50"
                 onClick={() =>
                   setCurrentPage((p) => Math.min(totalPages, p + 1))
                 }

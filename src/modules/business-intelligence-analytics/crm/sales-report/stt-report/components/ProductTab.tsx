@@ -446,7 +446,7 @@ function ProductTabComponent({ productSummaries }: ProductTabProps) {
                     />
                   </TableHead>
                   <TableHead
-                    className="w-30or-pointer hover:text-foreground text-right"
+                    className="w-30 or-pointer hover:text-foreground text-right"
                     onClick={() => toggleSort("totalDiscount")}
                   >
                     Discount

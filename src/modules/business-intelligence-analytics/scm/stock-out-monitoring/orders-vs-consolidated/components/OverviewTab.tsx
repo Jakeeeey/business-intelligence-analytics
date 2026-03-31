@@ -278,7 +278,7 @@ function CustomXAxisTick({
     </g>
   );
 }
- // eslint-disable-next-line @typescript-eslint/no-unused-vars
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function CustomYAxisTick({
   x,
   y,
@@ -420,7 +420,7 @@ export function OverviewTab({
   const [selectedProduct, setSelectedProduct] = React.useState<string | null>(
     null,
   );
-   // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [selectedSupplier, setSelectedSupplier] = React.useState<string | null>(
     null,
   );
@@ -486,7 +486,7 @@ export function OverviewTab({
     },
     [productSummaries],
   );
- // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleSupplierBarClick = React.useCallback(
     (data: { supplierName: string }) => {
       const name = data.supplierName;
@@ -580,7 +580,7 @@ export function OverviewTab({
   return (
     <div className="space-y-4">
       {/* ── Orders Trend (Area/Line Chart) ── */}
-      <Card className="border-muted dark:border-zinc-700 dark:bg-white/13">
+      <Card className="border-muted ">
         <CardHeader>
           <CardTitle>Orders Trend</CardTitle>
           <CardDescription>
@@ -592,7 +592,7 @@ export function OverviewTab({
                 key={g}
                 size="sm"
                 variant={granularity === g ? "default" : "outline"}
-                className="dark:border-zinc-700"
+                className=""
                 onClick={() => setGranularity(g)}
               >
                 {GRANULARITY_LABELS[g]}
@@ -704,7 +704,7 @@ export function OverviewTab({
       {/* ── Orders by Status (Donut) + Pending Orders by Supplier ── */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         {/* Status Donut */}
-        <Card className="lg:col-span-2 border-muted dark:border-zinc-700 dark:bg-white/13">
+        <Card className="lg:col-span-2 border-muted ">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Orders by Status</CardTitle>
             <CardDescription>
@@ -763,7 +763,7 @@ export function OverviewTab({
         </Card>
 
         {/* Pending Orders by Supplier — Summary Card */}
-        <Card className="lg:col-span-3 border-muted dark:border-zinc-700 dark:bg-white/13">
+        <Card className="lg:col-span-3 border-muted ">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <div>
@@ -818,7 +818,7 @@ export function OverviewTab({
       </div>
 
       {/* ── Orders by Category (Bar) ── */}
-      <Card className="border-muted dark:border-zinc-700 dark:bg-white/13">
+      <Card className="border-muted ">
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
             <div>
@@ -831,7 +831,7 @@ export function OverviewTab({
               <Button
                 variant="outline"
                 size="sm"
-                className="dark:border-zinc-700"
+                className=""
                 onClick={() => setSelectedCategory(null)}
               >
                 Clear
@@ -893,13 +893,13 @@ export function OverviewTab({
                       }
                       valueKey="totalOrdered"
                       nameKey="name"
-                      valueLabel="Qty Ordered"
+                      valueLabel="Quantity Ordered"
                     />
                   )}
                 />
                 <Bar
                   dataKey="totalOrdered"
-                  name="Qty Ordered"
+                  name="Quantity Ordered"
                   radius={[4, 4, 0, 0]}
                   onMouseEnter={(data) => setHoveredBar(`cat::${data.name}`)}
                   onMouseLeave={() => setHoveredBar(null)}
@@ -926,7 +926,7 @@ export function OverviewTab({
       </Card>
 
       {/* ── Top Products by Qty Ordered (Bar) ── */}
-      <Card className="border-muted dark:border-zinc-700 dark:bg-white/13">
+      <Card className="border-muted ">
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
             <div>
@@ -942,7 +942,7 @@ export function OverviewTab({
                 <Button
                   variant="outline"
                   size="sm"
-                  className="dark:border-zinc-700"
+                  className=""
                   onClick={() => setSelectedProduct(null)}
                 >
                   Clear
@@ -1013,13 +1013,13 @@ export function OverviewTab({
                       }
                       valueKey="totalOrdered"
                       nameKey="productName"
-                      valueLabel="Qty Ordered"
+                      valueLabel="Quantity Ordered"
                     />
                   )}
                 />
                 <Bar
                   dataKey="totalOrdered"
-                  name="Qty Ordered"
+                  name="Quantity Ordered"
                   radius={[4, 4, 0, 0]}
                   onMouseEnter={(data) =>
                     setHoveredBar(`prod::${data.productName}`)
@@ -1057,7 +1057,7 @@ export function OverviewTab({
           }
         }}
       >
-        <DialogContent className="max-w-md dark:border-zinc-700">
+        <DialogContent className="max-w-md ">
           <DialogHeader>
             <DialogTitle className="leading-snug">
               {productModal?.productName}
@@ -1076,7 +1076,7 @@ export function OverviewTab({
               />
               <InsightStat label="Unit" value={productModal.unit || "—"} />
               <InsightStat
-                label="Qty Ordered"
+                label="Quantity Ordered"
                 value={numFmt(productModal.totalOrdered)}
               />
               <InsightStat
@@ -1135,7 +1135,7 @@ export function OverviewTab({
                           yAxisId="left"
                           type="monotone"
                           dataKey="totalOrdered"
-                          name="Qty Ordered"
+                          name="Quantity Ordered"
                           stroke={COLORS.total}
                           strokeWidth={2}
                           dot={false}
@@ -1177,7 +1177,7 @@ export function OverviewTab({
           }
         }}
       >
-        <DialogContent className="max-w-md dark:border-zinc-700">
+        <DialogContent className="max-w-md ">
           <DialogHeader>
             <DialogTitle>{supplierModal?.supplierName}</DialogTitle>
             <DialogDescription>Quick supplier insights</DialogDescription>
@@ -1213,7 +1213,7 @@ export function OverviewTab({
                 )}
               />
               <InsightStat
-                label="Qty Ordered"
+                label="Quantity Ordered"
                 value={numFmt(supplierModal.totalOrdered)}
               />
               <InsightStat
@@ -1240,7 +1240,7 @@ export function OverviewTab({
           }
         }}
       >
-        <DialogContent className="max-w-md dark:border-zinc-700">
+        <DialogContent className="max-w-md ">
           <DialogHeader>
             <DialogTitle>{categoryModal?.name}</DialogTitle>
             <DialogDescription>Quick category insights</DialogDescription>
@@ -1248,7 +1248,7 @@ export function OverviewTab({
           {categoryModal && (
             <div className="space-y-0.5 pt-1">
               <InsightStat
-                label="Total Ordered Qty"
+                label="Total Ordered Quantity"
                 value={numFmt(categoryModal.totalOrdered)}
               />
               <InsightStat

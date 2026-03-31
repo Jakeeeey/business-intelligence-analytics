@@ -57,7 +57,7 @@ export async function fetchProductSalesData(
   if (startDate) params.append("startDate", startDate);
   if (endDate) params.append("endDate", endDate);
 
-  const url = `/api/bia/sales-report/product-sales-performance${
+  const url = `/api/bia/crm/sales-report/product-sales-performance${
     params.toString() ? `?${params.toString()}` : ""
   }`;
 
