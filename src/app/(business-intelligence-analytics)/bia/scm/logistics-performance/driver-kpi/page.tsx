@@ -102,16 +102,16 @@ export default async function Page() {
                                 </BreadcrumbItem>
                                 <BreadcrumbSeparator className="hidden md:block shrink-0" />
                                 <BreadcrumbItem className="hidden md:block shrink-0">
-                                    <BreadcrumbLink>CRM</BreadcrumbLink>
+                                    <BreadcrumbLink>SCM</BreadcrumbLink>
                                 </BreadcrumbItem>
                                 <BreadcrumbSeparator className="hidden md:block shrink-0" />
                                 <BreadcrumbItem className="hidden md:block shrink-0">
-                                    <BreadcrumbLink>Sales Report</BreadcrumbLink>
+                                    <BreadcrumbLink>Logistics Performance</BreadcrumbLink>
                                 </BreadcrumbItem>
                                 <BreadcrumbSeparator className="hidden md:block shrink-0" />
                                 <BreadcrumbItem className="min-w-0 overflow-hidden">
                                     <BreadcrumbPage className="truncate max-w-[56vw] sm:max-w-[60vw] md:max-w-none">
-                                        Product Returns Performance
+                                        Driver KPI
                                     </BreadcrumbPage>
                                 </BreadcrumbItem>
                             </BreadcrumbList>
