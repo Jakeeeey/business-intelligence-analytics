@@ -312,17 +312,17 @@ export function useSTTReport(opts?: { prefetchKeysOnly?: boolean }) {
             "Session expired. Please log in again. Redirecting in 3 seconds...",
             {
               id: loadingToast,
-              duration: 4000,
+              duration: 3000,
             },
           );
 
           activeToastRef.current = null;
           // No Token or Invalid Token case: redirect to login after showing toast
-          // if (typeof window !== "undefined")
+          if (typeof window !== "undefined")
 
-          //   setTimeout(() => {
-          //     window.location.href = "/login";
-          //   }, 3000);
+            setTimeout(() => {
+              window.location.href = "/login";
+            }, 3000);
           return;
         }
 

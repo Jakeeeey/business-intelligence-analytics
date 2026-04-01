@@ -164,7 +164,7 @@ export function Filters(props: FiltersProps) {
 
               {/* Action buttons */}
               <div className="flex justify-end gap-2">
-                <Button onClick={onLoad} disabled={loading} size="sm">
+                <Button onClick={onLoad}  size="sm">
                   {loading ? "Loading..." : "Generate Report"}
                 </Button>
                 <Button
