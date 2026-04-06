@@ -208,9 +208,9 @@ export function LeadTimeTable({ rows, loading }: Props) {
               ].map((s) => (
                 <span
                   key={s.key}
-                  className={`inline-flex items-center px-3 py-0.5 rounded-md text-xs ${getStatusColor(
+                  className={`inline-flex items-center px-3 py-0.5 rounded-md text-xs  ${getStatusColor(
                     s.key,
-                  )} ${s.key === "pending" ? "border border-border" : ""}`}
+                  )} ${s.key === "pending" ? "border border-border " : ""}`}
                 >
                   {s.label}
                 </span>
@@ -227,7 +227,7 @@ export function LeadTimeTable({ rows, loading }: Props) {
           </div>
         </div>
 
-        <Table className="border">
+        <Table className="border rounded-2xl">
           <TableHeader className="bg-muted">
             <TableRow>
               <TableHead

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Check, ChevronsUpDown, X } from "lucide-react";
+import { Check, ChevronsUpDown } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 
@@ -22,7 +22,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { Badge } from "@/components/ui/badge";
+// Badge component removed (active filters are commented out)
 import { cn } from "@/lib/utils";
 
 import type {
@@ -66,14 +66,16 @@ export function Filters({
   //     onChange({ ...filters, [key]: value, dateRangePreset: "custom" });
   //   };
 
-  // Multi-select: choose one or more products. Normalize ids to string so
-  // removing/contains checks work regardless of numeric/string id shapes.
-  const toggleProduct = (option: LeadTimeProductOption) => {
+  // Single-select: choose one product. Normalize id to string so checks work
+  // regardless of numeric/string id shapes. Selecting the same product will
+  // clear the selection.
+  const selectProduct = (option: LeadTimeProductOption) => {
     const id = String(option.id);
     const current = (filters.productIds ?? []).map(String);
     const exists = current.includes(id);
-    const next = exists ? current.filter((i) => i !== id) : [...current, id];
+    const next = exists ? [] : [id];
     onChange({ ...filters, productIds: next });
+    setProductOpen(false);
   };
 
   const selectedIdSet = new Set((filters.productIds ?? []).map(String));
@@ -160,9 +162,7 @@ export function Filters({
                   >
                     {selectedProducts.length === 0
                       ? "Select Product"
-                      : selectedProducts.length === 1
-                        ? `${selectedProducts[0].name}${selectedProducts[0].code ? ` (${selectedProducts[0].code})` : ""}`
-                        : `${selectedProducts.length} selected`}
+                      : `${selectedProducts[0].name}${selectedProducts[0].code ? ` (${selectedProducts[0].code})` : ""}`}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
@@ -190,7 +190,7 @@ export function Filters({
                               <CommandItem
                                 key={product.id}
                                 value={`${product.name} ${product.code ?? ""}`}
-                                onSelect={() => toggleProduct(product)}
+                                onSelect={() => selectProduct(product)}
                               >
                                 <Check
                                   className={cn(
@@ -219,7 +219,16 @@ export function Filters({
                   </Command>
                 </PopoverContent>
               </Popover>
-              <Button onClick={onApply} className="shrink-0">
+              <Button
+                onClick={onApply}
+                className="shrink-0"
+                disabled={(filters.productIds ?? []).length === 0}
+                title={
+                  (filters.productIds ?? []).length === 0
+                    ? "Select a product to enable"
+                    : undefined
+                }
+              >
                 {loadingData ? (
                   <span className="flex items-center">
                     <Spinner className="h-4 w-4 mr-2" /> Loading...
@@ -235,41 +244,42 @@ export function Filters({
             </div>
           </div>
         </div>
-
-        {/* Active product indicators */}
-        {selectedProducts.length > 0 && (
-          <div className="pt-2 border-t">
-            <Label className="text-xs">Active Filters</Label>
-            <div className="flex flex-wrap gap-2 mt-2">
-              {selectedProducts.map((p) => (
-                <Badge key={p.id} variant="secondary" className="gap-1">
-                  <span className="truncate">{p.name}</span>
-                  <button
-                    type="button"
-                    aria-label={`Remove ${p.name}`}
-                    className="ml-1 inline-flex h-5 w-5 items-center justify-center rounded-full p-0 hover:bg-muted/10 focus:outline-none cursor-pointer"
-                    onClick={() => {
-                      const next = (filters.productIds ?? [])
-                        .map(String)
-                        .filter((id) => id !== String(p.id));
-                      onChange({ ...filters, productIds: next });
-                    }}
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </Badge>
-              ))}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onChange({ ...filters, productIds: [] })}
-                className="ml-1"
-              >
-                Clear
-              </Button>
+        {/*
+          Active product indicators (commented out per request)
+          {selectedProducts.length > 0 && (
+            <div className="pt-2 border-t">
+              <Label className="text-xs">Active Filters</Label>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {selectedProducts.map((p) => (
+                  <Badge key={p.id} variant="secondary" className="gap-1">
+                    <span className="truncate">{p.name}</span>
+                    <button
+                      type="button"
+                      aria-label={`Remove ${p.name}`}
+                      className="ml-1 inline-flex h-5 w-5 items-center justify-center rounded-full p-0 hover:bg-muted/10 focus:outline-none cursor-pointer"
+                      onClick={() => {
+                        const next = (filters.productIds ?? [])
+                          .map(String)
+                          .filter((id) => id !== String(p.id));
+                        onChange({ ...filters, productIds: next });
+                      }}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onChange({ ...filters, productIds: [] })}
+                  className="ml-1"
+                >
+                  Clear
+                </Button>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        */}
       </CardContent>
     </Card>
   );

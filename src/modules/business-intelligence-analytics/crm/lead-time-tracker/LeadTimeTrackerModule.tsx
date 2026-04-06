@@ -8,6 +8,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 // import { Spinner } from "@/components/ui/spinner";
 
 import { Filters } from "./components/Filters";
+import KPICards from "./components/KPICards";
 import { LeadTimeTable } from "./components/LeadTimeTable";
 import { useLeadTimeReport } from "./hooks/useLeadTimeReport";
 
@@ -64,6 +65,8 @@ export default function LeadTimeTrackerModule() {
           </CardContent>
         </Card>
       ) : null} */}
+
+      <KPICards rows={hook.rows} loading={hook.loadingData} />
 
       <LeadTimeTable rows={hook.rows} loading={hook.loadingData} />
     </div>

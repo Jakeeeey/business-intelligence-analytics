@@ -42,9 +42,11 @@ export async function fetchLeadTimeProducts(
   // `directusCollection` query param is provided.
   const directusParams = new URLSearchParams({
     directusCollection: "products",
-    // Request only common product fields we map below to reduce payload
-    fields:
-      "id,name,productName,product_name,productId,product_id,productCode,product_code,label,description",
+    // Request only the Directus `product_name` field to keep payload minimal
+    // and match the Directus collection shape at http://goatedcodoer:8091/items/products
+    fields: "product_name",
+    // Request all items
+    limit: "-1",
   });
 
   const res = await fetch(
