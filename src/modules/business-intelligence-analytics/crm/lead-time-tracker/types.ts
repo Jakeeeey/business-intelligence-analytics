@@ -3,9 +3,21 @@
 export type DateRangePreset =
   | "yesterday"
   | "today"
+  | "day-before-yesterday"
   | "this-week"
+  | "last-week"
+  | "last-7-days"
+  | "last-2-weeks"
   | "this-month"
+  | "last-month"
+  | "last-30-days"
+  | "last-2-months"
+  | "this-quarter"
+  | "last-quarter"
+  | "last-3-months"
+  | "last-2-quarters"
   | "this-year"
+  | "last-year"
   | "custom";
 
 export type LeadTimeFilters = {
