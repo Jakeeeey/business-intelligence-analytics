@@ -864,7 +864,7 @@ export function OverviewTab({
                 />
                 <YAxis
                   domain={[0, "auto"]}
-                  width={getYAxisWidth(aggregatedPeriods) - 90}
+                  width={getYAxisWidth(aggregatedPeriods) - 60}
                   tickFormatter={fmt}
                 />
                 <ChartTooltip
