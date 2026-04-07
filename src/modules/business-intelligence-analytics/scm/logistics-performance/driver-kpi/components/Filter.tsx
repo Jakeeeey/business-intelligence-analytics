@@ -1,5 +1,5 @@
 "use client";
-
+import { format } from "date-fns";
 import React, { useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/popover";
 
 export default function Filter() {
+  const { lastSync } = useDriverKPI();
   const { filters, setFilters, drivers, loading, refresh } = useDriverKPI();
   const [localStart, setLocalStart] = useState<string | undefined>(
     filters.startDate,
@@ -59,6 +60,28 @@ export default function Filter() {
     );
   }, [driverGroups, filters.driverNames]);
 
+  const ACTIVE_DISPLAY_LIMIT = 5;
+
+  const displaySelectedDrivers = useMemo(() => {
+    if (!selectedDrivers || selectedDrivers.length <= ACTIVE_DISPLAY_LIMIT)
+      return selectedDrivers;
+    // Order selected driver groups by the order of raw values in filters.driverNames,
+    // preferring the most-recently added raws (iterate from end) and dedup groups.
+    const rawList = filters.driverNames || [];
+    const seen = new Set<string>();
+    const ordered: typeof selectedDrivers = [];
+    for (let i = rawList.length - 1; i >= 0; i--) {
+      const raw = rawList[i];
+      const group = driverGroups.find((g) => g.raws.includes(raw));
+      if (group && !seen.has(group.id)) {
+        ordered.push(group);
+        seen.add(group.id);
+      }
+    }
+    // `ordered` is latest-first; take the first ACTIVE_DISPLAY_LIMIT items.
+    return ordered.slice(0, ACTIVE_DISPLAY_LIMIT);
+  }, [selectedDrivers, filters.driverNames, driverGroups]);
+
   const isThisMonth = useMemo(() => {
     if (!filters.startDate || !filters.endDate) return false;
     const now = new Date();
@@ -85,23 +108,25 @@ export default function Filter() {
   }
 
   function toggleDriverGroup(raws: string[]) {
-    const current = new Set(filters.driverNames || []);
-    const anySelected = raws.some((r) => current.has(r));
-    if (anySelected) {
-      // remove all raws for this group
-      setFilters({
-        driverNames: (filters.driverNames || []).filter(
-          (r) => !raws.includes(r),
-        ),
-      });
-    } else {
+    // Use functional update to avoid races when toggling quickly
+    setFilters((prev) => {
+      const current = new Set(prev.driverNames || []);
+      const anySelected = raws.some((r) => current.has(r));
+      if (anySelected) {
+        // remove all raws for this group
+        return {
+          driverNames: (prev.driverNames || []).filter(
+            (r) => !raws.includes(r),
+          ),
+        };
+      }
       // add all raws for this group
-      setFilters({
+      return {
         driverNames: Array.from(
-          new Set([...(filters.driverNames || []), ...raws]),
+          new Set([...(prev.driverNames || []), ...raws]),
         ),
-      });
-    }
+      };
+    });
   }
 
   function selectAllVisible() {
@@ -452,24 +477,67 @@ export default function Filter() {
             </PopoverContent>
           </Popover>
         </div>
+      </div>
+      <div className=" flex justify-between w-full">
+        <div className="">
+          {/* Active filters (below filter bar) */}
+          {selectedDrivers.length > 0 && (
+            <div className="w-full mt-2 flex items-center gap-2 flex-wrap">
+              {(displaySelectedDrivers || []).map((s) => (
+                <Badge key={s.id} className="flex items-center gap-2">
+                  <span className="max-w-40 md:max-w-48 truncate">
+                    {s.label}
+                  </span>
+                  <button
+                    onClick={() => toggleDriverGroup(s.raws)}
+                    aria-label={`Remove ${s.label}`}
+                    className="ml-1 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              ))}
 
-        {/* Active filters (below filter bar) */}
-        {selectedDrivers.length > 0 && (
-          <div className="w-full mt-2 flex items-center gap-2 flex-wrap">
-            {selectedDrivers.map((s) => (
-              <Badge key={s.id} className="flex items-center gap-2">
-                <span className="max-w-40 md:max-w-48 truncate">{s.label}</span>
-                <button
-                  onClick={() => toggleDriverGroup(s.raws)}
-                  aria-label={`Remove ${s.label}`}
-                  className="ml-1 text-muted-foreground hover:text-foreground"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </Badge>
-            ))}
-          </div>
-        )}
+              {selectedDrivers.length > ACTIVE_DISPLAY_LIMIT && (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Badge className="cursor-pointer">
+                      {`${selectedDrivers.length - ACTIVE_DISPLAY_LIMIT} more`}
+                    </Badge>
+                  </PopoverTrigger>
+                  <PopoverContent align="start" className="w-64 p-3">
+                    <div className="space-y-1 max-h-56 overflow-auto">
+                      {selectedDrivers.map((s) => (
+                        <div
+                          key={s.id}
+                          className="flex items-center justify-between gap-2 px-2 py-1 rounded"
+                        >
+                          <span className="text-sm truncate">{s.label}</span>
+                          <button
+                            onClick={() => toggleDriverGroup(s.raws)}
+                            aria-label={`Remove ${s.label}`}
+                            className="ml-1 text-muted-foreground hover:text-foreground"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div>
+          <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
+            Last Sync
+          </p>
+          <p className="text-xs font-mono text-foreground">
+            {lastSync ? format(new Date(lastSync), "HH:mm:ss") : "--:--:--"}
+          </p>
+        </div>
       </div>
     </>
   );

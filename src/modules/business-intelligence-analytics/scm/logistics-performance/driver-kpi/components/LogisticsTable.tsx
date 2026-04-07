@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState, useMemo } from "react";
+import React, { useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
@@ -11,16 +11,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useDriverKPI } from "../hooks/useDriverKPI";
-import { Button } from "@/components/ui/button";
 import { ChevronUpIcon, ChevronDownIcon } from "lucide-react";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { DELAY_THRESHOLDS } from "../utils/constants";
 import { formatDateTime, formatDurationFromMinutes } from "../utils/formatters";
 
@@ -52,43 +43,24 @@ function varianceMinutes(estimated?: string | null, actual?: string | null) {
 //   return `${sign}${abs} min`;
 // }
 
-export default function LogisticsTable() {
-  const { data, filters, setFilters } = useDriverKPI();
-  const [page, setPage] = useState<number>(1);
-  const [limit, setLimit] = useState<number>(20);
-
-  const [sortKey, setSortKey] = useState<string | null>(null);
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
-
-  function toggleSort(key: string) {
-    if (sortKey === key) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    } else {
-      setSortKey(key);
-      setSortDir("asc");
-    }
-  }
+export default function LogisticsTable({
+  page,
+  limit,
+  sortKey,
+  sortDir,
+  onToggleSort,
+  sortOrder,
+}: {
+  page: number;
+  limit: number;
+  sortKey: string | null;
+  sortDir: "asc" | "desc";
+  onToggleSort: (key: string) => void;
+  sortOrder?: string[] | null;
+}) {
+  const { data, filters } = useDriverKPI();
 
   // reset page when core filters change so users see first page of new results
-  const driverNamesKey = (filters.driverNames || []).join(",");
-  useEffect(() => {
-    const id = window.setTimeout(() => setPage(1), 0);
-    return () => window.clearTimeout(id);
-  }, [filters.startDate, filters.endDate, driverNamesKey, filters.searchCustomer]);
-
-  const [localSearch, setLocalSearch] = useState<string>(
-    filters.searchCustomer ?? "",
-  );
-  const debounceRef = useRef<number | undefined>(undefined);
-
-  useEffect(() => {
-    // debounce applying the search to global filters to avoid too many calls
-    window.clearTimeout(debounceRef.current);
-    debounceRef.current = window.setTimeout(() => {
-      setFilters({ searchCustomer: localSearch || undefined });
-    }, 400);
-    return () => window.clearTimeout(debounceRef.current);
-  }, [localSearch, setFilters]);
 
   // deduplicate identical visit records (same DP + timestamps) to avoid repeated rows
   const dedupedData = (() => {
@@ -103,8 +75,6 @@ export default function LogisticsTable() {
     }
     return out;
   })();
-
-  
 
   const rows = (dedupedData || []).filter((r) => {
     if (filters.fulfillmentStatus)
@@ -138,6 +108,24 @@ export default function LogisticsTable() {
 
   const sortedRows = useMemo(() => {
     const arr = rows.slice();
+    // If parent provided a canonical sort order for dispatch documents,
+    // apply that ordering first so both tables remain in sync.
+    if (sortOrder && sortOrder.length > 0) {
+      const idx = new Map<string, number>();
+      sortOrder.forEach((dp, i) => idx.set(dp, i));
+      arr.sort((a, b) => {
+        const ia = idx.has(a.dispatchDocumentNo ?? "")
+          ? idx.get(a.dispatchDocumentNo ?? "")!
+          : Number.MAX_SAFE_INTEGER;
+        const ib = idx.has(b.dispatchDocumentNo ?? "")
+          ? idx.get(b.dispatchDocumentNo ?? "")!
+          : Number.MAX_SAFE_INTEGER;
+        if (ia !== ib) return ia - ib;
+        return 0;
+      });
+      return arr;
+    }
+
     if (!sortKey) return arr;
     arr.sort((a, b) => {
       let va: unknown = undefined;
@@ -156,8 +144,16 @@ export default function LogisticsTable() {
           vb = b.timeOfDispatch;
           break;
         case "dispatchVariance": {
-          va = varianceMinutes(a.estimatedTimeOfDispatch, a.timeOfDispatch) ?? (typeof a.dispatchVarianceHours === "number" ? Math.round(a.dispatchVarianceHours * 60) : null);
-          vb = varianceMinutes(b.estimatedTimeOfDispatch, b.timeOfDispatch) ?? (typeof b.dispatchVarianceHours === "number" ? Math.round(b.dispatchVarianceHours * 60) : null);
+          va =
+            varianceMinutes(a.estimatedTimeOfDispatch, a.timeOfDispatch) ??
+            (typeof a.dispatchVarianceHours === "number"
+              ? Math.round(a.dispatchVarianceHours * 60)
+              : null);
+          vb =
+            varianceMinutes(b.estimatedTimeOfDispatch, b.timeOfDispatch) ??
+            (typeof b.dispatchVarianceHours === "number"
+              ? Math.round(b.dispatchVarianceHours * 60)
+              : null);
           break;
         }
         case "estimatedArrival":
@@ -169,8 +165,16 @@ export default function LogisticsTable() {
           vb = b.returnTimeOfArrival;
           break;
         case "arrivalVariance": {
-          va = varianceMinutes(a.estimatedTimeOfArrival, a.returnTimeOfArrival) ?? (typeof a.arrivalVarianceHours === "number" ? Math.round(a.arrivalVarianceHours * 60) : null);
-          vb = varianceMinutes(b.estimatedTimeOfArrival, b.returnTimeOfArrival) ?? (typeof b.arrivalVarianceHours === "number" ? Math.round(b.arrivalVarianceHours * 60) : null);
+          va =
+            varianceMinutes(a.estimatedTimeOfArrival, a.returnTimeOfArrival) ??
+            (typeof a.arrivalVarianceHours === "number"
+              ? Math.round(a.arrivalVarianceHours * 60)
+              : null);
+          vb =
+            varianceMinutes(b.estimatedTimeOfArrival, b.returnTimeOfArrival) ??
+            (typeof b.arrivalVarianceHours === "number"
+              ? Math.round(b.arrivalVarianceHours * 60)
+              : null);
           break;
         }
         default:
@@ -183,7 +187,14 @@ export default function LogisticsTable() {
       if (vb == null) return sortDir === "asc" ? -1 : 1;
 
       // dates
-      if (["estimatedDispatch", "actualDispatch", "estimatedArrival", "actualArrival"].includes(sortKey!)) {
+      if (
+        [
+          "estimatedDispatch",
+          "actualDispatch",
+          "estimatedArrival",
+          "actualArrival",
+        ].includes(sortKey!)
+      ) {
         const na = new Date(String(va)).getTime();
         const nb = new Date(String(vb)).getTime();
         if (isNaN(na) && isNaN(nb)) return 0;
@@ -204,58 +215,145 @@ export default function LogisticsTable() {
       return sortDir === "asc" ? sa.localeCompare(sb) : sb.localeCompare(sa);
     });
     return arr;
-  }, [rows, sortKey, sortDir]);
+  }, [rows, sortKey, sortDir, sortOrder]);
 
   return (
-    <Card>
-      <CardContent className="p-4 py-0">
-        <div className="flex flex-col gap-4">
-          <div>
-            <h3 className="text-lg font-medium">Logistics Performance</h3>
-            <span className="text-muted-foreground">Monitors dispatch efficiency by comparing planned vs. actual timelines, highlighting delays and operational performance across all deliveries.</span>
-          </div>
+    <Card className="h-full">
+      <CardContent className="flex h-full flex-col p-4 py-0">
+        <div className="flex items-center justify-between pb-4 ">
+          <div className="flex flex-col gap-4">
+            <div>
+              <h3 className="text-lg font-medium">Logistics Performance</h3>
+              <span className="text-muted-foreground">
+                Monitors dispatch efficiency by comparing planned vs. actual
+                timelines, highlighting delays and operational performance
+                across all deliveries.
+              </span>
+            </div>
 
-          <div className="flex items-center gap-2 ">
-            <div className="w-80">
-              <input
-                placeholder="Search DP No, customer, address, truck..."
-                value={localSearch}
-                onChange={(e) => setLocalSearch(e.target.value)}
-                className="h-9 w-full rounded-md border px-3 text-sm"
-              />
-            </div>
-            <div className="text-sm text-muted-foreground">
-              {rows.length} records
-              {/* <span className="mx-2">•</span>
-              Last sync: {lastSync ? formatDateTime(lastSync) : "-"} */}
-            </div>
+            {/* <div className="flex items-center gap-2 ">
+              <div className="text-sm text-muted-foreground">
+                {rows.length} records
+              </div>
+            </div> */}
           </div>
         </div>
         <div className="overflow-x-auto mt-3">
           <div className="bg-background rounded-md border border-border/50 overflow-hidden">
             <Table>
               <TableHeader className="sticky top-0 z-10 bg-card shadow-sm ring-1 ring-border">
-                <TableRow className="bg-card">
+                <TableRow className="bg-muted/40 h-10">
                   <TableHead className="w-25">
-                    <button type="button" className="inline-flex items-center gap-1" onClick={() => toggleSort("dp")}>DP No.{sortKey === "dp" && (sortDir === "asc" ? <ChevronUpIcon className="size-4" /> : <ChevronDownIcon className="size-4" />)}</button>
+                    <button
+                      type="button"
+                      title="Dispatch Plan Number"
+                      className="inline-flex items-center gap-1"
+                      onClick={() => onToggleSort("dp")}
+                    >
+                      DP No.
+                      {sortKey === "dp" &&
+                        (sortDir === "asc" ? (
+                          <ChevronUpIcon className="size-4" />
+                        ) : (
+                          <ChevronDownIcon className="size-4" />
+                        ))}
+                    </button>
                   </TableHead>
                   <TableHead className="w-45">
-                    <button type="button" className="inline-flex items-center gap-1" onClick={() => toggleSort("estimatedDispatch")}>Estimated Dispatch{sortKey === "estimatedDispatch" && (sortDir === "asc" ? <ChevronUpIcon className="size-4" /> : <ChevronDownIcon className="size-4" />)}</button>
+                    <button
+                      type="button"
+                      title="Estimated Dispatch Time"
+                      className="inline-flex items-center gap-1"
+                      onClick={() => onToggleSort("estimatedDispatch")}
+                    >
+                      Est Disp
+                      {sortKey === "estimatedDispatch" &&
+                        (sortDir === "asc" ? (
+                          <ChevronUpIcon className="size-4" />
+                        ) : (
+                          <ChevronDownIcon className="size-4" />
+                        ))}
+                    </button>
                   </TableHead>
                   <TableHead className="w-45">
-                    <button type="button" className="inline-flex items-center gap-1" onClick={() => toggleSort("actualDispatch")}>Actual Dispatch{sortKey === "actualDispatch" && (sortDir === "asc" ? <ChevronUpIcon className="size-4" /> : <ChevronDownIcon className="size-4" />)}</button>
+                    <button
+                      type="button"
+                      title="Actual Dispatch Time"
+                      className="inline-flex items-center gap-1"
+                      onClick={() => onToggleSort("actualDispatch")}
+                    >
+                      Act Disp
+                      {sortKey === "actualDispatch" &&
+                        (sortDir === "asc" ? (
+                          <ChevronUpIcon className="size-4" />
+                        ) : (
+                          <ChevronDownIcon className="size-4" />
+                        ))}
+                    </button>
                   </TableHead>
-                  <TableHead className="w-45">
-                    <button type="button" className="inline-flex items-center gap-1" onClick={() => toggleSort("dispatchVariance")}>Dispatch Variance{sortKey === "dispatchVariance" && (sortDir === "asc" ? <ChevronUpIcon className="size-4" /> : <ChevronDownIcon className="size-4" />)}</button>
+                  <TableHead className="w-30">
+                    <button
+                      type="button"
+                      title="Dispatch Variance"
+                      className="inline-flex items-center gap-1"
+                      onClick={() => onToggleSort("dispatchVariance")}
+                    >
+                      Disp Var
+                      {sortKey === "dispatchVariance" &&
+                        (sortDir === "asc" ? (
+                          <ChevronUpIcon className="size-4" />
+                        ) : (
+                          <ChevronDownIcon className="size-4" />
+                        ))}
+                    </button>
                   </TableHead>
-                  <TableHead className="w-45">
-                    <button type="button" className="inline-flex items-center gap-1" onClick={() => toggleSort("estimatedArrival")}>Estimated Arrival{sortKey === "estimatedArrival" && (sortDir === "asc" ? <ChevronUpIcon className="size-4" /> : <ChevronDownIcon className="size-4" />)}</button>
+                  <TableHead className="w-40">
+                    <button
+                      type="button"
+                      title="Estimated Arrival Time"
+                      className="inline-flex items-center gap-1"
+                      onClick={() => onToggleSort("estimatedArrival")}
+                    >
+                      Est Arr
+                      {sortKey === "estimatedArrival" &&
+                        (sortDir === "asc" ? (
+                          <ChevronUpIcon className="size-4" />
+                        ) : (
+                          <ChevronDownIcon className="size-4" />
+                        ))}
+                    </button>
                   </TableHead>
-                  <TableHead className="w-45">
-                    <button type="button" className="inline-flex items-center gap-1" onClick={() => toggleSort("actualArrival")}>Actual Arrival{sortKey === "actualArrival" && (sortDir === "asc" ? <ChevronUpIcon className="size-4" /> : <ChevronDownIcon className="size-4" />)}</button>
+                  <TableHead className="w-40">
+                    <button
+                      type="button"
+                      title="Actual Arrival Time"
+                      className="inline-flex items-center gap-1"
+                      onClick={() => onToggleSort("actualArrival")}
+                    >
+                      Act Arr
+                      {sortKey === "actualArrival" &&
+                        (sortDir === "asc" ? (
+                          <ChevronUpIcon className="size-4" />
+                        ) : (
+                          <ChevronDownIcon className="size-4" />
+                        ))}
+                    </button>
                   </TableHead>
                   <TableHead className="w-35">
-                    <button type="button" className="inline-flex items-center gap-1" onClick={() => toggleSort("arrivalVariance")}>Arrival Variance{sortKey === "arrivalVariance" && (sortDir === "asc" ? <ChevronUpIcon className="size-4" /> : <ChevronDownIcon className="size-4" />)}</button>
+                    <button
+                      type="button"
+                      title="Arrival Variance"
+                      className="inline-flex items-center gap-1"
+                      onClick={() => onToggleSort("arrivalVariance")}
+                    >
+                      Arr Var
+                      {sortKey === "arrivalVariance" &&
+                        (sortDir === "asc" ? (
+                          <ChevronUpIcon className="size-4" />
+                        ) : (
+                          <ChevronDownIcon className="size-4" />
+                        ))}
+                    </button>
                   </TableHead>
                 </TableRow>
               </TableHeader>
@@ -313,22 +411,22 @@ export default function LogisticsTable() {
                     return (
                       <TableRow
                         key={`${r.dispatchPlanId}-${startIndex + idx}`}
-                        className={`border-t ${
-                            String(r.fulfillmentStatus || "")
-                              .toLowerCase()
-                              .includes("unful") ||
-                            String(r.fulfillmentStatus || "")
-                              .toLowerCase()
-                              .includes("fail") ||
-                            String(r.fulfillmentStatus || "")
-                              .toLowerCase()
-                              .includes("cancel") ||
-                            String(r.fulfillmentStatus || "")
-                              .toLowerCase()
-                              .includes("partial")
-                              ? "bg-rose-50 dark:bg-rose-900/20"
-                              : ""
-                          }`}
+                        className={`border-t h-12.5 ${
+                          String(r.fulfillmentStatus || "")
+                            .toLowerCase()
+                            .includes("unful") ||
+                          String(r.fulfillmentStatus || "")
+                            .toLowerCase()
+                            .includes("fail") ||
+                          String(r.fulfillmentStatus || "")
+                            .toLowerCase()
+                            .includes("cancel") ||
+                          String(r.fulfillmentStatus || "")
+                            .toLowerCase()
+                            .includes("partial")
+                            ? "bg-rose-50 dark:bg-rose-900/20"
+                            : ""
+                        }`}
                       >
                         <TableCell className="font-mono text-xs py-3">
                           {r.dispatchDocumentNo}
@@ -360,97 +458,6 @@ export default function LogisticsTable() {
               </TableBody>
             </Table>
           </div>
-        </div>
-        {/* pagination */}
-        <div className="mt-3 flex items-center justify-between">
-          {(() => {
-            const localTotal = rows.length;
-            const safeLimit = limit > 0 ? limit : 20;
-            const totalPages = Math.max(1, Math.ceil(localTotal / safeLimit));
-            const startIndex = (page - 1) * safeLimit;
-            const endIndex = Math.min(startIndex + safeLimit, localTotal);
-
-            return (
-              <>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">
-                    Items per page
-                  </span>
-                  <Select
-                    value={String(limit)}
-                    onValueChange={(v) => {
-                      const n = Number(v);
-                      setLimit(n);
-                      setPage(1);
-                    }}
-                  >
-                    <SelectTrigger className="w-20 h-8">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        {[5, 10, 20, 30, 40, 50].map((n) => (
-                          <SelectItem key={n} value={String(n)}>
-                            {n}
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  Showing {localTotal === 0 ? 0 : startIndex + 1} - {endIndex}{" "}
-                  of {localTotal}
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setPage(Math.max(1, page - 1))}
-                      disabled={page <= 1}
-                    >
-                      Previous
-                    </Button>
-
-                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                      let pageNum: number;
-                      if (totalPages <= 5) pageNum = i + 1;
-                      else if (page <= 3) pageNum = i + 1;
-                      else if (page >= totalPages - 2)
-                        pageNum = totalPages - 4 + i;
-                      else pageNum = page - 2 + i;
-
-                      return (
-                        <Button
-                          key={pageNum}
-                          variant={page === pageNum ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => setPage(pageNum)}
-                        >
-                          {pageNum}
-                        </Button>
-                      );
-                    })}
-
-                    {totalPages > 5 && (
-                      <span className="px-1 text-sm">...</span>
-                    )}
-
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setPage(Math.min(totalPages, page + 1))}
-                      disabled={page >= totalPages}
-                    >
-                      Next
-                    </Button>
-                  </div>
-                </div>
-              </>
-            );
-          })()}
         </div>
       </CardContent>
     </Card>

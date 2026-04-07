@@ -16,7 +16,9 @@ import {
 
 type ContextValue = {
   filters: Filters;
-  setFilters: (patch: Partial<Filters>) => void;
+  setFilters: (
+    patch: Partial<Filters> | ((prev: Filters) => Partial<Filters>),
+  ) => void;
   data: VisitRecord[];
   loading: boolean;
   error?: string | null;
@@ -209,20 +211,21 @@ export const DriverKPIProvider: React.FC<React.PropsWithChildren<object>> = ({
   const driverNamesKey = (filters.driverNames || []).join(",");
 
   useEffect(() => {
-    // refresh when core filters change. Fetch the full dataset (limit=-1)
-    // so pagination can be performed client-side without triggering
-    // additional network requests when the UI page changes.
+    // refresh when core filters change (dates or driver selection).
+    // IMPORTANT: do NOT refresh on `filters.searchCustomer` so typing in
+    // the search box doesn't trigger a network request on every keystroke.
+    // Search is applied client-side against the already-fetched dataset.
     refresh({ page: 1, limit: -1 });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    filters.startDate,
-    filters.endDate,
-    driverNamesKey,
-    filters.searchCustomer,
-  ]);
+  }, [filters.startDate, filters.endDate, driverNamesKey]);
 
-  const setFilters = (patch: Partial<Filters>) =>
-    setFiltersState((prev) => ({ ...prev, ...patch }));
+  const setFilters = (
+    patch: Partial<Filters> | ((prev: Filters) => Partial<Filters>),
+  ) =>
+    setFiltersState((prev) => ({
+      ...prev,
+      ...(typeof patch === "function" ? patch(prev) : patch),
+    }));
 
   return (
     <DriverKPIContext.Provider

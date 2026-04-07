@@ -12,16 +12,10 @@ import {
 } from "@/components/ui/table";
 import { useDriverKPI } from "../hooks/useDriverKPI";
 import { ChevronRight, ChevronUpIcon, ChevronDownIcon } from "lucide-react";
-// import {
-//   Dialog,
-//   DialogContent,
-//   DialogHeader,
-//   DialogTitle,
-//   DialogDescription,
-//   DialogFooter,
-// } from "@/components/ui/dialog";
+
 import { groupByDispatch } from "../utils/calculations";
 import { formatCurrency } from "../utils/formatters";
+import type { VisitRecord } from "../types";
 
 export default function FulfillmentTable({
   page,
@@ -41,35 +35,95 @@ export default function FulfillmentTable({
   const { data, filters } = useDriverKPI();
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   // const [selectedDispatch, setSelectedDispatch] = useState<string | null>(null);
-  const groups = groupByDispatch(data || []).filter((g) => {
-    const q = (filters.searchCustomer || "").toLowerCase().trim();
-    if (!q) return true;
 
-    const dispatchMatch =
-      String(g.dispatchDocumentNo || "")
-        .toLowerCase()
-        .includes(q) ||
-      String(g.truck || "")
-        .toLowerCase()
-        .includes(q);
-    if (dispatchMatch) return true;
-
-    return g.customers.some((c) => {
-      const hay = [
-        c.customerName,
-        c.storeName,
-        c.customerCode,
-        c.brgy,
-        c.city,
-        c.province,
-        c.contactNumber,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-      return hay.includes(q);
+  // Memoized subcomponent to render customers table for an expanded group.
+  const CustomersTable = React.useMemo(() => {
+    return React.memo(function CustomersTable({
+      customers,
+    }: {
+      customers: VisitRecord[];
+    }) {
+      const rows = useMemo(
+        () =>
+          (customers || [])
+            .slice()
+            .sort((a, b) => (a.visitSequence ?? 0) - (b.visitSequence ?? 0)),
+        [customers],
+      );
+      return (
+        <div className="p-2">
+          <div className="bg-background rounded-md border border-border/50 overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/40 border-b">
+                  <TableHead>No.</TableHead>
+                  <TableHead>Customer</TableHead>
+                  <TableHead>Address</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Amount</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows.map((c, i) => (
+                  <TableRow
+                    key={i}
+                    className={`border-t ${String(c.fulfillmentStatus).toLowerCase() !== "fulfilled" ? "bg-rose-50 dark:bg-rose-900/20" : ""}`}
+                  >
+                    <TableCell className="py-2">{c.visitSequence}</TableCell>
+                    <TableCell className="py-2">{c.customerName}</TableCell>
+                    <TableCell className="py-2">
+                      {[c.brgy, c.city, c.province].filter(Boolean).join(", ")}
+                    </TableCell>
+                    <TableCell className="py-2">
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs ${String(c.fulfillmentStatus).toLowerCase() === "fulfilled" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-100" : "bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-100"}`}
+                      >
+                        {c.fulfillmentStatus}
+                      </span>
+                    </TableCell>
+                    <TableCell className="py-2">
+                      {formatCurrency(c.totalAmount)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+      );
     });
-  });
+  }, []);
+  // Memoize grouping + client-side search so we don't recompute on every render
+  const groups = useMemo(() => {
+    const q = (filters.searchCustomer || "").toLowerCase().trim();
+    const all = groupByDispatch(data || []);
+    if (!q) return all;
+    return all.filter((g) => {
+      const dispatchMatch =
+        String(g.dispatchDocumentNo ?? "")
+          .toLowerCase()
+          .includes(q) ||
+        String(g.truck ?? "")
+          .toLowerCase()
+          .includes(q);
+      if (dispatchMatch) return true;
+      return (g.customers || []).some((c) => {
+        const hay = [
+          c.customerName,
+          c.storeName,
+          c.customerCode,
+          c.brgy,
+          c.city,
+          c.province,
+          c.contactNumber,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        return hay.includes(q);
+      });
+    });
+  }, [data, filters.searchCustomer]);
 
   const sortedGroups = useMemo(() => {
     const arr = groups.slice();
@@ -192,8 +246,6 @@ export default function FulfillmentTable({
                 across operations.
               </span>
             </div>
-
-            
           </div>
         </div>
         <div className="overflow-x-auto mt-3">
@@ -440,57 +492,7 @@ export default function FulfillmentTable({
                       {expanded[g.dispatchDocumentNo] && (
                         <TableRow>
                           <TableCell colSpan={11} className="bg-muted/30">
-                            <div className="p-2">
-                              <div className="bg-background rounded-md border border-border/50 overflow-hidden">
-                                <Table>
-                                  <TableHeader>
-                                    <TableRow className="bg-muted/40 border-b">
-                                      <TableHead>No.</TableHead>
-                                      <TableHead>Customer</TableHead>
-                                      <TableHead>Address</TableHead>
-                                      <TableHead>Status</TableHead>
-                                      <TableHead>Amount</TableHead>
-                                    </TableRow>
-                                  </TableHeader>
-                                  <TableBody>
-                                    {g.customers
-                                      .sort(
-                                        (a, b) =>
-                                          (a.visitSequence ?? 0) -
-                                          (b.visitSequence ?? 0),
-                                      )
-                                      .map((c, i) => (
-                                        <TableRow
-                                          key={i}
-                                          className={`border-t ${String(c.fulfillmentStatus).toLowerCase() !== "fulfilled" ? "bg-rose-50 dark:bg-rose-900/20" : ""}`}
-                                        >
-                                          <TableCell className="py-2">
-                                            {c.visitSequence}
-                                          </TableCell>
-                                          <TableCell className="py-2">
-                                            {c.customerName}
-                                          </TableCell>
-                                          <TableCell className="py-2">
-                                            {[c.brgy, c.city, c.province]
-                                              .filter(Boolean)
-                                              .join(", ")}
-                                          </TableCell>
-                                          <TableCell className="py-2">
-                                            <span
-                                              className={`px-2 py-1 rounded-full text-xs ${String(c.fulfillmentStatus).toLowerCase() === "fulfilled" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-100" : "bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-100"}`}
-                                            >
-                                              {c.fulfillmentStatus}
-                                            </span>
-                                          </TableCell>
-                                          <TableCell className="py-2">
-                                            {formatCurrency(c.totalAmount)}
-                                          </TableCell>
-                                        </TableRow>
-                                      ))}
-                                  </TableBody>
-                                </Table>
-                              </div>
-                            </div>
+                            <CustomersTable customers={g.customers} />
                           </TableCell>
                         </TableRow>
                       )}
