@@ -297,7 +297,7 @@ function ProductTabComponent({ productSummaries }: ProductTabProps) {
   return (
     <div className="space-y-4">
       {/* Chart */}
-      <Card className="dark:border-zinc-700 dark:bg-white/13">
+      <Card className="dark:border-zinc-700 ">
         <CardHeader>
           <CardTitle>Top 10 Products by Revenue</CardTitle>
           <CardDescription>
@@ -398,7 +398,7 @@ function ProductTabComponent({ productSummaries }: ProductTabProps) {
       </Card>
 
       {/* Table */}
-      <Card className="dark:border-zinc-700 dark:bg-white/13">
+      <Card className="dark:border-zinc-700 ">
         <CardHeader>
           <CardTitle>Product Performance Table</CardTitle>
           <CardDescription>
@@ -415,7 +415,6 @@ function ProductTabComponent({ productSummaries }: ProductTabProps) {
             />
           </div>
           <div className="overflow-x-auto">
-            
             <Table className="table-fixed min-w-215">
               <TableHeader>
                 <TableRow className="dark:border-zinc-700">

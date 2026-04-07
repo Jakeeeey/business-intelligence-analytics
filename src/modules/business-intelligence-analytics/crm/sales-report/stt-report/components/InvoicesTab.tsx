@@ -782,7 +782,7 @@ function InvoicesTabComponent({
       {/* ── Trend (3/4) + Status pies (1/4) ── */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 items-stretch">
         {/* Invoice Volume & Revenue Trend — 3/4 */}
-        <Card className="dark:border-zinc-700 dark:bg-white/13 lg:col-span-3 flex flex-col">
+        <Card className="lg:col-span-3 flex flex-col">
           <CardHeader>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div>
@@ -799,7 +799,7 @@ function InvoicesTabComponent({
                   key={opt.value}
                   size="sm"
                   variant={granularity === opt.value ? "default" : "outline"}
-                  className={`h-7 px-2.5 text-xs dark:border-zinc-700 ${granularity === opt.value ? "" : "text-muted-foreground"}`}
+                  className={`h-7 px-2.5 text-xs  ${granularity === opt.value ? "" : "text-muted-foreground"}`}
                   onClick={() => setGranularity(opt.value)}
                 >
                   {opt.label}
@@ -985,7 +985,7 @@ function InvoicesTabComponent({
         {/* Right column: two pies stacked — 1/4 */}
         <div className="flex flex-col gap-4 lg:col-span-1">
           {/* Transaction Status */}
-          <Card className="dark:border-zinc-700 dark:bg-white/13">
+          <Card className=" ">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <div>
@@ -1099,7 +1099,7 @@ function InvoicesTabComponent({
           </Card>
 
           {/* Payment Status */}
-          <Card className="dark:border-zinc-700 dark:bg-white/13">
+          <Card className=" ">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <div>
@@ -1217,7 +1217,7 @@ function InvoicesTabComponent({
       </div>
 
       {/* ── Invoice Table ── */}
-      <Card className="dark:border-zinc-700 dark:bg-white/13">
+      <Card className=" ">
         <CardHeader>
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
@@ -1276,14 +1276,14 @@ function InvoicesTabComponent({
               placeholder="Search invoice, customer, salesman, branch..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="max-w-sm dark:border-zinc-700"
+              className="max-w-sm "
             />
           </div>
 
           <div className="overflow-x-auto">
             <Table className="table-fixed min-w-300">
               <TableHeader>
-                <TableRow className="dark:border-zinc-700">
+                <TableRow className="">
                   <TableHead
                     className="w-40 cursor-pointer hover:text-foreground"
                     onClick={() => toggleSort("invoiceNo")}
@@ -1424,7 +1424,7 @@ function InvoicesTabComponent({
                 {paginated.map((inv) => (
                   <TableRow
                     key={inv.invoiceId}
-                    className="dark:border-zinc-700"
+                    className=""
                   >
                     <TableCell className="overflow-hidden font-mono text-sm font-medium">
                       <span className="truncate block">
@@ -1480,7 +1480,7 @@ function InvoicesTabComponent({
           </div>
 
           {/* Pagination */}
-          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t dark:border-zinc-700">
+          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t ">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <span>Show</span>
               <select
@@ -1489,7 +1489,7 @@ function InvoicesTabComponent({
                   setPageSize(Number(e.target.value));
                   setPage(1);
                 }}
-                className="border rounded px-2 py-0.5 text-sm bg-background dark:border-zinc-700"
+                className="border rounded px-2 py-0.5 text-sm bg-background "
               >
                 {PAGE_SIZE_OPTIONS.map((n) => (
                   <option key={n} value={n}>
@@ -1507,7 +1507,7 @@ function InvoicesTabComponent({
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 px-3 dark:border-zinc-700"
+                className="h-8 px-3 "
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
               >
@@ -1527,7 +1527,7 @@ function InvoicesTabComponent({
                     key={pn}
                     variant={pn === page ? "default" : "outline"}
                     size="sm"
-                    className="h-8 w-8 p-0 dark:border-zinc-700"
+                    className="h-8 w-8 p-0 "
                     onClick={() => setPage(pn as number)}
                   >
                     {pn}
@@ -1537,7 +1537,7 @@ function InvoicesTabComponent({
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 px-3 dark:border-zinc-700"
+                className="h-8 px-3 "
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
               >

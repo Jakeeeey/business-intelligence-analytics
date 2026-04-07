@@ -108,7 +108,7 @@ export function Filters(props: FiltersProps) {
   };
 
   return (
-    <Card className="border-muted dark:border-zinc-700 dark:bg-white/13">
+    <Card className="">
       <CardContent className="p-4">
         <div className="flex flex-col gap-4">
           {/* Title Row */}
@@ -140,7 +140,7 @@ export function Filters(props: FiltersProps) {
                 ).map((preset) => (
                   <Button
                     key={preset}
-                    className="dark:border-zinc-700"
+                    className=""
                     variant={
                       filters.dateRangePreset === preset ? "default" : "outline"
                     }
@@ -195,7 +195,7 @@ export function Filters(props: FiltersProps) {
                   <Input
                     id="srs-dateFrom"
                     type="date"
-                    className="dark:border-zinc-700"
+                    className=""
                     value={filters.dateFrom}
                     onChange={(e) =>
                       onChange({ ...filters, dateFrom: e.target.value })
@@ -207,7 +207,7 @@ export function Filters(props: FiltersProps) {
                   <Input
                     id="srs-dateTo"
                     type="date"
-                    className="dark:border-zinc-700"
+                    className=""
                     value={filters.dateTo}
                     onChange={(e) =>
                       onChange({ ...filters, dateTo: e.target.value })
@@ -227,7 +227,7 @@ export function Filters(props: FiltersProps) {
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
-                    className="w-full justify-between dark:border-zinc-700"
+                    className="w-full justify-between "
                   >
                     {filters.branches.length > 0
                       ? `${filters.branches.length} selected`
@@ -235,19 +235,19 @@ export function Filters(props: FiltersProps) {
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent
-                  className="w-80 p-0 dark:border-zinc-700"
+                  className="w-80 p-0 "
                   align="start"
                 >
-                  <div className="p-2 border-b dark:border-zinc-700 dark:bg-white/13">
+                  <div className="p-2 border-b  ">
                     <Input
                       placeholder="Search branches..."
                       value={branchSearch}
                       onChange={(e) => setBranchSearch(e.target.value)}
-                      className="h-8 dark:border-zinc-700"
+                      className="h-8 "
                     />
                   </div>
                   <ScrollArea className="h-64">
-                    <div className="p-2 space-y-1 dark:bg-white/13">
+                    <div className="p-2 space-y-1 ">
                       {filteredBranches.map((branch) => (
                         <div
                           key={branch}
@@ -277,7 +277,7 @@ export function Filters(props: FiltersProps) {
                   variant="ghost"
                   size="sm"
                   onClick={() => clearFilter("branches")}
-                  className="h-6 px-2 text-xs dark:border-zinc-700"
+                  className="h-6 px-2 text-xs "
                 >
                   Clear
                 </Button>
@@ -291,7 +291,7 @@ export function Filters(props: FiltersProps) {
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
-                    className="w-full justify-between dark:border-zinc-700"
+                    className="w-full justify-between "
                   >
                     {filters.salesmen.length > 0
                       ? `${filters.salesmen.length} selected`
@@ -299,19 +299,19 @@ export function Filters(props: FiltersProps) {
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent
-                  className="w-80 p-0 dark:border-zinc-700"
+                  className="w-80 p-0 "
                   align="start"
                 >
-                  <div className="p-2 border-b dark:border-zinc-700 dark:bg-white/13">
+                  <div className="p-2 border-b  ">
                     <Input
                       placeholder="Search salesmen..."
                       value={salesmanSearch}
                       onChange={(e) => setSalesmanSearch(e.target.value)}
-                      className="h-8 dark:border-zinc-700"
+                      className="h-8 "
                     />
                   </div>
                   <ScrollArea className="h-64">
-                    <div className="p-2 space-y-1 dark:bg-white/13">
+                    <div className="p-2 space-y-1 ">
                       {filteredSalesmen.map((salesman) => (
                         <div
                           key={salesman}
@@ -341,7 +341,7 @@ export function Filters(props: FiltersProps) {
                   variant="ghost"
                   size="sm"
                   onClick={() => clearFilter("salesmen")}
-                  className="h-6 px-2 text-xs dark:border-zinc-700"
+                  className="h-6 px-2 text-xs "
                 >
                   Clear
                 </Button>
@@ -355,7 +355,7 @@ export function Filters(props: FiltersProps) {
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
-                    className="w-full justify-between dark:border-zinc-700"
+                    className="w-full justify-between "
                   >
                     {filters.statuses.length > 0
                       ? `${filters.statuses.length} selected`
@@ -363,19 +363,19 @@ export function Filters(props: FiltersProps) {
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent
-                  className="w-80 p-0 dark:border-zinc-700"
+                  className="w-80 p-0 "
                   align="start"
                 >
-                  <div className="p-2 border-b dark:border-zinc-700 dark:bg-white/13">
+                  <div className="p-2 border-b  ">
                     <Input
                       placeholder="Search statuses..."
                       value={statusSearch}
                       onChange={(e) => setStatusSearch(e.target.value)}
-                      className="h-8 dark:border-zinc-700"
+                      className="h-8 "
                     />
                   </div>
                   <ScrollArea className="h-64">
-                    <div className="p-2 space-y-1 dark:bg-white/13">
+                    <div className="p-2 space-y-1 ">
                       {filteredStatuses.map((status) => (
                         <div
                           key={status}
@@ -405,7 +405,7 @@ export function Filters(props: FiltersProps) {
                   variant="ghost"
                   size="sm"
                   onClick={() => clearFilter("statuses")}
-                  className="h-6 px-2 text-xs dark:border-zinc-700"
+                  className="h-6 px-2 text-xs "
                 >
                   Clear
                 </Button>
@@ -419,7 +419,7 @@ export function Filters(props: FiltersProps) {
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
-                    className="w-full justify-between dark:border-zinc-700"
+                    className="w-full justify-between "
                   >
                     {filters.suppliers.length > 0
                       ? `${filters.suppliers.length} selected`
@@ -427,19 +427,19 @@ export function Filters(props: FiltersProps) {
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent
-                  className="w-80 p-0 dark:border-zinc-700"
+                  className="w-80 p-0 "
                   align="start"
                 >
-                  <div className="p-2 border-b dark:border-zinc-700 dark:bg-white/13">
+                  <div className="p-2 border-b  ">
                     <Input
                       placeholder="Search suppliers..."
                       value={supplierSearch}
                       onChange={(e) => setSupplierSearch(e.target.value)}
-                      className="h-8 dark:border-zinc-700"
+                      className="h-8 "
                     />
                   </div>
                   <ScrollArea className="h-64">
-                    <div className="p-2 space-y-1 dark:bg-white/13">
+                    <div className="p-2 space-y-1 ">
                       {filteredSuppliers.map((supplier) => (
                         <div
                           key={supplier}
@@ -469,7 +469,7 @@ export function Filters(props: FiltersProps) {
                   variant="ghost"
                   size="sm"
                   onClick={() => clearFilter("suppliers")}
-                  className="h-6 px-2 text-xs dark:border-zinc-700"
+                  className="h-6 px-2 text-xs "
                 >
                   Clear
                 </Button>
