@@ -220,7 +220,7 @@ export function Filters(props: FiltersProps) {
   };
 
   return (
-    <Card className="border-muted dark:border-zinc-700 dark:bg-white/13">
+    <Card className="border-muted dark:border-zinc-700 ">
       <CardContent className="p-4">
         <div className="flex flex-col gap-4">
           {/* Title Row */}
@@ -351,7 +351,7 @@ export function Filters(props: FiltersProps) {
                   className="w-80 p-0 dark:border-zinc-700"
                   align="start"
                 >
-                  <div className="p-2 border-b dark:border-zinc-700 dark:bg-white/13">
+                  <div className="p-2 border-b dark:border-zinc-700 ">
                     <Input
                       placeholder="Search suppliers..."
                       value={supplierSearch}
@@ -360,7 +360,7 @@ export function Filters(props: FiltersProps) {
                     />
                   </div>
                   <ScrollArea className="h-64">
-                    <div className="p-4 space-y-2 dark:bg-white/13">
+                    <div className="p-4 space-y-2 ">
                       {filteredSuppliers.map((supplier) => (
                         <div
                           key={supplier}
@@ -420,7 +420,7 @@ export function Filters(props: FiltersProps) {
                   className="w-80 p-0 dark:border-zinc-700"
                   align="start"
                 >
-                  <div className="p-2 border-b dark:border-zinc-700 dark:bg-white/13">
+                  <div className="p-2 border-b dark:border-zinc-700 ">
                     <Input
                       placeholder="Search products..."
                       value={productSearch}
@@ -429,7 +429,7 @@ export function Filters(props: FiltersProps) {
                     />
                   </div>
                   <ScrollArea className="h-64">
-                    <div className="p-2 space-y-1 dark:bg-white/13">
+                    <div className="p-2 space-y-1 ">
                       {Array.from(filteredGroupedProducts.entries()).map(
                         ([group, items]) => {
                           const allSelected = items.every((item) =>
@@ -528,7 +528,7 @@ export function Filters(props: FiltersProps) {
                   className="w-80 p-0 dark:border-zinc-700"
                   align="start"
                 >
-                  <div className="p-2 border-b dark:border-zinc-700 dark:bg-white/13">
+                  <div className="p-2 border-b dark:border-zinc-700 ">
                     <Input
                       placeholder="Search brands..."
                       value={brandSearch}
@@ -537,7 +537,7 @@ export function Filters(props: FiltersProps) {
                     />
                   </div>
                   <ScrollArea className="h-64">
-                    <div className="p-4 space-y-2 dark:bg-white/13">
+                    <div className="p-4 space-y-2 ">
                       {filteredBrands.map((brand) => (
                         <div
                           key={brand}
@@ -599,7 +599,7 @@ export function Filters(props: FiltersProps) {
                   className="w-80 p-0 dark:border-zinc-700"
                   align="start"
                 >
-                  <div className="p-2 border-b dark:border-zinc-700 dark:bg-white/13">
+                  <div className="p-2 border-b dark:border-zinc-700 ">
                     <Input
                       placeholder="Search cities..."
                       value={citySearch}
@@ -608,7 +608,7 @@ export function Filters(props: FiltersProps) {
                     />
                   </div>
                   <ScrollArea className="h-64">
-                    <div className="p-2 space-y-1 dark:bg-white/13">
+                    <div className="p-2 space-y-1 ">
                       {Array.from(filteredGroupedCities.entries()).map(
                         ([, items]) =>
                           items.map((city) => (
@@ -670,7 +670,7 @@ export function Filters(props: FiltersProps) {
                   className="w-80 p-0 dark:border-zinc-700"
                   align="start"
                 >
-                  <div className="p-2 border-b dark:border-zinc-700 dark:bg-white/13">
+                  <div className="p-2 border-b dark:border-zinc-700 ">
                     <Input
                       placeholder="Search provinces..."
                       value={provinceSearch}
@@ -679,7 +679,7 @@ export function Filters(props: FiltersProps) {
                     />
                   </div>
                   <ScrollArea className="h-64">
-                    <div className="p-2 space-y-1 dark:bg-white/13">
+                    <div className="p-2 space-y-1 ">
                       {Array.from(filteredGroupedProvinces.entries()).map(
                         ([, items]) =>
                           items.map((province) => (
@@ -745,7 +745,7 @@ export function Filters(props: FiltersProps) {
                   className="w-80 p-0 dark:border-zinc-700"
                   align="start"
                 >
-                  <div className="p-2 border-b dark:border-zinc-700 dark:bg-white/13">
+                  <div className="p-2 border-b dark:border-zinc-700 ">
                     <Input
                       placeholder="Search divisions..."
                       value={divisionSearch}
@@ -754,7 +754,7 @@ export function Filters(props: FiltersProps) {
                     />
                   </div>
                   <ScrollArea className="h-64">
-                    <div className="p-2 space-y-1 dark:bg-white/13">
+                    <div className="p-2 space-y-1 ">
                       {Array.from(filteredGroupedDivisions.entries()).map(
                         ([, items]) =>
                           items.map((division) => (
@@ -817,7 +817,7 @@ export function Filters(props: FiltersProps) {
                   className="w-80 p-0 dark:border-zinc-700"
                   align="start"
                 >
-                  <div className="p-2 border-b dark:border-zinc-700 dark:bg-white/13">
+                  <div className="p-2 border-b dark:border-zinc-700 ">
                     <Input
                       placeholder="Search operations..."
                       value={operationSearch}
@@ -826,7 +826,7 @@ export function Filters(props: FiltersProps) {
                     />
                   </div>
                   <ScrollArea className="h-64">
-                    <div className="p-2 space-y-1 dark:bg-white/13">
+                    <div className="p-2 space-y-1 ">
                       {Array.from(filteredGroupedOperations.entries()).map(
                         ([, items]) =>
                           items.map((operation) => (
@@ -889,7 +889,7 @@ export function Filters(props: FiltersProps) {
                   className="w-80 p-0 dark:border-zinc-700"
                   align="start"
                 >
-                  <div className="p-2 border-b dark:border-zinc-700 dark:bg-white/13">
+                  <div className="p-2 border-b dark:border-zinc-700 ">
                     <Input
                       placeholder="Search salesmen..."
                       value={salesmanSearch}
@@ -898,7 +898,7 @@ export function Filters(props: FiltersProps) {
                     />
                   </div>
                   <ScrollArea className="h-64">
-                    <div className="p-2 space-y-1 dark:bg-white/13">
+                    <div className="p-2 space-y-1 ">
                       {Array.from(filteredGroupedSalesmen.entries()).map(
                         ([, items]) =>
                           items.map((salesman) => (
