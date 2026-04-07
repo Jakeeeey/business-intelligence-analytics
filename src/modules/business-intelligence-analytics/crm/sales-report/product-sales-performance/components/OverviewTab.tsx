@@ -761,7 +761,7 @@ export function OverviewTab({
       )}
 
       {/* Revenue Trend */}
-      <Card className="dark:border-zinc-700 dark:bg-white/13">
+      <Card className="dark:border-zinc-700 ">
         <CardHeader>
           <CardTitle>Revenue Trend Over Time</CardTitle>
           <CardDescription>Monthly revenue performance</CardDescription>
@@ -854,7 +854,7 @@ export function OverviewTab({
             className="h-75 w-full"
           >
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={aggregatedPeriods}>
+              <LineChart data={aggregatedPeriods} >
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis
                   dataKey="period"
@@ -864,7 +864,7 @@ export function OverviewTab({
                 />
                 <YAxis
                   domain={[0, "auto"]}
-                  width={getYAxisWidth(aggregatedPeriods)}
+                  width={getYAxisWidth(aggregatedPeriods) - 90}
                   tickFormatter={fmt}
                 />
                 <ChartTooltip
@@ -943,7 +943,7 @@ export function OverviewTab({
 
       {/* Top Products & Suppliers */}
       <div className="grid gap-4 sm:block lg:grid-cols-2 ">
-        <Card className="dark:border-zinc-700 dark:bg-white/13">
+        <Card className="dark:border-zinc-700 ">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
@@ -967,7 +967,7 @@ export function OverviewTab({
           <CardContent>
             <ChartContainer
               config={{ revenue: { label: "Revenue", color: "#3b82f6" } }}
-              className="h-87.5 w-full"
+              className="h-75 w-full"
             >
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={topProducts.slice(0, 10)} layout="vertical">
@@ -978,7 +978,10 @@ export function OverviewTab({
                     tickFormatter={fmt}
                   />
                   <YAxis
+                  
+                  domain={[0, "auto"]}
                     width={getYAxisWidth(topProducts)}
+                    
                     dataKey="name"
                     type="category"
                     tickFormatter={(v) => v.substring(0, 20)}
@@ -1048,7 +1051,7 @@ export function OverviewTab({
           </CardContent>
         </Card>
 
-        <Card className="dark:border-zinc-700 dark:bg-white/13">
+        <Card className="dark:border-zinc-700 ">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
@@ -1157,7 +1160,7 @@ export function OverviewTab({
       {/* Top Customers & Locations */}
       <div className="grid gap-4 lg:grid-cols-2">
         {revenueByCustomer.length > 0 && (
-          <Card className="dark:border-zinc-700 dark:bg-white/13">
+          <Card className="dark:border-zinc-700 ">
             <CardHeader>
               <CardTitle>Top 10 Customers by Revenue</CardTitle>
               <CardDescription>
@@ -1182,7 +1185,7 @@ export function OverviewTab({
                       dataKey="name"
                       type="category"
                       tickFormatter={(v: string) =>
-                        v.length > 22 ? v.slice(0, 22) + "..." : v
+                        v.length > 22 ? v.slice(0, 22) : v
                       }
                       onClick={(data: { value?: string }) => {
                         const name = data?.value;
@@ -1250,7 +1253,7 @@ export function OverviewTab({
           </Card>
         )}
         {revenueByLocation.length > 0 && (
-          <Card className="dark:border-zinc-700 dark:bg-white/13">
+          <Card className="dark:border-zinc-700 ">
             <CardHeader>
               <CardTitle>Top 10 Locations by Revenue</CardTitle>
               <CardDescription>
@@ -1346,7 +1349,7 @@ export function OverviewTab({
 
       {/* Revenue by Salesman */}
       {revenueBySalesman.length > 0 && (
-        <Card className="dark:border-zinc-700 dark:bg-white/13">
+        <Card className="dark:border-zinc-700 ">
           <CardHeader>
             <CardTitle>Revenue by Salesman</CardTitle>
             <CardDescription>Top 15 salesmen by revenue</CardDescription>
@@ -1363,7 +1366,7 @@ export function OverviewTab({
                     dataKey="name"
                     angle={-45}
                     textAnchor="end"
-                    height={120}
+                    height={100}
                     interval={0}
                     tick={{ fontSize: 11, fill: "#64748b" }}
                     tickFormatter={(v: string) =>
@@ -1387,7 +1390,7 @@ export function OverviewTab({
                   />
                   <YAxis
                     domain={[0, "auto"]}
-                    width={getYAxisWidth(revenueBySalesman)}
+                    width={getYAxisWidth(revenueBySalesman)- 80}
                     tickFormatter={fmt}
                   />
                   <ChartTooltip
@@ -1443,7 +1446,7 @@ export function OverviewTab({
       {/* Revenue by Division & Operation */}
       <div className="grid gap-4 lg:grid-cols-2">
         {revenueByDivision.length > 0 && (
-          <Card className="dark:border-zinc-700 dark:bg-white/13">
+          <Card className="dark:border-zinc-700 ">
             <CardHeader>
               <CardTitle>Revenue by Division</CardTitle>
               <CardDescription>
@@ -1462,7 +1465,7 @@ export function OverviewTab({
                       dataKey="name"
                       angle={-45}
                       textAnchor="end"
-                      height={120}
+                      height={70}
                       interval={0}
                       tick={{ fontSize: 11, fill: "#64748b" }}
                       tickFormatter={(v: string) =>
@@ -1486,7 +1489,7 @@ export function OverviewTab({
                     />
                     <YAxis
                       domain={[0, "auto"]}
-                      width={getYAxisWidth(revenueByDivision)}
+                      width={getYAxisWidth(revenueByDivision)-80}
                       tickFormatter={fmt}
                     />
                     <ChartTooltip
@@ -1539,7 +1542,7 @@ export function OverviewTab({
           </Card>
         )}
         {revenueByOperation.length > 0 && (
-          <Card className="dark:border-zinc-700 dark:bg-white/13">
+          <Card className="dark:border-zinc-700 ">
             <CardHeader>
               <CardTitle>Revenue by Operation</CardTitle>
               <CardDescription>
@@ -1558,7 +1561,7 @@ export function OverviewTab({
                       dataKey="name"
                       angle={-45}
                       textAnchor="end"
-                      height={120}
+                      height={70}
                       interval={0}
                       tick={{ fontSize: 11, fill: "#64748b" }}
                       tickFormatter={(v: string) =>
@@ -1582,7 +1585,7 @@ export function OverviewTab({
                     />
                     <YAxis
                       domain={[0, "auto"]}
-                      width={getYAxisWidth(revenueByOperation)}
+                      width={getYAxisWidth(revenueByOperation)-80}
                       tickFormatter={fmt}
                     />
                     <ChartTooltip
