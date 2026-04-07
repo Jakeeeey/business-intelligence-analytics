@@ -332,7 +332,7 @@ export function Filters(props: FiltersProps) {
           </div>
 
           {/* Row 1: Supplier + Product */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-3">
             {/* Suppliers */}
             <div className="space-y-2">
               <Label>Suppliers</Label>
@@ -726,7 +726,7 @@ export function Filters(props: FiltersProps) {
           </div>
 
           {/* Row 3: Division + Operation + Salesman */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-3">
             {/* Divisions */}
             <div className="space-y-2">
               <Label>Divisions</Label>
