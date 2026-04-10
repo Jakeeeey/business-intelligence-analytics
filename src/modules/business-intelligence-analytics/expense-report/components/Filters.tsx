@@ -35,8 +35,8 @@ import type {
   ExportFormat,
   DisbursementRecord,
 } from "../type";
-import PdfLivePreview from "./PdfLivePreview";
-import type { ExportOptions } from "@/modules/business-intelligence-analytics/expense-report/utils/exportPDF";
+
+// import type { ExportOptions } from "@/modules/business-intelligence-analytics/expense-report/utils/exportPDF";
 
 type FiltersProps = {
   records: DisbursementRecord[];
@@ -55,8 +55,7 @@ type FiltersProps = {
 };
 
 export default function Filters({
-  records,
-  userName,
+
   filters,
   onFiltersChange,
   filterOptions,
@@ -73,7 +72,7 @@ export default function Filters({
     "coa",
   );
   const [exportDialogOpen, setExportDialogOpen] = React.useState(false);
-  const [previewDialogOpen, setPreviewDialogOpen] = React.useState(false);
+  // const [previewDialogOpen, setPreviewDialogOpen] = React.useState(false);
 
   const handleDatePresetChange = (preset: DateRangePreset) => {
     const today = new Date();
@@ -179,38 +178,7 @@ export default function Filters({
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
-            <Dialog
-              open={previewDialogOpen}
-              onOpenChange={setPreviewDialogOpen}
-            >
-              <DialogTrigger asChild>
-                <Button variant="outline" size="sm">
-                  Live Preview
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>PDF Live Preview</DialogTitle>
-                  <DialogDescription>
-                    Preview the generated PDF for the current filters.
-                  </DialogDescription>
-                </DialogHeader>
-                <PdfLivePreview
-                  options={
-                    {
-                      records: records,
-                      filters,
-                      format: exportFormat,
-                      groupBy: exportGroupBy,
-                      userName,
-                      companyName: "",
-                    } as ExportOptions
-                  }
-                />
-              </DialogContent>
-            </Dialog>
-
-            <Dialog open={exportDialogOpen} onOpenChange={setExportDialogOpen}>
+           <Dialog open={exportDialogOpen} onOpenChange={setExportDialogOpen}>
               <DialogTrigger asChild>
                 <Button variant="default" size="sm">
                   <Download className="mr-2 h-4 w-4" />
@@ -398,7 +366,7 @@ export default function Filters({
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-2">
           {/* Employee/Payee */}
           <div className="space-y-1">
-            <Label className="text-xs">Employee/Payee Name</Label>
+            <Label className="text-xs">Payee Name</Label>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
@@ -409,7 +377,7 @@ export default function Filters({
                   <span className="truncate">
                     {filters.employees.length > 0
                       ? `${filters.employees.length} selected`
-                      : "All Employees"}
+                      : "All Payees"}
                   </span>
                   <ChevronDown className="ml-2 h-4 w-4 shrink-0" />
                 </Button>
@@ -417,7 +385,7 @@ export default function Filters({
               <PopoverContent className="w-full p-0" align="start">
                 <div className="p-2">
                   <Input
-                    placeholder="Search employees..."
+                    placeholder="Search payees..."
                     value={employeeSearch}
                     onChange={(e) => setEmployeeSearch(e.target.value)}
                   />
@@ -426,7 +394,7 @@ export default function Filters({
                   <div className="p-2 space-y-1">
                     {filteredEmployees.length === 0 ? (
                       <p className="text-sm text-muted-foreground text-center py-2">
-                        No employees found
+                        No payees found
                       </p>
                     ) : (
                       filteredEmployees.map((employee) => (

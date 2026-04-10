@@ -62,7 +62,7 @@ export type ExpenseKpis = {
   totalPaidAmount: number;
   outstandingBalance: number;
   totalTransactions: number;
-  totalLineTransaction:number;
+  totalLineTransaction: number;
   postedTransactions: number;
   pendingApprovalsCount: number;
   taxWithholdingImpact: number; // placeholder
@@ -97,6 +97,11 @@ export type DisbursementSummary = {
   totalAmount: number;
   paidAmount: number;
   balance?: number;
+  /** Header-level totals for the whole document (not COA-sliced) */
+  totalAmountHeader?: number;
+  paidAmountHeader?: number;
+  /** Sum of line amounts for this COA slice (used for COA subtotals) */
+  coaLineTotal?: number;
   transactionDate: string;
   status: string; // "Posted" | "Pending" | "Pending"
   encoderName: string;
