@@ -172,7 +172,7 @@ export default function Filters({
       <CardHeader>
         <div className="flex items-start justify-between">
           <div>
-            <CardTitle>Disbursement Report</CardTitle>
+            <CardTitle className="text-xl">Disbursement Report</CardTitle>
             <CardDescription>
               Centralized tracking and analysis of all disbursement transactions
             </CardDescription>
