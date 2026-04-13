@@ -14,7 +14,7 @@ import { cookies } from "next/headers";
 
 // ✅ Wire the actual module
 // import ComingSoon from "../../../_components/ComingSoon";
-import DriverKPIModule from "../../../../../../modules/business-intelligence-analytics/scm/logistics-performance/driver-kpi/DriverKPIModule";
+import DriverKPIModule from "../../../../../../modules/business-intelligence-analytics/scm/logistics-performance/driver-kpi-tab/DriverKPIModule";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

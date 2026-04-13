@@ -16,18 +16,13 @@ import {
 
 type ContextValue = {
   filters: Filters;
-  setFilters: (
-    patch: Partial<Filters> | ((prev: Filters) => Partial<Filters>),
-  ) => void;
+  setFilters: (patch: Partial<Filters>) => void;
   data: VisitRecord[];
   loading: boolean;
   error?: string | null;
   drivers: DriverOption[];
   refresh: (opts?: { page?: number; limit?: number }) => Promise<void>;
-  page: number;
-  setPage: (p: number) => void;
-  limit: number;
-  setLimit: (n: number) => void;
+
   total: number;
   prevData?: VisitRecord[];
   lastSync?: string;
@@ -68,8 +63,7 @@ export const DriverKPIProvider: React.FC<React.PropsWithChildren<object>> = ({
   const [drivers, setDrivers] = useState<DriverOption[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [page, setPage] = useState<number>(1);
-  const [limit, setLimit] = useState<number>(20);
+
   const [total, setTotal] = useState<number>(0);
   const [lastSync, setLastSync] = useState<string | undefined>(undefined);
   // track the active toast id so we can update/dismiss it safely
@@ -103,8 +97,7 @@ export const DriverKPIProvider: React.FC<React.PropsWithChildren<object>> = ({
   const refresh = async (opts?: { page?: number; limit?: number }) => {
     setLoading(true);
     setError(null);
-    const p = opts?.page ?? page;
-    const l = opts?.limit ?? limit;
+
     try {
       if (activeToastRef.current != null) {
         // dismiss the previous toast explicitly by id to avoid leaving stale toasts
@@ -130,59 +123,44 @@ export const DriverKPIProvider: React.FC<React.PropsWithChildren<object>> = ({
         startDate: filters.startDate,
         endDate: filters.endDate,
         driverNames: filters.driverNames,
-        page: p,
-        limit: l,
+
         search: filters.searchCustomer,
       });
 
       setData(r.rows ?? []);
       setTotal(r.total ?? 0);
 
-      // If we explicitly fetched the full dataset (limit === -1), keep the
-      // UI page/limit as-is (client-side pagination). Otherwise update page/limit
-      // from the server response.
-      if (opts?.limit === -1) {
-        setPage(opts?.page ?? 1);
-        // do not override `limit` when fetching all rows
-      } else {
-        setPage(r.page ?? p);
-        setLimit(r.limit ?? l);
-      }
-
       const now = new Date().toISOString();
       setLastSync(now);
-      // fetch prev period for comparison (if available) and only show success after both finish
+
+      // fetch prev period for comparison (if available) but do not await it --
+      // run in background so large previous-period requests don't block UI
       const prev = computePrevRange(filters.startDate, filters.endDate);
       if (prev) {
-        try {
-          const prevRes = await fetchDriverCustomerVisits({
-            startDate: prev.start,
-            endDate: prev.end,
-            driverNames: filters.driverNames,
-            limit: -1,
-          });
-          setPrevData(prevRes.rows ?? []);
-        } catch (prevErr) {
-          // don't fail the whole refresh if prev fetch fails; surface as a warning toast
-          const prevMsg =
-            prevErr instanceof Error ? prevErr.message : String(prevErr);
-          if (activeToastRef.current != null) {
-            toast.warning("Previous-period data unavailable", {
-              id: activeToastRef.current,
-              description: prevMsg,
+        (async () => {
+          try {
+            const prevRes = await fetchDriverCustomerVisits({
+              startDate: prev.start,
+              endDate: prev.end,
+              driverNames: filters.driverNames,
+              limit: -1,
             });
-          } else {
+            setPrevData(prevRes.rows ?? []);
+          } catch (prevErr) {
+            const prevMsg =
+              prevErr instanceof Error ? prevErr.message : String(prevErr);
+            // show a non-blocking warning if prev fails
             toast.warning("Previous-period data unavailable", {
               description: prevMsg,
             });
+            setPrevData(undefined);
           }
-          setPrevData(undefined);
-        }
+        })();
       } else {
         setPrevData(undefined);
       }
 
-      // Only mark success after both current and prev (if applicable) complete
+      // Mark success immediately after current dataset loads (prev fetch continues in background)
       if (activeToastRef.current != null) {
         toast.success(`Data loaded (${periodText} · ${driverText})`, {
           id: activeToastRef.current,
@@ -211,22 +189,19 @@ export const DriverKPIProvider: React.FC<React.PropsWithChildren<object>> = ({
   const driverNamesKey = (filters.driverNames || []).join(",");
 
   useEffect(() => {
-    // refresh when core filters change (dates or driver selection).
-    // IMPORTANT: do NOT refresh on `filters.searchCustomer` so typing in
-    // the search box doesn't trigger a network request on every keystroke.
-    // Search is applied client-side against the already-fetched dataset.
+    // refresh when core filters change. Fetch the full dataset (limit=-1)
+    // so pagination can be performed client-side without triggering
+    // additional network requests when the UI page changes.
     refresh({ page: 1, limit: -1 });
+  }, [
+    filters.startDate,
+    filters.endDate,
+    driverNamesKey,
+    filters.searchCustomer,
+  ]);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters.startDate, filters.endDate, driverNamesKey]);
-
-  const setFilters = (
-    patch: Partial<Filters> | ((prev: Filters) => Partial<Filters>),
-  ) =>
-    setFiltersState((prev) => ({
-      ...prev,
-      ...(typeof patch === "function" ? patch(prev) : patch),
-    }));
+  const setFilters = (patch: Partial<Filters>) =>
+    setFiltersState((prev) => ({ ...prev, ...patch }));
 
   return (
     <DriverKPIContext.Provider
@@ -238,10 +213,7 @@ export const DriverKPIProvider: React.FC<React.PropsWithChildren<object>> = ({
         error,
         drivers,
         refresh,
-        page,
-        setPage,
-        limit,
-        setLimit,
+
         total,
         prevData,
         lastSync,
