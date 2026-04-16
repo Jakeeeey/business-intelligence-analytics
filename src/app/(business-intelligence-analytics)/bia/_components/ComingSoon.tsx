@@ -1,4 +1,4 @@
-// src/app/(scm)/scm/_components/ComingSoon.tsx
+// src/app/(supply-chain-management)/scm/_components/ComingSoon.tsx
 import * as React from "react";
 
 import {

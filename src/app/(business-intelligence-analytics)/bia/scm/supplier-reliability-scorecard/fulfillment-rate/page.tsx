@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/breadcrumb";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { NavUser } from "@/app/(business-intelligence-analytics)/bia/_components/nav-user";
+import { NavUser } from "@/components/shared/app-sidebar/nav-user";
 
 import FulfillmentRatePage from "@/modules/business-intelligence-analytics/scm/supplier-reliability-scorecard/fulfillment-rate/FulfillmentRatePage";
 import { ScmFilterProvider } from "@/modules/business-intelligence-analytics/scm/supplier-reliability-scorecard/fulfillment-rate/providers/ScmFilterProvider";
