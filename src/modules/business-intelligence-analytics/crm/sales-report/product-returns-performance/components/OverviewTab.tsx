@@ -306,7 +306,7 @@ function QuickInsightModal({
         if (!o) onClose();
       }}
     >
-      <DialogContent className="max-w-xl p-0 gap-0 overflow-hidden dark:border-zinc-700">
+      <DialogContent className="max-w-xl p-0 gap-0 overflow-hidden ">
         <DialogHeader className="px-6 pt-6 pb-4 space-y-1">
           <div className="flex items-start gap-3 pr-6">
             <div
@@ -1115,7 +1115,7 @@ export function OverviewTab({
       )}
 
       {/* Return Trend */}
-      <Card className="dark:border-zinc-700 dark:bg-white/13">
+      <Card className="dark:border-zinc-700 ">
         <CardHeader>
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
@@ -1357,7 +1357,7 @@ export function OverviewTab({
 
       {/* Top Products & Suppliers */}
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card className="dark:border-zinc-700 dark:bg-white/13">
+        <Card className="dark:border-zinc-700 ">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
@@ -1462,7 +1462,7 @@ export function OverviewTab({
           </CardContent>
         </Card>
 
-        <Card className="dark:border-zinc-700 dark:bg-white/13">
+        <Card className="dark:border-zinc-700 ">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
@@ -1571,7 +1571,7 @@ export function OverviewTab({
       {/* Top Customers & Locations */}
       <div className="grid gap-4 lg:grid-cols-2">
         {topCustomers.length > 0 && (
-          <Card className="dark:border-zinc-700 dark:bg-white/13">
+          <Card className="dark:border-zinc-700 ">
             <CardHeader>
               <CardTitle>Top 10 Customers by Return Value</CardTitle>
               <CardDescription>
@@ -1658,7 +1658,7 @@ export function OverviewTab({
           </Card>
         )}
         {topLocations.length > 0 && (
-          <Card className="dark:border-zinc-700 dark:bg-white/13">
+          <Card className="dark:border-zinc-700 ">
             <CardHeader>
               <CardTitle>Top 10 Locations by Return Value</CardTitle>
               <CardDescription>
@@ -1748,7 +1748,7 @@ export function OverviewTab({
 
       {/* Returns by Salesman */}
       {returnsBySalesman.length > 0 && (
-        <Card className="dark:border-zinc-700 dark:bg-white/13">
+        <Card className="dark:border-zinc-700 ">
           <CardHeader>
             <CardTitle>Return Value by Salesman</CardTitle>
             <CardDescription>Top 15 salesmen by return value</CardDescription>
@@ -1767,7 +1767,7 @@ export function OverviewTab({
                     dataKey="name"
                     angle={-45}
                     textAnchor="end"
-                    height={100}
+                    height={80}
                     interval={0}
                     tick={{ fontSize: 11, fill: "#64748b" }}
                     tickFormatter={(v: string) =>
@@ -1791,7 +1791,7 @@ export function OverviewTab({
                   />
                   <YAxis
                     domain={[0, "auto"]}
-                    width={getYAxisWidth(returnsBySalesman)}
+                    width={getYAxisWidth(returnsBySalesman)-40}
                     tickFormatter={fmt}
                   />
                   <ChartTooltip
@@ -1843,7 +1843,7 @@ export function OverviewTab({
       {/* Returns by Division & Operation */}
       <div className="grid gap-4 lg:grid-cols-2">
         {returnsByDivision.length > 0 && (
-          <Card className="dark:border-zinc-700 dark:bg-white/13">
+          <Card className="dark:border-zinc-700 ">
             <CardHeader>
               <CardTitle>Return Value by Division</CardTitle>
               <CardDescription>
@@ -1864,11 +1864,11 @@ export function OverviewTab({
                       dataKey="name"
                       angle={-45}
                       textAnchor="end"
-                      height={120}
+                      height={80}
                       interval={0}
                       tick={{ fontSize: 11, fill: "#64748b" }}
                       tickFormatter={(v: string) =>
-                        v.length > 20 ? v.slice(0, 20) + "" : v
+                        v.length > 35 ? v.slice(0, 35) + "" : v
                       }
                       onClick={(d: { value?: string }) => {
                         const name = d?.value;
@@ -1888,7 +1888,7 @@ export function OverviewTab({
                     />
                     <YAxis
                       domain={[0, "auto"]}
-                      width={getYAxisWidth(returnsByDivision)}
+                      width={getYAxisWidth(returnsByDivision)-40}
                       tickFormatter={fmt}
                     />
                     <ChartTooltip
@@ -1937,7 +1937,7 @@ export function OverviewTab({
           </Card>
         )}
         {returnsByOperation.length > 0 && (
-          <Card className="dark:border-zinc-700 dark:bg-white/13">
+          <Card className="dark:border-zinc-700 ">
             <CardHeader>
               <CardTitle>Return Value by Operation</CardTitle>
               <CardDescription>
@@ -1958,11 +1958,11 @@ export function OverviewTab({
                       dataKey="name"
                       angle={-45}
                       textAnchor="end"
-                      height={120}
+                      height={80}
                       interval={0}
                       tick={{ fontSize: 11, fill: "#64748b" }}
                       tickFormatter={(v: string) =>
-                        v.length > 20 ? v.slice(0, 20) + "" : v
+                        v.length > 35 ? v.slice(0, 35) + "" : v
                       }
                       onClick={(d: { value?: string }) => {
                         const name = d?.value;
@@ -1982,7 +1982,7 @@ export function OverviewTab({
                     />
                     <YAxis
                       domain={[0, "auto"]}
-                      width={getYAxisWidth(returnsByOperation)}
+                      width={getYAxisWidth(returnsByOperation)-40}
                       tickFormatter={fmt}
                     />
                     <ChartTooltip

@@ -52,7 +52,7 @@ const KpiCard = React.memo(
       <TooltipProvider delayDuration={300}>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Card className="dark:border-zinc-700 dark:bg-white/13 cursor-default hover:shadow-md transition-shadow">
+            <Card className="dark:border-zinc-700  cursor-default hover:shadow-md transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0">
                 <CardTitle className="text-sm font-medium leading-tight">
                   {title}
@@ -109,7 +109,8 @@ export function KpiCards({ kpis }: KpiCardsProps) {
 
   const row1: CardDef[] = [
     {
-      explaination:"The total sales amount within the selected date range, before accounting for returns and discounts.",
+      explaination:
+        "The total sales amount within the selected date range, before accounting for returns and discounts.",
       title: "Total Sales",
       value: phpFmt.format(kpis.totalSales),
       icon: PhilippinePeso,
@@ -122,7 +123,8 @@ export function KpiCards({ kpis }: KpiCardsProps) {
       ],
     },
     {
-      explaination: "The total amount collected from sales within the selected date range, after accounting for returns and discounts.",
+      explaination:
+        "The total amount collected from sales within the selected date range, after accounting for returns and discounts.",
       title: "Net Collections",
       value: phpFmt.format(kpis.netCollections),
       icon: Wallet,
@@ -132,7 +134,8 @@ export function KpiCards({ kpis }: KpiCardsProps) {
       ],
     },
     {
-      explaination: "The total value of sales that were returned within the selected date range.",
+      explaination:
+        "The total value of sales that were returned within the selected date range.",
       title: "Total Returns",
       value: phpFmt.format(kpis.totalReturns),
       icon: RotateCcw,
@@ -152,7 +155,8 @@ export function KpiCards({ kpis }: KpiCardsProps) {
 
   const row2: CardDef[] = [
     {
-      explaination: "The total number of sales invoices generated within the selected date range.",
+      explaination:
+        "The total number of sales invoices generated within the selected date range.",
       title: "Total Invoices",
       value: numFmt.format(kpis.totalInvoices),
       icon: ShoppingCart,
@@ -162,7 +166,8 @@ export function KpiCards({ kpis }: KpiCardsProps) {
       ],
     },
     {
-      explaination: "The number of distinct customers who made purchases within the selected date range.",
+      explaination:
+        "The number of distinct customers who made purchases within the selected date range.",
       title: "Unique Customers",
       value: numFmt.format(kpis.uniqueCustomers),
       icon: Users,
@@ -176,7 +181,8 @@ export function KpiCards({ kpis }: KpiCardsProps) {
       ],
     },
     {
-      explaination:"The percentage of total sales that have been successfully collected within the selected date range.",
+      explaination:
+        "The percentage of total sales that have been successfully collected within the selected date range.",
       title: "Collection Rate",
       value: pct(kpis.collectionRate),
       icon: TrendingUp,
@@ -192,9 +198,10 @@ export function KpiCards({ kpis }: KpiCardsProps) {
             ? "text-yellow-600 dark:text-yellow-400"
             : "text-red-600 dark:text-red-400",
     },
-    
+
     {
-      explaination:"The average revenue generated per sales invoice within the selected date range.",
+      explaination:
+        "The average revenue generated per sales invoice within the selected date range.",
       title: "Avg Order Value",
       value: phpFmt.format(kpis.avgOrderValue),
       icon: ShoppingCart,
@@ -205,7 +212,8 @@ export function KpiCards({ kpis }: KpiCardsProps) {
       ],
     },
     {
-      explaination:"The percentage of sales that were returned within the selected date range.",
+      explaination:
+        "The percentage of sales that were returned within the selected date range.",
       title: "Return Rate",
       value: pct(kpis.returnRate),
       icon: RotateCcw,
@@ -222,7 +230,8 @@ export function KpiCards({ kpis }: KpiCardsProps) {
             : "text-red-600 dark:text-red-400",
     },
     {
-      explaination:"Total discounts given across all transactions within the selected date range.",
+      explaination:
+        "Total discounts given across all transactions within the selected date range.",
       title: "Total Discounts",
       value: phpFmt.format(kpis.totalDiscount),
       icon: PhilippinePeso,
@@ -246,7 +255,7 @@ export function KpiCards({ kpis }: KpiCardsProps) {
             icon={card.icon}
             tooltipLines={card.tooltipLines}
             valueClassName={card.valueClassName}
-          />  
+          />
         ))}
       </div>
       <div className="grid gap-3 grid-cols-1 sm:grid-cols-6">

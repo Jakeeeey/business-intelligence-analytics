@@ -358,19 +358,6 @@ export function getDisbursementSummariesGroupedByCoA(
 
   return Array.from(grouped.entries())
     .map(([coaTitle, coaRecords]) => {
-      // Get unique documents by disbursementId for COA total
-      const uniqueDocs = new Map<number, DisbursementRecord>();
-      coaRecords.forEach((r) => {
-        if (!uniqueDocs.has(r.disbursementId)) {
-          uniqueDocs.set(r.disbursementId, r);
-        }
-      });
-      // Sum header-level totalAmount for each unique document
-      const total = Array.from(uniqueDocs.values()).reduce(
-        (sum, r) => sum + (r.totalAmount || 0),
-        0,
-      );
-
       // Group by document number within this COA to produce document-level summaries
       const docsMap = new Map<string, DisbursementRecord[]>();
       coaRecords.forEach((r) => {
@@ -378,16 +365,23 @@ export function getDisbursementSummariesGroupedByCoA(
         if (!docsMap.has(key)) docsMap.set(key, []);
         docsMap.get(key)!.push(r);
       });
-
       const recordsSummaries: DisbursementSummary[] = Array.from(
         docsMap.entries(),
       ).map(([docNo, docLines]) => {
         const first = docLines[0];
-        // Use header-level totalAmount and paidAmount from first record
-        // (same for all records with same disbursementId)
-        const totalAmount = first.totalAmount || 0;
-        const paidAmount = first.paidAmount || 0;
+        // Header-level totals (entire document) from the first line record
+        const headerTotal = first.totalAmount || 0;
+        const headerPaid = first.paidAmount || 0;
 
+        // COA-sliced totals: sum of line amounts for this specific COA subset
+        const coaLineTotal = docLines.reduce(
+          (sum, r) => sum + (r.lineAmount || 0),
+          0,
+        );
+
+        // Display totals: use header-level amounts so per-doc rows reflect the real document figures
+        const totalAmount = headerTotal;
+        const paidAmount = headerPaid;
         const balance = totalAmount - paidAmount;
 
         return {
@@ -396,9 +390,12 @@ export function getDisbursementSummariesGroupedByCoA(
           payeeName: first.payeeName,
           divisionName: first.divisionName,
           coaTitle: first.coaTitle,
-          totalAmount: totalAmount,
-          paidAmount: paidAmount,
+          totalAmount,
+          paidAmount,
           balance,
+          totalAmountHeader: headerTotal,
+          paidAmountHeader: headerPaid,
+          coaLineTotal,
           transactionDate: first.transactionDate,
           status: first.isPosted === 1 ? "Posted" : "Pending",
           encoderName: first.encoderName,
@@ -410,6 +407,12 @@ export function getDisbursementSummariesGroupedByCoA(
       // Sort documents by transactionDate desc
       recordsSummaries.sort((a, b) =>
         a.transactionDate < b.transactionDate ? 1 : -1,
+      );
+
+      // COA subtotal: sum of the COA-specific line totals (not header totals)
+      const total = recordsSummaries.reduce(
+        (sum, r) => sum + (r.coaLineTotal || 0),
+        0,
       );
 
       return {

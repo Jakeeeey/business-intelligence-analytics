@@ -554,7 +554,7 @@ export function SupplierTab({
   return (
     <div className="space-y-4">
       {/* Top Suppliers Chart */}
-      <Card className="dark:border-zinc-700 dark:bg-white/13">
+      <Card className="dark:border-zinc-700 ">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
@@ -758,10 +758,7 @@ export function SupplierTab({
         </CardContent>
       </Card>
       {/* Supplier Performance with Product Breakdown */}
-      <Card
-        id="supplier-details"
-        className="dark:border-zinc-700 dark:bg-white/13"
-      >
+      <Card id="supplier-details" className="dark:border-zinc-700 ">
         <CardHeader>
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">

@@ -722,7 +722,7 @@ export function ProductTab({
     <div className="space-y-4">
       {/* Product Return Trends Chart */}
       {productTrends.length > 0 && (
-        <Card className="dark:border-zinc-700 dark:bg-white/13">
+        <Card className=" ">
           <CardHeader>
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between">
@@ -734,7 +734,7 @@ export function ProductTab({
                 </div>
                 {selectedProductInTrend && (
                   <Button
-                    className="dark:border-zinc-700"
+                    className=""
                     variant="outline"
                     size="sm"
                     onClick={() => {
@@ -748,7 +748,7 @@ export function ProductTab({
               </div>
               <div className="flex flex-wrap gap-2">
                 <Button
-                  className="dark:border-zinc-700"
+                  className=""
                   variant={timePeriod === "daily" ? "default" : "outline"}
                   size="sm"
                   onClick={() => {
@@ -760,7 +760,7 @@ export function ProductTab({
                   Daily
                 </Button>
                 <Button
-                  className="dark:border-zinc-700"
+                  className=""
                   variant={timePeriod === "weekly" ? "default" : "outline"}
                   size="sm"
                   onClick={() => {
@@ -772,7 +772,7 @@ export function ProductTab({
                   Weekly
                 </Button>
                 <Button
-                  className="dark:border-zinc-700"
+                  className=""
                   variant={timePeriod === "bi-weekly" ? "default" : "outline"}
                   size="sm"
                   onClick={() => {
@@ -784,7 +784,7 @@ export function ProductTab({
                   Bi-Weekly
                 </Button>
                 <Button
-                  className="dark:border-zinc-700"
+                  className=""
                   variant={timePeriod === "monthly" ? "default" : "outline"}
                   size="sm"
                   onClick={() => {
@@ -796,7 +796,7 @@ export function ProductTab({
                   Monthly
                 </Button>
                 <Button
-                  className="dark:border-zinc-700"
+                  className=""
                   variant={timePeriod === "bi-monthly" ? "default" : "outline"}
                   size="sm"
                   onClick={() => {
@@ -808,7 +808,7 @@ export function ProductTab({
                   Bi-Monthly
                 </Button>
                 <Button
-                  className="dark:border-zinc-700"
+                  className=""
                   variant={timePeriod === "quarterly" ? "default" : "outline"}
                   size="sm"
                   onClick={() => {
@@ -820,7 +820,7 @@ export function ProductTab({
                   Quarterly
                 </Button>
                 <Button
-                  className="dark:border-zinc-700"
+                  className=""
                   variant={
                     timePeriod === "semi-annually" ? "default" : "outline"
                   }
@@ -834,7 +834,7 @@ export function ProductTab({
                   Semi-Annually
                 </Button>
                 <Button
-                  className="dark:border-zinc-700"
+                  className=""
                   variant={timePeriod === "yearly" ? "default" : "outline"}
                   size="sm"
                   onClick={() => {
@@ -944,7 +944,7 @@ export function ProductTab({
       )}
 
       {/* Search */}
-      <Card className="dark:border-zinc-700">
+      <Card className="">
         <CardContent className="">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -952,14 +952,14 @@ export function ProductTab({
               placeholder="Search products..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 dark:border-zinc-700"
+              className="pl-10 "
             />
           </div>
         </CardContent>
       </Card>
 
       {/* Product Returns Table */}
-      <Card className="dark:border-zinc-700 dark:bg-white/13">
+      <Card className=" ">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
@@ -984,7 +984,7 @@ export function ProductTab({
                   </TableHead>
                   <TableHead className="w-[120px]0 0 text-right px-0">
                     <Button
-                      className="dark:border-zinc-700 px-0"
+                      className=" px-0"
                       variant="ghost"
                       size="sm"
                       onClick={() => {
@@ -995,7 +995,6 @@ export function ProductTab({
                           setSortOrder("desc");
                         }
                       }}
-                      
                       style={{ height: 32 }}
                     >
                       Return Count
@@ -1003,7 +1002,7 @@ export function ProductTab({
                   </TableHead>
                   <TableHead className="w-46 text-right">
                     <Button
-                      className="dark:border-zinc-700"
+                      className=""
                       variant="ghost"
                       size="sm"
                       onClick={() => {
@@ -1021,7 +1020,7 @@ export function ProductTab({
                   </TableHead>
                   <TableHead className="w-32 text-right">
                     <Button
-                      className="dark:border-zinc-700"
+                      className=""
                       variant="ghost"
                       size="sm"
                       onClick={() => {
@@ -1039,7 +1038,7 @@ export function ProductTab({
                   </TableHead>
                   <TableHead className="w-32 text-right">
                     <Button
-                      className="dark:border-zinc-700"
+                      className=""
                       variant="ghost"
                       size="sm"
                       onClick={() => {
@@ -1057,7 +1056,7 @@ export function ProductTab({
                   </TableHead>
                   <TableHead className="w-46 text-right">
                     <Button
-                      className="dark:border-zinc-700"
+                      className=""
                       variant="ghost"
                       size="sm"
                       onClick={() => {
@@ -1321,16 +1320,28 @@ export function ProductTab({
                                             <TableRow
                                               key={`${c.customer}-${idx}`}
                                             >
-                                              <TableCell title={c.customer} className="truncate text-left">
+                                              <TableCell
+                                                title={c.customer}
+                                                className="truncate text-left"
+                                              >
                                                 {c.customer}
                                               </TableCell>
-                                              <TableCell title={c.divisionName} className="truncate text-left">
+                                              <TableCell
+                                                title={c.divisionName}
+                                                className="truncate text-left"
+                                              >
                                                 {c.divisionName}
                                               </TableCell>
-                                              <TableCell title={c.operationName} className="truncate text-left">
+                                              <TableCell
+                                                title={c.operationName}
+                                                className="truncate text-left"
+                                              >
                                                 {c.operationName}
                                               </TableCell>
-                                              <TableCell title={c.salesmanName} className="truncate text-left">
+                                              <TableCell
+                                                title={c.salesmanName}
+                                                className="truncate text-left"
+                                              >
                                                 {c.salesmanName}
                                               </TableCell>
                                               <TableCell className="text-right">
@@ -1493,7 +1504,7 @@ export function ProductTab({
           <div className="flex items-center justify-between py-4">
             <div className="flex items-center gap-4">
               <select
-                className="h-8 rounded-md border border-input bg-background px-3 py-1 text-sm dark:border-zinc-700"
+                className="h-8 rounded-md border border-input bg-background px-3 py-1 text-sm "
                 value={itemsPerPage}
                 onChange={(e) => {
                   setItemsPerPage(Number(e.target.value));

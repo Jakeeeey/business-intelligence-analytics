@@ -30,6 +30,8 @@ import {
 import { ArrowUpDown, ChevronDown, ChevronRight, Search } from "lucide-react";
 import { formatCurrency, formatDateLong } from "@/lib/utils";
 import type { DisbursementSummary } from "../type";
+import { Toggle } from "@/components/ui/toggle";
+// import { Switch } from "radix-ui";
 
 type ExpenseTableProps = {
   data: {
@@ -73,6 +75,8 @@ export default function ExpenseTable({ data }: ExpenseTableProps) {
   const [sortKey] = React.useState<SortKey>("transactionDate");
   const [sortDir] = React.useState<SortDir>("desc");
   const [groupBy, setGroupBy] = React.useState<GroupBy>("coa");
+  const [showDocsWithBalanceOnly, setShowDocsWithBalanceOnly] =
+    React.useState(false);
   const [expandedGroups, setExpandedGroups] = React.useState<Set<string>>(
     new Set(),
   );
@@ -150,9 +154,9 @@ export default function ExpenseTable({ data }: ExpenseTableProps) {
       .sort((a, b) => b.total - a.total);
   }, [data, groupBy]);
 
-  // Filter and sort
+  // Filter, sort, and (optionally) dedupe across COAs when showing balances
   const processedData = React.useMemo(() => {
-    return groupedData.map((group) => {
+    const mapped = groupedData.map((group) => {
       let filtered = group.records;
 
       // Search filter
@@ -200,6 +204,19 @@ export default function ExpenseTable({ data }: ExpenseTableProps) {
         });
       }
 
+      // Filter to only show documents with outstanding balance when enabled
+      if (showDocsWithBalanceOnly) {
+        filtered = filtered.filter((r) => {
+          const balance =
+            typeof r.balance === "number"
+              ? r.balance
+              : r.totalAmount - (r.paidAmount ?? 0);
+          // Round to 2 decimal places to avoid floating-point precision issues
+          const rounded = Math.round(balance * 100) / 100;
+          return rounded > 0;
+        });
+      }
+
       // Sort (use per-group sort if present to avoid re-sorting other groups)
       const gSort = groupSorts.get(group.coaTitle);
       const usedSortKey = gSort?.sortKey ?? sortKey;
@@ -227,7 +244,54 @@ export default function ExpenseTable({ data }: ExpenseTableProps) {
         records: sorted,
       };
     });
-  }, [groupedData, searchTerm, sortKey, sortDir, groupSorts]);
+
+    // When balance-only view is active, deduplicate documents across groups so a
+    // disbursement appears only once in the whole table. Use line-based totals
+    // for recalculating group totals to avoid double-counting.
+    if (showDocsWithBalanceOnly) {
+      const seen = new Set<number>();
+
+      const getRecordLineTotal = (r: DisbursementSummary) =>
+        typeof r.coaLineTotal === "number"
+          ? r.coaLineTotal
+          : (r.lines || []).reduce((s, ln) => s + (ln.lineAmount || 0), 0);
+
+      const deduped = mapped
+        .map((g) => {
+          const newRecords = g.records.filter((r) => {
+            if (seen.has(r.disbursementId)) return false;
+            seen.add(r.disbursementId);
+            return true;
+          });
+
+          const newTotal = newRecords.reduce(
+            (s, r) => s + getRecordLineTotal(r),
+            0,
+          );
+
+          return {
+            ...g,
+            records: newRecords,
+            total: newTotal,
+            recordCount: newRecords.length,
+          };
+        })
+        .filter((g) => g.records.length > 0);
+
+      // Re-sort groups by recalculated totals
+      deduped.sort((a, b) => b.total - a.total);
+      return deduped;
+    }
+
+    return mapped;
+  }, [
+    groupedData,
+    searchTerm,
+    sortKey,
+    sortDir,
+    groupSorts,
+    showDocsWithBalanceOnly,
+  ]);
 
   // Calculate totals
   // Deduplicate by disbursementId to avoid counting same document in multiple COAs
@@ -241,9 +305,39 @@ export default function ExpenseTable({ data }: ExpenseTableProps) {
   });
   const totalRecords = uniqueDocuments.size;
   const grandTotal = Array.from(uniqueDocuments.values()).reduce(
-    (sum, record) => sum + record.totalAmount,
+    (sum, record) => {
+      if (showDocsWithBalanceOnly) {
+        // When filtering by balance, show the sum of outstanding balances (header-level)
+        const bal =
+          typeof record.balance === "number"
+            ? record.balance
+            : (record.totalAmount || 0) - (record.paidAmount || 0);
+        return sum + Math.max(0, bal);
+      }
+
+      // Otherwise show total header amounts across unique documents
+      const headerTotal =
+        typeof record.totalAmountHeader === "number"
+          ? record.totalAmountHeader
+          : record.lines?.[0]?.totalAmount;
+      return (
+        sum +
+        (typeof headerTotal === "number" ? headerTotal : record.totalAmount)
+      );
+    },
     0,
   );
+
+  // Visible unique outstanding balance (deduplicated by disbursementId)
+  // const visibleUniqueOutstandingBalance = Array.from(
+  //   uniqueDocuments.values(),
+  // ).reduce((sum, record) => {
+  //   const bal =
+  //     typeof record.balance === "number"
+  //       ? record.balance
+  //       : record.totalAmount - (record.paidAmount ?? 0);
+  //   return sum + bal;
+  // }, 0);
 
   // const handleSort = (key: SortKey) => {
   //   if (sortKey === key) {
@@ -395,7 +489,39 @@ export default function ExpenseTable({ data }: ExpenseTableProps) {
               Detailed breakdown of all transactions
             </CardDescription>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-2">
+              <Select
+              
+                value={groupBy}
+                onValueChange={(v) => setGroupBy(v as GroupBy)}
+              >
+                <SelectTrigger className="border" size="sm">
+              
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="coa">Group by COA</SelectItem>
+                  <SelectItem value="division">Group by Division</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Toggle
+              // variant="outline"
+              className="border bg-background"
+              size="sm"
+              pressed={showDocsWithBalanceOnly}
+              onPressedChange={(pressed: boolean) => {
+                setShowDocsWithBalanceOnly(pressed);
+                // Reset pagination so views return to first page when filter changes
+                setGroupPagination(new Map());
+                setCoaPagination(new Map());
+              }}
+            >
+              With Balance
+            </Toggle>
+
             <Button
               variant="outline"
               size="sm"
@@ -408,20 +534,6 @@ export default function ExpenseTable({ data }: ExpenseTableProps) {
             >
               Collapse All
             </Button>
-            <div className="flex items-center gap-2">
-              <Select
-                value={groupBy}
-                onValueChange={(v) => setGroupBy(v as GroupBy)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="coa">Group by COA</SelectItem>
-                  <SelectItem value="division">Group by Division</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </div>
         </div>
       </CardHeader>
@@ -475,6 +587,27 @@ export default function ExpenseTable({ data }: ExpenseTableProps) {
                     .map((group) => {
                       const isExpanded = expandedGroups.has(group.coaTitle);
                       const pagination = getGroupPagination(group.coaTitle);
+
+                      // Group subtotal respects the "With Balance" toggle.
+                      // When enabled, compute COA/line-based subtotals (sum of line amounts
+                      // for the group's records) to avoid double-counting header totals across
+                      // COA slices. Otherwise fall back to the precomputed group total.
+                      const groupSubtotal = (() => {
+                        if (showDocsWithBalanceOnly) {
+                          return group.records.reduce((sum, r) => {
+                            const lineTotal =
+                              typeof r.coaLineTotal === "number"
+                                ? r.coaLineTotal
+                                : (r.lines || []).reduce(
+                                    (s, ln) => s + (ln.lineAmount || 0),
+                                    0,
+                                  );
+                            return sum + lineTotal;
+                          }, 0);
+                        }
+
+                        return group.total;
+                      })();
 
                       // Calculate pagination differently based on groupBy
                       let totalPages: number;
@@ -558,7 +691,16 @@ export default function ExpenseTable({ data }: ExpenseTableProps) {
                               className="text-right font-medium"
                               colSpan={3}
                             >
-                              Subtotal: {formatCurrency(group.total)}
+                              {showDocsWithBalanceOnly ? (
+                                <span>
+                                  COA Balance Subtotal:{" "}
+                                  {formatCurrency(groupSubtotal)}
+                                </span>
+                              ) : (
+                                <span>
+                                  COA Subtotal: {formatCurrency(groupSubtotal)}
+                                </span>
+                              )}
                             </TableCell>
                           </TableRow>
 
@@ -887,7 +1029,35 @@ export default function ExpenseTable({ data }: ExpenseTableProps) {
                                                     }
 
                                                     const coaSubtotal =
-                                                      getTotalAmount(records);
+                                                      showDocsWithBalanceOnly
+                                                        ? records.reduce(
+                                                            (s, r) => {
+                                                              const lineTotal =
+                                                                typeof r.coaLineTotal ===
+                                                                "number"
+                                                                  ? r.coaLineTotal
+                                                                  : (
+                                                                      r.lines ||
+                                                                      []
+                                                                    ).reduce(
+                                                                      (
+                                                                        ss,
+                                                                        ln,
+                                                                      ) =>
+                                                                        ss +
+                                                                        (ln.lineAmount ||
+                                                                          0),
+                                                                      0,
+                                                                    );
+                                                              return (
+                                                                s + lineTotal
+                                                              );
+                                                            },
+                                                            0,
+                                                          )
+                                                        : getTotalAmount(
+                                                            records,
+                                                          );
 
                                                     const isCoaExpanded =
                                                       expandedCoas.has(mapKey);
@@ -940,9 +1110,21 @@ export default function ExpenseTable({ data }: ExpenseTableProps) {
                                                             colSpan={3}
                                                             className="text-right font-medium px-4 py-2"
                                                           >
-                                                            Subtotal:{" "}
-                                                            {formatCurrency(
-                                                              coaSubtotal,
+                                                            {showDocsWithBalanceOnly ? (
+                                                              <>
+                                                                COA Balance
+                                                                Subtotal:{" "}
+                                                                {formatCurrency(
+                                                                  coaSubtotal,
+                                                                )}
+                                                              </>
+                                                            ) : (
+                                                              <>
+                                                                Subtotal:{" "}
+                                                                {formatCurrency(
+                                                                  coaSubtotal,
+                                                                )}
+                                                              </>
                                                             )}
                                                           </TableCell>
                                                         </TableRow>

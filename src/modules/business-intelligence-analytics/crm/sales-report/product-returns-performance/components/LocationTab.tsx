@@ -751,7 +751,7 @@ export function LocationTab({ filteredData }: LocationTabProps) {
     <div className="flex items-center justify-between px-2 py-4">
       <div className="flex items-center gap-4">
         <select
-          className="h-8 rounded-md border border-input bg-background px-3 py-1 text-sm dark:border-zinc-700"
+          className="h-8 rounded-md border border-input bg-background px-3 py-1 text-sm "
           value={itemsPer}
           onChange={(e) => onItemsPerChange(Number(e.target.value))}
         >
@@ -809,7 +809,7 @@ export function LocationTab({ filteredData }: LocationTabProps) {
   return (
     <div className="space-y-4">
       {/* Province Chart */}
-      <Card className="dark:border-y-zinc-700 dark:bg-white/13">
+      <Card className="dark:border-y-zinc-700 ">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
@@ -822,7 +822,7 @@ export function LocationTab({ filteredData }: LocationTabProps) {
             </div>
             {selectedProvince && (
               <Button
-                className="dark:border-zinc-700"
+                className=""
                 variant="outline"
                 size="sm"
                 onClick={handleClearProvinceSelection}
@@ -850,7 +850,7 @@ export function LocationTab({ filteredData }: LocationTabProps) {
                   dataKey="name"
                   angle={-45}
                   textAnchor="end"
-                  height={120}
+                  height={90}
                   interval={0}
                   tick={{ fontSize: 11, fill: "#64748b" }}
                   tickFormatter={(value) =>
@@ -978,7 +978,7 @@ export function LocationTab({ filteredData }: LocationTabProps) {
       </Card>
 
       {/* City Chart */}
-      <Card className="dark:border-y-zinc-700 dark:bg-white/13">
+      <Card className="dark:border-y-zinc-700 ">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
@@ -991,7 +991,7 @@ export function LocationTab({ filteredData }: LocationTabProps) {
             </div>
             {selectedLocation && (
               <Button
-                className="dark:border-zinc-700"
+                className=""
                 variant="outline"
                 size="sm"
                 onClick={handleClearLocationSelection}
@@ -1208,7 +1208,7 @@ export function LocationTab({ filteredData }: LocationTabProps) {
           return (
             <Card
               key="location-detail"
-              className="border-primary dark:border-y-zinc-700 dark:bg-white/13"
+              className="border-primary dark:border-y-zinc-700 "
             >
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -1222,7 +1222,7 @@ export function LocationTab({ filteredData }: LocationTabProps) {
                     </div>
                   </div>
                   <Button
-                    className="dark:border-zinc-700"
+                    className=""
                     variant="outline"
                     size="sm"
                     onClick={handleClearLocationSelection}
@@ -1668,7 +1668,7 @@ export function LocationTab({ filteredData }: LocationTabProps) {
         })()}
 
       {/* Hierarchical Table */}
-      <Card className="dark:border-y-zinc-700 dark:bg-white/13">
+      <Card className="dark:border-y-zinc-700 ">
         <CardHeader>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
@@ -1681,7 +1681,7 @@ export function LocationTab({ filteredData }: LocationTabProps) {
             <div className="flex flex-wrap gap-2">
               {(expandedProvinces.size > 0 || expandedCities.size > 0) && (
                 <Button
-                  className="dark:border-zinc-700"
+                  className=""
                   variant="outline"
                   size="sm"
                   onClick={() => {
@@ -1703,7 +1703,7 @@ export function LocationTab({ filteredData }: LocationTabProps) {
                 };
                 return (
                   <Button
-                    className="dark:border-zinc-700"
+                    className=""
                     key={field}
                     variant={sortField === field ? "default" : "outline"}
                     size="sm"
@@ -1935,7 +1935,7 @@ export function LocationTab({ filteredData }: LocationTabProps) {
                                             <Table>
                                               <TableHeader>
                                                 <TableRow>
-                                                  <TableHead >Product</TableHead>
+                                                  <TableHead>Product</TableHead>
                                                   <TableHead className="text-right w-60">
                                                     <Button
                                                       variant="ghost"
@@ -2144,7 +2144,7 @@ export function LocationTab({ filteredData }: LocationTabProps) {
                                               </div>
                                               <div className="flex gap-1">
                                                 <Button
-                                                  className="dark:border-zinc-700"
+                                                  className=""
                                                   variant="outline"
                                                   size="sm"
                                                   onClick={() =>
@@ -2180,7 +2180,7 @@ export function LocationTab({ filteredData }: LocationTabProps) {
                                                     return (
                                                       <Button
                                                         key={pn}
-                                                        className="dark:border-zinc-700"
+                                                        className=""
                                                         variant={
                                                           prodPage === pn
                                                             ? "default"
@@ -2200,7 +2200,7 @@ export function LocationTab({ filteredData }: LocationTabProps) {
                                                   },
                                                 )}
                                                 <Button
-                                                  className="dark:border-zinc-700"
+                                                  className=""
                                                   variant="outline"
                                                   size="sm"
                                                   onClick={() =>
@@ -2413,7 +2413,7 @@ export function LocationTab({ filteredData }: LocationTabProps) {
                                                 </div>
                                                 <div className="flex gap-1">
                                                   <Button
-                                                    className="dark:border-zinc-700"
+                                                    className=""
                                                     variant="outline"
                                                     size="sm"
                                                     onClick={() =>
@@ -2455,7 +2455,7 @@ export function LocationTab({ filteredData }: LocationTabProps) {
                                                       return (
                                                         <Button
                                                           key={pn}
-                                                          className="dark:border-zinc-700"
+                                                          className=""
                                                           variant={
                                                             custPage === pn
                                                               ? "default"
@@ -2475,7 +2475,7 @@ export function LocationTab({ filteredData }: LocationTabProps) {
                                                     },
                                                   )}
                                                   <Button
-                                                    className="dark:border-zinc-700"
+                                                    className=""
                                                     variant="outline"
                                                     size="sm"
                                                     onClick={() =>
@@ -2518,7 +2518,7 @@ export function LocationTab({ filteredData }: LocationTabProps) {
           <div className="flex items-center justify-between px-4 py-4">
             <div className="flex items-center gap-4">
               <select
-                className="h-8 rounded-md border border-input bg-background px-3 py-1 text-sm dark:border-zinc-700"
+                className="h-8 rounded-md border border-input bg-background px-3 py-1 text-sm "
                 value={itemsPerPage}
                 onChange={(e) => {
                   setItemsPerPage(Number(e.target.value));
@@ -2542,7 +2542,7 @@ export function LocationTab({ filteredData }: LocationTabProps) {
             </div>
             <div className="flex gap-1">
               <Button
-                className="dark:border-zinc-700"
+                className=""
                 variant="outline"
                 size="sm"
                 onClick={setCurrentPagePrev}
@@ -2559,7 +2559,7 @@ export function LocationTab({ filteredData }: LocationTabProps) {
                 return (
                   <Button
                     key={pn}
-                    className="dark:border-zinc-700"
+                    className=""
                     variant={currentPage === pn ? "default" : "outline"}
                     size="sm"
                     onClick={() => setCurrentPageTo(pn)}
@@ -2569,7 +2569,7 @@ export function LocationTab({ filteredData }: LocationTabProps) {
                 );
               })}
               <Button
-                className="dark:border-zinc-700"
+                className=""
                 variant="outline"
                 size="sm"
                 onClick={setCurrentPageNext}

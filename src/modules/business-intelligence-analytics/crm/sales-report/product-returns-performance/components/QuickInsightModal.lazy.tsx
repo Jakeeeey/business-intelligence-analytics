@@ -158,7 +158,7 @@ function QuickInsightModal({
         if (!o) onClose();
       }}
     >
-      <DialogContent className="max-w-xl p-0 gap-0 overflow-hidden dark:border-zinc-700">
+      <DialogContent className="max-w-xl p-0 gap-0 overflow-hidden ">
         <DialogHeader className="px-6 pt-6 pb-4 space-y-1">
           <div className="flex items-start gap-3 pr-6">
             <div
@@ -189,7 +189,7 @@ function QuickInsightModal({
               ].map((s) => (
                 <div
                   key={s.label}
-                  className="rounded-lg border dark:border-zinc-700 bg-muted/30 dark:bg-white/5 px-3 py-3 text-center"
+                  className="rounded-lg border  bg-muted/30 dark:bg-white/5 px-3 py-3 text-center"
                 >
                   <p className="text-[11px] text-muted-foreground mb-1 leading-tight">
                     {s.label}
@@ -205,10 +205,10 @@ function QuickInsightModal({
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
                   {tableLabel}
                 </p>
-                <div className="rounded-md border dark:border-zinc-700 overflow-hidden">
+                <div className="rounded-md border  overflow-hidden">
                   <table className="table-fixed w-full text-xs">
                     <thead>
-                      <tr className="border-b dark:border-zinc-700 bg-muted/30">
+                      <tr className="border-b  bg-muted/30">
                         <th className="text-left px-3 py-2 font-medium text-muted-foreground">
                           Name
                         </th>
@@ -312,12 +312,10 @@ function QuickInsightModal({
                       window.location.hash = `#${id}`;
                       // extra delay before attempting to scroll to give the tab content time to render
                       setTimeout(() => {
-                        document
-                          .getElementById(id)
-                          ?.scrollIntoView({
-                            behavior: "smooth",
-                            block: "center",
-                          });
+                        document.getElementById(id)?.scrollIntoView({
+                          behavior: "smooth",
+                          block: "center",
+                        });
                       }, 150);
                     }, 80);
                   }
