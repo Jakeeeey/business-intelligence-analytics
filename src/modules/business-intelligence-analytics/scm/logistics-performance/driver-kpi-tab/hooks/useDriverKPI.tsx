@@ -6,6 +6,7 @@ import React, {
   useEffect,
   useRef,
   useState,
+  useCallback,
 } from "react";
 import { toast } from "sonner";
 import type { VisitRecord, DriverOption, Filters } from "../types";
@@ -78,7 +79,7 @@ export const DriverKPIProvider: React.FC<React.PropsWithChildren<object>> = ({
       .catch(() => setDrivers([]));
   }, []);
 
-  function computePrevRange(start?: string, end?: string) {
+  const computePrevRange = useCallback((start?: string, end?: string) => {
     if (!start || !end) return null;
     try {
       const s = new Date(start);
@@ -92,9 +93,12 @@ export const DriverKPIProvider: React.FC<React.PropsWithChildren<object>> = ({
     } catch {
       return null;
     }
-  }
+  }, []);
 
-  const refresh = async (opts?: { page?: number; limit?: number }) => {
+  // derive a stable string key for driverNames so effects don't re-run on array identity changes
+  // const driverNamesKey = (filters.driverNames || []).join(",");
+
+  const refresh = useCallback(async (opts?: { page?: number; limit?: number }) => {
     setLoading(true);
     setError(null);
 
@@ -123,8 +127,9 @@ export const DriverKPIProvider: React.FC<React.PropsWithChildren<object>> = ({
         startDate: filters.startDate,
         endDate: filters.endDate,
         driverNames: filters.driverNames,
-
         search: filters.searchCustomer,
+        page: opts?.page,
+        limit: opts?.limit,
       });
 
       setData(r.rows ?? []);
@@ -184,21 +189,20 @@ export const DriverKPIProvider: React.FC<React.PropsWithChildren<object>> = ({
     } finally {
       setLoading(false);
     }
-  };
-
-  const driverNamesKey = (filters.driverNames || []).join(",");
+  }, [
+    filters.startDate,
+    filters.endDate,
+    filters.driverNames,
+    filters.searchCustomer,
+    computePrevRange,
+  ]);
 
   useEffect(() => {
     // refresh when core filters change. Fetch the full dataset (limit=-1)
     // so pagination can be performed client-side without triggering
     // additional network requests when the UI page changes.
     refresh({ page: 1, limit: -1 });
-  }, [
-    filters.startDate,
-    filters.endDate,
-    driverNamesKey,
-    filters.searchCustomer,
-  ]);
+  }, [refresh]);
 
   const setFilters = (patch: Partial<Filters>) =>
     setFiltersState((prev) => ({ ...prev, ...patch }));
