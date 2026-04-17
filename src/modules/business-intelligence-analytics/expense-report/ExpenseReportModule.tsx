@@ -17,7 +17,9 @@ type ExpenseReportModuleProps = {
   userName: string;
 };
 
-export default function ExpenseReportModule({ userName }: ExpenseReportModuleProps) {
+export default function ExpenseReportModule({
+  userName,
+}: ExpenseReportModuleProps) {
   const {
     isLoading,
     error,

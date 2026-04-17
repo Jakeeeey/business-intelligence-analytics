@@ -61,7 +61,7 @@ export default function DateInsightModal({
         if (!o) onClose();
       }}
     >
-      <DialogContent className="max-w-xl p-0 gap-0 overflow-hidden dark:border-zinc-700">
+      <DialogContent className="max-w-xl p-0 gap-0 overflow-hidden ">
         <DialogHeader className="px-6 pt-6 pb-4 space-y-1">
           <div className="min-w-0">
             <DialogTitle className="text-base font-semibold leading-tight">
@@ -74,7 +74,7 @@ export default function DateInsightModal({
         <ScrollArea className="max-h-[60vh]">
           <div className="px-6 py-4 space-y-4">
             <div className="grid grid-cols-3 gap-3">
-              <div className="rounded-lg border dark:border-zinc-700 bg-muted/30 dark:bg-white/5 px-3 py-3 text-center">
+              <div className="rounded-lg border  bg-muted/30 dark:bg-white/5 px-3 py-3 text-center">
                 <p className="text-[11px] text-muted-foreground mb-1 leading-tight">
                   Return Value
                 </p>
@@ -82,7 +82,7 @@ export default function DateInsightModal({
                   {fmt(returnValue)}
                 </p>
               </div>
-              <div className="rounded-lg border dark:border-zinc-700 bg-muted/30 dark:bg-white/5 px-3 py-3 text-center">
+              <div className="rounded-lg border  bg-muted/30 dark:bg-white/5 px-3 py-3 text-center">
                 <p className="text-[11px] text-muted-foreground mb-1 leading-tight">
                   Return Count
                 </p>
@@ -98,10 +98,10 @@ export default function DateInsightModal({
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
                   Top Return Products this period
                 </p>
-                <div className="rounded-md border dark:border-zinc-700 overflow-hidden">
+                <div className="rounded-md border  overflow-hidden">
                   <table className="table-fixed w-full text-xs">
                     <thead>
-                      <tr className="border-b dark:border-zinc-700 bg-muted/30">
+                      <tr className="border-b  bg-muted/30">
                         <th className="text-left px-3 py-2 font-medium text-muted-foreground">
                           Product
                         </th>

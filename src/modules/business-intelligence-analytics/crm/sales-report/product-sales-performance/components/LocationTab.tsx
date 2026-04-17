@@ -686,7 +686,7 @@ export function LocationTab({ filteredData }: LocationTabProps) {
   return (
     <div className="space-y-4 ">
       {/* Province Revenue Chart */}
-      <Card className="dark:border-zinc-700 dark:bg-white/13">
+      <Card className="dark:border-zinc-700 ">
         <CardHeader className="">
           <div className="flex items-center justify-between ">
             <div>
@@ -728,7 +728,7 @@ export function LocationTab({ filteredData }: LocationTabProps) {
                   dataKey="province"
                   angle={-45}
                   textAnchor="end"
-                  height={120}
+                  height={90}
                   interval={0}
                   tick={{ fontSize: 11, fill: "#64748b" }}
                   tickFormatter={(value) =>
@@ -868,7 +868,7 @@ export function LocationTab({ filteredData }: LocationTabProps) {
       </Card>
 
       {/* City Revenue Heatmap */}
-      <Card className="dark:border-zinc-700 dark:bg-white/13">
+      <Card className="dark:border-zinc-700 ">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
@@ -932,11 +932,11 @@ export function LocationTab({ filteredData }: LocationTabProps) {
                 <YAxis
                   dataKey="city"
                   type="category"
-                  width={150}
+                  width={140}
                   tick={{ fontSize: 11, fill: "#64748b" }}
                   tickFormatter={(value: string) => {
-                    return value.length > 25
-                      ? value.slice(0, 25) + "..."
+                    return value.length > 35
+                      ? value.slice(0, 35) + "..."
                       : value;
                   }}
                   onClick={handleCityClick}
@@ -1099,7 +1099,7 @@ export function LocationTab({ filteredData }: LocationTabProps) {
             locCustomerPage * locItemsPerPage,
           );
           return (
-            <Card className="dark:border--700 dark:bg-white/13">
+            <Card className="dark:border--700 ">
               <CardHeader>
                 <div className="flex items-center justify-between ">
                   <div className="flex items-center gap-2 ">
@@ -1532,7 +1532,7 @@ export function LocationTab({ filteredData }: LocationTabProps) {
       </Card>
 
       {/* Location Details Table */}
-      <Card className="dark:border-zinc-700 dark:bg-white/13">
+      <Card className="dark:border-zinc-700 ">
         <CardHeader>
           <div className="flex items-start justify-between gap-3">
             <div>

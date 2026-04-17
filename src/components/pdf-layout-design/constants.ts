@@ -1,3 +1,5 @@
+//components/pdf-layout-design/constants.ts
+
 import { PdfConfig, PdfElementConfig } from "./types";
 
 export const PAPER_SIZES: Record<string, { width: number; height: number }> = {

@@ -60,7 +60,9 @@ export default function ProductSalesPerformance() {
           <CardContent className="flex items-center justify-center p-8">
             <div className="flex flex-col items-center gap-4">
               <Spinner className="h-8 w-8" />
-              <p className="text-sm text-muted-foreground">Loading product performance data...</p>
+              <p className="text-sm text-muted-foreground">
+                Loading product performance data...
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -81,8 +83,12 @@ export default function ProductSalesPerformance() {
 
       {/* Tabs */}
       {hook.loadedOnce && hook.filteredData.length > 0 && (
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 ">
-          <TabsList className="grid w-full grid-cols-4 dark:bg-white/18 dark:border-zinc-700">
+        <Tabs
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="space-y-4 "
+        >
+          <TabsList className="grid w-full grid-cols-4  dark:border-zinc-700">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="product">Product</TabsTrigger>
             <TabsTrigger value="supplier">Supplier</TabsTrigger>
@@ -116,9 +122,7 @@ export default function ProductSalesPerformance() {
           </TabsContent>
 
           <TabsContent value="location" className="space-y-4">
-            <LocationTab
-              filteredData={hook.filteredData}
-            />
+            <LocationTab filteredData={hook.filteredData} />
           </TabsContent>
         </Tabs>
       )}
@@ -139,10 +143,13 @@ export default function ProductSalesPerformance() {
       {!hook.loading && !hook.loadedOnce && (
         <Card>
           <CardContent className="flex flex-col items-center justify-center p-8">
-            <p className="text-lg font-semibold">Welcome to Product Sales Performance Dashboard</p>
+            <p className="text-lg font-semibold">
+              Welcome to Product Sales Performance Dashboard
+            </p>
             <p className="text-sm text-muted-foreground">
               {/* Click &quot;Load Data&quot; to get started */}
-              Select a Filter or Select a date range to load data and view insights
+              Select a Filter or Select a date range to load data and view
+              insights
             </p>
           </CardContent>
         </Card>

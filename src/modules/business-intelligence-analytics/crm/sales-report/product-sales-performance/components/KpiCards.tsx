@@ -54,7 +54,7 @@ export function KPICards({ kpis }: KPICardsProps) {
         <TooltipProvider delayDuration={100}>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Card className="dark:border-zinc-700 dark:bg-white/13 cursor-default hover:shadow-md transition-shadow">
+              <Card className="dark:border-zinc-700  cursor-default hover:shadow-md transition-shadow">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0">
                   <CardTitle className="text-sm font-medium">{title}</CardTitle>
                   <div className="flex items-center gap-1">
@@ -93,7 +93,8 @@ export function KPICards({ kpis }: KPICardsProps) {
 
   const cards = [
     {
-      explaination: "Total sales revenue generated within the selected date range.",
+      explaination:
+        "Total sales revenue generated within the selected date range.",
       title: "Total Transactions",
       value: formatNumber(kpis.totalTransactions),
       icon: ShoppingCart,
@@ -106,7 +107,8 @@ export function KPICards({ kpis }: KPICardsProps) {
       ],
     },
     {
-     explaination:"Total sales revenue generated within the selected date range.",
+      explaination:
+        "Total sales revenue generated within the selected date range.",
       title: "Total Revenue",
       value: formatCurrency(kpis.totalRevenue),
       icon: PhilippinePeso,
@@ -119,7 +121,7 @@ export function KPICards({ kpis }: KPICardsProps) {
       ],
     },
     {
-      explaination:"The average revenue generated per transaction",
+      explaination: "The average revenue generated per transaction",
       title: "Avg Transaction",
       value: formatCurrency(kpis.avgTransactionValue),
       icon: TrendingUp,
@@ -132,14 +134,16 @@ export function KPICards({ kpis }: KPICardsProps) {
       ],
     },
     {
-      explaination:"The product with the highest number of sales transactions within the selected date range",
+      explaination:
+        "The product with the highest number of sales transactions within the selected date range",
       title: "Top Product",
       value: kpis.topProduct,
       icon: Award,
       tooltipLines: [{ label: "Top Product", val: kpis.topProduct }],
     },
     {
-      explaination:"The suplier with the highest number of sales transactions within the selected date range",
+      explaination:
+        "The suplier with the highest number of sales transactions within the selected date range",
       title: "Top Supplier",
       value: kpis.topSupplier,
       icon: Package,

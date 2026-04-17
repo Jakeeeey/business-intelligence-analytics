@@ -1,3 +1,5 @@
+//components/pdf-layout-design/services/pdf-template.ts
+
 import { PdfConfig } from "../types";
 
 export interface PdfTemplate {
@@ -24,7 +26,7 @@ export const pdfTemplateService = {
                 method: "GET"
             });
 
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            if (!response.ok) throw new Error( "HTTP error! status:" + response.status );
             const result = await response.json();
             return result.data || [];
         } catch (e) {
@@ -44,7 +46,7 @@ export const pdfTemplateService = {
                 body: JSON.stringify({ name, category: 'general', config }),
             });
 
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            if (!response.ok) throw new Error( "HTTP error! status:" + response.status );
             const result = await response.json();
             return result.data;
         } catch (e) {
@@ -64,7 +66,7 @@ export const pdfTemplateService = {
                 body: JSON.stringify({ name, category: 'general', config }),
             });
 
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            if (!response.ok) throw new Error( "HTTP error! status:" + response.status );
             const result = await response.json();
             return result.data;
         } catch (e) {
@@ -82,7 +84,7 @@ export const pdfTemplateService = {
                 method: "DELETE"
             });
 
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            if (!response.ok) throw new Error( "HTTP error! status:" + response.status );
         } catch (e) {
             console.error("Error deleting PDF template:", e);
             throw e;

@@ -652,7 +652,7 @@ export function ProductTab({
     <div className="space-y-4">
       {/* Product Trends Over Time */}
       {productTrends.length > 0 && (
-        <Card className="dark:border-zinc-700 dark:bg-white/13">
+        <Card className="dark:border-zinc-700 ">
           <CardHeader>
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between">
@@ -896,7 +896,7 @@ export function ProductTab({
       )}
 
       {/* Search Bar */}
-      <Card className="dark:border-zinc-700 dark:bg-white/13">
+      <Card className="dark:border-zinc-700 ">
         <CardContent className="">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -911,7 +911,7 @@ export function ProductTab({
       </Card>
 
       {/* Product Revenue Table */}
-      <Card className="dark:border-zinc-700 dark:bg-white/13">
+      <Card className="dark:border-zinc-700 ">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>

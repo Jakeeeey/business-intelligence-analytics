@@ -76,7 +76,7 @@ export default function STTReportModule() {
           onValueChange={setActiveTab}
           className="space-y-4"
         >
-          <TabsList className="grid w-full grid-cols-6 dark:bg-white/18 dark:border-zinc-700">
+          <TabsList className="grid w-full grid-cols-6  dark:border-zinc-700">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="salesman">Salesman</TabsTrigger>
             <TabsTrigger value="product">Product</TabsTrigger>

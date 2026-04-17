@@ -1,5 +1,7 @@
+// src/components/pdf-layout-design/PdfGenerator.ts
+
 import jsPDF from "jspdf";
-import { PdfConfig, PdfElementConfig, PdfData } from "./types";
+import { PdfConfig, PdfElementConfig, PaperSize, PdfData } from "./types";
 import { PAPER_SIZES } from "./constants";
 
 /**
@@ -91,10 +93,6 @@ export const renderElement = (doc: jsPDF, el: PdfElementConfig, data: PdfData | 
             lineHeightFactor: el.style.lineHeight || 1.15
         };
 
-        // Precise Hybrid Baseline Calculation for 100% WYSIWYG
-        const fontHeightMm = (el.style.fontSize * 25.4) / 72; // Convert pt to mm
-        
-        // Horizontal Alignment
         if (el.align === 'center') {
             textX = el.x + (el.width / 2);
             options.align = 'center';
@@ -106,17 +104,9 @@ export const renderElement = (doc: jsPDF, el: PdfElementConfig, data: PdfData | 
             options.align = 'left';
         }
 
-        // Vertical Alignment: Center within el.height
-        // To match browser 'flex center', we want the visual vertical middle of the text
-        // to be at el.y + el.height/2.
-        // jsPDF's 'middle' is often slightly off, so we manually offset using 'alphabetic'
-        // or just apply a more accurate multiplier.
-        // Standard cap-height is ~70% of font size.
-        const capHeightMm = fontHeightMm * 0.7;
-        const textY = el.y + (el.height / 2) + (capHeightMm / 2);
-        
-        options.baseline = 'alphabetic';
-        
+        const textY = el.y + (el.height / 2);
+        options.baseline = 'middle';
+
         doc.text(text, textX, textY, options);
     }
 };
@@ -129,18 +119,14 @@ export const generatePdf = async (config: PdfConfig, data: PdfData | null): Prom
     if (paperSize === 'Custom') {
         format = [customSize.width, customSize.height];
     } else {
-        // Case-insensitive lookup for standard paper sizes
-        const standardKey = Object.keys(PAPER_SIZES).find(
-            k => k.toLowerCase() === paperSize.toLowerCase()
-        );
-        const standard = standardKey ? PAPER_SIZES[standardKey] : PAPER_SIZES['A4'];
+        const standard = PAPER_SIZES[paperSize as PaperSize]; // Cast to PaperSize to ensure type safety
         format = [standard.width, standard.height];
     }
 
     const doc = new jsPDF({
-        orientation: (orientation.toLowerCase() as 'p' | 'l' | 'portrait' | 'landscape'),
+        orientation: orientation,
         unit: "mm",
-        format: paperSize === 'Custom' ? format : paperSize.toLowerCase(),
+        format: format,
     });
 
     Object.values(elements).forEach((el) => {

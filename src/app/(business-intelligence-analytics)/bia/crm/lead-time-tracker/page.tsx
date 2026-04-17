@@ -13,8 +13,8 @@ import { NavUser } from "@/components/shared/app-sidebar/nav-user";
 import { cookies } from "next/headers";
 
 // ✅ Wire the actual module
-import ComingSoon from "../../_components/ComingSoon";
-// import LeadTimeReportModule from "@/modules/business-intelligence-analytics/crm/lead-time-report";
+// import ComingSoon from "../../_components/ComingSoon";
+import LeadTimeTrackerModule from "@/modules/business-intelligence-analytics/crm/lead-time-tracker";
 
 
 export const runtime = "nodejs";
@@ -108,7 +108,7 @@ export default async function Page() {
                                 {/* <BreadcrumbItem className="hidden md:block shrink-0">
                                     <BreadcrumbLink>Lead Time Report</BreadcrumbLink>
                                 </BreadcrumbItem> */}
-                                <BreadcrumbSeparator className="hidden md:block shrink-0" />
+                                {/* <BreadcrumbSeparator className="hidden md:block shrink-0" /> */}
                                 <BreadcrumbItem className="min-w-0 overflow-hidden">
                                     <BreadcrumbPage className="truncate max-w-[56vw] sm:max-w-[60vw] md:max-w-none">
                                         Lead Time Report
@@ -126,7 +126,7 @@ export default async function Page() {
 
             {/* ✅ Only content scrolls inside RIGHT column */}
             <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-2 sm:p-4">
-                <ComingSoon />
+                <LeadTimeTrackerModule />
             </main>
         </div>
     );

@@ -70,6 +70,17 @@ type PiePayloadItem = {
   percent?: number;
 };
 
+// type StatusPieLabelProps = {
+//   name?: string;
+//   percent?: number;
+// };
+
+// const renderStatusPieLabel = ({ name, percent }: StatusPieLabelProps) => {
+//   if (!name) return "";
+//   const pct = typeof percent === "number" ? ` (${Math.round(percent * 100)}%)` : "";
+//   return `${name}${pct}`;
+// };
+
 const CustomPieTooltip = ({
   active,
   payload,
@@ -210,6 +221,7 @@ export default function Charts({
               >
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis
+                
                   dataKey="coaTitle"
                   angle={-45}
                   textAnchor="end"
@@ -242,8 +254,8 @@ export default function Charts({
         {/* Expenses per Employee */}
         <Card>
           <CardHeader>
-            <CardTitle>Expenses per Employee</CardTitle>
-            <CardDescription>Top employees by total expenses</CardDescription>
+            <CardTitle>Expenses per Payee</CardTitle>
+            <CardDescription>Top payee by total expenses</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
@@ -256,7 +268,7 @@ export default function Charts({
                   dataKey="payeeName"
                   angle={-45}
                   textAnchor="end"
-                  height={40}
+                  height={50}
                   interval={0}
                   tick={{ fontSize: 11 }}
                   tickFormatter={(v: string) =>
@@ -316,7 +328,8 @@ export default function Charts({
                     activeShape={renderActiveShape}
                     onMouseEnter={(_, idx) => setActiveStatusIdx(idx)}
                     onMouseLeave={() => setActiveStatusIdx(undefined)}
-                    // label={({ name, percent }) => `${name} (${Math.round(percent * 100)}%)`}
+                    // label={renderStatusPieLabel}
+                    // labelLine={false}
                   >
                     {statusData.map((entry, idx) => (
                       <Cell

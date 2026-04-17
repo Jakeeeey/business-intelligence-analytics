@@ -22,11 +22,26 @@ export type AllocatedOrderedRecord = {
 };
 
 export type DateRangePreset =
-  | "yesterday"
   | "today"
+  | "yesterday"
+  | "day-before-yesterday"
   | "this-week"
+  | "last-week"
+  | "last-7-days"
+  | "last-2-weeks"
   | "this-month"
+  | "mtd"
+  | "last-month"
+  | "last-30-days"
+  | "last-2-months"
+  | "this-quarter"
+  | "qtd"
+  | "last-quarter"
+  | "last-2-quarters"
   | "this-year"
+  | "last-year"
+  | "ytd"
+  | "last-3-months"
   | "custom";
 
 export type AllocationFilters = {
