@@ -2,6 +2,7 @@
 
 import type { TacticalSkuFilters } from "../types";
 
+import { Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,14 +11,18 @@ type TacticalSkuFiltersProps = {
   value: TacticalSkuFilters;
   onChange: (next: TacticalSkuFilters) => void;
   onGenerate: () => void;
+  onPrint: () => void;
   loading: boolean;
+  printing: boolean;
 };
 
 export function TacticalSkuFiltersBar({
   value,
   onChange,
   onGenerate,
+  onPrint,
   loading,
+  printing,
 }: TacticalSkuFiltersProps) {
   return (
     <Card>
@@ -37,9 +42,21 @@ export function TacticalSkuFiltersBar({
             aria-label="Search"
           />
 
-          <Button onClick={onGenerate} disabled={loading}>
-            {loading ? "Loading..." : "Generate Report"}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button onClick={onGenerate} disabled={loading || printing}>
+              {loading ? "Loading..." : "Generate Report"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onPrint}
+              disabled={loading || printing}
+              className="gap-2"
+            >
+              <Printer className="size-4" />
+              {printing ? "Preparing..." : "Print"}
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>

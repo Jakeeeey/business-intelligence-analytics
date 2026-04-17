@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { toast } from "sonner";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
@@ -11,9 +12,33 @@ import { TacticalSkuFiltersBar } from "./components/TacticalSkuFilters";
 import { TacticalSkuKpisBar } from "./components/TacticalSkuKpis";
 import { TacticalSkuTable } from "./components/TacticalSkuTable";
 import { useTacticalSkuReport } from "./hooks/useTacticalSkuReport";
+import { printTacticalSkuReport } from "./utils/printHelper";
 
 export default function TacticalSkuModule() {
 	const report = useTacticalSkuReport();
+	const [printing, setPrinting] = React.useState(false);
+
+	const handlePrint = React.useCallback(async () => {
+		if (report.loading || printing) return;
+		if (!report.rawRows.length) {
+			toast.warning("No report data to print.");
+			return;
+		}
+
+		setPrinting(true);
+		try {
+			await printTacticalSkuReport({
+				month: report.filters.month,
+				rows: report.rawRows,
+				kpis: report.kpis,
+			});
+		} catch (error: unknown) {
+			const message = error instanceof Error ? error.message : "Failed to print Tactical SKU report.";
+			toast.error(message);
+		} finally {
+			setPrinting(false);
+		}
+	}, [printing, report.filters.month, report.kpis, report.loading, report.rawRows]);
 
 	return (
 		<div className="space-y-4">
@@ -28,7 +53,9 @@ export default function TacticalSkuModule() {
 				value={report.filters}
 				onChange={report.setFilters}
 				onGenerate={report.generateReport}
+				onPrint={handlePrint}
 				loading={report.loading}
+				printing={printing}
 			/>
 
 			{!!report.error && (
