@@ -1,5 +1,3 @@
-// src/components/pdf-layout-design/types.ts
-
 export type PaperSize = 'A4' | 'Letter' | 'Legal' | 'Custom';
 export type Orientation = 'portrait' | 'landscape';
 

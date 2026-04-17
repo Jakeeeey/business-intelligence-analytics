@@ -1,5 +1,3 @@
-// src/components/pdf-layout-design/PdfEngine.ts
-
 import { jsPDF } from "jspdf";
 import "jspdf-autotable";
 import { pdfTemplateService } from "./services/pdf-template";
@@ -61,8 +59,8 @@ export const PdfEngine = {
         // 2. Initialize jsPDF
         const orientation = config?.orientation || 'portrait';
         const unit = 'mm';
-        let format: string | [number, number] = config?.paperSize || 'A4';
-        if (format === 'Custom' && config?.customSize) {
+        let format: string | [number, number] = config?.paperSize?.toLowerCase() || 'a4';
+        if (format === 'custom' && config?.customSize) {
             format = [config.customSize.width, config.customSize.height];
         }
 
