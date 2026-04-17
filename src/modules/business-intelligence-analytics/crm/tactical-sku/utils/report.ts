@@ -26,8 +26,8 @@ export function getMonthDateRange(month: string): { startDate: string; endDate: 
   const year = Number(m[1]);
   const monthIdx = Number(m[2]);
   const startDate = `${year}-${pad2(monthIdx)}-01`;
-  const endDay = new Date(year, monthIdx, 0).getDate();
-  const endDate = `${year}-${pad2(monthIdx)}-${pad2(endDay)}`;
+  const nextMonthDate = new Date(year, monthIdx, 1);
+  const endDate = `${nextMonthDate.getFullYear()}-${pad2(nextMonthDate.getMonth() + 1)}-01`;
 
   return { startDate, endDate };
 }
@@ -79,8 +79,6 @@ export function buildTacticalSkuRows(
       productCode: string;
       productName: string;
       inventory: number;
-      totalReach: number;
-      totalTarget: number;
       salesmenMap: Map<string, TacticalSkuSalesmanRow>;
     }
   >();
@@ -96,15 +94,11 @@ export function buildTacticalSkuRows(
       productCode: code,
       productName: name,
       inventory: inventoryByKey.get(key) ?? inventoryByName.get(clean(name)) ?? 0,
-      totalReach: 0,
-      totalTarget: 0,
       salesmenMap: new Map<string, TacticalSkuSalesmanRow>(),
     };
 
     const reach = toFiniteNumber(row.achieve);
     const target = toFiniteNumber(row.target);
-    existing.totalReach += reach;
-    existing.totalTarget += target;
 
     const smCode = row.salesmanCode?.trim() || (row.salesmanId ? `SM${row.salesmanId}` : "-");
     const smName = row.salesmanName?.trim() || "Unknown Salesman";
@@ -118,7 +112,9 @@ export function buildTacticalSkuRows(
       percent: 0,
     };
 
-    sales.reach += reach;
+    // Backend may repeat rows for the same salesman/product while varying target.
+    // Keep the highest achieved value to avoid double-counting reach.
+    sales.reach = Math.max(sales.reach, reach);
     sales.target += target;
     sales.percent = safePercent(sales.reach, sales.target, toFiniteNumber(row.percent));
     existing.salesmenMap.set(smKey, sales);
@@ -128,7 +124,9 @@ export function buildTacticalSkuRows(
 
   const built = Array.from(grouped.entries()).map(([key, g]) => {
     const salesmen = Array.from(g.salesmenMap.values()).sort((a, b) => b.reach - a.reach);
-    const targetPercent = safePercent(g.totalReach, g.totalTarget, 0);
+    const totalReach = salesmen.reduce((sum, s) => sum + toFiniteNumber(s.reach), 0);
+    const totalTarget = salesmen.reduce((sum, s) => sum + toFiniteNumber(s.target), 0);
+    const targetPercent = safePercent(totalReach, totalTarget, 0);
 
     return {
       key,
@@ -138,8 +136,8 @@ export function buildTacticalSkuRows(
       productCode: g.productCode,
       productName: g.productName,
       inventory: g.inventory,
-      totalReach: g.totalReach,
-      target: g.totalTarget,
+      totalReach,
+      target: totalTarget,
       targetPercent,
       salesmen,
     } satisfies TacticalSkuProductRow;

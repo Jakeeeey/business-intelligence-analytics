@@ -42,8 +42,8 @@ function monthRange(month: string): { startDate: string; endDate: string } {
 	const year = Number(y);
 	const monthNum = Number(m);
 	const startDate = `${year}-${String(monthNum).padStart(2, "0")}-01`;
-	const end = new Date(year, monthNum, 0).getDate();
-	const endDate = `${year}-${String(monthNum).padStart(2, "0")}-${String(end).padStart(2, "0")}`;
+	const nextMonth = new Date(year, monthNum, 1);
+	const endDate = `${nextMonth.getFullYear()}-${String(nextMonth.getMonth() + 1).padStart(2, "0")}-01`;
 	return { startDate, endDate };
 }
 
