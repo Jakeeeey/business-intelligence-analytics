@@ -152,7 +152,7 @@ function ReturnsTabComponent({ returnRecords }: ReturnsTabProps) {
       {/* Summary row */}
       {returnRecords.length > 0 && (
         <div className="grid gap-3 grid-cols-2 sm:grid-cols-3">
-          <Card className="dark:border-zinc-700 dark:bg-white/13">
+          <Card className="dark:border-zinc-700 ">
             <CardContent className="pt-4 pb-4">
               <p className="text-xs text-muted-foreground">
                 Total Return Records
@@ -162,7 +162,7 @@ function ReturnsTabComponent({ returnRecords }: ReturnsTabProps) {
               </p>
             </CardContent>
           </Card>
-          <Card className="dark:border-zinc-700 dark:bg-white/13">
+          <Card className="dark:border-zinc-700 ">
             <CardContent className="pt-4 pb-4">
               <p className="text-xs text-muted-foreground">
                 Total Return Quantity
@@ -172,7 +172,7 @@ function ReturnsTabComponent({ returnRecords }: ReturnsTabProps) {
               </p>
             </CardContent>
           </Card>
-          <Card className="dark:border-zinc-700 dark:bg-white/13">
+          <Card className="dark:border-zinc-700 ">
             <CardContent className="pt-4 pb-4">
               <p className="text-xs text-muted-foreground">
                 Total Return Amount
@@ -185,7 +185,7 @@ function ReturnsTabComponent({ returnRecords }: ReturnsTabProps) {
         </div>
       )}
 
-      <Card className="dark:border-zinc-700 dark:bg-white/13">
+      <Card className="dark:border-zinc-700 ">
         <CardHeader>
           <CardTitle>Product Returns</CardTitle>
           <CardDescription>

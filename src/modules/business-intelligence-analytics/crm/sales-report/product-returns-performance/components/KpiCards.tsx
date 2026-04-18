@@ -54,9 +54,11 @@ export function KPICards({ kpis }: KpiCardsProps) {
         <TooltipProvider delayDuration={100}>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Card className="dark:border-zinc-700 dark:bg-white/13 cursor-default hover:shadow-md transition-shadow">
+              <Card className="dark:border-zinc-700  cursor-default hover:shadow-md transition-shadow">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0">
-                  <CardTitle className="text-sm font-medium pb-0 mb-0">{title}</CardTitle>
+                  <CardTitle className="text-sm font-medium pb-0 mb-0">
+                    {title}
+                  </CardTitle>
                   <div className="flex items-center gap-1">
                     <Icon className="h-4 w-4 text-muted-foreground" />
                   </div>

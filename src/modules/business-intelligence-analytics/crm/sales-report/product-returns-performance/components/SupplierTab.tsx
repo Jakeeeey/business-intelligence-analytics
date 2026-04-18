@@ -432,7 +432,7 @@ export function SupplierTab({
   return (
     <div className="space-y-4">
       {/* Top Suppliers Chart */}
-      <Card className="dark:border-zinc-700 dark:bg-white/13">
+      <Card className="">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
@@ -443,7 +443,7 @@ export function SupplierTab({
             </div>
             {selectedSupplier && (
               <Button
-                className="dark:border-zinc-700"
+                className=""
                 variant="outline"
                 size="sm"
                 onClick={handleClearSelection}
@@ -560,10 +560,7 @@ export function SupplierTab({
       </Card>
 
       {/* Supplier Details */}
-      <Card
-        id="supplier-return-details"
-        className="dark:border-zinc-700 dark:bg-white/13"
-      >
+      <Card id="supplier-return-details" className="dark:border-zinc-700 ">
         <CardHeader>
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
@@ -756,7 +753,6 @@ export function SupplierTab({
                                         }
                                       >
                                         Product
-                                       
                                       </Button>
                                     </TableHead>
                                     <TableHead className="text-right px-0">
@@ -772,7 +768,6 @@ export function SupplierTab({
                                         }
                                       >
                                         Count
-                                       
                                       </Button>
                                     </TableHead>
                                     <TableHead className="text-right px-0">
@@ -788,7 +783,6 @@ export function SupplierTab({
                                         }
                                       >
                                         Return Value
-                                       
                                       </Button>
                                     </TableHead>
                                     <TableHead className="text-right px-0">
@@ -804,7 +798,6 @@ export function SupplierTab({
                                         }
                                       >
                                         Count Share (%)
-                                       
                                       </Button>
                                     </TableHead>
                                     <TableHead className="text-right px-0">
@@ -820,7 +813,6 @@ export function SupplierTab({
                                         }
                                       >
                                         Value Share (%)
-                                       
                                       </Button>
                                     </TableHead>
 
@@ -837,7 +829,6 @@ export function SupplierTab({
                                         }
                                       >
                                         Avg / Return
-                                       
                                       </Button>
                                     </TableHead>
                                   </TableRow>
@@ -1017,7 +1008,6 @@ export function SupplierTab({
                                           }
                                         >
                                           Customer
-                                         
                                         </Button>
                                       </TableHead>
                                       <TableHead className="w-24 text-right px-0">
@@ -1033,7 +1023,6 @@ export function SupplierTab({
                                           }
                                         >
                                           Count
-                                         
                                         </Button>
                                       </TableHead>
                                       <TableHead className="w-32 text-right px-0">
@@ -1049,10 +1038,9 @@ export function SupplierTab({
                                           }
                                         >
                                           Return Value
-                                         
                                         </Button>
                                       </TableHead>
-                                      <TableHead className="w-32 text-right px-0"> 
+                                      <TableHead className="w-32 text-right px-0">
                                         <Button
                                           variant="ghost"
                                           size="sm"
@@ -1065,7 +1053,6 @@ export function SupplierTab({
                                           }
                                         >
                                           Count Share (%)
-                                         
                                         </Button>
                                       </TableHead>
                                       <TableHead className="w-32 text-right px-0">
@@ -1081,7 +1068,6 @@ export function SupplierTab({
                                           }
                                         >
                                           Value Share (%)
-                                         
                                         </Button>
                                       </TableHead>
                                       <TableHead className="w-32 text-right px-0">
@@ -1097,7 +1083,6 @@ export function SupplierTab({
                                           }
                                         >
                                           Avg Return Value
-                                         
                                         </Button>
                                       </TableHead>
                                     </TableRow>

@@ -99,7 +99,7 @@ export default function ProductReturnsPerformanceModule() {
           onValueChange={setActiveTab}
           className="space-y-4 "
         >
-          <TabsList className="grid w-full grid-cols-4 dark:bg-white/18 dark:border-zinc-700">
+          <TabsList className="grid w-full grid-cols-4 dark:border-zinc-700">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="product">Product</TabsTrigger>
             <TabsTrigger value="supplier">Supplier</TabsTrigger>
