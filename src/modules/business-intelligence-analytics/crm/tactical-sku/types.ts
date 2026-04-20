@@ -1,5 +1,7 @@
 export type TacticalSkuFilters = {
 	month: string;
+	sku: string;
+	salesman: string;
 	search: string;
 };
 
