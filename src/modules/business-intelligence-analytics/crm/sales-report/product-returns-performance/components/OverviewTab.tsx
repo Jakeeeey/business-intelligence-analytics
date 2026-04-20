@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, ArrowUpDown } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -98,6 +98,8 @@ const phpFormatter = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 2,
 });
 const fmtPHP = (v: number) => phpFormatter.format(v);
+const formatShare = (value: number, total: number) =>
+  total > 0 ? `${((value / total) * 100).toFixed(1)}%` : "0.0%";
 
 function CustomBarTooltip({
   active,
@@ -273,6 +275,30 @@ function QuickInsightModal({
           ? "View in Supplier Tab"
           : "View in Location Tab";
 
+  const relatedRowsTotalCount = React.useMemo(
+    () => relatedRows.reduce((sum, row) => sum + row.returnCount, 0),
+    [relatedRows],
+  );
+  const relatedRowsTotalValue = React.useMemo(
+    () => relatedRows.reduce((sum, row) => sum + row.returnValue, 0),
+    [relatedRows],
+  );
+  const [relatedSortBy, setRelatedSortBy] = React.useState<"count" | "value">(
+    "value",
+  );
+  const [relatedSortOrder, setRelatedSortOrder] = React.useState<
+    "asc" | "desc"
+  >("desc");
+  const sortedRelatedRows = React.useMemo(() => {
+    return [...relatedRows].sort((a, b) => {
+      const cmp =
+        relatedSortBy === "count"
+          ? a.returnCount - b.returnCount
+          : a.returnValue - b.returnValue;
+      return relatedSortOrder === "asc" ? cmp : -cmp;
+    });
+  }, [relatedRows, relatedSortBy, relatedSortOrder]);
+
   return (
     <Dialog
       open
@@ -280,7 +306,7 @@ function QuickInsightModal({
         if (!o) onClose();
       }}
     >
-      <DialogContent className="max-w-xl p-0 gap-0 overflow-hidden dark:border-zinc-700">
+      <DialogContent className="max-w-xl p-0 gap-0 overflow-hidden ">
         <DialogHeader className="px-6 pt-6 pb-4 space-y-1">
           <div className="flex items-start gap-3 pr-6">
             <div
@@ -328,7 +354,7 @@ function QuickInsightModal({
                   {tableLabel}
                 </p>
                 <div className="rounded-md border dark:border-zinc-700 overflow-hidden">
-                  <table className="w-full text-xs">
+                  <table className="table-fixed w-full text-xs">
                     <thead>
                       <tr className="border-b dark:border-zinc-700 bg-muted/30">
                         <th className="text-left px-3 py-2 font-medium text-muted-foreground">
@@ -340,10 +366,48 @@ function QuickInsightModal({
                         <th className="text-right px-3 py-2 font-medium text-muted-foreground">
                           Return Value
                         </th>
+                        <th className="text-right px-3 py-2 font-medium text-muted-foreground">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 gap-1 px-0 text-xs font-medium"
+                            onClick={() => {
+                              if (relatedSortBy === "count") {
+                                setRelatedSortOrder((o) =>
+                                  o === "asc" ? "desc" : "asc",
+                                );
+                              } else {
+                                setRelatedSortBy("count");
+                                setRelatedSortOrder("desc");
+                              }
+                            }}
+                          >
+                            Count Share (%) <ArrowUpDown className="h-3 w-3" />
+                          </Button>
+                        </th>
+                        <th className="text-right px-3 py-2 font-medium text-muted-foreground">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 gap-1 px-0 text-xs font-medium"
+                            onClick={() => {
+                              if (relatedSortBy === "value") {
+                                setRelatedSortOrder((o) =>
+                                  o === "asc" ? "desc" : "asc",
+                                );
+                              } else {
+                                setRelatedSortBy("value");
+                                setRelatedSortOrder("desc");
+                              }
+                            }}
+                          >
+                            Value Share (%) <ArrowUpDown className="h-3 w-3" />
+                          </Button>
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
-                      {relatedRows.map((row, i) => (
+                      {sortedRelatedRows.map((row, i) => (
                         <tr
                           key={row.name}
                           className={i % 2 === 0 ? "" : "bg-muted/20"}
@@ -354,6 +418,18 @@ function QuickInsightModal({
                           </td>
                           <td className="px-3 py-2 text-right font-medium tabular-nums">
                             {fmt(row.returnValue)}
+                          </td>
+                          <td className="px-3 py-2 text-right text-muted-foreground">
+                            {formatShare(
+                              row.returnCount,
+                              relatedRowsTotalCount,
+                            )}
+                          </td>
+                          <td className="px-3 py-2 text-right text-muted-foreground">
+                            {formatShare(
+                              row.returnValue,
+                              relatedRowsTotalValue,
+                            )}
                           </td>
                         </tr>
                       ))}
@@ -420,6 +496,27 @@ function DateInsightModal({
   onClose: () => void;
 }) {
   const fmt = fmtPHP;
+  const topProductsTotalCount = React.useMemo(
+    () => topProducts.reduce((sum, product) => sum + product.returnCount, 0),
+    [topProducts],
+  );
+  const topProductsTotalValue = React.useMemo(
+    () => topProducts.reduce((sum, product) => sum + product.returnValue, 0),
+    [topProducts],
+  );
+  const [topSortBy, setTopSortBy] = React.useState<"count" | "value">("value");
+  const [topSortOrder, setTopSortOrder] = React.useState<"asc" | "desc">(
+    "desc",
+  );
+  const sortedTopProducts = React.useMemo(() => {
+    return [...topProducts].sort((a, b) => {
+      const cmp =
+        topSortBy === "count"
+          ? a.returnCount - b.returnCount
+          : a.returnValue - b.returnValue;
+      return topSortOrder === "asc" ? cmp : -cmp;
+    });
+  }, [topProducts, topSortBy, topSortOrder]);
   return (
     <Dialog
       open
@@ -465,7 +562,7 @@ function DateInsightModal({
                   Top Return Products this period
                 </p>
                 <div className="rounded-md border dark:border-zinc-700 overflow-hidden">
-                  <table className="w-full text-xs">
+                  <table className="table-fixed w-full text-xs">
                     <thead>
                       <tr className="border-b dark:border-zinc-700 bg-muted/30">
                         <th className="text-left px-3 py-2 font-medium text-muted-foreground">
@@ -477,10 +574,48 @@ function DateInsightModal({
                         <th className="text-right px-3 py-2 font-medium text-muted-foreground">
                           Return Value
                         </th>
+                        <th className="text-right px-3 py-2 font-medium text-muted-foreground">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 gap-1 px-0 text-xs font-medium"
+                            onClick={() => {
+                              if (topSortBy === "count") {
+                                setTopSortOrder((o) =>
+                                  o === "asc" ? "desc" : "asc",
+                                );
+                              } else {
+                                setTopSortBy("count");
+                                setTopSortOrder("desc");
+                              }
+                            }}
+                          >
+                            Count Share (%) <ArrowUpDown className="h-3 w-3" />
+                          </Button>
+                        </th>
+                        <th className="text-right px-3 py-2 font-medium text-muted-foreground">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 gap-1 px-0 text-xs font-medium"
+                            onClick={() => {
+                              if (topSortBy === "value") {
+                                setTopSortOrder((o) =>
+                                  o === "asc" ? "desc" : "asc",
+                                );
+                              } else {
+                                setTopSortBy("value");
+                                setTopSortOrder("desc");
+                              }
+                            }}
+                          >
+                            Value Share (%) <ArrowUpDown className="h-3 w-3" />
+                          </Button>
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
-                      {topProducts.map((p, i) => (
+                      {sortedTopProducts.map((p, i) => (
                         <tr
                           key={p.name}
                           className={i % 2 === 0 ? "" : "bg-muted/20"}
@@ -491,6 +626,12 @@ function DateInsightModal({
                           </td>
                           <td className="px-3 py-2 text-right font-medium tabular-nums">
                             {fmt(p.returnValue)}
+                          </td>
+                          <td className="px-3 py-2 text-right text-muted-foreground">
+                            {formatShare(p.returnCount, topProductsTotalCount)}
+                          </td>
+                          <td className="px-3 py-2 text-right text-muted-foreground">
+                            {formatShare(p.returnValue, topProductsTotalValue)}
                           </td>
                         </tr>
                       ))}
@@ -742,7 +883,7 @@ export function OverviewTab({
       if (!data?.length) return isMobile ? 40 : 60;
       const max = Math.max(...data.map((d) => d.returnValue || 0));
       const calculatedWidth = Math.max(120, fmtPHP(max).length * 8);
-      return isMobile ? Math.min(calculatedWidth,80) : calculatedWidth;
+      return isMobile ? Math.min(calculatedWidth, 80) : calculatedWidth;
     },
     [isMobile],
   );
@@ -974,7 +1115,7 @@ export function OverviewTab({
       )}
 
       {/* Return Trend */}
-      <Card className="dark:border-zinc-700 dark:bg-white/13">
+      <Card className="dark:border-zinc-700 ">
         <CardHeader>
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
@@ -1216,7 +1357,7 @@ export function OverviewTab({
 
       {/* Top Products & Suppliers */}
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card className="dark:border-zinc-700 dark:bg-white/13">
+        <Card className="dark:border-zinc-700 ">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
@@ -1321,7 +1462,7 @@ export function OverviewTab({
           </CardContent>
         </Card>
 
-        <Card className="dark:border-zinc-700 dark:bg-white/13">
+        <Card className="dark:border-zinc-700 ">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
@@ -1430,7 +1571,7 @@ export function OverviewTab({
       {/* Top Customers & Locations */}
       <div className="grid gap-4 lg:grid-cols-2">
         {topCustomers.length > 0 && (
-          <Card className="dark:border-zinc-700 dark:bg-white/13">
+          <Card className="dark:border-zinc-700 ">
             <CardHeader>
               <CardTitle>Top 10 Customers by Return Value</CardTitle>
               <CardDescription>
@@ -1517,7 +1658,7 @@ export function OverviewTab({
           </Card>
         )}
         {topLocations.length > 0 && (
-          <Card className="dark:border-zinc-700 dark:bg-white/13">
+          <Card className="dark:border-zinc-700 ">
             <CardHeader>
               <CardTitle>Top 10 Locations by Return Value</CardTitle>
               <CardDescription>
@@ -1607,7 +1748,7 @@ export function OverviewTab({
 
       {/* Returns by Salesman */}
       {returnsBySalesman.length > 0 && (
-        <Card className="dark:border-zinc-700 dark:bg-white/13">
+        <Card className="dark:border-zinc-700 ">
           <CardHeader>
             <CardTitle>Return Value by Salesman</CardTitle>
             <CardDescription>Top 15 salesmen by return value</CardDescription>
@@ -1626,7 +1767,7 @@ export function OverviewTab({
                     dataKey="name"
                     angle={-45}
                     textAnchor="end"
-                    height={120}
+                    height={80}
                     interval={0}
                     tick={{ fontSize: 11, fill: "#64748b" }}
                     tickFormatter={(v: string) =>
@@ -1650,7 +1791,7 @@ export function OverviewTab({
                   />
                   <YAxis
                     domain={[0, "auto"]}
-                    width={getYAxisWidth(returnsBySalesman)}
+                    width={getYAxisWidth(returnsBySalesman)-40}
                     tickFormatter={fmt}
                   />
                   <ChartTooltip
@@ -1702,7 +1843,7 @@ export function OverviewTab({
       {/* Returns by Division & Operation */}
       <div className="grid gap-4 lg:grid-cols-2">
         {returnsByDivision.length > 0 && (
-          <Card className="dark:border-zinc-700 dark:bg-white/13">
+          <Card className="dark:border-zinc-700 ">
             <CardHeader>
               <CardTitle>Return Value by Division</CardTitle>
               <CardDescription>
@@ -1723,11 +1864,11 @@ export function OverviewTab({
                       dataKey="name"
                       angle={-45}
                       textAnchor="end"
-                      height={120}
+                      height={80}
                       interval={0}
                       tick={{ fontSize: 11, fill: "#64748b" }}
                       tickFormatter={(v: string) =>
-                        v.length > 20 ? v.slice(0, 20) + "" : v
+                        v.length > 35 ? v.slice(0, 35) + "" : v
                       }
                       onClick={(d: { value?: string }) => {
                         const name = d?.value;
@@ -1747,7 +1888,7 @@ export function OverviewTab({
                     />
                     <YAxis
                       domain={[0, "auto"]}
-                      width={getYAxisWidth(returnsByDivision)}
+                      width={getYAxisWidth(returnsByDivision)-40}
                       tickFormatter={fmt}
                     />
                     <ChartTooltip
@@ -1796,7 +1937,7 @@ export function OverviewTab({
           </Card>
         )}
         {returnsByOperation.length > 0 && (
-          <Card className="dark:border-zinc-700 dark:bg-white/13">
+          <Card className="dark:border-zinc-700 ">
             <CardHeader>
               <CardTitle>Return Value by Operation</CardTitle>
               <CardDescription>
@@ -1817,11 +1958,11 @@ export function OverviewTab({
                       dataKey="name"
                       angle={-45}
                       textAnchor="end"
-                      height={120}
+                      height={80}
                       interval={0}
                       tick={{ fontSize: 11, fill: "#64748b" }}
                       tickFormatter={(v: string) =>
-                        v.length > 20 ? v.slice(0, 20) + "" : v
+                        v.length > 35 ? v.slice(0, 35) + "" : v
                       }
                       onClick={(d: { value?: string }) => {
                         const name = d?.value;
@@ -1841,7 +1982,7 @@ export function OverviewTab({
                     />
                     <YAxis
                       domain={[0, "auto"]}
-                      width={getYAxisWidth(returnsByOperation)}
+                      width={getYAxisWidth(returnsByOperation)-40}
                       tickFormatter={fmt}
                     />
                     <ChartTooltip

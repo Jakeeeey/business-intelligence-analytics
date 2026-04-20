@@ -32,6 +32,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { TruncateText } from "./TruncateText";
 
 // Module-scope formatter — avoids creating Intl.NumberFormat on every call
 const _phpFmt = new Intl.NumberFormat("en-US", {
@@ -651,7 +652,7 @@ export function ProductTab({
     <div className="space-y-4">
       {/* Product Trends Over Time */}
       {productTrends.length > 0 && (
-        <Card className="dark:border-zinc-700 dark:bg-white/13">
+        <Card className="dark:border-zinc-700 ">
           <CardHeader>
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between">
@@ -895,7 +896,7 @@ export function ProductTab({
       )}
 
       {/* Search Bar */}
-      <Card className="dark:border-zinc-700 dark:bg-white/13">
+      <Card className="dark:border-zinc-700 ">
         <CardContent className="">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -910,7 +911,7 @@ export function ProductTab({
       </Card>
 
       {/* Product Revenue Table */}
-      <Card className="dark:border-zinc-700 dark:bg-white/13">
+      <Card className="dark:border-zinc-700 ">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
@@ -932,25 +933,6 @@ export function ProductTab({
                 Collapse All
               </Button>
             </div>
-            {/* <Button
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                exportToCSV(
-                  filteredProducts.map((p, i) => ({
-                    rank: i + 1,
-                    product: p.name,
-                    revenue: p.revenue,
-                    transactions: p.count,
-                    avgPerTransaction: p.revenue / p.count,
-                  })),
-                  "product-performance.csv"
-                )
-              }
-            >
-              <Download className="mr-2 h-4 w-4" />
-              Export CSV
-            </Button> */}
           </div>
         </CardHeader>
         <CardContent>
@@ -964,6 +946,7 @@ export function ProductTab({
                     <Button
                       variant="ghost"
                       size="sm"
+                      title="Sort by revenue"
                       onClick={() => {
                         if (sortBy === "revenue") {
                           setSortOrder(sortOrder === "asc" ? "desc" : "asc");
@@ -981,6 +964,7 @@ export function ProductTab({
                     <Button
                       variant="ghost"
                       size="sm"
+                      title="Sort by transactions"
                       onClick={() => {
                         if (sortBy === "transactions") {
                           setSortOrder(sortOrder === "asc" ? "desc" : "asc");
@@ -998,6 +982,7 @@ export function ProductTab({
                     <Button
                       variant="ghost"
                       size="sm"
+                      title="Sort by average transaction"
                       onClick={() => {
                         if (sortBy === "avg") {
                           setSortOrder(sortOrder === "asc" ? "desc" : "asc");
@@ -1037,12 +1022,14 @@ export function ProductTab({
                               ) : (
                                 <ChevronRight className="h-4 w-4 text-muted-foreground" />
                               )}
-                              <span
-                                className="font-medium"
-                                style={{ color: getProductColor(index) }}
-                              >
-                                {product.name}
-                              </span>
+                              <TruncateText title={product.name}>
+                                <span
+                                  className="font-medium"
+                                  style={{ color: getProductColor(index) }}
+                                >
+                                  {product.name}
+                                </span>
+                              </TruncateText>
                             </div>
                           </TableCell>
                           <TableCell className="w-28 text-right">
@@ -1096,13 +1083,14 @@ export function ProductTab({
                                 <TableCell colSpan={5} className="  p-0">
                                   <div className="px-12 py-4">
                                     <div className="rounded-md border  ">
-                                      <Table className="table-fixed dark:border-zinc-700 dark:bg-white/3">
+                                      <Table className="table-fixed w-full dark:border-zinc-700 dark:bg-white/3">
                                         <TableHeader>
                                           <TableRow>
-                                            <TableHead className="w-64">
+                                            <TableHead>
                                               <Button
                                                 variant="ghost"
                                                 size="sm"
+                                                title="Sort by customer name"
                                                 onClick={() =>
                                                   handleCustomerSort("customer")
                                                 }
@@ -1112,10 +1100,11 @@ export function ProductTab({
                                                 <ArrowUpDown className="ml-2 h-4 w-4" />
                                               </Button>
                                             </TableHead>
-                                            <TableHead className="w-36">
+                                            <TableHead className="w-40">
                                               <Button
                                                 variant="ghost"
                                                 size="sm"
+                                                title="Sort by division"
                                                 onClick={() =>
                                                   handleCustomerSort("division")
                                                 }
@@ -1125,10 +1114,11 @@ export function ProductTab({
                                                 <ArrowUpDown className="ml-2 h-4 w-4" />
                                               </Button>
                                             </TableHead>
-                                            <TableHead className="w-36">
+                                            <TableHead className="w-40">
                                               <Button
                                                 variant="ghost"
                                                 size="sm"
+                                                title="Sort by operation"
                                                 onClick={() =>
                                                   handleCustomerSort(
                                                     "operation",
@@ -1144,6 +1134,7 @@ export function ProductTab({
                                               <Button
                                                 variant="ghost"
                                                 size="sm"
+                                                title="Sort by salesman"
                                                 onClick={() =>
                                                   handleCustomerSort("salesman")
                                                 }
@@ -1153,10 +1144,11 @@ export function ProductTab({
                                                 <ArrowUpDown className="ml-2 h-4 w-4" />
                                               </Button>
                                             </TableHead>
-                                            <TableHead className="w-28 text-right">
+                                            <TableHead className="w-40 text-right">
                                               <Button
                                                 variant="ghost"
                                                 size="sm"
+                                                title="Sort by revenue"
                                                 onClick={() =>
                                                   handleCustomerSort("revenue")
                                                 }
@@ -1166,10 +1158,11 @@ export function ProductTab({
                                                 <ArrowUpDown className="ml-2 h-4 w-4" />
                                               </Button>
                                             </TableHead>
-                                            <TableHead className="w-20 text-right">
+                                            <TableHead className="w-40 text-right">
                                               <Button
                                                 variant="ghost"
                                                 size="sm"
+                                                title="Sort by transactions"
                                                 onClick={() =>
                                                   handleCustomerSort(
                                                     "transactions",
@@ -1181,16 +1174,17 @@ export function ProductTab({
                                                 <ArrowUpDown className="ml-2 h-4 w-4" />
                                               </Button>
                                             </TableHead>
-                                            <TableHead className="w-28 text-right">
+                                            <TableHead className="w-45 text-right">
                                               <Button
                                                 variant="ghost"
                                                 size="sm"
+                                                title="Sort by average transaction"
                                                 onClick={() =>
                                                   handleCustomerSort("avg")
                                                 }
                                                 className="h-8"
                                               >
-                                                Avg/Transaction{" "}
+                                                Avg/Transaction
                                                 <ArrowUpDown className="ml-2 h-4 w-4" />
                                               </Button>
                                             </TableHead>
@@ -1202,17 +1196,39 @@ export function ProductTab({
                                               <TableRow
                                                 key={`${customer.customer}-${idx}`}
                                               >
-                                                <TableCell>
-                                                  {customer.customer}
+                                                <TableCell className="max-w-0">
+                                                  <TruncateText
+                                                    title={customer.customer}
+                                                  >
+                                                    {customer.customer}
+                                                  </TruncateText>
                                                 </TableCell>
-                                                <TableCell>
-                                                  {customer.divisionName}
+                                                <TableCell className="max-w-0">
+                                                  <TruncateText
+                                                    title={
+                                                      customer.divisionName
+                                                    }
+                                                  >
+                                                    {customer.divisionName}
+                                                  </TruncateText>
                                                 </TableCell>
-                                                <TableCell>
-                                                  {customer.operationName}
+                                                <TableCell className="max-w-0">
+                                                  <TruncateText
+                                                    title={
+                                                      customer.operationName
+                                                    }
+                                                  >
+                                                    {customer.operationName}
+                                                  </TruncateText>
                                                 </TableCell>
-                                                <TableCell>
-                                                  {customer.salesmanName}
+                                                <TableCell className="max-w-0">
+                                                  <TruncateText
+                                                    title={
+                                                      customer.salesmanName
+                                                    }
+                                                  >
+                                                    {customer.salesmanName}
+                                                  </TruncateText>
                                                 </TableCell>
                                                 <TableCell className="text-right">
                                                   {formatCurrency(

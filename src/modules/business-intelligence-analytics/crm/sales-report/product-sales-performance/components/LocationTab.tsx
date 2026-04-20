@@ -86,6 +86,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { TruncateText } from "./TruncateText";
 
 // Module-scope formatter — avoids creating Intl.NumberFormat on every call
 const _phpFmtLoc = new Intl.NumberFormat("en-US", {
@@ -685,7 +686,7 @@ export function LocationTab({ filteredData }: LocationTabProps) {
   return (
     <div className="space-y-4 ">
       {/* Province Revenue Chart */}
-      <Card className="dark:border-zinc-700 dark:bg-white/13">
+      <Card className="dark:border-zinc-700 ">
         <CardHeader className="">
           <div className="flex items-center justify-between ">
             <div>
@@ -727,7 +728,7 @@ export function LocationTab({ filteredData }: LocationTabProps) {
                   dataKey="province"
                   angle={-45}
                   textAnchor="end"
-                  height={120}
+                  height={90}
                   interval={0}
                   tick={{ fontSize: 11, fill: "#64748b" }}
                   tickFormatter={(value) =>
@@ -867,7 +868,7 @@ export function LocationTab({ filteredData }: LocationTabProps) {
       </Card>
 
       {/* City Revenue Heatmap */}
-      <Card className="dark:border-zinc-700 dark:bg-white/13">
+      <Card className="dark:border-zinc-700 ">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
@@ -931,11 +932,11 @@ export function LocationTab({ filteredData }: LocationTabProps) {
                 <YAxis
                   dataKey="city"
                   type="category"
-                  width={150}
+                  width={140}
                   tick={{ fontSize: 11, fill: "#64748b" }}
                   tickFormatter={(value: string) => {
-                    return value.length > 25
-                      ? value.slice(0, 25) + "..."
+                    return value.length > 35
+                      ? value.slice(0, 35) + "..."
                       : value;
                   }}
                   onClick={handleCityClick}
@@ -1098,7 +1099,7 @@ export function LocationTab({ filteredData }: LocationTabProps) {
             locCustomerPage * locItemsPerPage,
           );
           return (
-            <Card className="dark:border--700 dark:bg-white/13">
+            <Card className="dark:border--700 ">
               <CardHeader>
                 <div className="flex items-center justify-between ">
                   <div className="flex items-center gap-2 ">
@@ -1128,12 +1129,12 @@ export function LocationTab({ filteredData }: LocationTabProps) {
                       Top Products
                     </p>
                     <div className="rounded-md border">
-                      <Table className="dark:border-nc-700 dark:bg-white/3">
+                      <Table className="table-fixed w-full dark:border-nc-700 dark:bg-white/3">
                         <TableHeader>
                           <TableRow>
-                            <TableHead>Rank</TableHead>
-                            <TableHead>Product</TableHead>
-                            <TableHead className="text-right">
+                            <TableHead className="w-16">Rank</TableHead>
+                            <TableHead className="w-[58%]">Product</TableHead>
+                            <TableHead className="w-[28%] text-right">
                               Revenue
                             </TableHead>
                           </TableRow>
@@ -1153,7 +1154,11 @@ export function LocationTab({ filteredData }: LocationTabProps) {
                                     {globalIndex + 1}
                                   </Badge>
                                 </TableCell>
-                                <TableCell>{product.name}</TableCell>
+                                <TableCell className="max-w-0">
+                                  <TruncateText title={product.name}>
+                                    {product.name}
+                                  </TruncateText>
+                                </TableCell>
                                 <TableCell className="text-right">
                                   {formatCurrency(product.revenue)}
                                 </TableCell>
@@ -1257,14 +1262,14 @@ export function LocationTab({ filteredData }: LocationTabProps) {
                       Salesmen
                     </p>
                     <div className="rounded-md border">
-                      <Table className="dark:border-zinc-700 dark:bg-white/3">
+                      <Table className="table-fixed w-full dark:border-zinc-700 dark:bg-white/3">
                         <TableHeader>
                           <TableRow>
-                            <TableHead>Salesman</TableHead>
-                            <TableHead className="text-right">
+                            <TableHead className="w-[58%]">Salesman</TableHead>
+                            <TableHead className="w-[21%] text-right">
                               Revenue
                             </TableHead>
-                            <TableHead className="text-right">
+                            <TableHead className="w-[21%] text-right">
                               Transactions
                             </TableHead>
                           </TableRow>
@@ -1272,7 +1277,11 @@ export function LocationTab({ filteredData }: LocationTabProps) {
                         <TableBody>
                           {paginatedLocSalesmen.map((s) => (
                             <TableRow key={s.name}>
-                              <TableCell>{s.name}</TableCell>
+                              <TableCell className="max-w-0">
+                                <TruncateText title={s.name}>
+                                  {s.name}
+                                </TruncateText>
+                              </TableCell>
                               <TableCell className="text-right">
                                 {formatCurrency(s.revenue)}
                               </TableCell>
@@ -1381,14 +1390,14 @@ export function LocationTab({ filteredData }: LocationTabProps) {
                       Customers
                     </p>
                     <div className="rounded-md border">
-                      <Table className="dark:border-zinc-700 dark:bg-white/3">
+                      <Table className="table-fixed w-full dark:border-zinc-700 dark:bg-white/3">
                         <TableHeader>
                           <TableRow>
-                            <TableHead>Customer</TableHead>
-                            <TableHead className="text-right">
+                            <TableHead className="w-[58%]">Customer</TableHead>
+                            <TableHead className="w-[21%] text-right">
                               Revenue
                             </TableHead>
-                            <TableHead className="text-right">
+                            <TableHead className="w-[21%] text-right">
                               Transactions
                             </TableHead>
                           </TableRow>
@@ -1396,7 +1405,11 @@ export function LocationTab({ filteredData }: LocationTabProps) {
                         <TableBody>
                           {paginatedLocCustomers.map((c) => (
                             <TableRow key={c.name}>
-                              <TableCell>{c.name}</TableCell>
+                              <TableCell className="max-w-0">
+                                <TruncateText title={c.name}>
+                                  {c.name}
+                                </TruncateText>
+                              </TableCell>
                               <TableCell className="text-right">
                                 {formatCurrency(c.revenue)}
                               </TableCell>
@@ -1519,7 +1532,7 @@ export function LocationTab({ filteredData }: LocationTabProps) {
       </Card>
 
       {/* Location Details Table */}
-      <Card className="dark:border-zinc-700 dark:bg-white/13">
+      <Card className="dark:border-zinc-700 ">
         <CardHeader>
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -1546,13 +1559,14 @@ export function LocationTab({ filteredData }: LocationTabProps) {
         </CardHeader>
         <CardContent>
           <div className="rounded-md border">
-            <Table className="dark:border-zinc-700 dark:bg-white/3 table-fixed">
+            <Table className="dark:border-zinc-700 dark:bg-white/3 table-fixed w-full">
               <TableHeader>
                 <TableRow>
-                  <TableHead>
+                  <TableHead className="w-[40%]">
                     <Button
                       variant="ghost"
                       size="sm"
+                      title="Sort by location"
                       onClick={() => {
                         if (sortBy === "location") {
                           setSortOrder(sortOrder === "asc" ? "desc" : "asc");
@@ -1567,10 +1581,11 @@ export function LocationTab({ filteredData }: LocationTabProps) {
                       <ArrowUpDown className="ml-2 h-4 w-4" />
                     </Button>
                   </TableHead>
-                  <TableHead className="text-right">
+                  <TableHead className="w-[20%] text-right">
                     <Button
                       variant="ghost"
                       size="sm"
+                      title="Sort by revenue"
                       onClick={() => {
                         if (sortBy === "revenue") {
                           setSortOrder(sortOrder === "asc" ? "desc" : "asc");
@@ -1584,10 +1599,11 @@ export function LocationTab({ filteredData }: LocationTabProps) {
                       Revenue <ArrowUpDown className="ml-2 h-4 w-4" />
                     </Button>
                   </TableHead>
-                  <TableHead className="text-right">
+                  <TableHead className="w-[20%] text-right">
                     <Button
                       variant="ghost"
                       size="sm"
+                      title="Sort by transactions"
                       onClick={() => {
                         if (sortBy === "transactions") {
                           setSortOrder(sortOrder === "asc" ? "desc" : "asc");
@@ -1601,10 +1617,11 @@ export function LocationTab({ filteredData }: LocationTabProps) {
                       Transactions <ArrowUpDown className="ml-2 h-4 w-4" />
                     </Button>
                   </TableHead>
-                  <TableHead className="text-right">
+                  <TableHead className="w-[20%] text-right">
                     <Button
                       variant="ghost"
                       size="sm"
+                      title="Sort by average transaction"
                       onClick={() => {
                         if (sortBy === "avg") {
                           setSortOrder(sortOrder === "asc" ? "desc" : "asc");
@@ -1640,14 +1657,18 @@ export function LocationTab({ filteredData }: LocationTabProps) {
                               toggleProvince(provinceData.province)
                             }
                           >
-                            <TableCell className="flex items-center gap-2">
-                              {isProvinceExpanded ? (
-                                <ChevronDown className="h-4 w-4" />
-                              ) : (
-                                <ChevronRight className="h-4 w-4" />
-                              )}
-                              <MapPin className="h-4 w-4 text-muted-foreground" />
-                              {provinceData.province}
+                            <TableCell className="w-[40%]">
+                              <div className="flex min-w-0 items-center gap-2">
+                                {isProvinceExpanded ? (
+                                  <ChevronDown className="h-4 w-4" />
+                                ) : (
+                                  <ChevronRight className="h-4 w-4" />
+                                )}
+                                <MapPin className="h-4 w-4 text-muted-foreground" />
+                                <TruncateText title={provinceData.province}>
+                                  {provinceData.province}
+                                </TruncateText>
+                              </div>
                             </TableCell>
                             <TableCell className="text-right">
                               {formatCurrency(provinceData.revenue)}
@@ -1691,16 +1712,19 @@ export function LocationTab({ filteredData }: LocationTabProps) {
                                       className="cursor-pointer hover:bg-muted/30 bg-muted/10"
                                       onClick={(e) => toggleCity(cityKey, e)}
                                     >
-                                      <TableCell className="pl-12">
-                                        <div className="flex items-center gap-2">
+                                      <TableCell className="pl-12 w-[40%]">
+                                        <div className="flex min-w-0 items-center gap-2">
                                           {isCityExpanded ? (
                                             <ChevronDown className="h-3 w-3" />
                                           ) : (
                                             <ChevronRight className="h-3 w-3" />
                                           )}
-                                          <span className="text-sm">
+                                          <TruncateText
+                                            title={cityData.city}
+                                            className="text-sm"
+                                          >
                                             {cityData.city}
-                                          </span>
+                                          </TruncateText>
                                         </div>
                                       </TableCell>
                                       <TableCell className="text-right text-sm">
@@ -1745,10 +1769,15 @@ export function LocationTab({ filteredData }: LocationTabProps) {
                                                   key={`${cityKey}-${productData.productName}`}
                                                   className="bg-muted/5"
                                                 >
-                                                  <TableCell className="pl-20">
-                                                    <span className="text-xs text-muted-foreground">
+                                                  <TableCell className="pl-20 max-w-0">
+                                                    <TruncateText
+                                                      title={
+                                                        productData.productName
+                                                      }
+                                                      className="text-xs text-muted-foreground"
+                                                    >
                                                       {productData.productName}
-                                                    </span>
+                                                    </TruncateText>
                                                   </TableCell>
                                                   <TableCell className="text-right text-xs">
                                                     {formatCurrency(
@@ -1813,6 +1842,12 @@ export function LocationTab({ filteredData }: LocationTabProps) {
                                                           </option>
                                                           <option value={25}>
                                                             25
+                                                          </option>
+                                                          <option value={50}>
+                                                            50
+                                                          </option>
+                                                          <option value={100}>
+                                                            100
                                                           </option>
                                                         </select>
                                                       </div>

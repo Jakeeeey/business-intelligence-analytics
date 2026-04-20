@@ -414,7 +414,7 @@ function OverviewTabComponent({
   return (
     <div className="space-y-4">
       {/* Revenue Trend */}
-      <Card className="dark:border-zinc-700 dark:bg-white/13">
+      <Card className="dark:border-zinc-700 ">
         <CardHeader className="flex items-start gap-4">
           <div className="flex-1">
             <CardTitle>Revenue & Collections Trend</CardTitle>
@@ -678,7 +678,7 @@ function OverviewTabComponent({
       {/* Top Salesmen + Top Products */}
       <div className="grid gap-4 lg:grid-cols-2">
         {/* Top Salesmen */}
-        <Card className="dark:border-zinc-700 dark:bg-white/13">
+        <Card className="dark:border-zinc-700 ">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
               <CardTitle>Top Salesmen</CardTitle>
@@ -759,7 +759,7 @@ function OverviewTabComponent({
         </Card>
 
         {/* Top Products */}
-        <Card className="dark:border-zinc-700 dark:bg-white/13">
+        <Card className="dark:border-zinc-700 ">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
               <CardTitle>Top Products</CardTitle>
@@ -843,7 +843,7 @@ function OverviewTabComponent({
       {/* Top Customers + Sales by Branch */}
       <div className="grid gap-4 lg:grid-cols-2">
         {/* Top Customers */}
-        <Card className="dark:border-zinc-700 dark:bg-white/13">
+        <Card className="dark:border-zinc-700 ">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
               <CardTitle>Top Customers</CardTitle>
@@ -924,7 +924,7 @@ function OverviewTabComponent({
         </Card>
 
         {/* Sales by Branch */}
-        <Card className="dark:border-zinc-700 dark:bg-white/13">
+        <Card className="dark:border-zinc-700 ">
           <CardHeader>
             <CardTitle>Sales by Branch</CardTitle>
             <CardDescription>
@@ -997,7 +997,7 @@ function OverviewTabComponent({
 
       {/* Status Distribution */}
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card className="dark:border-zinc-700 dark:bg-white/13">
+        <Card className="dark:border-zinc-700 ">
           <CardHeader>
             <CardTitle>Transaction Status Distribution</CardTitle>
             <CardDescription>
@@ -1059,7 +1059,7 @@ function OverviewTabComponent({
         </Card>
 
         {/* Invoice count by period bar */}
-        <Card className="dark:border-zinc-700 dark:bg-white/13">
+        <Card className="dark:border-zinc-700 ">
           <CardHeader>
             <CardTitle>Invoice Volume by Period</CardTitle>
             <CardDescription>

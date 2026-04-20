@@ -159,9 +159,20 @@ export type InvoiceSummary = {
   totalAmount: number;
   collection: number;
   discountAmount: number;
+  amount?: number; // Computed net amount (totalAmount - discountAmount - returns)
   transactionStatus: string | null;
   paymentStatus: string | null;
+  // Indicates whether paymentStatus was derived by logic (true), came from source data (false),
+  // or could not be determined (null -> UI should display "N/A").
+  paymentStatusDerived: boolean | null;
+  // Indicates whether transactionStatus was derived by logic (true), came from source data (false),
+  // or could not be determined (null -> UI should display "N/A").
+  transactionStatusDerived: boolean | null;
   divisionName: string | null;
+  // Optional return fields for net amount calculation
+  returnTotalAmount?: number;
+  returnDiscountAmount?: number;
+  returnNetAmount?: number;
 };
 
 export type ReturnRecord = {

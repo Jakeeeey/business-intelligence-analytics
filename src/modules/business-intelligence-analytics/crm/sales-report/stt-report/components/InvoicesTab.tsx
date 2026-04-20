@@ -367,7 +367,12 @@ function buildTrendData(
       map.set(key, { start: bs, count: 0, amount: 0, collections: 0 });
     const e = map.get(key)!;
     e.count += 1;
-    e.amount += inv.totalAmount;
+    // Use net amount for revenue (API's `amount` appears to be totalAmount - discount)
+    const invNet = Number(
+      inv.amount ??
+        Number(inv.totalAmount ?? 0) - Number(inv.discountAmount ?? 0),
+    );
+    e.amount += invNet;
     e.collections += inv.collection;
   });
 
@@ -536,6 +541,25 @@ function formatDate(dateStr: string | null | undefined) {
   });
 }
 
+// Compute a reliable net amount for an invoice record.
+function computeNetAmount(inv: Partial<InvoiceSummary>) {
+  // 1) Prefer explicit `amount` provided by API
+  if (inv.amount != null && !Number.isNaN(Number(inv.amount)))
+    return Number(inv.amount);
+
+  // 3) Fallback: totalAmount - discountAmount - returnNet (or derived return net)
+  const total = Number(inv.totalAmount ?? 0);
+  const disc = Number(inv.discountAmount ?? 0);
+  const retTotal = Number(inv.returnTotalAmount ?? 0);
+  const retDisc = Number(inv.returnDiscountAmount ?? 0);
+  const retNet =
+    inv.returnNetAmount != null && !Number.isNaN(Number(inv.returnNetAmount))
+      ? Number(inv.returnNetAmount)
+      : retTotal - retDisc;
+
+  return total - disc - retNet;
+}
+
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100];
 
 function getPageNumbers(page: number, totalPages: number): (number | "…")[] {
@@ -606,19 +630,30 @@ function InvoicesTabComponent({
 
   const [granularity, setGranularity] = React.useState<Granularity>("monthly");
 
-  // Chart derived data
+  // Create an enriched invoices list with a reliable numeric `amount` field
+  const enrichedInvoices = React.useMemo(() => {
+    return invoiceSummaries.map((inv) => ({
+      ...inv,
+      amount:
+        inv.amount != null && !Number.isNaN(Number(inv.amount))
+          ? Number(inv.amount)
+          : computeNetAmount(inv),
+    }));
+  }, [invoiceSummaries]);
+
+  // Chart derived data (use enriched invoices)
   const trendData = React.useMemo(
-    () => buildTrendData(invoiceSummaries, granularity, dateFrom, dateTo),
-    [invoiceSummaries, granularity, dateFrom, dateTo],
+    () => buildTrendData(enrichedInvoices, granularity, dateFrom, dateTo),
+    [enrichedInvoices, granularity, dateFrom, dateTo],
   );
 
   const txStatusData = React.useMemo(() => {
     const map = new Map<string, number>();
-    invoiceSummaries.forEach((inv) => {
+    enrichedInvoices.forEach((inv) => {
       const k = inv.transactionStatus ?? "N/A";
       map.set(k, (map.get(k) ?? 0) + 1);
     });
-    const total = invoiceSummaries.length || 1;
+    const total = enrichedInvoices.length || 1;
     return Array.from(map.entries())
       .map(([name, value]) => ({
         name,
@@ -626,15 +661,15 @@ function InvoicesTabComponent({
         pct: ((value / total) * 100).toFixed(2),
       }))
       .sort((a, b) => b.value - a.value);
-  }, [invoiceSummaries]);
+  }, [enrichedInvoices]);
 
   const payStatusData = React.useMemo(() => {
     const map = new Map<string, number>();
-    invoiceSummaries.forEach((inv) => {
+    enrichedInvoices.forEach((inv) => {
       const k = inv.paymentStatus ?? "N/A";
       map.set(k, (map.get(k) ?? 0) + 1);
     });
-    const total = invoiceSummaries.length || 1;
+    const total = enrichedInvoices.length || 1;
     return Array.from(map.entries())
       .map(([name, value]) => ({
         name,
@@ -642,7 +677,7 @@ function InvoicesTabComponent({
         pct: ((value / total) * 100).toFixed(2),
       }))
       .sort((a, b) => b.value - a.value);
-  }, [invoiceSummaries]);
+  }, [enrichedInvoices]);
 
   const axisColor = isDark ? "#71717a" : "#a1a1aa";
   const gridColor = isDark ? "#3f3f46" : "#e4e4e7";
@@ -687,7 +722,7 @@ function InvoicesTabComponent({
   const filtered = React.useMemo(() => {
     const q = search.toLowerCase();
     let list = q
-      ? invoiceSummaries.filter(
+      ? enrichedInvoices.filter(
           (inv) =>
             (inv.invoiceNo ?? "N/A").toLowerCase().includes(q) ||
             (inv.customerName ?? "N/A").toLowerCase().includes(q) ||
@@ -696,7 +731,7 @@ function InvoicesTabComponent({
             (inv.transactionStatus ?? "N/A").toLowerCase().includes(q) ||
             (inv.paymentStatus ?? "N/A").toLowerCase().includes(q),
         )
-      : invoiceSummaries;
+      : enrichedInvoices;
 
     if (txStatusFilter)
       list = list.filter((inv) =>
@@ -722,7 +757,7 @@ function InvoicesTabComponent({
       return sortDir === "asc" ? as.localeCompare(bs) : bs.localeCompare(as);
     });
   }, [
-    invoiceSummaries,
+    enrichedInvoices,
     search,
     sortKey,
     sortDir,
@@ -747,7 +782,7 @@ function InvoicesTabComponent({
       {/* ── Trend (3/4) + Status pies (1/4) ── */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 items-stretch">
         {/* Invoice Volume & Revenue Trend — 3/4 */}
-        <Card className="dark:border-zinc-700 dark:bg-white/13 lg:col-span-3 flex flex-col">
+        <Card className="lg:col-span-3 flex flex-col">
           <CardHeader>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div>
@@ -764,7 +799,7 @@ function InvoicesTabComponent({
                   key={opt.value}
                   size="sm"
                   variant={granularity === opt.value ? "default" : "outline"}
-                  className={`h-7 px-2.5 text-xs dark:border-zinc-700 ${granularity === opt.value ? "" : "text-muted-foreground"}`}
+                  className={`h-7 px-2.5 text-xs  ${granularity === opt.value ? "" : "text-muted-foreground"}`}
                   onClick={() => setGranularity(opt.value)}
                 >
                   {opt.label}
@@ -950,7 +985,7 @@ function InvoicesTabComponent({
         {/* Right column: two pies stacked — 1/4 */}
         <div className="flex flex-col gap-4 lg:col-span-1">
           {/* Transaction Status */}
-          <Card className="dark:border-zinc-700 dark:bg-white/13">
+          <Card className=" ">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <div>
@@ -1064,7 +1099,7 @@ function InvoicesTabComponent({
           </Card>
 
           {/* Payment Status */}
-          <Card className="dark:border-zinc-700 dark:bg-white/13">
+          <Card className=" ">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <div>
@@ -1182,7 +1217,7 @@ function InvoicesTabComponent({
       </div>
 
       {/* ── Invoice Table ── */}
-      <Card className="dark:border-zinc-700 dark:bg-white/13">
+      <Card className=" ">
         <CardHeader>
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
@@ -1241,14 +1276,14 @@ function InvoicesTabComponent({
               placeholder="Search invoice, customer, salesman, branch..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="max-w-sm dark:border-zinc-700"
+              className="max-w-sm "
             />
           </div>
 
           <div className="overflow-x-auto">
             <Table className="table-fixed min-w-300">
               <TableHeader>
-                <TableRow className="dark:border-zinc-700">
+                <TableRow className="">
                   <TableHead
                     className="w-40 cursor-pointer hover:text-foreground"
                     onClick={() => toggleSort("invoiceNo")}
@@ -1264,7 +1299,7 @@ function InvoicesTabComponent({
                     className="w-22 cursor-pointer hover:text-foreground"
                     onClick={() => toggleSort("invoiceDate")}
                   >
-                    Date
+                    Invoice Date
                     <SortIndicator
                       k="invoiceDate"
                       sortKey={sortKey}
@@ -1308,7 +1343,7 @@ function InvoicesTabComponent({
                     className="w-24 cursor-pointer hover:text-foreground"
                     onClick={() => toggleSort("totalAmount")}
                   >
-                    Amount
+                    Gross Amount
                     <SortIndicator
                       k="totalAmount"
                       sortKey={sortKey}
@@ -1328,9 +1363,20 @@ function InvoicesTabComponent({
                   </TableHead>
                   <TableHead
                     className="w-24 cursor-pointer hover:text-foreground"
+                    onClick={() => toggleSort("amount")}
+                  >
+                    Net Amount
+                    <SortIndicator
+                      k="amount"
+                      sortKey={sortKey}
+                      sortDir={sortDir}
+                    />
+                  </TableHead>
+                  <TableHead
+                    className="w-24 cursor-pointer hover:text-foreground"
                     onClick={() => toggleSort("collection")}
                   >
-                    Collection
+                    Collected Amount
                     <SortIndicator
                       k="collection"
                       sortKey={sortKey}
@@ -1368,7 +1414,7 @@ function InvoicesTabComponent({
                 {paginated.length === 0 && (
                   <TableRow>
                     <TableCell
-                      colSpan={10}
+                      colSpan={11}
                       className="text-center py-8 text-muted-foreground"
                     >
                       No invoices found
@@ -1378,7 +1424,7 @@ function InvoicesTabComponent({
                 {paginated.map((inv) => (
                   <TableRow
                     key={inv.invoiceId}
-                    className="dark:border-zinc-700"
+                    className=""
                   >
                     <TableCell className="overflow-hidden font-mono text-sm font-medium">
                       <span className="truncate block">
@@ -1412,6 +1458,12 @@ function InvoicesTabComponent({
                     <TableCell className="tabular-nums text-muted-foreground">
                       {phpFmt.format(inv.discountAmount || 0)}
                     </TableCell>
+                    <TableCell className="tabular-nums font-medium">
+                      {phpFmt.format(
+                        inv.amount ??
+                          inv.totalAmount - (inv.discountAmount ?? 0),
+                      )}
+                    </TableCell>
                     <TableCell className="tabular-nums">
                       {phpFmt.format(inv.collection)}
                     </TableCell>
@@ -1428,7 +1480,7 @@ function InvoicesTabComponent({
           </div>
 
           {/* Pagination */}
-          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t dark:border-zinc-700">
+          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t ">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <span>Show</span>
               <select
@@ -1437,7 +1489,7 @@ function InvoicesTabComponent({
                   setPageSize(Number(e.target.value));
                   setPage(1);
                 }}
-                className="border rounded px-2 py-0.5 text-sm bg-background dark:border-zinc-700"
+                className="border rounded px-2 py-0.5 text-sm bg-background "
               >
                 {PAGE_SIZE_OPTIONS.map((n) => (
                   <option key={n} value={n}>
@@ -1455,7 +1507,7 @@ function InvoicesTabComponent({
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 px-3 dark:border-zinc-700"
+                className="h-8 px-3 "
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
               >
@@ -1475,7 +1527,7 @@ function InvoicesTabComponent({
                     key={pn}
                     variant={pn === page ? "default" : "outline"}
                     size="sm"
-                    className="h-8 w-8 p-0 dark:border-zinc-700"
+                    className="h-8 w-8 p-0 "
                     onClick={() => setPage(pn as number)}
                   >
                     {pn}
@@ -1485,7 +1537,7 @@ function InvoicesTabComponent({
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 px-3 dark:border-zinc-700"
+                className="h-8 px-3 "
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
               >

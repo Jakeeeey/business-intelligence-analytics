@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, ArrowUpDown, ChevronRight, ChevronDown } from "lucide-react";
+import { Search, ChevronRight, ChevronDown } from "lucide-react";
 import type { ProductReturnTrend, ProductReturnRecord } from "../types";
 import { ChartContainer, ChartTooltip } from "@/components/ui/chart";
 import {
@@ -87,6 +87,8 @@ const _phpFmtPRP = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 2,
 });
 const formatCurrency = (v: number) => _phpFmtPRP.format(v);
+const formatShare = (value: number, total: number) =>
+  total > 0 ? `${((value / total) * 100).toFixed(1)}%` : "0.0%";
 
 type ProductTabProps = {
   allProducts: { name: string; returnValue: number; returnCount: number }[];
@@ -321,6 +323,17 @@ export function ProductTab({
 
     return products;
   }, [allProducts, searchTerm, sortBy, sortOrder]);
+
+  const filteredProductsTotalCount = React.useMemo(
+    () =>
+      filteredProducts.reduce((sum, product) => sum + product.returnCount, 0),
+    [filteredProducts],
+  );
+  const filteredProductsTotalValue = React.useMemo(
+    () =>
+      filteredProducts.reduce((sum, product) => sum + product.returnValue, 0),
+    [filteredProducts],
+  );
 
   const handleTrendLineClick = React.useCallback(
     (productName: string) => {
@@ -607,7 +620,7 @@ export function ProductTab({
   };
 
   const { theme } = useTheme();
-  const resolvedTheme =  theme;
+  const resolvedTheme = theme;
   const isDark = resolvedTheme === "dark";
   const activeChartColors = isDark ? chartColorsDark : chartColors;
 
@@ -709,7 +722,7 @@ export function ProductTab({
     <div className="space-y-4">
       {/* Product Return Trends Chart */}
       {productTrends.length > 0 && (
-        <Card className="dark:border-zinc-700 dark:bg-white/13">
+        <Card className=" ">
           <CardHeader>
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between">
@@ -721,7 +734,7 @@ export function ProductTab({
                 </div>
                 {selectedProductInTrend && (
                   <Button
-                    className="dark:border-zinc-700"
+                    className=""
                     variant="outline"
                     size="sm"
                     onClick={() => {
@@ -735,7 +748,7 @@ export function ProductTab({
               </div>
               <div className="flex flex-wrap gap-2">
                 <Button
-                  className="dark:border-zinc-700"
+                  className=""
                   variant={timePeriod === "daily" ? "default" : "outline"}
                   size="sm"
                   onClick={() => {
@@ -747,7 +760,7 @@ export function ProductTab({
                   Daily
                 </Button>
                 <Button
-                  className="dark:border-zinc-700"
+                  className=""
                   variant={timePeriod === "weekly" ? "default" : "outline"}
                   size="sm"
                   onClick={() => {
@@ -759,7 +772,7 @@ export function ProductTab({
                   Weekly
                 </Button>
                 <Button
-                  className="dark:border-zinc-700"
+                  className=""
                   variant={timePeriod === "bi-weekly" ? "default" : "outline"}
                   size="sm"
                   onClick={() => {
@@ -771,7 +784,7 @@ export function ProductTab({
                   Bi-Weekly
                 </Button>
                 <Button
-                  className="dark:border-zinc-700"
+                  className=""
                   variant={timePeriod === "monthly" ? "default" : "outline"}
                   size="sm"
                   onClick={() => {
@@ -783,7 +796,7 @@ export function ProductTab({
                   Monthly
                 </Button>
                 <Button
-                  className="dark:border-zinc-700"
+                  className=""
                   variant={timePeriod === "bi-monthly" ? "default" : "outline"}
                   size="sm"
                   onClick={() => {
@@ -795,7 +808,7 @@ export function ProductTab({
                   Bi-Monthly
                 </Button>
                 <Button
-                  className="dark:border-zinc-700"
+                  className=""
                   variant={timePeriod === "quarterly" ? "default" : "outline"}
                   size="sm"
                   onClick={() => {
@@ -807,7 +820,7 @@ export function ProductTab({
                   Quarterly
                 </Button>
                 <Button
-                  className="dark:border-zinc-700"
+                  className=""
                   variant={
                     timePeriod === "semi-annually" ? "default" : "outline"
                   }
@@ -821,7 +834,7 @@ export function ProductTab({
                   Semi-Annually
                 </Button>
                 <Button
-                  className="dark:border-zinc-700"
+                  className=""
                   variant={timePeriod === "yearly" ? "default" : "outline"}
                   size="sm"
                   onClick={() => {
@@ -931,7 +944,7 @@ export function ProductTab({
       )}
 
       {/* Search */}
-      <Card className="dark:border-zinc-700">
+      <Card className="">
         <CardContent className="">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -939,14 +952,14 @@ export function ProductTab({
               placeholder="Search products..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 dark:border-zinc-700"
+              className="pl-10 "
             />
           </div>
         </CardContent>
       </Card>
 
       {/* Product Returns Table */}
-      <Card className="dark:border-zinc-700 dark:bg-white/13">
+      <Card className=" ">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
@@ -962,16 +975,16 @@ export function ProductTab({
             <Table className="table-fixed w-full dark:border-y-zinc-700 dark:bg-white/3">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="min-w-0">Product Name</TableHead>
-                  <TableHead className="min-w-0 text-muted-foreground">
+                  <TableHead className="min-w-0 w-100">Product Name</TableHead>
+                  <TableHead className="min-w-0  text-muted-foreground">
                     Brand
                   </TableHead>
                   <TableHead className="min-w-0 text-muted-foreground">
                     Category
                   </TableHead>
-                  <TableHead className="w-30 text-right">
+                  <TableHead className="w-[120px]0 0 text-right px-0">
                     <Button
-                      className="dark:border-zinc-700"
+                      className=" px-0"
                       variant="ghost"
                       size="sm"
                       onClick={() => {
@@ -984,12 +997,12 @@ export function ProductTab({
                       }}
                       style={{ height: 32 }}
                     >
-                      Return Count <ArrowUpDown className="ml-2 h-4 w-4" />
+                      Return Count
                     </Button>
                   </TableHead>
                   <TableHead className="w-46 text-right">
                     <Button
-                      className="dark:border-zinc-700"
+                      className=""
                       variant="ghost"
                       size="sm"
                       onClick={() => {
@@ -1002,12 +1015,48 @@ export function ProductTab({
                       }}
                       style={{ height: 32 }}
                     >
-                      Return Value <ArrowUpDown className="ml-2 h-4 w-4" />
+                      Return Value
+                    </Button>
+                  </TableHead>
+                  <TableHead className="w-32 text-right">
+                    <Button
+                      className=""
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        if (sortBy === "returnCount") {
+                          setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+                        } else {
+                          setSortBy("returnCount");
+                          setSortOrder("desc");
+                        }
+                      }}
+                      style={{ height: 32 }}
+                    >
+                      Count Share (%)
+                    </Button>
+                  </TableHead>
+                  <TableHead className="w-32 text-right">
+                    <Button
+                      className=""
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        if (sortBy === "returnValue") {
+                          setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+                        } else {
+                          setSortBy("returnValue");
+                          setSortOrder("desc");
+                        }
+                      }}
+                      style={{ height: 32 }}
+                    >
+                      Value Share (%)
                     </Button>
                   </TableHead>
                   <TableHead className="w-46 text-right">
                     <Button
-                      className="dark:border-zinc-700"
+                      className=""
                       variant="ghost"
                       size="sm"
                       onClick={() => {
@@ -1020,7 +1069,7 @@ export function ProductTab({
                       }}
                       style={{ height: 32 }}
                     >
-                      Avg Return Value <ArrowUpDown className="ml-2 h-4 w-4" />
+                      Avg Return Value
                     </Button>
                   </TableHead>
                 </TableRow>
@@ -1046,7 +1095,7 @@ export function ProductTab({
                           onClick={() => toggleProduct(product.name)}
                         >
                           <TableCell className="min-w-0">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2  truncate">
                               {isExpanded ? (
                                 <ChevronDown className="h-4 w-4 text-muted-foreground" />
                               ) : (
@@ -1055,18 +1104,19 @@ export function ProductTab({
                               <span
                                 className="font-medium block min-w-0 truncate"
                                 style={{ color }}
+                                title={product.name}
                               >
                                 {product.name}
                               </span>
                             </div>
                           </TableCell>
-                          <TableCell className="text-muted-foreground min-w-0">
-                            <span className="inline-block truncate">
+                          <TableCell className="text-muted-foreground min-w-0 truncate">
+                            <span title={meta.brand} className="truncate">
                               {meta.brand}
                             </span>
                           </TableCell>
-                          <TableCell className="text-muted-foreground min-w-0">
-                            <span className="inline-block truncate">
+                          <TableCell className="text-muted-foreground min-w-0  truncate">
+                            <span title={meta.category} className=" truncate">
                               {meta.category}
                             </span>
                           </TableCell>
@@ -1075,6 +1125,18 @@ export function ProductTab({
                           </TableCell>
                           <TableCell className="w-36 text-right font-medium">
                             {formatCurrency(product.returnValue)}
+                          </TableCell>
+                          <TableCell className="w-32 text-right text-muted-foreground">
+                            {formatShare(
+                              product.returnCount,
+                              filteredProductsTotalCount,
+                            )}
+                          </TableCell>
+                          <TableCell className="w-32 text-right text-muted-foreground">
+                            {formatShare(
+                              product.returnValue,
+                              filteredProductsTotalValue,
+                            )}
                           </TableCell>
                           <TableCell className="w-36 text-right">
                             {formatCurrency(
@@ -1091,6 +1153,14 @@ export function ProductTab({
                             const customerTotalPages = Math.ceil(
                               customers.length / customerItemsPerPage,
                             );
+                            const customerTotalCount = customers.reduce(
+                              (sum, customer) => sum + customer.returnCount,
+                              0,
+                            );
+                            const customerTotalValue = customers.reduce(
+                              (sum, customer) => sum + customer.returnValue,
+                              0,
+                            );
                             const startIdx =
                               (currentCustomerPage - 1) * customerItemsPerPage;
                             const paginatedCustomers = customers.slice(
@@ -1100,15 +1170,15 @@ export function ProductTab({
                             return (
                               <TableRow>
                                 <TableCell
-                                  colSpan={6}
+                                  colSpan={9}
                                   className="bg-muted/30 p-0"
                                 >
                                   <div className="px-12 py-4">
                                     <div className="rounded-md border bg-background">
-                                      <Table className=" dark:border-y-zinc-700 dark:bg-white/15">
+                                      <Table className="table-fixed w-full dark:border-y-zinc-700 dark:bg-white/15">
                                         <TableHeader>
                                           <TableRow>
-                                            <TableHead className="w-120">
+                                            <TableHead className="w-60 text-left">
                                               <Button
                                                 variant="ghost"
                                                 size="sm"
@@ -1120,11 +1190,10 @@ export function ProductTab({
                                                 }
                                                 className="h-8"
                                               >
-                                                Customer{" "}
-                                                <ArrowUpDown className="ml-2 h-4 w-4" />
+                                                Customer
                                               </Button>
                                             </TableHead>
-                                            <TableHead>
+                                            <TableHead className="text-left  w-30">
                                               <Button
                                                 variant="ghost"
                                                 size="sm"
@@ -1136,11 +1205,10 @@ export function ProductTab({
                                                 }
                                                 className="h-8"
                                               >
-                                                Division{" "}
-                                                <ArrowUpDown className="ml-2 h-4 w-4" />
+                                                Division
                                               </Button>
                                             </TableHead>
-                                            <TableHead>
+                                            <TableHead className="text-left w-30">
                                               <Button
                                                 variant="ghost"
                                                 size="sm"
@@ -1153,10 +1221,9 @@ export function ProductTab({
                                                 className="h-8"
                                               >
                                                 Operation{" "}
-                                                <ArrowUpDown className="ml-2 h-4 w-4" />
                                               </Button>
                                             </TableHead>
-                                            <TableHead className="w-50">
+                                            <TableHead className="w-40 text-left">
                                               <Button
                                                 variant="ghost"
                                                 size="sm"
@@ -1169,10 +1236,9 @@ export function ProductTab({
                                                 className="h-8"
                                               >
                                                 Salesman{" "}
-                                                <ArrowUpDown className="ml-2 h-4 w-4" />
                                               </Button>
                                             </TableHead>
-                                            <TableHead className="text-right">
+                                            <TableHead className="text-right w-25">
                                               <Button
                                                 variant="ghost"
                                                 size="sm"
@@ -1184,11 +1250,10 @@ export function ProductTab({
                                                 }
                                                 className="h-8"
                                               >
-                                                Return Count{" "}
-                                                <ArrowUpDown className="ml-2 h-4 w-4" />
+                                                Return Count
                                               </Button>
                                             </TableHead>
-                                            <TableHead className="text-right">
+                                            <TableHead className="text-right w-25">
                                               <Button
                                                 variant="ghost"
                                                 size="sm"
@@ -1200,11 +1265,40 @@ export function ProductTab({
                                                 }
                                                 className="h-8"
                                               >
-                                                Return Value{" "}
-                                                <ArrowUpDown className="ml-2 h-4 w-4" />
+                                                Return Value
                                               </Button>
                                             </TableHead>
-                                            <TableHead className="text-right">
+                                            <TableHead className="text-right w-25">
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() =>
+                                                  handleCustomerSort(
+                                                    product.name,
+                                                    "returnCount",
+                                                  )
+                                                }
+                                                className="h-8"
+                                              >
+                                                Count Share (%)
+                                              </Button>
+                                            </TableHead>
+                                            <TableHead className="text-right w-30">
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() =>
+                                                  handleCustomerSort(
+                                                    product.name,
+                                                    "returnValue",
+                                                  )
+                                                }
+                                                className="h-8 w-30"
+                                              >
+                                                Value Share(%)
+                                              </Button>
+                                            </TableHead>
+                                            <TableHead className="text-right w-40">
                                               <Button
                                                 variant="ghost"
                                                 size="sm"
@@ -1216,8 +1310,7 @@ export function ProductTab({
                                                 }
                                                 className="h-8"
                                               >
-                                                Avg{" "}
-                                                <ArrowUpDown className="ml-2 h-4 w-4" />
+                                                Avg Return value
                                               </Button>
                                             </TableHead>
                                           </TableRow>
@@ -1227,16 +1320,28 @@ export function ProductTab({
                                             <TableRow
                                               key={`${c.customer}-${idx}`}
                                             >
-                                              <TableCell>
+                                              <TableCell
+                                                title={c.customer}
+                                                className="truncate text-left"
+                                              >
                                                 {c.customer}
                                               </TableCell>
-                                              <TableCell>
+                                              <TableCell
+                                                title={c.divisionName}
+                                                className="truncate text-left"
+                                              >
                                                 {c.divisionName}
                                               </TableCell>
-                                              <TableCell>
+                                              <TableCell
+                                                title={c.operationName}
+                                                className="truncate text-left"
+                                              >
                                                 {c.operationName}
                                               </TableCell>
-                                              <TableCell>
+                                              <TableCell
+                                                title={c.salesmanName}
+                                                className="truncate text-left"
+                                              >
                                                 {c.salesmanName}
                                               </TableCell>
                                               <TableCell className="text-right">
@@ -1244,6 +1349,18 @@ export function ProductTab({
                                               </TableCell>
                                               <TableCell className="text-right">
                                                 {formatCurrency(c.returnValue)}
+                                              </TableCell>
+                                              <TableCell className="text-right text-muted-foreground">
+                                                {formatShare(
+                                                  c.returnCount,
+                                                  customerTotalCount,
+                                                )}
+                                              </TableCell>
+                                              <TableCell className="text-right text-muted-foreground">
+                                                {formatShare(
+                                                  c.returnValue,
+                                                  customerTotalValue,
+                                                )}
                                               </TableCell>
                                               <TableCell className="text-right">
                                                 {formatCurrency(
@@ -1256,7 +1373,7 @@ export function ProductTab({
                                       </Table>
                                     </div>
                                     {customerTotalPages > 1 && (
-                                      <div className="flex items-center justify-between px-2 py-4">
+                                      <div className="flex items-center justify-between py-4">
                                         <div className="text-sm text-muted-foreground">
                                           Showing {startIdx + 1} to{" "}
                                           {Math.min(
@@ -1375,7 +1492,7 @@ export function ProductTab({
                   })
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center">
+                    <TableCell colSpan={8} className="h-24 text-center">
                       No products found
                     </TableCell>
                   </TableRow>
@@ -1384,10 +1501,10 @@ export function ProductTab({
             </Table>
           </div>
           {/* Pagination */}
-          <div className="flex items-center justify-between px-2 py-4">
+          <div className="flex items-center justify-between py-4">
             <div className="flex items-center gap-4">
               <select
-                className="h-8 rounded-md border border-input bg-background px-3 py-1 text-sm dark:border-zinc-700"
+                className="h-8 rounded-md border border-input bg-background px-3 py-1 text-sm "
                 value={itemsPerPage}
                 onChange={(e) => {
                   setItemsPerPage(Number(e.target.value));

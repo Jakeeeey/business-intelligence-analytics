@@ -11,6 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import type { ProductSaleRecord } from "../types";
+import { TruncateText } from "./TruncateText";
 
 const phpFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -133,7 +134,7 @@ export default function QuickInsightModal({
             />
             <div className="min-w-0 flex-1">
               <DialogTitle className="text-base font-semibold leading-tight wrap-break-words">
-                {config.item.name} 
+                {config.item.name}
               </DialogTitle>
               <DialogDescription className="mt-0.5 text-xs capitalize">
                 {config.type} Rank #{config.rank}
@@ -172,16 +173,16 @@ export default function QuickInsightModal({
                   {tableLabel}
                 </p>
                 <div className="rounded-md border dark:border-zinc-700 overflow-hidden">
-                  <table className="w-full text-xs">
+                  <table className="w-full table-fixed text-xs">
                     <thead>
                       <tr className="border-b dark:border-zinc-700 bg-muted/30">
-                        <th className="text-left px-3 py-2 font-medium text-muted-foreground">
+                        <th className="w-[58%] text-left px-3 py-2 font-medium text-muted-foreground">
                           Name
                         </th>
-                        <th className="text-right px-3 py-2 font-medium text-muted-foreground">
+                        <th className="w-[17%] text-right px-3 py-2 font-medium text-muted-foreground">
                           Count
                         </th>
-                        <th className="text-right px-3 py-2 font-medium text-muted-foreground">
+                        <th className="w-[25%] text-right px-3 py-2 font-medium text-muted-foreground">
                           Revenue
                         </th>
                       </tr>
@@ -192,7 +193,11 @@ export default function QuickInsightModal({
                           key={`${row.name}-${i}`}
                           className={i % 2 === 0 ? "" : "bg-muted/20"}
                         >
-                          <td className="px-3 py-2">{row.name}</td>
+                          <td className="px-3 py-2 max-w-0">
+                            <TruncateText title={row.name}>
+                              {row.name}
+                            </TruncateText>
+                          </td>
                           <td className="px-3 py-2 text-right">{row.count}</td>
                           <td className="px-3 py-2 text-right font-medium tabular-nums">
                             {fmt(row.revenue)}
