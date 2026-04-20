@@ -94,11 +94,10 @@ function getBucketKey(date: Date, granularity: Granularity): string {
 function getDefaultFilters(): AllocationFilters {
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
   return {
     dateRangePreset: "this-month",
     dateFrom: fmtLocalDate(monthStart),
-    dateTo: fmtLocalDate(monthEnd),
+    dateTo: fmtLocalDate(now),
     suppliers: [],
     brands: [],
     categories: [],
@@ -114,31 +113,107 @@ export function getDateRangeFromPreset(
   const now = new Date();
   const fmt = (d: Date) =>
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const startOfWeekMonday = (d: Date) => {
+    const day = d.getDay();
+    const daysFromMonday = (day + 6) % 7;
+    const s = new Date(d);
+    s.setDate(d.getDate() - daysFromMonday);
+    return s;
+  };
+
+  const startOfQuarter = (d: Date) => {
+    const month = d.getMonth();
+    const qStart = Math.floor(month / 3) * 3;
+    return new Date(d.getFullYear(), qStart, 1);
+  };
 
   switch (preset) {
+    case "today":
+      return { from: fmt(now), to: fmt(now) };
     case "yesterday": {
       const y = new Date(now);
       y.setDate(y.getDate() - 1);
       return { from: fmt(y), to: fmt(y) };
     }
-    case "today":
-      return { from: fmt(now), to: fmt(now) };
+    case "day-before-yesterday": {
+      const dby = new Date(now);
+      dby.setDate(dby.getDate() - 2);
+      return { from: fmt(dby), to: fmt(dby) };
+    }
     case "this-week": {
-      const ws = new Date(now);
-      ws.setDate(ws.getDate() - ws.getDay());
-      const we = new Date(ws);
-      we.setDate(we.getDate() + 6);
-      return { from: fmt(ws), to: fmt(we) };
+      const ws = startOfWeekMonday(now);
+      return { from: fmt(ws), to: fmt(now) };
     }
-    case "this-month": {
+    case "last-week": {
+      const thisWs = startOfWeekMonday(now);
+      const lwStart = new Date(thisWs);
+      lwStart.setDate(thisWs.getDate() - 7);
+      const lwEnd = new Date(lwStart);
+      lwEnd.setDate(lwStart.getDate() + 6);
+      return { from: fmt(lwStart), to: fmt(lwEnd) };
+    }
+    case "last-7-days": {
+      const start = new Date(now);
+      start.setDate(now.getDate() - 6);
+      return { from: fmt(start), to: fmt(now) };
+    }
+    case "last-2-weeks": {
+      const start = new Date(now);
+      start.setDate(now.getDate() - 13);
+      return { from: fmt(start), to: fmt(now) };
+    }
+    case "this-month":
+    case "mtd": {
       const ms = new Date(now.getFullYear(), now.getMonth(), 1);
-      const me = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-      return { from: fmt(ms), to: fmt(me) };
+      return { from: fmt(ms), to: fmt(now) };
     }
-    case "this-year": {
+    case "last-month": {
+      const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const end = new Date(now.getFullYear(), now.getMonth(), 0);
+      return { from: fmt(start), to: fmt(end) };
+    }
+    case "last-30-days": {
+      const start = new Date(now);
+      start.setDate(now.getDate() - 29);
+      return { from: fmt(start), to: fmt(now) };
+    }
+    case "last-2-months": {
+      const start = new Date(now);
+      start.setDate(now.getDate() - 59);
+      return { from: fmt(start), to: fmt(now) };
+    }
+    case "this-quarter":
+    case "qtd": {
+      const qs = startOfQuarter(now);
+      return { from: fmt(qs), to: fmt(now) };
+    }
+    case "last-quarter": {
+      const qs = startOfQuarter(now);
+      const lqStart = new Date(qs);
+      lqStart.setMonth(qs.getMonth() - 3);
+      const lqEnd = new Date(lqStart.getFullYear(), lqStart.getMonth() + 3, 0);
+      return { from: fmt(lqStart), to: fmt(lqEnd) };
+    }
+    case "last-2-quarters": {
+      const start = new Date(now);
+      start.setDate(now.getDate() - 179); // rolling ~180 days
+      return { from: fmt(start), to: fmt(now) };
+    }
+    case "this-year":
+    case "ytd": {
       const ys = new Date(now.getFullYear(), 0, 1);
-      const ye = new Date(now.getFullYear(), 11, 31);
-      return { from: fmt(ys), to: fmt(ye) };
+      return { from: fmt(ys), to: fmt(now) };
+    }
+    case "last-year": {
+      const start = new Date(now.getFullYear() - 1, 0, 1);
+      const end = new Date(now.getFullYear() - 1, 11, 31);
+      return { from: fmt(start), to: fmt(end) };
+    }
+    case "last-3-months": {
+      // rolling 90-day period (inclusive)
+      const start = new Date(now);
+      start.setDate(now.getDate() - 89);
+      return { from: fmt(start), to: fmt(now) };
     }
     case "custom":
       return { from: customFrom, to: customTo };

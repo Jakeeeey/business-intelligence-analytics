@@ -6,6 +6,15 @@ export interface CacheEntry<T> {
   expiresAt: number;
 }
 
+function isCacheEntry(value: unknown): value is CacheEntry<unknown> {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "expiresAt" in value &&
+    typeof (value as { expiresAt?: unknown }).expiresAt === "number"
+  );
+}
+
 export function getEndOfDayTimestamp(): number {
   const now = new Date();
   const endOfDay = new Date(
@@ -112,14 +121,16 @@ export function clearExpiredCache(prefix?: string): void {
     const now = Date.now();
     Object.keys(localStorage).forEach((key) => {
       if (prefix && !key.startsWith(prefix)) return;
+      const cached = localStorage.getItem(key);
+      if (!cached) return;
+      let entry: unknown;
       try {
-        const cached = localStorage.getItem(key);
-        if (!cached) return;
-        const entry = JSON.parse(cached);
-        if (entry.expiresAt && now > entry.expiresAt) {
-          localStorage.removeItem(key);
-        }
+        entry = JSON.parse(cached);
       } catch {
+        return;
+      }
+      if (!isCacheEntry(entry)) return;
+      if (entry.expiresAt && now > entry.expiresAt) {
         localStorage.removeItem(key);
       }
     });

@@ -273,6 +273,7 @@ export function OrdersTab({ orderSummaries, filteredData }: Props) {
               {paginatedItems.map((row) => {
                 const isExpanded = expandedOrders.has(row.orderId);
                 const lines = linesByOrder.get(row.orderId) ?? [];
+                const gapValue = row.allocationGap;
                 return (
                   <React.Fragment key={row.orderId}>
                     {/* ── Parent row ── */}
@@ -313,13 +314,19 @@ export function OrdersTab({ orderSummaries, filteredData }: Props) {
                         {numFmt(row.totalAllocated)}
                       </td>
                       <td className="py-2.5 px-2 text-right tabular-nums">
-                        {row.allocationGap > 0 ? (
-                          <span className="text-rose-600 dark:text-rose-400 font-medium">
-                            {numFmt(row.allocationGap)}
-                          </span>
-                        ) : (
+                        {gapValue === 0 ? (
                           <span className="text-emerald-600 dark:text-emerald-400 text-xs">
                             —
+                          </span>
+                        ) : (
+                          <span
+                            className={`tabular-nums font-medium ${
+                              gapValue > 0
+                                ? "text-rose-600 dark:text-rose-400"
+                                : "text-emerald-600 dark:text-emerald-400"
+                            }`}
+                          >
+                            {numFmt(gapValue)}
                           </span>
                         )}
                       </td>
@@ -452,24 +459,36 @@ export function OrdersTab({ orderSummaries, filteredData }: Props) {
                                         {numFmt(line.allocatedQuantity)}
                                       </td>
                                       <td className="py-1.5 px-1 text-right tabular-nums">
-                                        {gap > 0 ? (
-                                          <span className="text-rose-600 dark:text-rose-400 font-medium">
-                                            {numFmt(gap)}
-                                          </span>
-                                        ) : (
+                                        {gap === 0 ? (
                                           <span className="text-emerald-600 dark:text-emerald-400">
                                             —
+                                          </span>
+                                        ) : (
+                                          <span
+                                            className={`tabular-nums font-medium ${
+                                              gap > 0
+                                                ? "text-rose-600 dark:text-rose-400"
+                                                : "text-emerald-600 dark:text-emerald-400"
+                                            }`}
+                                          >
+                                            {numFmt(gap)}
                                           </span>
                                         )}
                                       </td>
                                       <td className="py-1.5 pl-1 pr-2 text-right tabular-nums">
-                                        {varianceAmount > 0 ? (
-                                          <span className="text-rose-600 dark:text-rose-400 font-medium">
-                                            ₱{numFmt(varianceAmount)}
-                                          </span>
-                                        ) : (
+                                        {varianceAmount === 0 ? (
                                           <span className="text-emerald-600 dark:text-emerald-400">
                                             —
+                                          </span>
+                                        ) : (
+                                          <span
+                                            className={`tabular-nums font-medium ${
+                                              varianceAmount > 0
+                                                ? "text-rose-600 dark:text-rose-400"
+                                                : "text-emerald-600 dark:text-emerald-400"
+                                            }`}
+                                          >
+                                            ₱{numFmt(varianceAmount)}
                                           </span>
                                         )}
                                       </td>

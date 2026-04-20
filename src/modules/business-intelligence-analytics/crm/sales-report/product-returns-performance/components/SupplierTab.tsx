@@ -54,6 +54,8 @@ const phpFormatter = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 2,
 });
 const formatCurrency = (v: number) => phpFormatter.format(v);
+const formatShare = (value: number, total: number) =>
+  total > 0 ? `${((value / total) * 100).toFixed(1)}%` : "0.0%";
 
 const chartColors = [
   "#3b82f6", // blue
@@ -146,7 +148,10 @@ export function SupplierTab({
   const [customerSubSortMap, setCustomerSubSortMap] = React.useState<
     Map<
       string,
-      { by: "name" | "returnValue" | "returnCount"; order: "asc" | "desc" }
+      {
+        by: "name" | "returnValue" | "returnCount" | "avg";
+        order: "asc" | "desc";
+      }
     >
   >(new Map());
 
@@ -171,7 +176,7 @@ export function SupplierTab({
   );
 
   const toggleCustomerSubSort = React.useCallback(
-    (sup: string, field: "name" | "returnValue" | "returnCount") => {
+    (sup: string, field: "name" | "returnValue" | "returnCount" | "avg") => {
       setCustomerSubSortMap((prev) => {
         const next = new Map(prev);
         const cur = prev.get(sup) ?? {
@@ -374,7 +379,7 @@ export function SupplierTab({
       .slice(0, 10);
   }, [topSuppliers, sortBy, sortOrder]);
 
-  const { theme,  } = useTheme();
+  const { theme } = useTheme();
   const resolvedTheme = theme;
   const isDark = resolvedTheme === "dark";
   const activeChartColors = isDark ? chartColorsDark : chartColors;
@@ -427,7 +432,7 @@ export function SupplierTab({
   return (
     <div className="space-y-4">
       {/* Top Suppliers Chart */}
-      <Card className="dark:border-zinc-700 dark:bg-white/13">
+      <Card className="">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
@@ -438,7 +443,7 @@ export function SupplierTab({
             </div>
             {selectedSupplier && (
               <Button
-                className="dark:border-zinc-700"
+                className=""
                 variant="outline"
                 size="sm"
                 onClick={handleClearSelection}
@@ -555,10 +560,7 @@ export function SupplierTab({
       </Card>
 
       {/* Supplier Details */}
-      <Card
-        id="supplier-return-details"
-        className="dark:border-zinc-700 dark:bg-white/13"
-      >
+      <Card id="supplier-return-details" className="dark:border-zinc-700 ">
         <CardHeader>
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
@@ -639,10 +641,26 @@ export function SupplierTab({
                     (suppProductPage - 1) * subTableItemsPerPage,
                     suppProductPage * subTableItemsPerPage,
                   );
+                const productTotalCount = supplier.products.reduce(
+                  (sum, product) => sum + product.returnCount,
+                  0,
+                );
+                const productTotalValue = supplier.products.reduce(
+                  (sum, product) => sum + product.returnValue,
+                  0,
+                );
                 const suppCustomerPage =
                   supplierCustomerPage.get(supplier.supplier) || 1;
                 const customerTotalPages = Math.ceil(
                   customers.length / subTableItemsPerPage,
+                );
+                const customerTotalCount = customers.reduce(
+                  (sum, customer) => sum + customer.returnCount,
+                  0,
+                );
+                const customerTotalValue = customers.reduce(
+                  (sum, customer) => sum + customer.returnValue,
+                  0,
                 );
                 const sortedCustomers = [...customers].sort((a, b) => {
                   let cmp = 0;
@@ -650,7 +668,12 @@ export function SupplierTab({
                     cmp = a.name.localeCompare(b.name);
                   else if (customerSubSortBy === "returnValue")
                     cmp = a.returnValue - b.returnValue;
-                  else cmp = a.returnCount - b.returnCount;
+                  else if (customerSubSortBy === "returnCount")
+                    cmp = a.returnCount - b.returnCount;
+                  else
+                    cmp =
+                      (a.returnCount > 0 ? a.returnValue / a.returnCount : 0) -
+                      (b.returnCount > 0 ? b.returnValue / b.returnCount : 0);
                   return customerSubSortOrder === "asc" ? cmp : -cmp;
                 });
                 const paginatedCustomers = sortedCustomers.slice(
@@ -711,17 +734,17 @@ export function SupplierTab({
                           {/* Top Products for Supplier */}
                           <div>
                             <h4 className="text-sm font-semibold mb-2">
-                              Top Products (by Return Value)
+                              Top Products
                             </h4>
                             <div className="rounded-md border dark:border-zinc-700">
-                              <Table className="dark:border-zinc-700 dark:bg-white/3">
+                              <Table className="table-fixed w-full dark:border-zinc-700 dark:bg-white/3">
                                 <TableHeader>
                                   <TableRow>
                                     <TableHead>
                                       <Button
                                         variant="ghost"
                                         size="sm"
-                                        className="-ml-3 h-8 gap-1 text-xs font-medium"
+                                        className="-ml-3 h-8 text-xs font-medium"
                                         onClick={() =>
                                           toggleProductSubSort(
                                             supplier.supplier,
@@ -729,31 +752,14 @@ export function SupplierTab({
                                           )
                                         }
                                       >
-                                        Product{" "}
-                                        <ArrowUpDown className="h-3 w-3" />
+                                        Product
                                       </Button>
                                     </TableHead>
-                                    <TableHead className="text-right">
+                                    <TableHead className="text-right px-0">
                                       <Button
                                         variant="ghost"
                                         size="sm"
-                                        className="h-8 gap-1 text-xs font-medium"
-                                        onClick={() =>
-                                          toggleProductSubSort(
-                                            supplier.supplier,
-                                            "returnValue",
-                                          )
-                                        }
-                                      >
-                                        Return Value{" "}
-                                        <ArrowUpDown className="h-3 w-3" />
-                                      </Button>
-                                    </TableHead>
-                                    <TableHead className="text-right">
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-8 gap-1 text-xs font-medium"
+                                        className="h-8 text-xs font-medium"
                                         onClick={() =>
                                           toggleProductSubSort(
                                             supplier.supplier,
@@ -761,15 +767,60 @@ export function SupplierTab({
                                           )
                                         }
                                       >
-                                        Count{" "}
-                                        <ArrowUpDown className="h-3 w-3" />
+                                        Count
                                       </Button>
                                     </TableHead>
-                                    <TableHead className="text-right">
+                                    <TableHead className="text-right px-0">
                                       <Button
                                         variant="ghost"
                                         size="sm"
-                                        className="h-8 gap-1 text-xs font-medium"
+                                        className="h-8 text-xs font-medium"
+                                        onClick={() =>
+                                          toggleProductSubSort(
+                                            supplier.supplier,
+                                            "returnValue",
+                                          )
+                                        }
+                                      >
+                                        Return Value
+                                      </Button>
+                                    </TableHead>
+                                    <TableHead className="text-right px-0">
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-8 text-xs font-medium"
+                                        onClick={() =>
+                                          toggleProductSubSort(
+                                            supplier.supplier,
+                                            "returnCount",
+                                          )
+                                        }
+                                      >
+                                        Count Share (%)
+                                      </Button>
+                                    </TableHead>
+                                    <TableHead className="text-right px-0">
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-8 text-xs font-medium"
+                                        onClick={() =>
+                                          toggleProductSubSort(
+                                            supplier.supplier,
+                                            "returnValue",
+                                          )
+                                        }
+                                      >
+                                        Value Share (%)
+                                      </Button>
+                                    </TableHead>
+
+                                    <TableHead className="text-right px-0">
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-8 text-xs font-medium"
                                         onClick={() =>
                                           toggleProductSubSort(
                                             supplier.supplier,
@@ -777,8 +828,7 @@ export function SupplierTab({
                                           )
                                         }
                                       >
-                                        Avg / Return{" "}
-                                        <ArrowUpDown className="h-3 w-3" />
+                                        Avg / Return
                                       </Button>
                                     </TableHead>
                                   </TableRow>
@@ -803,11 +853,24 @@ export function SupplierTab({
                                         </div>
                                       </TableCell>
                                       <TableCell className="text-right">
-                                        {formatCurrency(p.returnValue)}
-                                      </TableCell>
-                                      <TableCell className="text-right">
                                         {p.returnCount}
                                       </TableCell>
+                                      <TableCell className="text-right">
+                                        {formatCurrency(p.returnValue)}
+                                      </TableCell>
+                                      <TableCell className="text-right text-muted-foreground">
+                                        {formatShare(
+                                          p.returnCount,
+                                          productTotalCount,
+                                        )}
+                                      </TableCell>
+                                      <TableCell className="text-right text-muted-foreground">
+                                        {formatShare(
+                                          p.returnValue,
+                                          productTotalValue,
+                                        )}
+                                      </TableCell>
+
                                       <TableCell className="text-right">
                                         {formatCurrency(
                                           p.returnCount > 0
@@ -821,10 +884,10 @@ export function SupplierTab({
                               </Table>
                             </div>
                             {prodTotalPages > 1 && (
-                              <div className="flex items-center justify-between px-2 py-4">
-                                <div className="flex items-center gap-2">
+                              <div className="flex items-center justify-between gap-3 px-2 py-4">
+                                <div className="flex items-center gap-2 shrink-0">
                                   <select
-                                    className="h-8 rounded-md border border-input bg-background px-3 py-1 text-sm"
+                                    className="h-8 w-16 rounded-md border border-input bg-background px-3 py-1 text-sm"
                                     value={subTableItemsPerPage}
                                     onChange={(e) =>
                                       setSubTableItemsPerPage(
@@ -838,7 +901,7 @@ export function SupplierTab({
                                     <option value={50}>50</option>
                                   </select>
                                 </div>
-                                <div className="text-sm text-muted-foreground">
+                                <div className="min-w-0 flex-1 text-sm text-muted-foreground">
                                   Showing{" "}
                                   {(suppProductPage - 1) *
                                     subTableItemsPerPage +
@@ -850,9 +913,9 @@ export function SupplierTab({
                                   )}{" "}
                                   of {supplier.products.length} products
                                 </div>
-                                <div className="flex gap-1">
+                                <div className="flex shrink-0 gap-1">
                                   <Button
-                                    className="dark:border-y-zinc-700 dark:bg-white/5"
+                                    className="w-20 shrink-0 dark:border-y-zinc-700 dark:bg-white/5"
                                     variant="outline"
                                     size="sm"
                                     onClick={() =>
@@ -880,7 +943,7 @@ export function SupplierTab({
                                       return (
                                         <Button
                                           key={pn}
-                                          className="dark:border-y-zinc-700"
+                                          className="w-9 shrink-0 dark:border-y-zinc-700"
                                           variant={
                                             suppProductPage === pn
                                               ? "default"
@@ -900,7 +963,7 @@ export function SupplierTab({
                                     },
                                   )}
                                   <Button
-                                    className="dark:border-y-zinc-700 dark:bg-white/5"
+                                    className="w-20 shrink-0 dark:border-y-zinc-700 dark:bg-white/5"
                                     variant="outline"
                                     size="sm"
                                     onClick={() =>
@@ -929,10 +992,10 @@ export function SupplierTab({
                                 Customers
                               </h4>
                               <div className="rounded-md border">
-                                <Table className="dark:border-zinc-700 dark:bg-white/3">
+                                <Table className="table-fixed w-full dark:border-zinc-700 dark:bg-white/3">
                                   <TableHeader>
                                     <TableRow>
-                                      <TableHead>
+                                      <TableHead className="w-56">
                                         <Button
                                           variant="ghost"
                                           size="sm"
@@ -944,11 +1007,10 @@ export function SupplierTab({
                                             )
                                           }
                                         >
-                                          Customer{" "}
-                                          <ArrowUpDown className="h-3 w-3" />
+                                          Customer
                                         </Button>
                                       </TableHead>
-                                      <TableHead className="text-right">
+                                      <TableHead className="w-24 text-right px-0">
                                         <Button
                                           variant="ghost"
                                           size="sm"
@@ -960,11 +1022,10 @@ export function SupplierTab({
                                             )
                                           }
                                         >
-                                          Count{" "}
-                                          <ArrowUpDown className="h-3 w-3" />
+                                          Count
                                         </Button>
                                       </TableHead>
-                                      <TableHead className="text-right">
+                                      <TableHead className="w-32 text-right px-0">
                                         <Button
                                           variant="ghost"
                                           size="sm"
@@ -976,8 +1037,52 @@ export function SupplierTab({
                                             )
                                           }
                                         >
-                                          Return Value{" "}
-                                          <ArrowUpDown className="h-3 w-3" />
+                                          Return Value
+                                        </Button>
+                                      </TableHead>
+                                      <TableHead className="w-32 text-right px-0">
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-8 gap-1 text-xs font-medium"
+                                          onClick={() =>
+                                            toggleCustomerSubSort(
+                                              supplier.supplier,
+                                              "returnCount",
+                                            )
+                                          }
+                                        >
+                                          Count Share (%)
+                                        </Button>
+                                      </TableHead>
+                                      <TableHead className="w-32 text-right px-0">
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-8 gap-1 text-xs font-medium"
+                                          onClick={() =>
+                                            toggleCustomerSubSort(
+                                              supplier.supplier,
+                                              "returnValue",
+                                            )
+                                          }
+                                        >
+                                          Value Share (%)
+                                        </Button>
+                                      </TableHead>
+                                      <TableHead className="w-32 text-right px-0">
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-8 gap-1 text-xs font-medium"
+                                          onClick={() =>
+                                            toggleCustomerSubSort(
+                                              supplier.supplier,
+                                              "avg",
+                                            )
+                                          }
+                                        >
+                                          Avg Return Value
                                         </Button>
                                       </TableHead>
                                     </TableRow>
@@ -987,14 +1092,33 @@ export function SupplierTab({
                                       <TableRow
                                         key={c.name || "unknown-customer"}
                                       >
-                                        <TableCell>
+                                        <TableCell className="w-56">
                                           {c.name || "Unknown Customer"}
                                         </TableCell>
-                                        <TableCell className="text-right">
+                                        <TableCell className="w-24 text-right">
                                           {c.returnCount}
                                         </TableCell>
-                                        <TableCell className="text-right ">
+                                        <TableCell className="w-32 text-right">
                                           {formatCurrency(c.returnValue)}
+                                        </TableCell>
+                                        <TableCell className="w-32 text-right text-muted-foreground">
+                                          {formatShare(
+                                            c.returnCount,
+                                            customerTotalCount,
+                                          )}
+                                        </TableCell>
+                                        <TableCell className="w-32 text-right text-muted-foreground">
+                                          {formatShare(
+                                            c.returnValue,
+                                            customerTotalValue,
+                                          )}
+                                        </TableCell>
+                                        <TableCell className="w-32 text-right font-medium">
+                                          {formatCurrency(
+                                            c.returnCount > 0
+                                              ? c.returnValue / c.returnCount
+                                              : 0,
+                                          )}
                                         </TableCell>
                                       </TableRow>
                                     ))}
@@ -1002,8 +1126,24 @@ export function SupplierTab({
                                 </Table>
                               </div>
                               {customerTotalPages > 1 && (
-                                <div className="flex items-center justify-between px-2 py-4">
-                                  <div className="text-sm text-muted-foreground">
+                                <div className="flex items-center justify-between gap-3 px-2 py-4">
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    <select
+                                      className="h-8 w-16 rounded-md border border-input bg-background px-3 py-1 text-sm dark:border-zinc-700"
+                                      value={subTableItemsPerPage}
+                                      onChange={(e) =>
+                                        setSubTableItemsPerPage(
+                                          Number(e.target.value),
+                                        )
+                                      }
+                                    >
+                                      <option value={5}>5</option>
+                                      <option value={10}>10</option>
+                                      <option value={25}>25</option>
+                                      <option value={50}>50</option>
+                                    </select>
+                                  </div>
+                                  <div className="min-w-0 flex-1 text-sm text-muted-foreground">
                                     Showing{" "}
                                     {(suppCustomerPage - 1) *
                                       subTableItemsPerPage +
@@ -1015,9 +1155,9 @@ export function SupplierTab({
                                     )}{" "}
                                     of {customers.length} customers
                                   </div>
-                                  <div className="flex gap-1">
+                                  <div className="flex shrink-0 gap-1">
                                     <Button
-                                      className="dark:border-y-zinc-700 dark:bg-white/5"
+                                      className="w-20 shrink-0 dark:border-y-zinc-700 dark:bg-white/5"
                                       variant="outline"
                                       size="sm"
                                       onClick={() =>
@@ -1048,7 +1188,7 @@ export function SupplierTab({
                                         return (
                                           <Button
                                             key={pn}
-                                            className="dark:border-y-zinc-700"
+                                            className="w-9 shrink-0 dark:border-y-zinc-700"
                                             variant={
                                               suppCustomerPage === pn
                                                 ? "default"
@@ -1068,7 +1208,7 @@ export function SupplierTab({
                                       },
                                     )}
                                     <Button
-                                      className="dark:border-y-zinc-700 dark:bg-white/5"
+                                      className="w-20 shrink-0 dark:border-y-zinc-700 dark:bg-white/5"
                                       variant="outline"
                                       size="sm"
                                       onClick={() =>
@@ -1104,10 +1244,10 @@ export function SupplierTab({
             )}
           </div>
           {/* Pagination */}
-          <div className="flex items-center justify-between px-2 py-4">
-            <div className="flex items-center gap-4">
+          <div className="flex items-center justify-between gap-3 px-2 py-4">
+            <div className="flex items-center gap-4 shrink-0">
               <select
-                className="h-8 rounded-md border border-input bg-background px-3 py-1 text-sm dark:border-zinc-700"
+                className="h-8 w-16 rounded-md border border-input bg-background px-3 py-1 text-sm dark:border-zinc-700"
                 value={itemsPerPage}
                 onChange={(e) => handleSetItemsPerPage(Number(e.target.value))}
               >
@@ -1115,7 +1255,7 @@ export function SupplierTab({
                 <option value={25}>25</option>
                 <option value={50}>50</option>
               </select>
-              <div className="text-sm text-muted-foreground">
+              <div className="min-w-0 flex-1 text-sm text-muted-foreground">
                 Showing{" "}
                 {Math.min(
                   (currentPage - 1) * itemsPerPage + 1,
@@ -1126,9 +1266,9 @@ export function SupplierTab({
                 of {filteredSuppliers.length} suppliers
               </div>
             </div>
-            <div className="flex gap-1">
+            <div className="flex shrink-0 gap-1">
               <Button
-                className="dark:border-y-zinc-700 dark:bg-white/5"
+                className="w-20 shrink-0 dark:border-y-zinc-700 dark:bg-white/5"
                 variant="outline"
                 size="sm"
                 onClick={setCurrentPagePrev}
@@ -1145,7 +1285,7 @@ export function SupplierTab({
                 return (
                   <Button
                     key={pn}
-                    className="dark:border-y-zinc-700"
+                    className="w-9 shrink-0 dark:border-y-zinc-700"
                     variant={currentPage === pn ? "default" : "outline"}
                     size="sm"
                     onClick={() => setCurrentPageTo(pn)}
@@ -1155,7 +1295,7 @@ export function SupplierTab({
                 );
               })}
               <Button
-                className="dark:border-y-zinc-700 dark:bg-white/5"
+                className="w-20 shrink-0 dark:border-y-zinc-700 dark:bg-white/5"
                 variant="outline"
                 size="sm"
                 onClick={setCurrentPageNext}

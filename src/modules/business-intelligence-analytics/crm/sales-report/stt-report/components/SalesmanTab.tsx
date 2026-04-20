@@ -307,7 +307,7 @@ function SalesmanTabComponent({ salesmanSummaries }: SalesmanTabProps) {
   return (
     <div className="space-y-4">
       {/* Chart */}
-      <Card className="dark:border-zinc-700 dark:bg-white/13">
+      <Card className="dark:border-zinc-700 ">
         <CardHeader>
           <CardTitle>Top 10 Salesmen by Sales</CardTitle>
           <CardDescription>
@@ -341,7 +341,7 @@ function SalesmanTabComponent({ salesmanSummaries }: SalesmanTabProps) {
                   <YAxis
                     type="category"
                     dataKey="name"
-                    width={160}
+                    width={130}
                     interval={0}
                     tick={(props) => (
                       <CustomYTick
@@ -392,7 +392,7 @@ function SalesmanTabComponent({ salesmanSummaries }: SalesmanTabProps) {
       </Card>
 
       {/* Table */}
-      <Card className="dark:border-zinc-700 dark:bg-white/13">
+      <Card className="dark:border-zinc-700 ">
         <CardHeader>
           <CardTitle>Salesman Performance Table</CardTitle>
           <CardDescription>Click column headers to sort</CardDescription>

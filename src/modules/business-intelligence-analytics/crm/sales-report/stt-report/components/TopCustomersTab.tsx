@@ -305,7 +305,7 @@ function TopCustomersTabComponent({ customerSummaries }: TopCustomersTabProps) {
   return (
     <div className="space-y-4">
       {/* Chart */}
-      <Card className="dark:border-zinc-700 dark:bg-white/13">
+      <Card className="dark:border-zinc-700 ">
         <CardHeader>
           <CardTitle>Top 10 Customers by Sales</CardTitle>
           <CardDescription>
@@ -390,7 +390,7 @@ function TopCustomersTabComponent({ customerSummaries }: TopCustomersTabProps) {
       </Card>
 
       {/* Table */}
-      <Card className="dark:border-zinc-700 dark:bg-white/13">
+      <Card className="dark:border-zinc-700 ">
         <CardHeader>
           <CardTitle>Customer Performance Table</CardTitle>
           <CardDescription>Click column headers to sort</CardDescription>

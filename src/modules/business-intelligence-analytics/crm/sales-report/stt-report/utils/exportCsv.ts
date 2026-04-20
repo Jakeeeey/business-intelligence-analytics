@@ -128,6 +128,43 @@ export function exportToExcel(
   const loadingId = toast.loading("Preparing Excel export...");
 
   try {
+    // Local date parser (matches logic used in report hooks to avoid UTC shifts)
+    function parseDateLocal(s: string): Date {
+      if (!s) return new Date(NaN);
+      const datePart = s.slice(0, 10);
+      const match = datePart.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (match) {
+        return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+      }
+      return new Date(NaN);
+    }
+
+    // Apply selected filters from ctx to the provided data so export matches UI
+    const fromDate = ctx.dateFrom ? parseDateLocal(ctx.dateFrom) : null;
+    const toDate = ctx.dateTo
+      ? (() => {
+          const d = parseDateLocal(ctx.dateTo);
+          if (!isNaN(d.getTime())) d.setHours(23, 59, 59, 999);
+          return d;
+        })()
+      : null;
+
+    const filtered = data.filter((r) => {
+      const d = parseDateLocal(r.invoiceDate ?? "");
+      const dateIsValid = !isNaN(d.getTime());
+      if (fromDate && !isNaN(fromDate.getTime())) {
+        if (!dateIsValid || d.getTime() < fromDate.getTime()) return false;
+      }
+      if (toDate && !isNaN(toDate.getTime())) {
+        if (!dateIsValid || d.getTime() > toDate.getTime()) return false;
+      }
+      if (ctx.branches.length > 0 && !ctx.branches.includes(r.branch ?? "")) return false;
+      if (ctx.salesmen.length > 0 && !ctx.salesmen.includes(r.salesman ?? "")) return false;
+      if (ctx.statuses.length > 0 && !ctx.statuses.includes(r.transactionStatus ?? "")) return false;
+      if (ctx.suppliers.length > 0 && !ctx.suppliers.includes(r.productSupplier ?? "")) return false;
+      return true;
+    });
+
     const metaLines = [
       ["Sales Report Summary"],
       [`Date Range: ${ctx.dateFrom} to ${ctx.dateTo}`],
@@ -136,11 +173,11 @@ export function exportToExcel(
       [`Statuses: ${ctx.statuses.length ? ctx.statuses.join("; ") : "All"}`],
       [`Suppliers: ${ctx.suppliers.length ? ctx.suppliers.join("; ") : "All"}`],
       [`Exported: ${new Date().toLocaleString("en-PH")}`],
-      [`Total Rows: ${data.length}`],
+      [`Total Rows: ${filtered.length}`],
       [],
     ];
 
-    const rows = data.map(recordToRow);
+    const rows = filtered.map(recordToRow);
 
     const aoa: unknown[][] = [...metaLines, HEADERS, ...rows];
 
@@ -168,7 +205,7 @@ export function exportToExcel(
 
     // Also produce a deduplicated Invoices sheet (invoice-level totals, first-row-wins)
     const invoiceMap = new Map<number, STTReportRecord>();
-    data.forEach((r) => {
+    filtered.forEach((r) => {
       if (!invoiceMap.has(r.invoiceId)) invoiceMap.set(r.invoiceId, r);
     });
 

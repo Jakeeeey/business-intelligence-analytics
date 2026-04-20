@@ -213,7 +213,7 @@ export async function fetchSTTReportData(
             id: FILTER_PREFETCH_TOAST_ID,
             duration: 3000,
           });
-        }else if (err.status === 500) {
+        } else if (err.status === 500) {
           toast.error(`Server is down. Please contact the administrator.`, {
             id: FILTER_PREFETCH_TOAST_ID,
             duration: 3000,

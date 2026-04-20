@@ -94,7 +94,9 @@ export function Filters(props: FiltersProps) {
   // Filter and group products
   const filteredGroupedProducts = React.useMemo(() => {
     const filtered = productSearch
-      ? uniqueProducts.filter((p) => p.toLowerCase().includes(productSearch.toLowerCase()))
+      ? uniqueProducts.filter((p) =>
+          p.toLowerCase().includes(productSearch.toLowerCase()),
+        )
       : uniqueProducts;
     return groupItems(filtered);
   }, [uniqueProducts, productSearch]);
@@ -102,7 +104,9 @@ export function Filters(props: FiltersProps) {
   // Filter and group cities
   const filteredGroupedCities = React.useMemo(() => {
     const filtered = citySearch
-      ? uniqueCities.filter((c) => c.toLowerCase().includes(citySearch.toLowerCase()))
+      ? uniqueCities.filter((c) =>
+          c.toLowerCase().includes(citySearch.toLowerCase()),
+        )
       : uniqueCities;
     return groupItems(filtered);
   }, [uniqueCities, citySearch]);
@@ -110,7 +114,9 @@ export function Filters(props: FiltersProps) {
   // Filter and group provinces
   const filteredGroupedProvinces = React.useMemo(() => {
     const filtered = provinceSearch
-      ? uniqueProvinces.filter((p) => p.toLowerCase().includes(provinceSearch.toLowerCase()))
+      ? uniqueProvinces.filter((p) =>
+          p.toLowerCase().includes(provinceSearch.toLowerCase()),
+        )
       : uniqueProvinces;
     return groupItems(filtered);
   }, [uniqueProvinces, provinceSearch]);
@@ -118,7 +124,9 @@ export function Filters(props: FiltersProps) {
   // Filter and group divisions
   const filteredGroupedDivisions = React.useMemo(() => {
     const filtered = divisionSearch
-      ? uniqueDivisions.filter((d) => d.toLowerCase().includes(divisionSearch.toLowerCase()))
+      ? uniqueDivisions.filter((d) =>
+          d.toLowerCase().includes(divisionSearch.toLowerCase()),
+        )
       : uniqueDivisions;
     return groupItems(filtered);
   }, [uniqueDivisions, divisionSearch]);
@@ -126,7 +134,9 @@ export function Filters(props: FiltersProps) {
   // Filter and group operations
   const filteredGroupedOperations = React.useMemo(() => {
     const filtered = operationSearch
-      ? uniqueOperations.filter((o) => o.toLowerCase().includes(operationSearch.toLowerCase()))
+      ? uniqueOperations.filter((o) =>
+          o.toLowerCase().includes(operationSearch.toLowerCase()),
+        )
       : uniqueOperations;
     return groupItems(filtered);
   }, [uniqueOperations, operationSearch]);
@@ -134,15 +144,26 @@ export function Filters(props: FiltersProps) {
   // Filter and group salesmen
   const filteredGroupedSalesmen = React.useMemo(() => {
     const filtered = salesmanSearch
-      ? uniqueSalesmen.filter((s) => s.toLowerCase().includes(salesmanSearch.toLowerCase()))
+      ? uniqueSalesmen.filter((s) =>
+          s.toLowerCase().includes(salesmanSearch.toLowerCase()),
+        )
       : uniqueSalesmen;
     return groupItems(filtered);
   }, [uniqueSalesmen, salesmanSearch]);
 
   const handleMultiSelectChange = (
-    field: keyof Pick<ProductPerformanceFilters, "suppliers" | "products" | "cities" | "provinces" | "divisions" | "operations" | "salesmen">,
+    field: keyof Pick<
+      ProductPerformanceFilters,
+      | "suppliers"
+      | "products"
+      | "cities"
+      | "provinces"
+      | "divisions"
+      | "operations"
+      | "salesmen"
+    >,
     value: string,
-    checked: boolean
+    checked: boolean,
   ) => {
     const currentValues = filters[field] || [];
     const newValues = checked
@@ -152,16 +173,28 @@ export function Filters(props: FiltersProps) {
   };
 
   const clearFilter = (
-    field: keyof Pick<ProductPerformanceFilters, "suppliers" | "products" | "cities" | "provinces" | "divisions" | "operations" | "salesmen">
+    field: keyof Pick<
+      ProductPerformanceFilters,
+      | "suppliers"
+      | "products"
+      | "cities"
+      | "provinces"
+      | "divisions"
+      | "operations"
+      | "salesmen"
+    >,
   ) => {
     onChange({ ...filters, [field]: [] });
   };
 
   // Handle group selection (select all items in a group)
   const handleGroupSelect = (
-    field: keyof Pick<ProductPerformanceFilters, "suppliers" | "products" | "cities" | "provinces">,
+    field: keyof Pick<
+      ProductPerformanceFilters,
+      "suppliers" | "products" | "cities" | "provinces"
+    >,
     items: string[],
-    checked: boolean
+    checked: boolean,
   ) => {
     const currentValues = filters[field] || [];
     let newValues: string[];
@@ -179,13 +212,15 @@ export function Filters(props: FiltersProps) {
   };
 
   return (
-    <Card className="dark:border-zinc-700 dark:bg-white/13">
+    <Card className="dark:border-zinc-700 ">
       <CardContent className="p-4">
         <div className="flex flex-col gap-4">
           {/* Top Row: Title & Load Button */}
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-bold">Product Sales Performance Dashboard</h2>
+              <h2 className="text-xl font-bold">
+                Product Sales Performance Dashboard
+              </h2>
               <p className="text-sm text-muted-foreground">
                 Interactive analytics across products, suppliers, and locations
               </p>
@@ -201,9 +236,15 @@ export function Filters(props: FiltersProps) {
             <div className="flex flex-wrap gap-2">
               <Button
                 className="dark:border-zinc-700"
-                variant={filters.dateRangePreset === "yesterday" ? "default" : "outline"}
+                variant={
+                  filters.dateRangePreset === "yesterday"
+                    ? "default"
+                    : "outline"
+                }
                 size="sm"
-                onClick={() => onChange({ ...filters, dateRangePreset: "yesterday" })}
+                onClick={() =>
+                  onChange({ ...filters, dateRangePreset: "yesterday" })
+                }
               >
                 Yesterday
               </Button>
@@ -223,33 +264,55 @@ export function Filters(props: FiltersProps) {
               </Button> */}
               <Button
                 className="dark:border-zinc-700"
-                variant={filters.dateRangePreset === "this-week" ? "default" : "outline"}
+                variant={
+                  filters.dateRangePreset === "this-week"
+                    ? "default"
+                    : "outline"
+                }
                 size="sm"
-                onClick={() => onChange({ ...filters, dateRangePreset: "this-week" })}
+                onClick={() =>
+                  onChange({ ...filters, dateRangePreset: "this-week" })
+                }
               >
                 This Week
               </Button>
               <Button
                 className="dark:border-zinc-700"
-                variant={filters.dateRangePreset === "this-month" ? "default" : "outline"}
+                variant={
+                  filters.dateRangePreset === "this-month"
+                    ? "default"
+                    : "outline"
+                }
                 size="sm"
-                onClick={() => onChange({ ...filters, dateRangePreset: "this-month" })}
+                onClick={() =>
+                  onChange({ ...filters, dateRangePreset: "this-month" })
+                }
               >
                 This Month
               </Button>
               <Button
                 className="dark:border-zinc-700"
-                variant={filters.dateRangePreset === "this-year" ? "default" : "outline"}
+                variant={
+                  filters.dateRangePreset === "this-year"
+                    ? "default"
+                    : "outline"
+                }
                 size="sm"
-                onClick={() => onChange({ ...filters, dateRangePreset: "this-year" })}
+                onClick={() =>
+                  onChange({ ...filters, dateRangePreset: "this-year" })
+                }
               >
                 This Year
               </Button>
               <Button
                 className="dark:border-zinc-700"
-                variant={filters.dateRangePreset === "custom" ? "default" : "outline"}
+                variant={
+                  filters.dateRangePreset === "custom" ? "default" : "outline"
+                }
                 size="sm"
-                onClick={() => onChange({ ...filters, dateRangePreset: "custom" })}
+                onClick={() =>
+                  onChange({ ...filters, dateRangePreset: "custom" })
+                }
               >
                 Custom
               </Button>
@@ -288,7 +351,9 @@ export function Filters(props: FiltersProps) {
                     id="dateFrom"
                     type="date"
                     value={filters.dateFrom}
-                    onChange={(e) => onChange({ ...filters, dateFrom: e.target.value })}
+                    onChange={(e) =>
+                      onChange({ ...filters, dateFrom: e.target.value })
+                    }
                   />
                 </div>
                 <div className="space-y-2">
@@ -298,7 +363,9 @@ export function Filters(props: FiltersProps) {
                     id="dateTo"
                     type="date"
                     value={filters.dateTo}
-                    onChange={(e) => onChange({ ...filters, dateTo: e.target.value })}
+                    onChange={(e) =>
+                      onChange({ ...filters, dateTo: e.target.value })
+                    }
                   />
                 </div>
               </div>
@@ -306,21 +373,26 @@ export function Filters(props: FiltersProps) {
           </div>
 
           {/* Filters */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 ">
-
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-2 ">
             {/* Suppliers Multi-Select */}
             <div className="space-y-2">
               <Label>Suppliers</Label>
-              <Popover >
+              <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-full justify-between dark:border-zinc-700">
+                  <Button
+                    variant="outline"
+                    className="w-full justify-between dark:border-zinc-700"
+                  >
                     {filters.suppliers.length > 0
                       ? `${filters.suppliers.length} selected`
                       : "All Suppliers"}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-80 p-0 dark:border-zinc-700" align="start" >
-                  <div className="p-2 border-b dark:border-zinc-700 dark:bg-white/13">
+                <PopoverContent
+                  className="w-80 p-0 dark:border-zinc-700"
+                  align="start"
+                >
+                  <div className="p-2 border-b dark:border-zinc-700 ">
                     <Input
                       placeholder="Search suppliers..."
                       value={supplierSearch}
@@ -329,15 +401,22 @@ export function Filters(props: FiltersProps) {
                     />
                   </div>
                   <ScrollArea className="h-64">
-                    <div className="p-4 space-y-2 dark:bg-white/13">
+                    <div className="p-4 space-y-2 ">
                       {uniqueSuppliers.map((supplier) => (
-                        <div key={supplier} className="flex items-center space-x-2 ">
+                        <div
+                          key={supplier}
+                          className="flex items-center space-x-2 "
+                        >
                           <Checkbox
                             className="dark:border-zinc-700"
                             id={`supplier-${supplier}`}
                             checked={filters.suppliers.includes(supplier)}
                             onCheckedChange={(checked) =>
-                              handleMultiSelectChange("suppliers", supplier, !!checked)
+                              handleMultiSelectChange(
+                                "suppliers",
+                                supplier,
+                                !!checked,
+                              )
                             }
                           />
                           <label
@@ -390,14 +469,20 @@ export function Filters(props: FiltersProps) {
               <Label>Products</Label>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-full justify-between dark:border-zinc-700">
+                  <Button
+                    variant="outline"
+                    className="w-full justify-between dark:border-zinc-700"
+                  >
                     {filters.products.length > 0
                       ? `${filters.products.length} selected`
                       : "All Products"}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-80 p-0 dark:border-zinc-700" align="start">
-                  <div className="p-2 border-b dark:border-zinc-700 dark:bg-white/13">
+                <PopoverContent
+                  className="w-80 p-0 dark:border-zinc-700"
+                  align="start"
+                >
+                  <div className="p-2 border-b dark:border-zinc-700 ">
                     <Input
                       placeholder="Search products..."
                       value={productSearch}
@@ -406,50 +491,71 @@ export function Filters(props: FiltersProps) {
                     />
                   </div>
                   <ScrollArea className="h-64">
-                    <div className="p-2 space-y-1 dark:bg-white/13">
-                      {Array.from(filteredGroupedProducts.entries()).map(([group, items]) => {
-                        const allSelected = items.every((item) => filters.products.includes(item));
-                        const someSelected = items.some((item) => filters.products.includes(item));
-                        const checkedState = allSelected ? true : someSelected ? "indeterminate" : false;
+                    <div className="p-2 space-y-1 ">
+                      {Array.from(filteredGroupedProducts.entries()).map(
+                        ([group, items]) => {
+                          const allSelected = items.every((item) =>
+                            filters.products.includes(item),
+                          );
+                          const someSelected = items.some((item) =>
+                            filters.products.includes(item),
+                          );
+                          const checkedState = allSelected
+                            ? true
+                            : someSelected
+                              ? "indeterminate"
+                              : false;
 
-                        return (
-                          <div key={group}>
-                            <div className="flex items-center space-x-2 px-2 py-1 hover:bg-muted rounded cursor-pointer">
-                              <Checkbox
-                                id={`product-group-${group}`}
-                                checked={checkedState}
-                                onCheckedChange={(checked) =>
-                                  handleGroupSelect("products", items, !!checked)
-                                }
-                              />
-                              <label
-                                htmlFor={`product-group-${group}`}
-                                className="font-semibold text-sm text-primary cursor-pointer flex-1"
-                              >
-                                {group} ({items.length})
-                              </label>
-                            </div>
-                            {items.map((product) => (
-                              <div key={product} className="flex items-center space-x-2 px-4 py-1 hover:bg-muted rounded">
+                          return (
+                            <div key={group}>
+                              <div className="flex items-center space-x-2 px-2 py-1 hover:bg-muted rounded cursor-pointer">
                                 <Checkbox
-                                  className="dark:border-zinc-700"
-                                  id={`product-${product}`}
-                                  checked={filters.products.includes(product)}
+                                  id={`product-group-${group}`}
+                                  checked={checkedState}
                                   onCheckedChange={(checked) =>
-                                    handleMultiSelectChange("products", product, !!checked)
+                                    handleGroupSelect(
+                                      "products",
+                                      items,
+                                      !!checked,
+                                    )
                                   }
                                 />
                                 <label
-                                  htmlFor={`product-${product}`}
-                                  className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
+                                  htmlFor={`product-group-${group}`}
+                                  className="font-semibold text-sm text-primary cursor-pointer flex-1"
                                 >
-                                  {product}
+                                  {group} ({items.length})
                                 </label>
                               </div>
-                            ))}
-                          </div>
-                        );
-                      })}
+                              {items.map((product) => (
+                                <div
+                                  key={product}
+                                  className="flex items-center space-x-2 px-4 py-1 hover:bg-muted rounded"
+                                >
+                                  <Checkbox
+                                    className="dark:border-zinc-700"
+                                    id={`product-${product}`}
+                                    checked={filters.products.includes(product)}
+                                    onCheckedChange={(checked) =>
+                                      handleMultiSelectChange(
+                                        "products",
+                                        product,
+                                        !!checked,
+                                      )
+                                    }
+                                  />
+                                  <label
+                                    htmlFor={`product-${product}`}
+                                    className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
+                                  >
+                                    {product}
+                                  </label>
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        },
+                      )}
                     </div>
                   </ScrollArea>
                 </PopoverContent>
@@ -471,16 +577,22 @@ export function Filters(props: FiltersProps) {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>Cities</Label>
-              <Popover >
+              <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-full justify-between dark:border-zinc-700">
+                  <Button
+                    variant="outline"
+                    className="w-full justify-between dark:border-zinc-700"
+                  >
                     {filters.cities.length > 0
                       ? `${filters.cities.length} selected`
                       : "All Cities"}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-80 p-0 dark:border-zinc-700" align="start">
-                  <div className="p-2 border-b dark:border-zinc-700 dark:bg-white/13">
+                <PopoverContent
+                  className="w-80 p-0 dark:border-zinc-700"
+                  align="start"
+                >
+                  <div className="p-2 border-b dark:border-zinc-700 ">
                     <Input
                       placeholder="Search cities..."
                       value={citySearch}
@@ -489,39 +601,46 @@ export function Filters(props: FiltersProps) {
                     />
                   </div>
                   <ScrollArea className="h-64">
-                    <div className="p-2 space-y-1 dark:bg-white/13">
-                      {Array.from(filteredGroupedCities.entries()).map(([group, items]) => {
-
-                        return (
-                          <div key={group} className="dark:border-zinc-700">
-                            {items.map((city) => (
-                              <div key={city} className="flex items-center space-x-2 px-4 py-1 hover:bg-muted rounded dark:border-zinc-700">
-                                <Checkbox
-                                  className="dark:border-zinc-700"
-                                  id={`city-${city}`}
-                                  checked={filters.cities.includes(city)}
-                                  onCheckedChange={(checked) =>
-                                    handleMultiSelectChange("cities", city, !!checked)
-                                  }
-                                />
-                                <label
-                                  htmlFor={`city-${city}`}
-                                  className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
+                    <div className="p-2 space-y-1 ">
+                      {Array.from(filteredGroupedCities.entries()).map(
+                        ([group, items]) => {
+                          return (
+                            <div key={group} className="dark:border-zinc-700">
+                              {items.map((city) => (
+                                <div
+                                  key={city}
+                                  className="flex items-center space-x-2 px-4 py-1 hover:bg-muted rounded dark:border-zinc-700"
                                 >
-                                  {city}
-                                </label>
-                              </div>
-                            ))}
-                          </div>
-                        );
-                      })}
+                                  <Checkbox
+                                    className="dark:border-zinc-700"
+                                    id={`city-${city}`}
+                                    checked={filters.cities.includes(city)}
+                                    onCheckedChange={(checked) =>
+                                      handleMultiSelectChange(
+                                        "cities",
+                                        city,
+                                        !!checked,
+                                      )
+                                    }
+                                  />
+                                  <label
+                                    htmlFor={`city-${city}`}
+                                    className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
+                                  >
+                                    {city}
+                                  </label>
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        },
+                      )}
                     </div>
                   </ScrollArea>
                 </PopoverContent>
               </Popover>
               {filters.cities.length > 0 && (
                 <Button
-                  
                   variant="ghost"
                   size="sm"
                   onClick={() => clearFilter("cities")}
@@ -536,14 +655,20 @@ export function Filters(props: FiltersProps) {
               <Label>Provinces</Label>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-full justify-between dark:border-zinc-700">
+                  <Button
+                    variant="outline"
+                    className="w-full justify-between dark:border-zinc-700"
+                  >
                     {filters.provinces.length > 0
                       ? `${filters.provinces.length} selected`
                       : "All Provinces"}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-80 p-0 dark:border-zinc-700" align="start">
-                  <div className="p-2 border-b dark:border-zinc-700 dark:bg-white/13">
+                <PopoverContent
+                  className="w-80 p-0 dark:border-zinc-700"
+                  align="start"
+                >
+                  <div className="p-2 border-b dark:border-zinc-700 ">
                     <Input
                       placeholder="Search provinces..."
                       value={provinceSearch}
@@ -552,32 +677,42 @@ export function Filters(props: FiltersProps) {
                     />
                   </div>
                   <ScrollArea className="h-64">
-                    <div className="p-2 space-y-1 dark:bg-white/13">
-                      {Array.from(filteredGroupedProvinces.entries()).map(([group, items]) => {
-
-                        return (
-                          <div key={group}>
-                            {items.map((province) => (
-                              <div key={province} className="flex items-center space-x-2 px-4 py-1 hover:bg-muted rounded">
-                                <Checkbox
-                                  className="dark:border-zinc-700"
-                                  id={`province-${province}`}
-                                  checked={filters.provinces.includes(province)}
-                                  onCheckedChange={(checked) =>
-                                    handleMultiSelectChange("provinces", province, !!checked)
-                                  }
-                                />
-                                <label
-                                  htmlFor={`province-${province}`}
-                                  className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
+                    <div className="p-2 space-y-1 ">
+                      {Array.from(filteredGroupedProvinces.entries()).map(
+                        ([group, items]) => {
+                          return (
+                            <div key={group}>
+                              {items.map((province) => (
+                                <div
+                                  key={province}
+                                  className="flex items-center space-x-2 px-4 py-1 hover:bg-muted rounded"
                                 >
-                                  {province}
-                                </label>
-                              </div>
-                            ))}
-                          </div>
-                        );
-                      })}
+                                  <Checkbox
+                                    className="dark:border-zinc-700"
+                                    id={`province-${province}`}
+                                    checked={filters.provinces.includes(
+                                      province,
+                                    )}
+                                    onCheckedChange={(checked) =>
+                                      handleMultiSelectChange(
+                                        "provinces",
+                                        province,
+                                        !!checked,
+                                      )
+                                    }
+                                  />
+                                  <label
+                                    htmlFor={`province-${province}`}
+                                    className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
+                                  >
+                                    {province}
+                                  </label>
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        },
+                      )}
                     </div>
                   </ScrollArea>
                 </PopoverContent>
@@ -600,16 +735,22 @@ export function Filters(props: FiltersProps) {
             {/* Divisions Multi-Select */}
             <div className="space-y-2 ">
               <Label>Divisions</Label>
-              <Popover >
+              <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-full justify-between dark:border-zinc-700 ">
+                  <Button
+                    variant="outline"
+                    className="w-full justify-between dark:border-zinc-700 "
+                  >
                     {filters.divisions.length > 0
                       ? `${filters.divisions.length} selected`
                       : "All Divisions"}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-80 p-0 dark:border-zinc-700 " align="start">
-                  <div className="p-2 border-b dark:border-zinc-700 dark:bg-white/13">
+                <PopoverContent
+                  className="w-80 p-0 dark:border-zinc-700 "
+                  align="start"
+                >
+                  <div className="p-2 border-b dark:border-zinc-700 ">
                     <Input
                       placeholder="Search divisions..."
                       value={divisionSearch}
@@ -618,29 +759,38 @@ export function Filters(props: FiltersProps) {
                     />
                   </div>
                   <ScrollArea className="h-64">
-                    <div className="p-2 space-y-1 dark:bg-white/13">
-                      {Array.from(filteredGroupedDivisions.entries()).map(([group, items]) => (
-                        <div key={group}>
-                          {items.map((division) => (
-                            <div key={division} className="flex items-center space-x-2 px-4 py-1 hover:bg-muted rounded">
+                    <div className="p-2 space-y-1 ">
+                      {Array.from(filteredGroupedDivisions.entries()).map(
+                        ([group, items]) => (
+                          <div key={group}>
+                            {items.map((division) => (
+                              <div
+                                key={division}
+                                className="flex items-center space-x-2 px-4 py-1 hover:bg-muted rounded"
+                              >
                                 <Checkbox
                                   className="dark:border-zinc-700"
                                   id={`division-${division}`}
                                   checked={filters.divisions.includes(division)}
                                   onCheckedChange={(checked) =>
-                                    handleMultiSelectChange("divisions", division, !!checked)
+                                    handleMultiSelectChange(
+                                      "divisions",
+                                      division,
+                                      !!checked,
+                                    )
                                   }
                                 />
-                              <label
-                                htmlFor={`division-${division}`}
-                                className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
-                              >
-                                {division}
-                              </label>
-                            </div>
-                          ))}
-                        </div>
-                      ))}
+                                <label
+                                  htmlFor={`division-${division}`}
+                                  className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
+                                >
+                                  {division}
+                                </label>
+                              </div>
+                            ))}
+                          </div>
+                        ),
+                      )}
                     </div>
                   </ScrollArea>
                 </PopoverContent>
@@ -662,14 +812,20 @@ export function Filters(props: FiltersProps) {
               <Label>Operations</Label>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-full justify-between dark:border-zinc-700">
+                  <Button
+                    variant="outline"
+                    className="w-full justify-between dark:border-zinc-700"
+                  >
                     {filters.operations.length > 0
                       ? `${filters.operations.length} selected`
                       : "All Operations"}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-80 p-0 dark:border-zinc-700" align="start">
-                  <div className="p-2 border-b dark:border-zinc-700 dark:bg-white/13">
+                <PopoverContent
+                  className="w-80 p-0 dark:border-zinc-700"
+                  align="start"
+                >
+                  <div className="p-2 border-b dark:border-zinc-700 ">
                     <Input
                       placeholder="Search operations..."
                       value={operationSearch}
@@ -678,29 +834,40 @@ export function Filters(props: FiltersProps) {
                     />
                   </div>
                   <ScrollArea className="h-64">
-                    <div className="p-2 space-y-1 dark:bg-white/13">
-                      {Array.from(filteredGroupedOperations.entries()).map(([group, items]) => (
-                        <div key={group}>
-                          {items.map((operation) => (
-                            <div key={operation} className="flex items-center space-x-2 px-4 py-1 hover:bg-muted rounded">
+                    <div className="p-2 space-y-1 ">
+                      {Array.from(filteredGroupedOperations.entries()).map(
+                        ([group, items]) => (
+                          <div key={group}>
+                            {items.map((operation) => (
+                              <div
+                                key={operation}
+                                className="flex items-center space-x-2 px-4 py-1 hover:bg-muted rounded"
+                              >
                                 <Checkbox
                                   className="dark:border-zinc-700"
                                   id={`operation-${operation}`}
-                                  checked={filters.operations.includes(operation)}
+                                  checked={filters.operations.includes(
+                                    operation,
+                                  )}
                                   onCheckedChange={(checked) =>
-                                    handleMultiSelectChange("operations", operation, !!checked)
+                                    handleMultiSelectChange(
+                                      "operations",
+                                      operation,
+                                      !!checked,
+                                    )
                                   }
                                 />
-                              <label
-                                htmlFor={`operation-${operation}`}
-                                className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
-                              >
-                                {operation}
-                              </label>
-                            </div>
-                          ))}
-                        </div>
-                      ))}
+                                <label
+                                  htmlFor={`operation-${operation}`}
+                                  className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
+                                >
+                                  {operation}
+                                </label>
+                              </div>
+                            ))}
+                          </div>
+                        ),
+                      )}
                     </div>
                   </ScrollArea>
                 </PopoverContent>
@@ -722,14 +889,20 @@ export function Filters(props: FiltersProps) {
               <Label>Salesmen</Label>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-full justify-between dark:border-zinc-700">
+                  <Button
+                    variant="outline"
+                    className="w-full justify-between dark:border-zinc-700"
+                  >
                     {filters.salesmen.length > 0
                       ? `${filters.salesmen.length} selected`
                       : "All Salesmen"}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-80 p-0 dark:border-zinc-700" align="start">
-                  <div className="p-2 border-b dark:border-zinc-700 dark:bg-white/13">
+                <PopoverContent
+                  className="w-80 p-0 dark:border-zinc-700"
+                  align="start"
+                >
+                  <div className="p-2 border-b dark:border-zinc-700 ">
                     <Input
                       placeholder="Search salesmen..."
                       value={salesmanSearch}
@@ -738,29 +911,38 @@ export function Filters(props: FiltersProps) {
                     />
                   </div>
                   <ScrollArea className="h-64">
-                    <div className="p-2 space-y-1 dark:bg-white/13">
-                      {Array.from(filteredGroupedSalesmen.entries()).map(([group, items]) => (
-                        <div key={group}>
-                          {items.map((salesman) => (
-                            <div key={salesman} className="flex items-center space-x-2 px-4 py-1 hover:bg-muted rounded">
+                    <div className="p-2 space-y-1 ">
+                      {Array.from(filteredGroupedSalesmen.entries()).map(
+                        ([group, items]) => (
+                          <div key={group}>
+                            {items.map((salesman) => (
+                              <div
+                                key={salesman}
+                                className="flex items-center space-x-2 px-4 py-1 hover:bg-muted rounded"
+                              >
                                 <Checkbox
                                   className="dark:border-zinc-700"
                                   id={`salesman-${salesman}`}
                                   checked={filters.salesmen.includes(salesman)}
                                   onCheckedChange={(checked) =>
-                                    handleMultiSelectChange("salesmen", salesman, !!checked)
+                                    handleMultiSelectChange(
+                                      "salesmen",
+                                      salesman,
+                                      !!checked,
+                                    )
                                   }
                                 />
-                              <label
-                                htmlFor={`salesman-${salesman}`}
-                                className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
-                              >
-                                {salesman}
-                              </label>
-                            </div>
-                          ))}
-                        </div>
-                      ))}
+                                <label
+                                  htmlFor={`salesman-${salesman}`}
+                                  className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
+                                >
+                                  {salesman}
+                                </label>
+                              </div>
+                            ))}
+                          </div>
+                        ),
+                      )}
                     </div>
                   </ScrollArea>
                 </PopoverContent>
@@ -786,118 +968,121 @@ export function Filters(props: FiltersProps) {
             filters.divisions.length > 0 ||
             filters.operations.length > 0 ||
             filters.salesmen.length > 0) && (
-              <div className="flex flex-wrap gap-2">
-                {filters.suppliers.map((s) => (
-                  <Badge key={s} variant="secondary">
-                    Supplier: {s}
-                    <button
-                      onClick={() =>
-                        onChange({
-                          ...filters,
-                          suppliers: filters.suppliers.filter((x) => x !== s),
-                        })
-                      }
-                      className="ml-1"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                ))}
-                {filters.products.map((p) => (
-                  <Badge key={p} variant="secondary">
-                    Product: {p}
-                    <button
-                      onClick={() =>
-                        onChange({
-                          ...filters,
-                          products: filters.products.filter((x) => x !== p),
-                        })
-                      }
-                      className="ml-1"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                ))}
-                {filters.cities.map((c) => (
-                  <Badge key={c} variant="secondary">
-                    City: {c}
-                    <button
-                      onClick={() =>
-                        onChange({ ...filters, cities: filters.cities.filter((x) => x !== c) })
-                      }
-                      className="ml-1"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                ))}
-                {filters.provinces.map((p) => (
-                  <Badge key={p} variant="secondary">
-                    Province: {p}
-                    <button
-                      onClick={() =>
-                        onChange({
-                          ...filters,
-                          provinces: filters.provinces.filter((x) => x !== p),
-                        })
-                      }
-                      className="ml-1"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                ))}
-                {filters.divisions.map((d) => (
-                  <Badge key={d} variant="secondary">
-                    Division: {d}
-                    <button
-                      onClick={() =>
-                        onChange({
-                          ...filters,
-                          divisions: filters.divisions.filter((x) => x !== d),
-                        })
-                      }
-                      className="ml-1"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                ))}
-                {filters.operations.map((o) => (
-                  <Badge key={o} variant="secondary">
-                    Operation: {o}
-                    <button
-                      onClick={() =>
-                        onChange({
-                          ...filters,
-                          operations: filters.operations.filter((x) => x !== o),
-                        })
-                      }
-                      className="ml-1"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                ))}
-                {filters.salesmen.map((s) => (
-                  <Badge key={s} variant="secondary">
-                    Salesman: {s}
-                    <button
-                      onClick={() =>
-                        onChange({
-                          ...filters,
-                          salesmen: filters.salesmen.filter((x) => x !== s),
-                        })
-                      }
-                      className="ml-1"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                ))}
-              </div>
-            )}
+            <div className="flex flex-wrap gap-2">
+              {filters.suppliers.map((s) => (
+                <Badge key={s} variant="secondary">
+                  Supplier: {s}
+                  <button
+                    onClick={() =>
+                      onChange({
+                        ...filters,
+                        suppliers: filters.suppliers.filter((x) => x !== s),
+                      })
+                    }
+                    className="ml-1"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              ))}
+              {filters.products.map((p) => (
+                <Badge key={p} variant="secondary">
+                  Product: {p}
+                  <button
+                    onClick={() =>
+                      onChange({
+                        ...filters,
+                        products: filters.products.filter((x) => x !== p),
+                      })
+                    }
+                    className="ml-1"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              ))}
+              {filters.cities.map((c) => (
+                <Badge key={c} variant="secondary">
+                  City: {c}
+                  <button
+                    onClick={() =>
+                      onChange({
+                        ...filters,
+                        cities: filters.cities.filter((x) => x !== c),
+                      })
+                    }
+                    className="ml-1"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              ))}
+              {filters.provinces.map((p) => (
+                <Badge key={p} variant="secondary">
+                  Province: {p}
+                  <button
+                    onClick={() =>
+                      onChange({
+                        ...filters,
+                        provinces: filters.provinces.filter((x) => x !== p),
+                      })
+                    }
+                    className="ml-1"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              ))}
+              {filters.divisions.map((d) => (
+                <Badge key={d} variant="secondary">
+                  Division: {d}
+                  <button
+                    onClick={() =>
+                      onChange({
+                        ...filters,
+                        divisions: filters.divisions.filter((x) => x !== d),
+                      })
+                    }
+                    className="ml-1"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              ))}
+              {filters.operations.map((o) => (
+                <Badge key={o} variant="secondary">
+                  Operation: {o}
+                  <button
+                    onClick={() =>
+                      onChange({
+                        ...filters,
+                        operations: filters.operations.filter((x) => x !== o),
+                      })
+                    }
+                    className="ml-1"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              ))}
+              {filters.salesmen.map((s) => (
+                <Badge key={s} variant="secondary">
+                  Salesman: {s}
+                  <button
+                    onClick={() =>
+                      onChange({
+                        ...filters,
+                        salesmen: filters.salesmen.filter((x) => x !== s),
+                      })
+                    }
+                    className="ml-1"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              ))}
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
