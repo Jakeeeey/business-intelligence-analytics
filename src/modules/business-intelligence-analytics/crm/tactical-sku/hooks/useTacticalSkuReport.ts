@@ -38,6 +38,8 @@ function matchesSearch(row: TacticalSkuProductRow, term: string): boolean {
 export function useTacticalSkuReport() {
   const [filters, setFilters] = React.useState<TacticalSkuFilters>({
     month: getDefaultMonth(),
+    sku: "",
+    salesman: "",
     search: "",
   });
 
@@ -46,18 +48,52 @@ export function useTacticalSkuReport() {
   const [warnings, setWarnings] = React.useState<string[]>([]);
   const [expandedKey, setExpandedKey] = React.useState<string | null>(null);
   const [rows, setRows] = React.useState<TacticalSkuProductRow[]>([]);
-  const [kpis, setKpis] = React.useState<TacticalSkuKpis>({
-    totalProducts: 0,
-    totalInventory: 0,
-    totalReach: 0,
-    totalTarget: 0,
-    overallPercent: 0,
-  });
-  const [chartData, setChartData] = React.useState<TacticalSkuChartPoint[]>([]);
+  const skuOptions = React.useMemo(() => {
+    const byLabel = new Map<string, { value: string; label: string }>();
+    for (const row of rows) {
+      const label = row.productName.trim();
+      if (!label) continue;
+      if (!byLabel.has(label)) byLabel.set(label, { value: label, label });
+    }
+    return Array.from(byLabel.values()).sort((a, b) => a.label.localeCompare(b.label));
+  }, [rows]);
+
+  const salesmanOptions = React.useMemo(() => {
+    const byLabel = new Map<string, { value: string; label: string }>();
+    for (const row of rows) {
+      for (const s of row.salesmen) {
+        const label = s.salesmanName.trim();
+        if (!label) continue;
+        if (!byLabel.has(label)) byLabel.set(label, { value: label, label });
+      }
+    }
+    return Array.from(byLabel.values()).sort((a, b) => a.label.localeCompare(b.label));
+  }, [rows]);
 
   const filteredRows = React.useMemo(
-    () => rows.filter((row) => matchesSearch(row, filters.search.trim())),
-    [rows, filters.search],
+    () => {
+      const sku = filters.sku.trim().toLowerCase();
+      const salesman = filters.salesman.trim().toLowerCase();
+      const search = filters.search.trim();
+
+      const byFilter = rows.filter((row) => {
+        if (sku && row.productName.toLowerCase() !== sku) return false;
+        if (salesman && !row.salesmen.some((s) => s.salesmanName.toLowerCase() === salesman)) {
+          return false;
+        }
+        return true;
+      });
+
+      const bySearch = byFilter.filter((row) => matchesSearch(row, search));
+      return bySearch.map((row, idx) => ({ ...row, rank: idx + 1 }));
+    },
+    [rows, filters.search, filters.sku, filters.salesman],
+  );
+
+  const kpis = React.useMemo<TacticalSkuKpis>(() => buildTacticalSkuKpis(filteredRows), [filteredRows]);
+  const chartData = React.useMemo<TacticalSkuChartPoint[]>(
+    () => buildTacticalSkuChartData(filteredRows, 10),
+    [filteredRows],
   );
 
   async function generateReport() {
@@ -70,15 +106,13 @@ export function useTacticalSkuReport() {
         month: filters.month,
         startDate,
         endDate,
+        productName: filters.sku || undefined,
+        salesmanName: filters.salesman || undefined,
       });
 
       const shapedRows = buildTacticalSkuRows(data.rows, data.inventory);
-      const shapedKpis = buildTacticalSkuKpis(shapedRows);
-      const shapedCharts = buildTacticalSkuChartData(shapedRows);
 
       setRows(shapedRows);
-      setKpis(shapedKpis);
-      setChartData(shapedCharts);
       setWarnings(data.warnings ?? []);
 
       if (data.warnings?.length) {
@@ -110,6 +144,8 @@ export function useTacticalSkuReport() {
     warnings,
     rows: filteredRows,
     rawRows: rows,
+    skuOptions,
+    salesmanOptions,
     kpis,
     chartData,
     expandedKey,

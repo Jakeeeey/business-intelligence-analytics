@@ -3,9 +3,17 @@
 import * as React from "react";
 import { toast } from "sonner";
 
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 
 import { TacticalSkuCharts } from "./components/TacticalSkuCharts";
 import { TacticalSkuFiltersBar } from "./components/TacticalSkuFilters";
@@ -14,13 +22,60 @@ import { TacticalSkuTable } from "./components/TacticalSkuTable";
 import { useTacticalSkuReport } from "./hooks/useTacticalSkuReport";
 import { printTacticalSkuReport } from "./utils/printHelper";
 
-export default function TacticalSkuModule() {
+const MONTH_OPTIONS = [
+	{ value: "01", label: "January" },
+	{ value: "02", label: "February" },
+	{ value: "03", label: "March" },
+	{ value: "04", label: "April" },
+	{ value: "05", label: "May" },
+	{ value: "06", label: "June" },
+	{ value: "07", label: "July" },
+	{ value: "08", label: "August" },
+	{ value: "09", label: "September" },
+	{ value: "10", label: "October" },
+	{ value: "11", label: "November" },
+	{ value: "12", label: "December" },
+];
+
+function parseMonthValue(value: string): { year: string; month: string } {
+	const now = new Date();
+	const current = {
+		year: String(now.getFullYear()),
+		month: String(now.getMonth() + 1).padStart(2, "0"),
+	};
+
+	if (!/^\d{4}-\d{2}$/.test(value)) return current;
+
+	const [year, month] = value.split("-");
+	if (!MONTH_OPTIONS.some((m) => m.value === month)) return current;
+
+	return { year, month };
+}
+
+type TacticalSkuModuleProps = {
+	userName?: string;
+};
+
+export default function TacticalSkuModule({ userName }: TacticalSkuModuleProps) {
 	const report = useTacticalSkuReport();
 	const [printing, setPrinting] = React.useState(false);
+	const currentYear = new Date().getFullYear();
+	const minYear = 2000;
+	const maxYear = currentYear + 100;
+	const yearOptions = Array.from({ length: maxYear - minYear + 1 }, (_, idx) => String(minYear + idx));
+	const { year, month } = parseMonthValue(report.filters.month);
+
+	const handleMonthChange = (nextMonth: string) => {
+		report.setFilters({ ...report.filters, month: `${year}-${nextMonth}` });
+	};
+
+	const handleYearChange = (nextYear: string) => {
+		report.setFilters({ ...report.filters, month: `${nextYear}-${month}` });
+	};
 
 	const handlePrint = React.useCallback(async () => {
 		if (report.loading || printing) return;
-		if (!report.rawRows.length) {
+		if (!report.rows.length) {
 			toast.warning("No report data to print.");
 			return;
 		}
@@ -29,8 +84,9 @@ export default function TacticalSkuModule() {
 		try {
 			await printTacticalSkuReport({
 				month: report.filters.month,
-				rows: report.rawRows,
+				rows: report.rows,
 				kpis: report.kpis,
+				generatedBy: userName,
 			});
 		} catch (error: unknown) {
 			const message = error instanceof Error ? error.message : "Failed to print Tactical SKU report.";
@@ -38,7 +94,7 @@ export default function TacticalSkuModule() {
 		} finally {
 			setPrinting(false);
 		}
-	}, [printing, report.filters.month, report.kpis, report.loading, report.rawRows]);
+	}, [printing, report.filters.month, report.kpis, report.loading, report.rows, userName]);
 
 	return (
 		<div className="space-y-4">
@@ -49,14 +105,63 @@ export default function TacticalSkuModule() {
 				</p>
 			</div>
 
-			<TacticalSkuFiltersBar
-				value={report.filters}
-				onChange={report.setFilters}
-				onGenerate={report.generateReport}
-				onPrint={handlePrint}
-				loading={report.loading}
-				printing={printing}
-			/>
+			<div className="grid gap-3 lg:grid-cols-[560px_1fr]">
+				<Card>
+					<CardContent className="pt-2">
+						<p className="mb-1 text-sm text-muted-foreground">
+							Choose the reporting period, then generate the current report.
+						</p>
+						<div className="grid gap-3 md:grid-cols-[240px_auto]">
+							<div className="space-y-1">
+								<p className="text-sm font-medium text-muted-foreground">Month & Year</p>
+								<div className="grid grid-cols-2 gap-2">
+									<Select value={month} onValueChange={handleMonthChange} disabled={report.loading || printing}>
+										<SelectTrigger aria-label="Report month">
+											<SelectValue placeholder="Month" />
+										</SelectTrigger>
+										<SelectContent>
+											{MONTH_OPTIONS.map((opt) => (
+												<SelectItem key={opt.value} value={opt.value}>
+													{opt.label}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+								
+									<Select value={year} onValueChange={handleYearChange} disabled={report.loading || printing}>
+										<SelectTrigger aria-label="Report year">
+											<SelectValue placeholder="Year" />
+										</SelectTrigger>
+										<SelectContent>
+											{yearOptions.map((opt) => (
+												<SelectItem key={opt} value={opt}>
+													{opt}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+								</div>
+							</div>
+
+							<div className="flex items-end gap-2">
+								<Button onClick={report.generateReport} disabled={report.loading || printing}>
+									{report.loading ? "Loading..." : "Generate Report"}
+								</Button>
+							</div>
+						</div>
+					</CardContent>
+				</Card>
+
+				<TacticalSkuFiltersBar
+					value={report.filters}
+					onChange={report.setFilters}
+					skuOptions={report.skuOptions}
+					salesmanOptions={report.salesmanOptions}
+					onPrint={handlePrint}
+					printing={printing}
+					disabled={report.loading || printing}
+				/>
+			</div>
 
 			{!!report.error && (
 				<Card>
