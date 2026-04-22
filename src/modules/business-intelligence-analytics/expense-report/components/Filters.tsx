@@ -55,7 +55,6 @@ type FiltersProps = {
 };
 
 export default function Filters({
-
   filters,
   onFiltersChange,
   filterOptions,
@@ -138,7 +137,17 @@ export default function Filters({
       : [...current, value];
     onFiltersChange({ ...filters, [key]: updated });
   };
-
+  const removeFilterItem = (key: keyof ExpenseFilters, value: string) => {
+    const current = filters[key] as string[];
+    const updated = current.filter((v) => v !== value);
+    onFiltersChange({ ...filters, [key]: updated });
+  };
+  const splitVisibleHidden = (items: string[], limit = 3) => {
+    return {
+      visible: items.slice(0, limit),
+      hidden: items.slice(limit),
+    };
+  };
   const clearFilter = (key: keyof ExpenseFilters) => {
     onFiltersChange({ ...filters, [key]: [] });
   };
@@ -178,7 +187,7 @@ export default function Filters({
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
-           <Dialog open={exportDialogOpen} onOpenChange={setExportDialogOpen}>
+            <Dialog open={exportDialogOpen} onOpenChange={setExportDialogOpen}>
               <DialogTrigger asChild>
                 <Button variant="default" size="sm">
                   <Download className="mr-2 h-4 w-4" />
@@ -400,7 +409,7 @@ export default function Filters({
                       filteredEmployees.map((employee) => (
                         <div
                           key={employee}
-                          className="flex items-center space-x-2"
+                          className="flex items-center  space-x-2"
                         >
                           <Checkbox
                             id={`employee-${employee}`}
@@ -423,8 +432,6 @@ export default function Filters({
               </PopoverContent>
             </Popover>
           </div>
-
-
 
           {/* Chart of Account */}
           <div className="space-y-1">
@@ -482,9 +489,6 @@ export default function Filters({
               </PopoverContent>
             </Popover>
           </div>
-
-
-
         </div>
 
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
@@ -707,69 +711,469 @@ export default function Filters({
           </div>
         </div>
         {/* Active Filters */}
-        {(filters.employees.length > 0 ||
-          filters.divisions.length > 0 ||
-          filters.encoders.length > 0 ||
-          filters.coaAccounts.length > 0 ||
-          filters.transactionTypes.length > 0 ||
-          filters.statuses.length > 0) && (
-          <div className="space-y-2 pt-2 border-t">
+        {Object.values(filters).some((arr) => arr.length > 0) && (
+          <div className="space-y-3 pt-2 border-t">
             <Label className="text-xs">Active Filters</Label>
-            <div className="flex flex-wrap gap-2">
-              {filters.employees.length > 0 && (
-                <Badge variant="secondary" className="gap-1">
-                  Employees: {filters.employees.length}
-                  <X
-                    className="h-3 w-3 cursor-pointer"
-                    onClick={() => clearFilter("employees")}
-                  />
-                </Badge>
-              )}
-              {filters.divisions.length > 0 && (
-                <Badge variant="secondary" className="gap-1">
-                  Divisions: {filters.divisions.length}
-                  <X
-                    className="h-3 w-3 cursor-pointer"
-                    onClick={() => clearFilter("divisions")}
-                  />
-                </Badge>
-              )}
-              {filters.encoders.length > 0 && (
-                <Badge variant="secondary" className="gap-1">
-                  Encoders: {filters.encoders.length}
-                  <X
-                    className="h-3 w-3 cursor-pointer"
-                    onClick={() => clearFilter("encoders")}
-                  />
-                </Badge>
-              )}
-              {filters.coaAccounts.length > 0 && (
-                <Badge variant="secondary" className="gap-1">
-                  COA: {filters.coaAccounts.length}
-                  <X
-                    className="h-3 w-3 cursor-pointer"
-                    onClick={() => clearFilter("coaAccounts")}
-                  />
-                </Badge>
-              )}
-              {filters.transactionTypes.length > 0 && (
-                <Badge variant="secondary" className="gap-1">
-                  Types: {filters.transactionTypes.length}
-                  <X
-                    className="h-3 w-3 cursor-pointer"
-                    onClick={() => clearFilter("transactionTypes")}
-                  />
-                </Badge>
-              )}
-              {filters.statuses.length > 0 && (
-                <Badge variant="secondary" className="gap-1">
-                  Statuses: {filters.statuses.length}
-                  <X
-                    className="h-3 w-3 cursor-pointer"
-                    onClick={() => clearFilter("statuses")}
-                  />
-                </Badge>
-              )}
+
+            <div className="flex flex-col gap-1">
+              {/* Employees */}
+              {filters.employees.length > 0 &&
+                (() => {
+                  const { visible, hidden } = splitVisibleHidden(
+                    filters.employees,
+                    3,
+                  );
+
+                  return (
+                    <div className="flex items-center flex-wrap gap-1">
+                      <div className="flex items-center gap-2 w-24">
+                        <span className="text-xs font-medium text-muted-foreground">
+                          Payee Name
+                        </span>
+                        <button
+                          type="button"
+                          aria-label="Clear payee filters"
+                          className="ml-1 inline-flex h-5 w-5 items-center justify-center rounded p-0 text-muted-foreground"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            clearFilter("employees");
+                          }}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+
+                      {visible.map((item, idx) => (
+                        <Badge key={idx} variant="secondary" className="gap-1">
+                          <span className="truncate">{item}</span>
+                          <button
+                            type="button"
+                            aria-label={`Remove ${item}`}
+                            className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded p-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeFilterItem("employees", item);
+                            }}
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </Badge>
+                      ))}
+
+                      {hidden.length > 0 && (
+                        <div className="relative group">
+                          <Badge variant="outline" className="cursor-default">
+                            +{hidden.length}
+                          </Badge>
+
+                          {/* Hover Tooltip */}
+                          <div className="absolute left-0 mt-2 hidden group-hover:block z-50 bg-background border rounded-md shadow-md p-2 w-48">
+                            <div className="flex flex-col gap-1">
+                              {hidden.map((item, idx) => (
+                                <div
+                                  key={idx}
+                                  className="text-xs flex justify-between items-center"
+                                >
+                                  <span className="truncate">{item}</span>
+                                  <button
+                                    type="button"
+                                    aria-label={`Remove ${item}`}
+                                    className="ml-2 inline-flex h-4 w-4 items-center justify-center rounded p-0"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      removeFilterItem("employees", item);
+                                    }}
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
+              {/* Divisions */}
+              {filters.divisions.length > 0 &&
+                (() => {
+                  const { visible, hidden } = splitVisibleHidden(
+                    filters.divisions,
+                    3,
+                  );
+
+                  return (
+                    <div className="flex items-center flex-wrap gap-1">
+                      <div className="flex items-center gap-2 w-24">
+                        <span className="text-xs font-medium text-muted-foreground">
+                          Divisions
+                        </span>
+                        <button
+                          type="button"
+                          aria-label="Clear divisions filters"
+                          className="ml-1 inline-flex h-5 w-5 items-center justify-center rounded p-0 text-muted-foreground"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            clearFilter("divisions");
+                          }}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+
+                      {visible.map((item, idx) => (
+                        <Badge key={idx} variant="secondary" className="gap-1">
+                          <span className="truncate">{item}</span>
+                          <button
+                            type="button"
+                            aria-label={`Remove ${item}`}
+                            className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded p-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeFilterItem("divisions", item);
+                            }}
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </Badge>
+                      ))}
+
+                      {hidden.length > 0 && (
+                        <div className="relative group">
+                          <Badge variant="outline">+{hidden.length}</Badge>
+
+                          <div className="absolute left-0 mt-2 hidden group-hover:block z-50 bg-background border rounded-md shadow-md p-2 w-48">
+                            {hidden.map((item, idx) => (
+                              <div
+                                key={idx}
+                                className="flex justify-between text-xs"
+                              >
+                                <span className="truncate">{item}</span>
+                                <button
+                                  type="button"
+                                  aria-label={`Remove ${item}`}
+                                  className="ml-2 inline-flex h-4 w-4 items-center justify-center rounded p-0"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    removeFilterItem("divisions", item);
+                                  }}
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
+              {/* Encoders */}
+              {filters.encoders.length > 0 &&
+                (() => {
+                  const { visible, hidden } = splitVisibleHidden(
+                    filters.encoders,
+                    3,
+                  );
+
+                  return (
+                    <div className="flex items-center flex-wrap gap-1">
+                      <div className="flex items-center gap-2 w-24">
+                        <span className="text-xs font-medium text-muted-foreground">
+                          Encoders
+                        </span>
+                        <button
+                          type="button"
+                          aria-label="Clear encoders filters"
+                          className="ml-1 inline-flex h-5 w-5 items-center justify-center rounded p-0 text-muted-foreground"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            clearFilter("encoders");
+                          }}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+
+                      {visible.map((item, idx) => (
+                        <Badge key={idx} variant="secondary" className="gap-1">
+                          <span className="truncate">{item}</span>
+                          <button
+                            type="button"
+                            aria-label={`Remove ${item}`}
+                            className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded p-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeFilterItem("encoders", item);
+                            }}
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </Badge>
+                      ))}
+
+                      {hidden.length > 0 && (
+                        <div className="relative group">
+                          <Badge variant="outline" className="cursor-default">
+                            +{hidden.length}
+                          </Badge>
+
+                          <div className="absolute left-0 mt-2 hidden group-hover:block z-50 bg-background border rounded-md shadow-md p-2 w-48">
+                            <div className="flex flex-col gap-1">
+                              {hidden.map((item, idx) => (
+                                <div
+                                  key={idx}
+                                  className="text-xs flex justify-between items-center"
+                                >
+                                  <span className="truncate">{item}</span>
+                                  <button
+                                    type="button"
+                                    aria-label={`Remove ${item}`}
+                                    className="ml-2 inline-flex h-4 w-4 items-center justify-center rounded p-0"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      removeFilterItem("encoders", item);
+                                    }}
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
+              {/* COA Accounts */}
+              {filters.coaAccounts.length > 0 &&
+                (() => {
+                  const { visible, hidden } = splitVisibleHidden(
+                    filters.coaAccounts,
+                    3,
+                  );
+
+                  return (
+                    <div className="flex items-center flex-wrap gap-1">
+                      <div className="flex items-center gap-2 w-24">
+                        <span className="text-xs font-medium text-muted-foreground">
+                          COA
+                        </span>
+                        <button
+                          type="button"
+                          aria-label="Clear COA filters"
+                          className="ml-1 inline-flex h-5 w-5 items-center justify-center rounded p-0 text-muted-foreground"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            clearFilter("coaAccounts");
+                          }}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+
+                      {visible.map((item, idx) => (
+                        <Badge key={idx} variant="secondary" className="gap-1">
+                          <span className="truncate">{item}</span>
+                          <button
+                            type="button"
+                            aria-label={`Remove ${item}`}
+                            className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded p-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeFilterItem("coaAccounts", item);
+                            }}
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </Badge>
+                      ))}
+
+                      {hidden.length > 0 && (
+                        <div className="relative group">
+                          <Badge variant="outline">+{hidden.length}</Badge>
+
+                          <div className="absolute left-0 mt-2 hidden group-hover:block z-50 bg-background border rounded-md shadow-md p-2 w-48">
+                            {hidden.map((item, idx) => (
+                              <div
+                                key={idx}
+                                className="flex justify-between text-xs"
+                              >
+                                <span className="truncate">{item}</span>
+                                <button
+                                  type="button"
+                                  aria-label={`Remove ${item}`}
+                                  className="ml-2 inline-flex h-4 w-4 items-center justify-center rounded p-0"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    removeFilterItem("coaAccounts", item);
+                                  }}
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
+              {/* Transaction Types */}
+              {filters.transactionTypes.length > 0 &&
+                (() => {
+                  const { visible, hidden } = splitVisibleHidden(
+                    filters.transactionTypes,
+                    3,
+                  );
+
+                  return (
+                    <div className="flex items-center flex-wrap gap-1">
+                      <div className="flex items-center gap-2 w-24">
+                        <span className="text-xs font-medium text-muted-foreground">
+                          Transaction Types
+                        </span>
+                        <button
+                          type="button"
+                          aria-label="Clear transaction type filters"
+                          className="ml-1 inline-flex h-5 w-5 items-center justify-center rounded p-0 text-muted-foreground"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            clearFilter("transactionTypes");
+                          }}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+
+                      {visible.map((item, idx) => (
+                        <Badge key={idx} variant="secondary" className="gap-1">
+                          <span className="truncate">{item}</span>
+                          <button
+                            type="button"
+                            aria-label={`Remove ${item}`}
+                            className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded p-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeFilterItem("transactionTypes", item);
+                            }}
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </Badge>
+                      ))}
+
+                      {hidden.length > 0 && (
+                        <div className="relative group">
+                          <Badge variant="outline">+{hidden.length}</Badge>
+
+                          <div className="absolute left-0 mt-2 hidden group-hover:block z-50 bg-background border rounded-md shadow-md p-2 w-48">
+                            {hidden.map((item, idx) => (
+                              <div
+                                key={idx}
+                                className="flex justify-between text-xs"
+                              >
+                                <span className="truncate">{item}</span>
+                                <button
+                                  type="button"
+                                  aria-label={`Remove ${item}`}
+                                  className="ml-2 inline-flex h-4 w-4 items-center justify-center rounded p-0"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    removeFilterItem("transactionTypes", item);
+                                  }}
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
+              {/* Statuses */}
+              {filters.statuses.length > 0 &&
+                (() => {
+                  const { visible, hidden } = splitVisibleHidden(
+                    filters.statuses,
+                    3,
+                  );
+
+                  return (
+                    <div className="flex items-center flex-wrap gap-1">
+                      <div className="flex items-center gap-2 w-24">
+                        <span className="text-xs font-medium text-muted-foreground">
+                          Statuses
+                        </span>
+                        <button
+                          type="button"
+                          aria-label="Clear statuses filters"
+                          className="ml-1 inline-flex h-5 w-5 items-center justify-center rounded p-0 text-muted-foreground"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            clearFilter("statuses");
+                          }}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+
+                      {visible.map((item, idx) => (
+                        <Badge key={idx} variant="secondary" className="gap-1">
+                          <span className="truncate">{item}</span>
+                          <button
+                            type="button"
+                            aria-label={`Remove ${item}`}
+                            className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded p-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeFilterItem("statuses", item);
+                            }}
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </Badge>
+                      ))}
+
+                      {hidden.length > 0 && (
+                        <div className="relative group">
+                          <Badge variant="outline">+{hidden.length}</Badge>
+
+                          <div className="absolute left-0 mt-2 hidden group-hover:block z-50 bg-background border rounded-md shadow-md p-2 w-48">
+                            {hidden.map((item, idx) => (
+                              <div
+                                key={idx}
+                                className="flex justify-between text-xs"
+                              >
+                                <span className="truncate">{item}</span>
+                                <button
+                                  type="button"
+                                  aria-label={`Remove ${item}`}
+                                  className="ml-2 inline-flex h-4 w-4 items-center justify-center rounded p-0"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    removeFilterItem("statuses", item);
+                                  }}
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
             </div>
           </div>
         )}

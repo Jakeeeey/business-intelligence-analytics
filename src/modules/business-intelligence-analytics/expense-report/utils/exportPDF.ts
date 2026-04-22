@@ -1,34 +1,19 @@
-/**
- * Expense Report PDF Export Module
- * Integrates with pdf-layout-design component for template-based PDF generation
- */
-
 import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
-import { PdfEngine } from "@/components/pdf-layout-design/PdfEngine";
-import { PdfConfig } from "@/components/pdf-layout-design/types";
-import {
-  DEFAULT_CONFIG,
-  PAPER_SIZES,
-} from "@/components/pdf-layout-design/constants";
-import {
-  drawPageNumbers,
-  renderElement,
-} from "@/components/pdf-layout-design/PdfGenerator";
-import { pdfTemplateService } from "@/components/pdf-layout-design/services/pdf-template";
+import autoTable, { RowInput } from "jspdf-autotable";
+
 import type { DisbursementRecord, ExpenseFilters, ExportFormat } from "../type";
+import { PdfEngine } from "@/components/pdf-layout-design/PdfEngine";
+import type {
+  PdfConfig,
+  CompanyData,
+} from "@/components/pdf-layout-design/types";
+import {
+  pdfTemplateService,
+  type PdfTemplate,
+} from "@/components/pdf-layout-design/services/pdf-template";
 
-// ============================================================================
-// Types & Constants
-// ============================================================================
-
-declare module "jspdf" {
-  interface jsPDF {
-    lastAutoTable?: {
-      finalY: number;
-    };
-  }
-}
+// Prefer template label used by the project's PDF templates collection
+const TEMPLATE_NAME = "Letter - Portrait";
 
 export type ExportOptions = {
   records: DisbursementRecord[];
@@ -36,613 +21,542 @@ export type ExportOptions = {
   format: ExportFormat;
   groupBy?: "coa" | "division";
   userName?: string;
-  companyName?: string;
-  companyLogo?: string;
-  companyEmail?: string;
-  companyContact?: string;
-  preview?: boolean;
+  preview?: boolean; // when true return Blob for preview
+  templateName?: string; // optional template override
 };
 
-type GroupedSection = {
-  title: string;
-  records: DisbursementRecord[];
-  subtotal: number;
-};
-
-type SummaryRow = {
-  category: string;
-  count: number;
-  amount: number;
-};
-
-const DEFAULT_COMPANY_NAME = "VERTEX";
-
-const COLORS = {
-  primary: [37, 99, 235] as [number, number, number],
-  success: [22, 163, 74] as [number, number, number],
-  warning: [245, 158, 11] as [number, number, number],
-  danger: [239, 68, 68] as [number, number, number],
-  text: {
-    dark: [20, 20, 20] as [number, number, number],
-    muted: [90, 90, 90] as [number, number, number],
-  },
-  bg: {
-    page: [248, 250, 252] as [number, number, number],
-    panel: [255, 255, 255] as [number, number, number],
-  },
-  border: [226, 232, 240] as [number, number, number],
-};
-
-type CompanyHeaderData = {
-  company_name: string;
-  company_logo?: string;
-  company_email?: string;
-  company_contact?: string;
-};
-
-const buildExpensePdfConfig = (companyData: CompanyHeaderData): PdfConfig => {
-  const base = structuredClone(DEFAULT_CONFIG);
-  //change default configuration here
-  return {
-    ...base,
-    paperSize: "A4",
-    orientation: "portrait",
-    showGrid: false,
-    snapToGrid: false,
-    pageNumber: {
-      ...base.pageNumber,
-      show: true,
-      format: "Page {pageNumber} of {totalPages}",
-      position: "bottom-right",
-      fontSize: 8,
-      marginX: 10,
-      marginY: 6,
-      color: "#64748b",
-      fontFamily: "helvetica",
-    },
-    bodyStart: 55,
-    elements: {
-      ...base.elements,
-      company_logo: {
-        ...base.elements.company_logo,
-        visible: Boolean(companyData.company_logo),
-        content: companyData.company_logo,
-        x: 10,
-        y: 10,
-        width: 24,
-        height: 24,
-      },
-      company_name: {
-        ...base.elements.company_name,
-        type: "custom_text",
-        content: companyData.company_name,
-        x: 38,
-        y: 12,
-        width: 150,
-        height: 8,
-        style: {
-          ...base.elements.company_name.style,
-          fontSize: 16,
-          fontWeight: "bold",
-          color: "#111827",
-        },
-      },
-      company_contact: {
-        ...base.elements.company_contact,
-        type: "custom_text",
-        visible: Boolean(companyData.company_contact),
-        content: companyData.company_contact || "",
-        x: 38,
-        y: 24,
-        width: 150,
-        height: 5,
-        style: {
-          ...base.elements.company_contact.style,
-          fontSize: 9,
-          color: "#475569",
-        },
-      },
-      company_email: {
-        ...base.elements.company_email,
-        type: "custom_text",
-        visible: Boolean(companyData.company_email),
-        content: companyData.company_email || "",
-        x: 38,
-        y: 29,
-        width: 150,
-        height: 5,
-        style: {
-          ...base.elements.company_email.style,
-          fontSize: 9,
-          color: "#475569",
-        },
-      },
-      report_title: {
-        id: "report_title",
-        type: "custom_text",
-        label: "Report Title",
-        visible: true,
-        x: 10,
-        y: 40,
-        width: 190,
-        height: 6,
-        align: "center",
-        content: "Monthly Disbursement / Expense Report",
-        style: {
-          fontSize: 12,
-          fontFamily: "helvetica",
-          fontWeight: "bold",
-          color: "#1f2937",
-        },
-      },
-      header_line: {
-        ...base.elements.header_line,
-        y: 48,
-      },
-      company_address: { ...base.elements.company_address, visible: false },
-      company_brgy: { ...base.elements.company_brgy, visible: false },
-      company_city: { ...base.elements.company_city, visible: false },
-      company_province: { ...base.elements.company_province, visible: false },
-      company_zipCode: { ...base.elements.company_zipCode, visible: false },
-    },
-  };
-};
-
-const createDocFromConfig = (config: PdfConfig): jsPDF => {
-  const paper =
-    config.paperSize === "Custom"
-      ? config.customSize
-      : PAPER_SIZES[config.paperSize] || PAPER_SIZES.A4;
-
-  return new jsPDF({
-    orientation: config.orientation,
-    unit: "mm",
-    format: [paper.width, paper.height],
-  });
-};
-
-const applyConfiguredHeader = (
-  doc: jsPDF,
-  config: PdfConfig,
-  data: CompanyHeaderData,
-): number => {
-  let lowestY = config.margins?.top || 10;
-  for (const el of Object.values(config.elements)) {
-    if (!el.visible) continue;
-    renderElement(doc, el, data);
-    const bottom = el.y + el.height;
-    if (bottom > lowestY) lowestY = bottom;
-  }
-  return config.bodyStart ?? lowestY + 5;
-};
-
-// ============================================================================
-// Formatting Utilities
-// ============================================================================
-
-const money = (value: number | undefined | null): string =>
-  `PHP ${new Intl.NumberFormat("en-PH", {
+const fmtCurrency = (n = 0) =>
+  Number(n || 0).toLocaleString("en-PH", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(Number.isFinite(Number(value)) ? Number(value) : 0)}`;
-
-const formatDate = (date: Date | string): string =>
-  new Intl.DateTimeFormat("en-PH", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(typeof date === "string" ? new Date(date) : date);
-
-const safeText = (value: string | null | undefined): string =>
-  value?.trim() || "—";
-
-const dedupeByDocument = (
-  records: DisbursementRecord[],
-): DisbursementRecord[] => {
-  const uniqueByDoc = new Map<number, DisbursementRecord>();
-  records.forEach((record) => {
-    if (!uniqueByDoc.has(record.disbursementId)) {
-      uniqueByDoc.set(record.disbursementId, record);
-    }
   });
-  return Array.from(uniqueByDoc.values());
+
+const fmtDate = (d?: string) => {
+  if (!d) return "";
+  try {
+    const dt = new Date(d);
+    if (Number.isNaN(dt.getTime())) return String(d);
+    const yyyy = dt.getFullYear();
+    const mm = String(dt.getMonth() + 1).padStart(2, "0");
+    const dd = String(dt.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  } catch {
+    return String(d);
+  }
 };
 
-const groupRecords = (
-  records: DisbursementRecord[],
-  groupBy: "coa" | "division",
-): GroupedSection[] => {
+/** Group records by key preserving insertion order */
+const groupRecords = (rows: DisbursementRecord[], by: "coa" | "division") => {
   const map = new Map<string, DisbursementRecord[]>();
-
-  records.forEach((record) => {
-    const key = groupBy === "coa" ? record.coaTitle : record.divisionName;
-    if (!map.has(key)) {
-      map.set(key, []);
-    }
-    map.get(key)!.push(record);
-  });
-
-  return Array.from(map.entries())
-    .map(([title, groupedRecords]) => ({
-      title,
-      records: groupedRecords.sort((a, b) => a.docNo.localeCompare(b.docNo)),
-      subtotal: groupedRecords.reduce(
-        (sum, record) => sum + (record.lineAmount || 0),
-        0,
-      ),
-    }))
-    .sort((a, b) => b.subtotal - a.subtotal);
+  for (const r of rows) {
+    const key =
+      by === "coa"
+        ? r.coaTitle || "(Unspecified)"
+        : r.divisionName || "(Unspecified)";
+    if (!map.has(key)) map.set(key, []);
+    map.get(key)!.push(r);
+  }
+  return Array.from(map.entries()).map(([key, rows]) => ({ key, rows }));
 };
 
-const summarizeRecords = (
-  records: DisbursementRecord[],
-  groupBy: "coa" | "division",
-): SummaryRow[] => {
-  const dedupedRecords = dedupeByDocument(records);
-  const map = new Map<string, { count: number; amount: number }>();
-
-  dedupedRecords.forEach((record) => {
-    const key = groupBy === "coa" ? record.coaTitle : record.divisionName;
-    const current = map.get(key) ?? { count: 0, amount: 0 };
-    map.set(key, {
-      count: current.count + 1,
-      amount: current.amount + (record.totalAmount || 0),
-    });
-  });
-
-  return Array.from(map.entries())
-    .map(([category, { count, amount }]) => ({
-      category,
-      count,
-      amount,
-    }))
-    .sort((a, b) => b.amount - a.amount);
-};
-
-// ============================================================================
-// PDF Template Renderers (using PdfEngine.generateWithFrame)
-// ============================================================================
-
-/**
- * Renders summary PDF body - KPIs, overview tables, charts
- */
-const renderSummaryBody = (
-  doc: jsPDF,
-  startY: number,
-  config: PdfConfig,
-  options: ExportOptions,
-): void => {
-  let currentY = startY;
-
-  // KPI Cards Section
-  doc.setFontSize(14);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(
-    COLORS.text.dark[0],
-    COLORS.text.dark[1],
-    COLORS.text.dark[2],
-  );
-  doc.text("Executive Summary", 14, currentY);
-  currentY += 8;
-
-  const dedupedRecords = dedupeByDocument(options.records);
-  const totalAmount = options.records.reduce(
-    (sum, r) => sum + (r.lineAmount || 0),
-    0,
-  );
-  const paidAmount = options.records.reduce(
-    (sum, r) => sum + (r.paidAmount || 0),
-    0,
-  );
-  const balance = totalAmount - paidAmount;
-
-  // Summary metrics in table format
-  const kpiData = [
-    ["Metric", "Value"],
-    ["Total Transactions", dedupedRecords.length.toString()],
-    ["Total Amount", money(totalAmount)],
-    ["Paid Amount", money(paidAmount)],
-    ["Balance", money(balance)],
-    [
-      "Date Range",
-      `${formatDate(options.filters.dateFrom)} - ${formatDate(options.filters.dateTo)}`,
-    ],
-  ];
-
-  doc.setFontSize(10);
-  autoTable(doc, {
-    head: kpiData.slice(0, 1) as string[][],
-    body: kpiData.slice(1) as string[][],
-    startY: currentY,
-    margin: 14,
-    theme: "grid",
-    headStyles: {
-      fillColor: COLORS.primary,
-      textColor: [255, 255, 255],
-      fontStyle: "bold",
-      fontSize: 9,
-    },
-    bodyStyles: {
-      fontSize: 9,
-      textColor: COLORS.text.dark,
-    },
-    alternateRowStyles: {
-      fillColor: COLORS.bg.page,
-    },
-  });
-
-  const finalY = doc.lastAutoTable?.finalY ?? currentY + 30;
-  currentY = finalY + 10;
-
-  // Summary by Category/Division
-  const summaryRows = summarizeRecords(
-    options.records,
-    options.groupBy || "coa",
-  );
-  const summaryTableData = [
-    ["Category", "Count", "Amount"],
-    ...summaryRows.map((row) => [
-      row.category,
-      row.count.toString(),
-      money(row.amount),
-    ]),
-  ];
-
-  doc.setFontSize(12);
-  doc.setFont("helvetica", "bold");
-  doc.text(
-    `Summary by ${options.groupBy === "division" ? "Division" : "Chart of Account"}`,
-    14,
-    currentY,
-  );
-  currentY += 6;
-
-  autoTable(doc, {
-    head: summaryTableData.slice(0, 1) as string[][],
-    body: summaryTableData.slice(1) as string[][],
-    startY: currentY,
-    margin: 14,
-    theme: "striped",
-    headStyles: {
-      fillColor: COLORS.primary,
-      textColor: [255, 255, 255],
-      fontStyle: "bold",
-      fontSize: 9,
-    },
-    bodyStyles: {
-      fontSize: 9,
-      textColor: COLORS.text.dark,
-    },
-    columnStyles: {
-      1: { halign: "right" },
-      2: { halign: "right" },
-    },
-  });
-};
-
-/**
- * Renders detailed PDF body - full transaction tables grouped by category/division
- */
-const renderDetailedBody = (
-  doc: jsPDF,
-  startY: number,
-  config: PdfConfig,
-  options: ExportOptions,
-): void => {
-  const margin = 14;
-  const pageHeight = doc.internal.pageSize.getHeight();
-  let currentY = startY;
-
-  const groupBy = options.groupBy || "coa";
-  const groupedSections = groupRecords(options.records, groupBy);
-
-  groupedSections.forEach((section) => {
-    // Section header
-    doc.setFontSize(11);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(
-      COLORS.text.dark[0],
-      COLORS.text.dark[1],
-      COLORS.text.dark[2],
-    );
-
-    // Add new page if needed
-    if (currentY + 25 > pageHeight - margin) {
-      doc.addPage();
-      currentY = margin + 8;
-    }
-
-    doc.text(`${section.title} - ${money(section.subtotal)}`, margin, currentY);
-    currentY += 6;
-
-    // Transaction table for this group
-    const tableData = [
-      ["Ref#", "Date", "Description", "Amount", "Paid", "Balance"],
-      ...section.records.map((record) => [
-        safeText(record.docNo),
-        formatDate(record.lineDate),
-        `${record.divisionName} / ${record.coaTitle}`,
-        money(record.lineAmount),
-        money(record.paidAmount),
-        money((record.lineAmount || 0) - (record.paidAmount || 0)),
-      ]),
-    ];
-
-    doc.setFontSize(8);
-    autoTable(doc, {
-      head: tableData.slice(0, 1) as string[][],
-      body: tableData.slice(1) as string[][],
-      startY: currentY,
-      margin: margin,
-      theme: "grid",
-      headStyles: {
-        fillColor: COLORS.primary,
-        textColor: [255, 255, 255],
-        fontStyle: "bold",
-        fontSize: 8,
-      },
-      bodyStyles: {
-        fontSize: 8,
-        textColor: COLORS.text.dark,
-      },
-      columnStyles: {
-        3: { halign: "right" },
-        4: { halign: "right" },
-        5: { halign: "right" },
-      },
-    });
-
-    const finalY = doc.lastAutoTable?.finalY ?? currentY + 20;
-    currentY = finalY + 8;
-  });
-
-  // Footer note
-  doc.setFontSize(8);
-  doc.setTextColor(
-    COLORS.text.muted[0],
-    COLORS.text.muted[1],
-    COLORS.text.muted[2],
-  );
-  doc.text(
-    "Report filtered data reflects the active UI filters. All amounts are in PHP.",
-    margin,
-    pageHeight - margin - 2,
-  );
-};
-
-// ============================================================================
-// Main Export Functions
-// ============================================================================
-
-/**
- * Generates a PDF based on export options
- */
 export async function exportToPDF(
-  options: ExportOptions,
-): Promise<void | Blob> {
+  opts: ExportOptions,
+): Promise<void | Blob | null | undefined> {
   const {
-    format,
+    records = [],
+    filters,
+    format = "detailed",
     groupBy = "coa",
-    userName = "User",
-    companyName = DEFAULT_COMPANY_NAME,
-    companyLogo,
-    companyEmail,
-    companyContact,
+    userName = "System",
     preview = false,
-  } = options;
+    templateName = TEMPLATE_NAME,
+  } = opts;
+
+  function formatDateTime(value: Date): string {
+    return value.toLocaleString("en-PH", {
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
+
+  function normalizeFilterValue(
+    value: string | string[] | undefined,
+  ): string | null {
+    if (!value) return null;
+    if (Array.isArray(value)) {
+      const normalized = value
+        .map((v) => String(v).trim())
+        .filter((v) => v && v.toLowerCase() !== "all");
+      return normalized.length > 0 ? normalized.join(", ") : null;
+    }
+    const trimmed = String(value).trim();
+    if (!trimmed || trimmed.toLowerCase() === "all") return null;
+    return trimmed;
+  }
+
+  function buildActiveFiltersText(filters?: ExpenseFilters): string {
+    if (!filters) return "All";
+    const parts: string[] = [];
+    const employees = normalizeFilterValue(
+      filters.employees as unknown as string | string[] | undefined,
+    );
+    if (employees) parts.push(`Employees: ${employees}`);
+    const divisions = normalizeFilterValue(
+      filters.divisions as unknown as string | string[] | undefined,
+    );
+    if (divisions) parts.push(`Divisions: ${divisions}`);
+    const enc = normalizeFilterValue(
+      filters.encoders as unknown as string | string[] | undefined,
+    );
+    if (enc) parts.push(`Encoders: ${enc}`);
+    const coas = normalizeFilterValue(
+      filters.coaAccounts as unknown as string | string[] | undefined,
+    );
+    if (coas) parts.push(`Account(s): ${coas}`);
+    const tx = normalizeFilterValue(
+      filters.transactionTypes as unknown as string | string[] | undefined,
+    );
+    if (tx) parts.push(`Transaction Type(s): ${tx}`);
+    const stats = normalizeFilterValue(
+      filters.statuses as unknown as string | string[] | undefined,
+    );
+    if (stats) parts.push(`Statuses: ${stats}`);
+    return parts.length > 0 ? parts.join("\n") : "All";
+  }
+
+  // Fetch company profile used by the PDF template header
+  async function fetchCompanyData(): Promise<CompanyData | null> {
+    try {
+      const res = await fetch("/api/pdf/company", { credentials: "include" });
+      if (!res.ok) return null;
+
+      const result = (await res.json()) as {
+        data?: CompanyData[] | CompanyData;
+      };
+      if (Array.isArray(result.data)) return result.data[0] ?? null;
+      return result.data ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  function resolveTemplateName(templates: PdfTemplate[]): string {
+    const exact = templates.find((t) => t.name === TEMPLATE_NAME);
+    if (exact) return exact.name;
+
+    const caseInsensitive = templates.find(
+      (t) => t.name.toLowerCase() === TEMPLATE_NAME.toLowerCase(),
+    );
+    if (caseInsensitive) return caseInsensitive.name;
+
+    const byConfig = templates.find(
+      (t) =>
+        t.config?.paperSize === "Letter" &&
+        t.config?.orientation === "portrait",
+    );
+    if (byConfig) return byConfig.name;
+
+    return TEMPLATE_NAME;
+  }
+
+  // Prevent running on the server
+  if (typeof window === "undefined") {
+    console.warn("exportToPDF: called on server, skipping PDF generation");
+    return null;
+  }
+
+  console.log("[exportToPDF] start", {
+    format,
+    groupBy,
+    records: records.length,
+    templateName,
+  });
 
   try {
-    // Prepare company data for template
-    const companyData: CompanyHeaderData = {
-      company_name: companyName,
-      company_logo: companyLogo,
-      company_email: companyEmail,
-      company_contact: companyContact,
+    // Renderer that builds the table body inside the provided template frame
+    const renderBody = async (
+      doc: jsPDF,
+      startY: number,
+      config: PdfConfig,
+    ) => {
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const margins = config?.margins || {
+        left: 10,
+        right: 10,
+        top: 10,
+        bottom: 10,
+      };
+
+      const leftX = margins.left ?? 10;
+      const rightX = pageWidth - (margins.right ?? 10);
+
+      // Header area (small summary above table)
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
+      doc.setTextColor(0, 0, 0);
+      // center title similar to screenshot
+      doc.text("Disbursement Report", pageWidth / 2, startY + 6, {
+        align: "center",
+      });
+
+      // Header: active filters (left) and generated info (right)
+      const activeFiltersText = buildActiveFiltersText(filters);
+      const usableWidth =
+        pageWidth - (margins.left ?? 10) - (margins.right ?? 10);
+      const filterLines = doc.splitTextToSize(
+        activeFiltersText,
+        usableWidth * 0.6,
+      );
+
+      // Filters label (bold) and rows (normal)
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.setTextColor(0, 0, 0);
+      doc.text("Filters:", leftX, startY + 14, { baseline: "top" });
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8.5);
+      doc.setTextColor(0, 0, 0);
+      // print filter rows starting slightly below the label
+      const filtersStartY = startY + 18;
+      doc.text(filterLines, leftX, filtersStartY, { baseline: "top" });
+
+      // Right side info block
+      const generatedOn = new Date();
+      const generatedDateStr = formatDateTime(generatedOn);
+      const dateRangeStr = `${filters?.dateFrom || "-"} to ${filters?.dateTo || "-"}`;
+      const rightInfo = [
+        `Generated By: ${userName}`,
+        `Generated Date: ${generatedDateStr}`,
+
+        `Date Range: ${dateRangeStr}`,
+      ];
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(0, 0, 0);
+      doc.text(rightInfo, rightX, startY + 14, {
+        align: "right",
+        baseline: "top",
+      });
+
+      // small right-side totals (grand total) below the header block
+      const grandTotal = records.reduce(
+        (s, r) => s + (r.lineAmount ?? r.totalAmount ?? 0),
+        0,
+      );
+      doc.setFont("helvetica", "bold");
+      const lineH = 5;
+      // header includes the Filters label + filter lines
+      const headerLinesCount = Math.max(
+        filterLines.length + 1 || 1,
+        rightInfo.length || 1,
+      );
+      const headerBottomY = startY + 14 + headerLinesCount * lineH;
+
+      doc.text(
+        `Grand Total: ${fmtCurrency(grandTotal)}`,
+        rightX,
+        headerBottomY + 2,
+        { align: "right" },
+      );
+      doc.setFont("helvetica", "normal");
+
+      const tableStart = headerBottomY + 5;
+
+      // Build autoTable body grouped by COA or Division
+      const groups = groupRecords(records, groupBy);
+
+      const body: RowInput[] = [];
+
+      for (const grp of groups) {
+        // Group header row spanning all columns
+        body.push([
+          {
+            content: `Account: ${grp.key}`,
+            colSpan: 5,
+            // remove internal borders for group header row; only outer table sides will be drawn
+            styles: {
+              halign: "left",
+              fontStyle: "bold",
+              fillColor: [240, 240, 240],
+              lineWidth: 0,
+              lineColor: [255, 255, 255],
+            },
+          },
+        ]);
+
+        // Records
+        for (const r of grp.rows) {
+          body.push([
+            fmtDate(r.lineDate || r.transactionDate),
+            r.payeeName || "-",
+            r.coaTitle || "-",
+            {
+              content: fmtCurrency(r.lineAmount ?? r.totalAmount ?? 0),
+              styles: { halign: "right" },
+            },
+            r.lineRemarks || r.disbursementRemarks || "",
+          ]);
+        }
+
+        // Subtotal row for the group
+        const subtotal = grp.rows.reduce(
+          (s, rr) => s + (rr.lineAmount ?? rr.totalAmount ?? 0),
+          0,
+        );
+        body.push([
+          {
+            content: `Subtotal (${grp.key})`,
+            colSpan: 4,
+            // remove internal borders for subtotal row as well
+            styles: { halign: "right", fontStyle: "bold", lineWidth: 0, lineColor: [255, 255, 255] },
+          },
+          {
+            content: fmtCurrency(subtotal),
+            styles: { halign: "right", fontStyle: "bold", lineWidth: 0, lineColor: [255, 255, 255] },
+          },
+        ]);
+      }
+
+      // Overall grand total row (highlighted)
+      body.push([
+        {
+          content: "GRAND TOTAL",
+          colSpan: 4,
+          // match subtotal styling: remove internal borders so only side borders remain
+          styles: {
+            halign: "right",
+            fontStyle: "bold",
+            fillColor: [255, 249, 196],
+            lineWidth: 0,
+            lineColor: [255, 255, 255],
+          },
+        },
+        {
+          content: fmtCurrency(grandTotal),
+          styles: {
+            halign: "right",
+            fontStyle: "bold",
+            fillColor: [255, 249, 196],
+            lineWidth: 0,
+            lineColor: [255, 255, 255],
+          },
+        },
+      ]);
+
+      // Column widths (approx) - compute dynamically and ensure they fit inside usable width
+      // assign widths in mm and guarantee the sum does not exceed usableWidth
+      const colWidths: Record<number, number> = (() => {
+        const minRemarks = 20;
+        const base = { 0: 20, 1: 62, 2: 58, 3: 22 };
+        const used = base[0] + base[1] + base[2] + base[3];
+        let remaining = usableWidth - used;
+        if (remaining < minRemarks) {
+          // scale down the base columns proportionally while enforcing sensible minimums
+          const scale = Math.max(0.45, (usableWidth - minRemarks) / used);
+          const s0 = Math.max(10, Math.round(base[0] * scale));
+          const s1 = Math.max(20, Math.round(base[1] * scale));
+          const s2 = Math.max(20, Math.round(base[2] * scale));
+          const s3 = Math.max(10, Math.round(base[3] * scale));
+          remaining = usableWidth - (s0 + s1 + s2 + s3);
+          return {
+            0: s0,
+            1: s1,
+            2: s2,
+            3: s3,
+            4: Math.max(remaining, minRemarks),
+          };
+        }
+        return { 0: base[0], 1: base[1], 2: base[2], 3: base[3], 4: remaining };
+      })();
+
+      // Draw table using jspdf-autotable - respect the page margins
+      autoTable(doc, {
+        startY: tableStart,
+        margin: { left: leftX, right: margins.right ?? 10 },
+        head: [["Date", "Payee", "Account", "Amount", "Remarks"]],
+        body: body,
+        theme: "grid",
+        // default (body) grid lines
+        tableLineWidth: 0.25,
+        tableLineColor: [180, 180, 180],
+        styles: {
+          fontSize: 8,
+          cellPadding: 3,
+          overflow: "linebreak",
+          textColor: 0,
+          lineWidth: 0.25,
+          lineColor: [180, 180, 180],
+        },
+        headStyles: {
+          fillColor: [240, 240, 240],
+          textColor: 0,
+          fontStyle: "bold",
+          halign: "center",
+          // keep per-cell value small so plugin still draws cell rects, but we'll draw a stronger bottom border via hook
+          lineWidth: 0.25,
+          lineColor: [120, 120, 120],
+        },
+        columnStyles: {
+          0: { cellWidth: colWidths[0], lineWidth: 0.25 },
+          1: { cellWidth: colWidths[1], lineWidth: 0.25 },
+          2: { cellWidth: colWidths[2], lineWidth: 0.25 },
+          3: { cellWidth: colWidths[3], halign: "right", lineWidth: 0.25 },
+          4: { cellWidth: colWidths[4], lineWidth: 0.25 },
+        },
+        bodyStyles: {
+          valign: "middle",
+          textColor: 0,
+          lineWidth: 0.25,
+          lineColor: [180, 180, 180],
+        },
+        // Draw a single continuous bottom border for the header row to ensure consistent thickness
+        // Provide a minimal typed shape for the hook param to avoid lint errors
+        didDrawCell: (hookData: {
+          section?: string;
+          column?: { index?: number };
+          cell?: {
+            x: number;
+            y: number;
+            height: number;
+            width: number;
+            colSpan?: number;
+          };
+          doc?: jsPDF;
+        }) => {
+          try {
+            const docRef = hookData.doc || doc;
+
+            // 1) Draw a single continuous bottom border for the header row to ensure consistent thickness
+            // if (
+            //   hookData.section === "head" &&
+            //   hookData.column &&
+            //   hookData.column.index === 0 &&
+            //   hookData.cell
+            // ) {
+            //   const cell = hookData.cell;
+            //   const y = cell.y + cell.height;
+            //   docRef.setDrawColor(0, 0, 0);
+            //   // stronger header bottom line
+            //   docRef.setLineWidth(0);
+            //   docRef.line(leftX, y, rightX, y);
+            // }
+
+            // 2) If this is a grouped header row (we render `Account: ...` as a colSpan row),
+            // draw vertical separators so the group header visually matches the column grid.
+            // For colSpan rows (group header / subtotal / grand total) draw only the
+            // outer side borders (left and right) so no internal vertical separators appear.
+            if (
+              hookData.section === "body" &&
+              hookData.column &&
+              hookData.column.index === 0 &&
+              hookData.cell &&
+              typeof hookData.cell.colSpan === "number" &&
+              hookData.cell.colSpan > 1
+            ) {
+              const cell = hookData.cell;
+              const topY = cell.y;
+              const bottomY = cell.y + cell.height;
+              docRef.setDrawColor(180, 180, 180);
+              docRef.setLineWidth(0.25);
+              // left border
+              docRef.line(leftX, topY, leftX, bottomY);
+              // right border
+              docRef.line(rightX, topY, rightX, bottomY);
+            }
+          } catch {
+            // ignore drawing errors
+          }
+        },
+      });
     };
 
-    const fallbackConfig = buildExpensePdfConfig(companyData);
+    // Try generating with template engine first (apply saved template header/footer)
+    let doc: jsPDF | null = null;
+    try {
+      const [companyData, templates] = await Promise.all([
+        fetchCompanyData(),
+        pdfTemplateService.fetchTemplates(),
+      ]);
 
-    // Select body renderer based on format
-    const renderBody =
-      format === "summary"
-        ? (doc: jsPDF, startY: number, config: PdfConfig) =>
-            renderSummaryBody(doc, startY, config, options)
-        : (doc: jsPDF, startY: number, config: PdfConfig) =>
-            renderDetailedBody(doc, startY, config, {
-              ...options,
-              groupBy,
-            });
+      const resolvedTemplateName = resolveTemplateName(templates);
 
-    // Generate PDF using saved template if available; otherwise use fallback config.
-    const templates = await pdfTemplateService.fetchTemplates();
-    const templateName = "expense-report-template";
-    const hasTemplate = templates.some((t) => t.name === templateName);
+      doc = await PdfEngine.generateWithFrame(
+        resolvedTemplateName,
+        companyData,
+        renderBody,
+      );
+      console.log("[exportToPDF] generated with PdfEngine", {
+        pages: doc.getNumberOfPages(),
+        template: resolvedTemplateName,
+      });
+    } catch (e) {
+      console.error("[exportToPDF] PdfEngine.generateWithFrame failed:", e);
+    }
 
-    const doc = hasTemplate
-      ? await PdfEngine.generateWithFrame(templateName, companyData, renderBody)
-      : await (async () => {
-          const localDoc = createDocFromConfig(fallbackConfig);
-          const startY = applyConfiguredHeader(
-            localDoc,
-            fallbackConfig,
-            companyData,
-          );
-          await renderBody(localDoc, startY, fallbackConfig);
-          if (fallbackConfig.pageNumber?.show) {
-            drawPageNumbers(localDoc, fallbackConfig);
-          }
-          return localDoc;
-        })();
+    // Fallback: create a plain jsPDF doc if PdfEngine failed
+    if (!doc) {
+      console.warn("[exportToPDF] falling back to direct jsPDF generation");
+      const fallbackConfig: PdfConfig = {
+        paperSize: "Letter",
+        customSize: { width: 215.9, height: 279.4 },
+        orientation: "portrait",
+        elements: {},
+        margins: { top: 10, right: 10, bottom: 10, left: 10 },
+        showGrid: false,
+        snapToGrid: false,
+        pageNumber: {
+          show: false,
+          format: "",
+          position: "bottom-right",
+          fontSize: 9,
+          fontFamily: "helvetica",
+          color: "#000000",
+          marginY: 5,
+          marginX: 10,
+        },
+      } as unknown as PdfConfig;
 
-    // Add footer metadata
+      // Use default Letter size and call the same renderBody
+      const doc2: jsPDF = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "letter",
+      });
+      await renderBody(doc2, fallbackConfig.margins.top || 10, fallbackConfig);
+      doc = doc2;
+      console.log("[exportToPDF] fallback doc ready", {
+        pages: doc.getNumberOfPages(),
+      });
+    }
+
+    // Add footer page numbers on each page (e.g. "Page 1 of 3")
     const pageCount = doc.getNumberOfPages();
     doc.setFontSize(8);
     doc.setTextColor(150, 150, 150);
     for (let i = 1; i <= pageCount; i++) {
       doc.setPage(i);
       const pageHeight = doc.internal.pageSize.getHeight();
-      doc.text(
-        `Generated by: ${userName} | ${new Date().toLocaleString("en-PH")}`,
-        10,
-        pageHeight - 8,
-      );
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageText = `Page ${i} of ${pageCount}`;
+      // draw centered at the bottom
+      doc.text(pageText, pageWidth / 2, pageHeight - 8, { align: "center" });
     }
 
-    // Return blob if preview mode, otherwise save
     if (preview) {
       return doc.output("blob");
     }
 
-    const fileName = `Expense_Report_${format}_${
-      new Date().toISOString().split("T")[0]
-    }.pdf`;
+    const fileName = `Expense_Report_${format}_${new Date().toISOString().split("T")[0]}.pdf`;
     doc.save(fileName);
   } catch (error) {
     console.error("Error generating PDF:", error);
-    if (preview) {
-      return undefined;
-    }
+    if (preview) return null;
   }
 }
 
-/**
- * Generates a summary-only PDF (lightweight export)
- */
-export async function exportSummaryPDF(
-  options: ExportOptions,
-): Promise<void | Blob> {
-  return exportToPDF({
-    ...options,
-    format: "summary",
-  });
-}
-
-/**
- * Generates a detailed PDF with grouping options
- */
-export async function exportDetailedPDF(
-  options: ExportOptions & { groupBy: "coa" | "division" },
-): Promise<void | Blob> {
-  return exportToPDF({
-    ...options,
-    format: "detailed",
-  });
-}
-
-/**
- * Generates PDF for live preview (returns Blob)
- */
-export async function generatePdfPreview(
-  options: ExportOptions,
-): Promise<Blob | null> {
-  try {
-    const result = await exportToPDF({
-      ...options,
-      preview: true,
-    });
-    return (result as Blob) || null;
-  } catch (error) {
-    console.error("Error generating preview:", error);
-    return null;
-  }
-}
+// export default exportToPDF;

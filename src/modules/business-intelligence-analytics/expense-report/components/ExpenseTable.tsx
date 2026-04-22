@@ -571,7 +571,7 @@ export default function ExpenseTable({ data }: ExpenseTableProps) {
                   <TableHead className="text-right w-30">
                     {/* Balance */}
                   </TableHead>
-                  <TableHead className="w-100">{/* Remark */}</TableHead>
+                  <TableHead className="w-60">{/* Remark */}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -650,7 +650,7 @@ export default function ExpenseTable({ data }: ExpenseTableProps) {
                       return (
                         <React.Fragment key={group.coaTitle}>
                           {/* Group Header */}
-                          <TableRow className="font-medium sticky top-10.25 z-100">
+                          <TableRow className="font-medium sticky top-10.25 z-100 ">
                             <TableCell colSpan={1}>
                               <Button
                                 variant="ghost"
@@ -737,12 +737,12 @@ export default function ExpenseTable({ data }: ExpenseTableProps) {
                                                 </TableHead>
                                                 <TableHead className="w-40"></TableHead>{" "}
                                                 <TableHead className="w-70"></TableHead>{" "}
-                                                <TableHead className="w-80"></TableHead>{" "}
+                                                <TableHead className="w-50"></TableHead>{" "}
                                                 <TableHead className="w-30"></TableHead>{" "}
                                                 <TableHead className="w-30"></TableHead>{" "}
                                                 <TableHead className="w-30"></TableHead>{" "}
                                                 {/* <TableHead title="status" className=""></TableHead>{" "} */}
-                                                <TableHead className="font-medium text-right w-30 px-4 py-2">
+                                                <TableHead className="font-medium text-right w-30 px-4 py-2 ">
                                                   <Button
                                                     variant="ghost"
                                                     size="sm"
