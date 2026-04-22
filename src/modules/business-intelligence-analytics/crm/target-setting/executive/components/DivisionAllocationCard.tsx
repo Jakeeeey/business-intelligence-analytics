@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -52,10 +52,13 @@ export function DivisionAllocationCard({
     return allocations.find(a => a.division_id === parseInt(selectedDivision));
   }, [selectedDivision, allocations]);
 
-  // Sync local amount state with the existing allocation when it changes
-  useEffect(() => {
+  const currentId = existingAllocation?.id ?? null;
+  const [lastSyncedAllocationId, setLastSyncedAllocationId] = useState<number | null>(currentId);
+
+  if (currentId !== lastSyncedAllocationId) {
+    setLastSyncedAllocationId(currentId);
     setAmount(existingAllocation ? formatNumber(existingAllocation.target_amount.toString()) : "");
-  }, [existingAllocation]);
+  }
 
   const handleAction = () => {
     const rawValue = unformatNumber(amount);
