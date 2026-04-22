@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -39,12 +39,10 @@ export function CompanyTargetCard({
 
   const unformatNumber = (val: string) => val.replace(/,/g, "");
 
-  const [prevTarget, setPrevTarget] = useState<TargetSettingExecutive | null>(currentTarget);
-
-  if (currentTarget !== prevTarget) {
-    setPrevTarget(currentTarget);
+  // Sync local targetAmount state when currentTarget prop changes
+  useEffect(() => {
     setTargetAmount(currentTarget ? formatNumber(currentTarget.target_amount.toString()) : "");
-  }
+  }, [currentTarget]);
 
   const handleSave = () => {
     const rawValue = unformatNumber(targetAmount);

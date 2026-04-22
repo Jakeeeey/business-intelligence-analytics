@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { format } from "date-fns";
 import type {
   TargetSettingExecutive,
@@ -126,7 +126,7 @@ export function useExecutiveTargetSetting() {
     }
   }, [selectedPeriod, divisions, salesmenMetadata, suppliersMetadata, usersMetadata]);
 
-  const saveCompanyTarget = async (data: CreateCompanyTargetDTO) => {
+  const saveCompanyTarget = useCallback(async (data: CreateCompanyTargetDTO) => {
     setIsLoading(true);
     try {
       const payload = { ...data, created_by: currentUserId };
@@ -146,7 +146,7 @@ export function useExecutiveTargetSetting() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [companyTarget?.id, currentUserId]);
 
   const allocatedAmount = useMemo(() => {
     return allocations.reduce((sum, a) => sum + a.target_amount, 0);
@@ -157,7 +157,7 @@ export function useExecutiveTargetSetting() {
     return companyTarget.target_amount - allocatedAmount;
   }, [companyTarget, allocatedAmount]);
 
-  const addAllocation = async (data: CreateDivisionAllocationDTO) => {
+  const addAllocation = useCallback(async (data: CreateDivisionAllocationDTO) => {
     if (data.target_amount > remainingBalance) {
       toast.error(`Exceeds remaining balance: ${remainingBalance.toLocaleString()}`);
       return;
@@ -179,9 +179,9 @@ export function useExecutiveTargetSetting() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [remainingBalance, currentUserId, divisions]);
 
-  const updateAllocation = async (id: number, data: Partial<CreateDivisionAllocationDTO>) => {
+  const updateAllocation = useCallback(async (id: number, data: Partial<CreateDivisionAllocationDTO>) => {
     // Calculate new total if we were to apply this
     const existing = allocations.find(a => a.id === id);
     if (!existing) return;
@@ -207,9 +207,9 @@ export function useExecutiveTargetSetting() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [allocations, remainingBalance, divisions]);
 
-  const updateStatus = async (status: 'APPROVED' | 'DRAFT' | 'REJECTED') => {
+  const updateStatus = useCallback(async (status: 'APPROVED' | 'DRAFT' | 'REJECTED') => {
     if (!companyTarget) return;
 
     if (status === 'APPROVED' && remainingBalance !== 0) {
@@ -228,7 +228,7 @@ export function useExecutiveTargetSetting() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [companyTarget, remainingBalance]);
 
   return {
     selectedPeriod,
