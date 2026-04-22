@@ -8,7 +8,7 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { ZoomIn, ZoomOut, Clock } from "lucide-react";
+import { Clock } from "lucide-react";
 import { fetchLeadTimeData } from "../../providers/fetchProvider";
 import type {
   LeadTimeRecord,
@@ -16,7 +16,7 @@ import type {
   LeadTimeProductOption,
 } from "../../types";
 import { cn } from "@/lib/utils";
-import { getStatusHex } from "../../utils/getStatusColor";
+import getStatusColor, { getStatusHex } from "../../utils/getStatusColor";
 
 type EventType = "created" | "approved" | "dispatch" | "delivered";
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -114,8 +114,9 @@ export default function ProcessTimeline({
 
   // Phase 1: Smart Zoom System
   const [dayWidth, setDayWidth] = React.useState<number>(32);
-  const handleZoomIn = () => setDayWidth((w) => Math.min(72, w + 10));
-  const handleZoomOut = () => setDayWidth((w) => Math.max(12, w - 10));
+  // Increase zoom thresholds: larger max zoom and bigger step for faster zooming
+  const handleZoomIn = () => setDayWidth((w) => Math.min(256, w + 16));
+  const handleZoomOut = () => setDayWidth((w) => Math.max(8, w - 16));
   const handleZoomReset = () => setDayWidth(32);
 
   // Phase 2: Drawer State
@@ -372,7 +373,7 @@ export default function ProcessTimeline({
   }, [filters.dateFrom, filters.dateTo, dayWidth]);
 
   const rowHeight = 72;
-  const barHeight = 24;
+  const barHeight = rowHeight; // full-height bars (use the entire row)
 
   // Phase 2: Today Marker Logic
   const todayPx = React.useMemo(() => {
@@ -381,8 +382,8 @@ export default function ProcessTimeline({
   }, [startDate, dayWidth]);
 
   return (
-    <Card className="flex flex-col h-full border-slate-200 shadow-sm">
-      <CardHeader className="flex flex-row items-start justify-between pb-4 bg-slate-50/50 border-b">
+    <Card className="flex flex-col h-full  shadow-sm">
+      <CardHeader className="flex flex-row items-start justify-between pb-4 border-b">
         <div>
           <CardTitle className="text-xl">Process Timeline</CardTitle>
           <CardDescription>
@@ -392,37 +393,40 @@ export default function ProcessTimeline({
 
         <div className="flex flex-col items-end gap-3">
           {/* Zoom Controls */}
-          <div className="flex items-center gap-1 bg-muted/30 p-1 rounded-md border shadow-sm">
-            <button
-              onClick={handleZoomOut}
-              className="p-1.5 hover:bg-background rounded text-muted-foreground"
-            >
-              <ZoomOut size={16} />
-            </button>
-            <button
-              onClick={handleZoomReset}
-              className="px-3 text-xs font-medium text-muted-foreground hover:text-foreground"
-            >
-              100%
-            </button>
-            <button
-              onClick={handleZoomIn}
-              className="p-1.5 hover:bg-background rounded text-muted-foreground"
-            >
-              <ZoomIn size={16} />
-            </button>
+          <div className="flex items-center gap-3 bg-muted/30 p-2 rounded-md border shadow-sm">
+            <label className="text-sm font-medium text-muted-foreground">
+              Zoom
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                type="range"
+                min={25}
+                max={800}
+                step={1}
+                value={Math.round((dayWidth / 32) * 100)}
+                onChange={(e) => {
+                  const v = Number((e.target as HTMLInputElement).value);
+                  const newWidth = Math.round((v / 100) * 32);
+                  setDayWidth(Math.max(8, Math.min(256, newWidth)));
+                }}
+                className="h-2 w-40"
+              />
+              <div className="text-xs font-medium text-muted-foreground w-12 text-right">
+                {Math.round((dayWidth / 32) * 100)}%
+              </div>
+            </div>
           </div>
 
           {/* Unified Global Legend */}
           <div className="flex items-center gap-2">
-            <Badge color="#9ca3af" label="Pending" striped />
-            <Badge color="#10b981" label="On time" />
-            <Badge color="#f59e0b" label="Warning" />
-            <Badge color="#ef4444" label="Delayed" />
+            <Badge color={getStatusHex("pending")} label="Pending" striped />
+            <Badge color={getStatusHex("on-time")} label="On time" />
+            <Badge color={getStatusHex("warning")} label="Warning" />
+            <Badge color={getStatusHex("delayed")} label="Delayed" />
           </div>
         </div>
         {/* Small status UI to use local states and avoid unused warnings */}
-        <div className="ml-4 text-right">
+        {/* <div className="ml-4 text-right">
           {loading && (
             <div className="text-xs text-muted-foreground">Loading…</div>
           )}
@@ -435,12 +439,12 @@ export default function ProcessTimeline({
                 {String((selectedRecord as Record<string, unknown>).poNo ?? "")}
               </div>
             )}
-        </div>
+        </div> */}
       </CardHeader>
 
       <CardContent className="p-0 flex-1 overflow-hidden relative">
         {/* THE UNIFIED SCROLL ENGINE */}
-        <div className="h-[600px] overflow-auto relative w-full flex flex-col bg-slate-50/30">
+        <div className="h-150 overflow-auto relative w-full flex flex-col ">
           {/* GLOBAL BACKGROUND: Render vertical day lines once */}
           <div
             className="absolute top-0 bottom-0 pointer-events-none z-0"
@@ -454,8 +458,8 @@ export default function ProcessTimeline({
                   [0, 6].includes(
                     new Date(startDate.getTime() + i * MS_PER_DAY).getDay(),
                   )
-                    ? "border-slate-200 bg-slate-100/30"
-                    : "border-slate-100/60",
+                    ? "dark:border-slate-200/10 dark:bg-slate-100/8 bg-slate-200/0"
+                    : "dark:border-slate-100/5",
                 )}
                 style={{ left: toPx(i, dayWidth), width: dayWidth }}
               />
@@ -467,7 +471,7 @@ export default function ProcessTimeline({
                 className="absolute top-0 bottom-0 w-0.5 bg-blue-500 z-20 shadow-[0_0_8px_rgba(59,130,246,0.5)]"
                 style={{ left: todayPx }}
               >
-                <div className="absolute top-12 -translate-x-1/2 bg-blue-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1">
+                <div className="absolute top-10 z-50 -translate-x-1/2 bg-blue-500 text-white  text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1">
                   <Clock size={10} /> TODAY
                 </div>
               </div>
@@ -484,7 +488,7 @@ export default function ProcessTimeline({
             {/* Dates Timeline Header */}
             <div className="relative h-14" style={{ width: widthPx }}>
               {/* Months */}
-              <div className="absolute top-0 w-full h-7 border-b flex bg-slate-50/80">
+              <div className="absolute top-0 w-full h-7  flex ">
                 {months.map((m, i) => (
                   <div
                     key={i}
@@ -545,18 +549,20 @@ export default function ProcessTimeline({
                       style={{ top: Math.round(rowHeight / 2) }}
                     />
 
-                    {/* Stage Bars (Segmented Block Logic) */}
+                    {/* Stage Bars (Flat Block Logic) */}
                     {(r.bars ?? []).map((bar, bi: number) => {
-                      const color = getStatusHex(bar?.status) || "#e2e8f0";
-                      const left = bar?.start
-                        ? toPx(
-                            (bar.start!.getTime() - startDate.getTime()) /
-                              MS_PER_DAY,
-                            dayWidth,
-                          )
-                        : 0;
+                      if (!bar || !bar.start) return null;
+                      const statusClass =
+                        getStatusColor(bar?.status || "") || "";
+                      const fallbackColor =
+                        getStatusHex(bar?.status) || "#e2e8f0";
+                      const left = toPx(
+                        (bar.start!.getTime() - startDate.getTime()) /
+                          MS_PER_DAY,
+                        dayWidth,
+                      );
                       let width = dayWidth * 2;
-                      if (bar?.start && bar?.end) {
+                      if (bar.start && bar.end) {
                         width = Math.max(
                           dayWidth,
                           toPx(
@@ -567,11 +573,7 @@ export default function ProcessTimeline({
                         );
                       }
                       const isPending =
-                        bar?.days == null || !(bar?.start && bar?.end);
-                      const segmentCount =
-                        bar?.days != null
-                          ? Math.max(1, bar.days as number)
-                          : Math.max(1, Math.round(width / dayWidth));
+                        bar.days == null || !(bar.start && bar.end);
 
                       return (
                         <div
@@ -579,25 +581,24 @@ export default function ProcessTimeline({
                           style={{
                             left,
                             width,
-                            top: rowHeight / 2 - barHeight / 2,
+                            top: 0,
                             height: barHeight,
                           }}
-                          className="absolute z-10 flex gap-[2px] p-[2px] bg-slate-200/40 rounded shadow-sm hover:-translate-y-0.5 transition-transform"
+                          className="absolute z-10"
                         >
-                          {/* Segmented Blocks Instead of Flat Bars */}
-                          {Array.from({ length: segmentCount }).map((_, i) => (
-                            <div
-                              key={i}
-                              className={cn(
-                                "flex-1 rounded-[2px]",
-                                isPending &&
-                                  "bg-[repeating-linear-gradient(45deg,transparent,transparent_4px,rgba(0,0,0,0.06)_4px,rgba(0,0,0,0.06)_8px)]",
-                              )}
-                              style={{
-                                backgroundColor: isPending ? "#e2e8f0" : color,
-                              }}
-                            />
-                          ))}
+                          <div
+                            className={cn(
+                              "h-full w-full rounded shadow-sm transition-transform",
+                              isPending
+                                ? "bg-[repeating-linear-gradient(45deg,transparent,transparent_4px,rgba(0,0,0,0.06)_4px,rgba(0,0,0,0.06)_8px)]"
+                                : statusClass,
+                            )}
+                            style={
+                              isPending || statusClass
+                                ? undefined
+                                : { backgroundColor: fallbackColor }
+                            }
+                          />
                         </div>
                       );
                     })}
