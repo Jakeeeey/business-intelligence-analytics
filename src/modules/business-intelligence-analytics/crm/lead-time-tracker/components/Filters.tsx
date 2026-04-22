@@ -45,9 +45,6 @@ type FiltersProps = {
   onChange: (next: LeadTimeFilters) => void;
   onApply: () => void;
 };
-
-
-
 export function Filters({
   filters,
   products,
@@ -56,10 +53,19 @@ export function Filters({
   onChange,
   onApply,
 }: FiltersProps) {
-  const [productOpen, setProductOpen] = React.useState(false);
-  // Command search query for product picker
-  const [cmdQuery, setCmdQuery] = React.useState("");
-  const MAX_VISIBLE_PRODUCTS = 200; // limit items rendered to avoid UI lag
+  const [quarterPick, setQuarterPick] = React.useState<number>(1);
+  const [quarterYearPick, setQuarterYearPick] = React.useState<number>(
+    new Date().getFullYear(),
+  );
+  const [yearPick, setYearPick] = React.useState<number>(
+    new Date().getFullYear(),
+  );
+  const [dayPick, setDayPick] = React.useState<string>(filters.dateFrom || "");
+  const [weekPick, setWeekPick] = React.useState<string>("");
+  const [monthPick, setMonthPick] = React.useState<string>("");
+  const [productOpen, setProductOpen] = React.useState<boolean>(false);
+  const [cmdQuery, setCmdQuery] = React.useState<string>("");
+  const MAX_VISIBLE_PRODUCTS = 100;
   // Helper utils for date range display
   const formatDate = (d: Date) =>
     d.toLocaleDateString("en-US", {
@@ -183,6 +189,92 @@ export function Filters({
     }
   };
 
+  // helper to format Date -> YYYY-MM-DD (local)
+  const fmtYMD = (d: Date) => {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+      d.getDate(),
+    ).padStart(2, "0")}`;
+  };
+
+  // Convert HTML week value (YYYY-W##) to start/end local dates (ISO week, Monday start)
+  const weekToRange = (weekVal: string) => {
+    const m = (weekVal || "").match(/^(\d{4})-W?(\d{2})$/);
+    if (!m) return null;
+    const year = Number(m[1]);
+    const week = Number(m[2]);
+    // Find week 1 start (Monday of the week containing Jan 4)
+    const jan4 = new Date(year, 0, 4);
+    const jan4Day = (jan4.getDay() + 6) % 7; // 0=Mon..6=Sun
+    const week1Start = new Date(jan4.getTime() - jan4Day * 24 * 3600 * 1000);
+    const start = new Date(
+      week1Start.getTime() + (week - 1) * 7 * 24 * 3600 * 1000,
+    );
+    const end = new Date(start.getTime() + 6 * 24 * 3600 * 1000);
+    return { from: fmtYMD(start), to: fmtYMD(end) };
+  };
+
+  const applyWeekPick = (val?: string) => {
+    const v = val ?? weekPick;
+    const r = weekToRange(v);
+    if (!r) return;
+    onChange({
+      ...filters,
+      dateRangePreset: "custom",
+      dateFrom: r.from,
+      dateTo: r.to,
+    });
+  };
+
+  const applyMonthPick = (val?: string) => {
+    const v = val ?? monthPick;
+    if (!v) return;
+    const m = v.split("-");
+    if (m.length < 2) return;
+    const y = Number(m[0]);
+    const mo = Number(m[1]);
+    const start = new Date(y, mo - 1, 1);
+    const end = new Date(y, mo, 0);
+    onChange({
+      ...filters,
+      dateRangePreset: "custom",
+      dateFrom: fmtYMD(start),
+      dateTo: fmtYMD(end),
+    });
+  };
+
+  const applyQuarterPick = (q?: number, y?: number) => {
+    const qq = q ?? quarterPick;
+    const yy = y ?? quarterYearPick;
+    const startMonth = (qq - 1) * 3;
+    const start = new Date(yy, startMonth, 1);
+    const end = new Date(yy, startMonth + 3, 0);
+    onChange({
+      ...filters,
+      dateRangePreset: "custom",
+      dateFrom: fmtYMD(start),
+      dateTo: fmtYMD(end),
+    });
+  };
+
+  const applyYearPick = (y?: number) => {
+    const yy = y ?? yearPick;
+    const start = new Date(yy, 0, 1);
+    const end = new Date(yy, 11, 31);
+    onChange({
+      ...filters,
+      dateRangePreset: "custom",
+      dateFrom: fmtYMD(start),
+      dateTo: fmtYMD(end),
+    });
+  };
+
+  const applyDayPick = (val?: string) => {
+    const v = val ?? dayPick;
+    if (!v) return;
+    // v is YYYY-MM-DD from input[type=date]
+    onChange({ ...filters, dateRangePreset: "custom", dateFrom: v, dateTo: v });
+  };
+
   // Single-select: choose one product. Normalize id to string so checks work
   // regardless of numeric/string id shapes. Selecting the same product will
   // clear the selection.
@@ -220,8 +312,11 @@ export function Filters({
   }, [products]);
 
   const selectedProducts = React.useMemo(() => {
-    if (!products || products.length === 0) return [] as LeadTimeProductOption[];
-    return Array.from(selectedIdSet).map((id) => productLookup.get(id)).filter(Boolean) as LeadTimeProductOption[];
+    if (!products || products.length === 0)
+      return [] as LeadTimeProductOption[];
+    return Array.from(selectedIdSet)
+      .map((id) => productLookup.get(id))
+      .filter(Boolean) as LeadTimeProductOption[];
   }, [selectedIdSet, productLookup, products]);
 
   const filteredProducts = React.useMemo(() => {
@@ -296,31 +391,57 @@ export function Filters({
                           isActive ? "bg-primary text-primary-foreground" : ""
                         }
                         onClick={() => {
-                          if (offset === 0)
+                          if (offset === 0) {
                             onChange({ ...filters, dateRangePreset: "today" });
-                          else if (offset === 1)
+                          } else if (offset === 1) {
                             onChange({
                               ...filters,
                               dateRangePreset: "yesterday",
                             });
-                          else if (offset === 2)
+                          } else if (offset === 2) {
                             onChange({
                               ...filters,
                               dateRangePreset: "day-before-yesterday",
                             });
-                          else
+                          } else {
                             onChange({
                               ...filters,
                               dateRangePreset: "custom",
                               dateFrom: dateKey,
                               dateTo: dateKey,
                             });
+                          }
                         }}
                       >
                         {label} ({display})
                       </DropdownMenuItem>
                     );
                   })}
+                  <DropdownMenuItem asChild>
+                    <div className="border-t px-3 py-2 w-full">
+                      <div className="text-sm font-medium mb-2">
+                        Pick a specific day
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="date"
+                          value={dayPick}
+                          onChange={(e) => setDayPick(e.target.value)}
+                          className="w-48"
+                        />
+                        <button
+                          type="button"
+                          className="inline-flex items-center px-2 py-1 rounded bg-primary text-white text-sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            applyDayPick();
+                          }}
+                        >
+                          Apply
+                        </button>
+                      </div>
+                    </div>
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
 
@@ -355,6 +476,22 @@ export function Filters({
                       {label} ({getDisplayRange(key as DateRangePreset)})
                     </DropdownMenuItem>
                   ))}
+                  <div className="border-t px-3 py-2">
+                    <div className="text-sm font-medium mb-2">
+                      Pick a specific week
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="week"
+                        value={weekPick}
+                        onChange={(e) => setWeekPick(e.target.value)}
+                        className="w-48"
+                      />
+                      <Button size="sm" onClick={() => applyWeekPick()}>
+                        Apply
+                      </Button>
+                    </div>
+                  </div>
                 </DropdownMenuContent>
               </DropdownMenu>
 
@@ -389,6 +526,22 @@ export function Filters({
                       {label} ({getDisplayRange(key as DateRangePreset)})
                     </DropdownMenuItem>
                   ))}
+                  <div className="border-t px-3 py-2">
+                    <div className="text-sm font-medium mb-2">
+                      Pick a specific month
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="month"
+                        value={monthPick}
+                        onChange={(e) => setMonthPick(e.target.value)}
+                        className="w-48"
+                      />
+                      <Button size="sm" onClick={() => applyMonthPick()}>
+                        Apply
+                      </Button>
+                    </div>
+                  </div>
                 </DropdownMenuContent>
               </DropdownMenu>
 
@@ -423,6 +576,39 @@ export function Filters({
                       {label} ({getDisplayRange(key as DateRangePreset)})
                     </DropdownMenuItem>
                   ))}
+                  <div className="border-t px-3 py-2">
+                    <div className="text-sm font-medium mb-2">
+                      Pick a specific quarter
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={String(quarterPick)}
+                        onChange={(e) => setQuarterPick(Number(e.target.value))}
+                        className="rounded border px-2 py-1"
+                      >
+                        <option value="1">Q1</option>
+                        <option value="2">Q2</option>
+                        <option value="3">Q3</option>
+                        <option value="4">Q4</option>
+                      </select>
+                      <Input
+                        type="number"
+                        min={2000}
+                        max={2100}
+                        value={String(quarterYearPick)}
+                        onChange={(e) =>
+                          setQuarterYearPick(Number(e.target.value))
+                        }
+                        className="w-24"
+                      />
+                      <Button size="sm" onClick={() => applyQuarterPick()}>
+                        Apply
+                      </Button>
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-2">
+                      Pick quarter + year then Apply
+                    </div>
+                  </div>
                 </DropdownMenuContent>
               </DropdownMenu>
 
@@ -455,6 +641,24 @@ export function Filters({
                       {label} ({getDisplayRange(key as DateRangePreset)})
                     </DropdownMenuItem>
                   ))}
+                  <div className="border-t px-3 py-2">
+                    <div className="text-sm font-medium mb-2">
+                      Pick a specific year
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        min={2000}
+                        max={2100}
+                        value={String(yearPick)}
+                        onChange={(e) => setYearPick(Number(e.target.value))}
+                        className="w-28"
+                      />
+                      <Button size="sm" onClick={() => applyYearPick()}>
+                        Apply
+                      </Button>
+                    </div>
+                  </div>
                 </DropdownMenuContent>
               </DropdownMenu>
 
@@ -471,7 +675,7 @@ export function Filters({
                 Custom
               </Button>
               <Badge variant="secondary" className="ml-2">
-                Current Date Filter: {" "}
+                Current Date Filter:{" "}
                 <span className="font-bold">{getActivePresetDisplay()}</span>
               </Badge>
             </div>
@@ -577,11 +781,14 @@ export function Filters({
                                   </CommandItem>
                                 ))}
                               </CommandGroup>
-                              {cmdQuery.trim() === "" && products.length > MAX_VISIBLE_PRODUCTS && (
-                                <div className="px-3 py-2 text-xs text-muted-foreground">
-                                  Showing first {MAX_VISIBLE_PRODUCTS} of {products.length} products. Type to search for more.
-                                </div>
-                              )}
+                              {cmdQuery.trim() === "" &&
+                                products.length > MAX_VISIBLE_PRODUCTS && (
+                                  <div className="px-3 py-2 text-xs text-muted-foreground">
+                                    Showing first {MAX_VISIBLE_PRODUCTS} of{" "}
+                                    {products.length} products. Type to search
+                                    for more.
+                                  </div>
+                                )}
                             </>
                           )}
                         </>

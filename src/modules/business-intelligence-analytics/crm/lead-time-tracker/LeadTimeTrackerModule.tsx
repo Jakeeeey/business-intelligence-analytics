@@ -10,12 +10,18 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Filters } from "./components/Filters";
 import KPICards from "./components/KPICards";
 import { LeadTimeTable } from "./components/LeadTimeTable";
+import StatusDistributionChart from "./components/charts/StatusDistributionChart";
+import LeadTimeTrendChart from "./components/charts/LeadTimeTrendChart";
+import AverageDaysByStageChart from "./components/charts/AverageDaysByStageChart";
+import POVolumeOverTimeChart from "./components/charts/POVolumeOverTimeChart";
+import TimelineView from "./components/timeline/TimelineView";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useLeadTimeReport } from "./hooks/useLeadTimeReport";
 
 export default function LeadTimeTrackerModule() {
   const hook = useLeadTimeReport();
-   // const hasData = hook.readyState.hasData;
-   // const rowCount = hook.rows.length;
+  // const hasData = hook.readyState.hasData;
+  // const rowCount = hook.rows.length;
 
   return (
     <div className="space-y-6  mx-auto">
@@ -68,7 +74,40 @@ export default function LeadTimeTrackerModule() {
 
       <KPICards rows={hook.rows} loading={hook.loadingData} />
 
-      <LeadTimeTable rows={hook.rows} loading={hook.loadingData} />
+      <Tabs defaultValue="table">
+        <TabsList className="w-full">
+          <TabsTrigger value="table">Table View</TabsTrigger>
+          <TabsTrigger value="timeline">Timeline View</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="table">
+          {/* Charts: status distribution + trend */}
+          <div className="grid gap-4 md:grid-cols-12">
+            <div className="col-span-12 lg:col-span-4">
+              <StatusDistributionChart rows={hook.rows} />
+            </div>
+            <div className="col-span-12 lg:col-span-8">
+              <LeadTimeTrendChart rows={hook.rows} />
+            </div>
+          </div>
+
+          {/* Additional charts: average days by stage + PO volume */}
+          <div className="grid gap-4 md:grid-cols-12 mt-4">
+            <div className="col-span-12 lg:col-span-4">
+              <AverageDaysByStageChart rows={hook.rows} />
+            </div>
+            <div className="col-span-12 lg:col-span-8">
+              <POVolumeOverTimeChart rows={hook.rows} />
+            </div>
+          </div>
+
+          <LeadTimeTable rows={hook.rows} loading={hook.loadingData} />
+        </TabsContent>
+
+        <TabsContent value="timeline">
+          <TimelineView filters={hook.filters} products={hook.products} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

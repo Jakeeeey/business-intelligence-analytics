@@ -13,4 +13,13 @@ export const getStatusColor = (status?: string | null): string => {
   return "bg-white dark:bg-transparent";
 };
 
+export const getStatusHex = (status?: string | null): string => {
+  if (!status) return "#9ca3af"; // neutral / pending
+  const s = String(status).toLowerCase();
+  if (s === "on-time" || s === "on time" || s === "ontime") return "#10b981"; // green
+  if (s === "warning" || s === "warn") return "#f59e0b"; // orange
+  if (s === "delayed" || s === "delay" || s === "late") return "#ef4444"; // red
+  return "#9ca3af";
+};
+
 export default getStatusColor;
