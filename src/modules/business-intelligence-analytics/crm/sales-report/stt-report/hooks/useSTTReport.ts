@@ -319,7 +319,6 @@ export function useSTTReport(opts?: { prefetchKeysOnly?: boolean }) {
           activeToastRef.current = null;
           // No Token or Invalid Token case: redirect to login after showing toast
           if (typeof window !== "undefined")
-
             setTimeout(() => {
               window.location.href = "/login";
             }, 3000);
@@ -1156,35 +1155,44 @@ export function useSTTReport(opts?: { prefetchKeysOnly?: boolean }) {
       };
     }
 
-    // De-duplicate invoices by invoiceId (totalAmount & collection are invoice-level)
-    const invoiceMap = new Map<number, STTReportRecord>();
-    filteredData.forEach((r) => {
-      if (!invoiceMap.has(r.invoiceId)) invoiceMap.set(r.invoiceId, r);
-    });
+    // ── Invoice grouping (still needed for invoice-level KPIs)
+    const invoiceMap = new Map<number, STTReportRecord[]>();
+
+    for (const r of filteredData) {
+      if (!invoiceMap.has(r.invoiceId)) invoiceMap.set(r.invoiceId, []);
+      invoiceMap.get(r.invoiceId)!.push(r);
+    }
+
     const uniqueInvoices = Array.from(invoiceMap.values());
 
-    const totalSales = uniqueInvoices.reduce(
-      (sum, r) => sum + r.totalAmount,
+
+
+    // ── CORE CHANGE: Sales now based on product-level revenue
+    const totalSales = filteredData.reduce(
+      (sum, r) => sum + (r.productSalesAmount || 0),
       0,
     );
+
+
     const totalDiscount = uniqueInvoices.reduce(
-      (sum, r) => sum + (r.discountAmount || 0),
+      (sum, inv) => sum + (inv[0].discountAmount || 0),
       0,
     );
-    const netCollections = uniqueInvoices.reduce(
-      (sum, r) => sum + r.collection,
-      0,
-    );
+    const netCollections = Math.max(0, totalSales - totalDiscount);
     const outstandingPayments = Math.max(0, totalSales - netCollections);
+
     const totalInvoices = uniqueInvoices.length;
 
     const totalReturns = filteredData.reduce(
       (sum, r) => sum + (r.returnTotalAmount || 0),
       0,
     );
-    const returnedProductCount = filteredData.filter(
-      (r) => (r.returnQuantity || 0) > 0,
-    ).length;
+
+    const returnedProductCount = filteredData.reduce(
+      (sum, r) => sum + (r.returnQuantity || 0),
+      0,
+    );
+
     const invoicesWithReturns = new Set(
       filteredData
         .filter((r) => (r.returnQuantity || 0) > 0)
@@ -1193,15 +1201,19 @@ export function useSTTReport(opts?: { prefetchKeysOnly?: boolean }) {
 
     const uniqueCustomers = new Set(filteredData.map((r) => r.customerCode))
       .size;
+
     const collectionRate =
       totalSales > 0 ? (netCollections / totalSales) * 100 : 0;
 
     const returnRate = totalSales > 0 ? (totalReturns / totalSales) * 100 : 0;
+
     const avgOrderValue = totalInvoices > 0 ? totalSales / totalInvoices : 0;
+
     const targetQuantity = filteredData.reduce(
       (sum, r) => sum + (r.productQuantity || 0),
       0,
     );
+
     const avgInvoicesPerCustomer =
       uniqueCustomers > 0 ? totalInvoices / uniqueCustomers : 0;
 
@@ -1485,11 +1497,11 @@ export function useSTTReport(opts?: { prefetchKeysOnly?: boolean }) {
         });
       }
       const entry = map.get(productKey)!;
-      entry.totalQuantity += r.productQuantity || 0;
-      entry.totalAmount += r.productTotalAmount || 0;
-      entry.totalDiscount += r.productDiscountAmount || 0;
-      entry.returnQuantity += r.returnQuantity || 0;
-      entry.returnAmount += r.returnTotalAmount || 0;
+      entry.totalQuantity += r.productQuantity;
+      entry.totalAmount += r.productTotalAmount;
+      entry.totalDiscount += r.productDiscountAmount;
+      entry.returnQuantity += r.returnQuantity;
+      entry.returnAmount += r.returnTotalAmount;
     });
 
     return Array.from(map.entries())
