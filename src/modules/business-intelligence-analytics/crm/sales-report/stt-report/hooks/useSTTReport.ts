@@ -1169,7 +1169,7 @@ export function useSTTReport(opts?: { prefetchKeysOnly?: boolean }) {
 
     // ── CORE CHANGE: Sales now based on product-level revenue
     const totalSales = filteredData.reduce(
-      (sum, r) => sum + (r.productSalesAmount || 0),
+      (sum, r) => sum + (r.productTotalAmount || 0),
       0,
     );
 
