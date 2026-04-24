@@ -15,12 +15,42 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import type { TooltipProps } from "recharts";
+import type { NameType, ValueType } from "recharts/types/component/DefaultTooltipContent";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 type TacticalSkuChartsProps = {
   data: TacticalSkuChartPoint[];
 };
+
+function shortLabel(value: string, max = 20): string {
+  const text = value.trim();
+  if (text.length <= max) return text;
+  return `${text.slice(0, max - 1)}...`;
+}
+
+function ProductTooltip({
+  active,
+  payload,
+  label,
+}: TooltipProps<ValueType, NameType>) {
+  if (!active || !payload?.length) return null;
+
+  return (
+    <div className="min-w-[250px] rounded-md border bg-background px-3 py-2 shadow-md">
+      <div className="mb-2 text-xs font-semibold text-foreground">{String(label)}</div>
+      <div className="space-y-1 text-xs">
+        {payload.map((entry) => (
+          <div key={String(entry.name)} className="flex items-center justify-between gap-3">
+            <span style={{ color: entry.color || "#94a3b8" }}>{entry.name}</span>
+            <span className="font-medium text-foreground">{formatNumber(Number(entry.value || 0))}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export function TacticalSkuCharts({ data }: TacticalSkuChartsProps) {
   const reached = data.reduce((sum, row) => sum + row.reach, 0);
@@ -41,8 +71,8 @@ export function TacticalSkuCharts({ data }: TacticalSkuChartsProps) {
     <div className="grid gap-4 xl:grid-cols-3">
       <Card className="xl:col-span-2 shadow-sm">
         <CardHeader className="pb-2">
-          <CardTitle className="text-lg">Top Products Reach vs Target</CardTitle>
-          <CardDescription>Visual comparison of total reach against total targets for your top performing SKUs.</CardDescription>
+          <CardTitle className="text-lg">Top 10 Products Reach vs Target</CardTitle>
+          <CardDescription>Filtered view of the top-performing products by reach, capped at 10 for readability.</CardDescription>
         </CardHeader>
         <CardContent className="h-[360px] pt-4">
           <ResponsiveContainer width="100%" height="100%">
@@ -50,10 +80,11 @@ export function TacticalSkuCharts({ data }: TacticalSkuChartsProps) {
               <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-muted" />
               <XAxis
                 dataKey="productName"
-                angle={-25}
+                angle={-15}
                 textAnchor="end"
                 interval={0}
-                height={80}
+                height={92}
+                tickFormatter={(value: string) => shortLabel(value, 22)}
                 tick={{ fontSize: 11, fill: 'currentColor', opacity: 0.7 }}
                 tickLine={false}
                 axisLine={false}
@@ -65,9 +96,7 @@ export function TacticalSkuCharts({ data }: TacticalSkuChartsProps) {
                 axisLine={false}
               />
               <Tooltip
-                formatter={(value: number, name: string) => [formatNumber(value), name]}
-                labelFormatter={(label: string) => label}
-                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                content={<ProductTooltip />}
               />
               <Bar dataKey="reach" fill="#3b82f6" name="Reach" radius={[4, 4, 0, 0]} maxBarSize={48} />
               <Bar dataKey="target" fill="#22c55e" name="Target" radius={[4, 4, 0, 0]} maxBarSize={48} />
