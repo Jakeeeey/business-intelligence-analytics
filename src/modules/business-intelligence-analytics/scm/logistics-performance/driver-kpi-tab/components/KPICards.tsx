@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from "react";
@@ -12,17 +11,30 @@ import { CheckCircle, Clock, DollarSign } from "lucide-react";
 import { useDriverKPI } from "../hooks/useDriverKPI";
 import { calculateKPIs } from "../utils/calculations";
 import { formatCurrency } from "../utils/formatters";
+import type { VisitRecord } from "../types";
+
+// ---------------------------------------------------------------------------
+// "Fulfilled With Returns" counts as fulfilled for the KPI rate
+// ---------------------------------------------------------------------------
+function computeFulfillmentRate(data: VisitRecord[] | null | undefined): number {
+  if (!data || data.length === 0) return 0;
+  const fulfilled = data.filter((r) => {
+    const s = String(r.fulfillmentStatus ?? "").toLowerCase().trim();
+    return s === "fulfilled" || s === "fulfilled with returns";
+  }).length;
+  return Math.round((fulfilled / data.length) * 100);
+}
 
 export default function KPICards() {
   const { data } = useDriverKPI();
   const {
-
-    fulfillmentRate,
     avgDispatchVarianceHours,
-
     avgArrivalVarianceHours,
     totalFulfilledAmount,
   } = calculateKPIs(data);
+
+  // Override fulfillment rate so FWR is counted as fulfilled
+  const fulfillmentRate = computeFulfillmentRate(data);
 
   type KPI = {
     id: string;
@@ -56,9 +68,9 @@ export default function KPICards() {
       id: "fulfillmentRate",
       title: "Fulfillment Rate",
       value: `${fulfillmentRate}%`,
-      hint: "% Fulfilled Orders",
+      hint: "% Fulfilled Orders (incl. Fulfilled With Returns)",
       description:
-        "Measures actual service performance: a missed delivery can cost revenue and credibility.",
+        "Measures actual service performance: a missed delivery can cost revenue and credibility. Fulfilled With Returns counts as fulfilled.",
       icon: <CheckCircle className="h-5 w-5 text-emerald-500" />,
     },
     {
@@ -71,8 +83,6 @@ export default function KPICards() {
       icon: <DollarSign className="h-5 w-5 text-emerald-500" />,
     },
   ];
-
-  // cards are informational only; filtering is handled elsewhere
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -115,7 +125,6 @@ export default function KPICards() {
                   {c.hint}: {c.value}
                 </div>
               )}
-              {/* trend removed per request */}
             </div>
           </TooltipContent>
         </Tooltip>
