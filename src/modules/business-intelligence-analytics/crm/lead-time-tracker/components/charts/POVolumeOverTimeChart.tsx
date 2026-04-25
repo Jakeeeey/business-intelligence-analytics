@@ -81,13 +81,13 @@ export function POVolumeOverTimeChart({ rows }: Props) {
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
               data={data}
-              margin={{ top: 10, right: 10, left: 0, bottom: 40 }}
+              margin={{ top: 20, right: 10, left: 0, bottom: 20 }}
             >
               <XAxis
                 dataKey="period"
                 angle={-30}
                 textAnchor="end"
-                height={60}
+                // height={60}
               />
               <YAxis />
               <ChartTooltip content={<ChartTooltipContent />} />

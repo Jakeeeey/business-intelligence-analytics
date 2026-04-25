@@ -81,18 +81,8 @@ export default function LeadTimeTrackerModule() {
         </TabsList>
 
         <TabsContent value="table">
-          {/* Charts: status distribution + trend */}
-          <div className="grid gap-4 md:grid-cols-12">
-            <div className="col-span-12 lg:col-span-4">
-              <StatusDistributionChart rows={hook.rows} />
-            </div>
-            <div className="col-span-12 lg:col-span-8">
-              <LeadTimeTrendChart rows={hook.rows} />
-            </div>
-          </div>
-
           {/* Additional charts: average days by stage + PO volume */}
-          <div className="grid gap-4 md:grid-cols-12 mt-4">
+          <div className="grid gap-4 md:grid-cols-12 my-4">
             <div className="col-span-12 lg:col-span-4">
               <AverageDaysByStageChart rows={hook.rows} />
             </div>

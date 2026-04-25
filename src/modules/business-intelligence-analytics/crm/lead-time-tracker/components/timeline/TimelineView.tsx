@@ -8,6 +8,11 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Clock } from "lucide-react";
 import { fetchLeadTimeData } from "../../providers/fetchProvider";
 import type {
@@ -17,8 +22,16 @@ import type {
 } from "../../types";
 import { cn } from "@/lib/utils";
 import getStatusColor, { getStatusHex } from "../../utils/getStatusColor";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type EventType = "created" | "approved" | "dispatch" | "delivered";
+type LifecycleStage = "approval" | "dispatch" | "delivery";
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 type RowGroup = {
@@ -26,18 +39,18 @@ type RowGroup = {
   soNo?: string;
   label?: string;
   events: Record<EventType, Date | null>;
+  poDate?: Date | null;
   approvalStatus?: string;
   fulfillmentStatus?: string;
   deliveryStatus?: string;
+  approvalDays?: number | null;
+  fulfillmentDays?: number | null;
+  deliveryDays?: number | null;
   bars?: Array<{
-    stage: string;
-    start?: Date | null;
-    end?: Date | null;
-    days?: number | null;
+    stage: LifecycleStage;
+    days: number | null;
     status?: string | null;
   }>;
-  overallStart?: Date | null;
-  overallEnd?: Date | null;
 };
 
 // Utility functions (parseDate, findDateFromRecord, etc. remain unchanged)
@@ -67,6 +80,25 @@ function findStringFromRecord(rec: Record<string, unknown>, keys: string[]) {
     }
   }
   return undefined;
+}
+
+function findNumberFromRecord(rec: Record<string, unknown>, keys: string[]) {
+  for (const k of keys) {
+    if (!(k in rec)) continue;
+    const v = rec[k];
+    if (v === undefined || v === null || String(v).trim() === "") return null;
+    const n = Number(v);
+    if (Number.isFinite(n)) return n;
+  }
+  return null;
+}
+
+function statusToLabel(status?: string | null) {
+  const s = String(status ?? "").toLowerCase();
+  if (s === "on-time" || s === "on time" || s === "ontime") return "On time";
+  if (s === "warning" || s === "warn") return "Warning";
+  if (s === "delayed" || s === "delay" || s === "late") return "Delayed";
+  return "Pending";
 }
 
 function extractEventsFromRecord(r: LeadTimeRecord) {
@@ -108,16 +140,19 @@ export default function ProcessTimeline({
   filters: LeadTimeFilters;
   products: LeadTimeProductOption[];
 }) {
+  type SortMode = "date-desc" | "date-asc" | "po-asc" | "po-desc" | "so-asc" | "so-desc";
+
   const [records, setRecords] = React.useState<LeadTimeRecord[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [sortMode, setSortMode] = React.useState<SortMode>("date-desc");
 
   // Phase 1: Smart Zoom System
-  const [dayWidth, setDayWidth] = React.useState<number>(32);
+  const [dayWidth, setDayWidth] = React.useState<number>(64);
   // Increase zoom thresholds: larger max zoom and bigger step for faster zooming
-  const handleZoomIn = () => setDayWidth((w) => Math.min(256, w + 16));
-  const handleZoomOut = () => setDayWidth((w) => Math.max(8, w - 16));
-  const handleZoomReset = () => setDayWidth(32);
+  // const handleZoomIn = () => setDayWidth((w) => Math.min(256, w + 16));
+  // const handleZoomOut = () => setDayWidth((w) => Math.max(8, w - 16));
+  // const handleZoomReset = () => setDayWidth(32);
 
   // Phase 2: Drawer State
   const [selectedRecord, setSelectedRecord] = React.useState<Record<
@@ -190,6 +225,31 @@ export default function ProcessTimeline({
       const key = po || Math.random().toString(36).slice(2, 9);
 
       const events = extractEventsFromRecord(recRaw as LeadTimeRecord);
+      const poDate = findDateFromRecord(rec, [
+        "poDate",
+        "po_date",
+        "poDateTime",
+        "po_date_time",
+      ]);
+      const approvalDays = findNumberFromRecord(rec, [
+        "approvalDays",
+        "approval_days",
+        "approval",
+      ]);
+      const fulfillmentDays = findNumberFromRecord(rec, [
+        "fulfillmentDays",
+        "fulfillment_days",
+        "dispatchDays",
+        "dispatch_days",
+        "dispatch",
+      ]);
+      const deliveryDays = findNumberFromRecord(rec, [
+        "deliveryDays",
+        "delivery_days",
+        "deliveredDays",
+        "delivered_days",
+        "delivered",
+      ]);
 
       const approvalStatus = findStringFromRecord(rec, [
         "approvalStatus",
@@ -218,6 +278,7 @@ export default function ProcessTimeline({
         map.set(key, {
           poNo: po || key,
           soNo: so,
+          poDate,
           label:
             String(
               rec["productName"] ?? rec["product_name"] ?? rec["name"] ?? "",
@@ -226,6 +287,9 @@ export default function ProcessTimeline({
           approvalStatus,
           fulfillmentStatus,
           deliveryStatus,
+          approvalDays,
+          fulfillmentDays,
+          deliveryDays,
         });
       } else {
         // merge events/statuses
@@ -237,23 +301,77 @@ export default function ProcessTimeline({
         ] as EventType[]) {
           if (!existing.events[k] && events[k]) existing.events[k] = events[k];
         }
+        if (!existing.poDate && poDate) existing.poDate = poDate;
         if (!existing.approvalStatus && approvalStatus)
           existing.approvalStatus = approvalStatus;
         if (!existing.fulfillmentStatus && fulfillmentStatus)
           existing.fulfillmentStatus = fulfillmentStatus;
         if (!existing.deliveryStatus && deliveryStatus)
           existing.deliveryStatus = deliveryStatus;
+        if (existing.approvalDays == null && approvalDays != null)
+          existing.approvalDays = approvalDays;
+        if (existing.fulfillmentDays == null && fulfillmentDays != null)
+          existing.fulfillmentDays = fulfillmentDays;
+        if (existing.deliveryDays == null && deliveryDays != null)
+          existing.deliveryDays = deliveryDays;
       }
     }
 
     const arr = Array.from(map.values());
     arr.sort((a, b) => {
+      if (sortMode === "date-desc") {
+        const ad = a.poDate ?? a.events.created ?? a.events.approved ?? a.events.dispatch ?? a.events.delivered;
+        const bd = b.poDate ?? b.events.created ?? b.events.approved ?? b.events.dispatch ?? b.events.delivered;
+        if (!ad && !bd) return (a.poNo || "").localeCompare(b.poNo || "");
+        if (!ad) return 1;
+        if (!bd) return -1;
+        return bd.getTime() - ad.getTime();
+      }
+      if (sortMode === "date-asc") {
+        const ad = a.poDate ?? a.events.created ?? a.events.approved ?? a.events.dispatch ?? a.events.delivered;
+        const bd = b.poDate ?? b.events.created ?? b.events.approved ?? b.events.dispatch ?? b.events.delivered;
+        if (!ad && !bd) return (a.poNo || "").localeCompare(b.poNo || "");
+        if (!ad) return 1;
+        if (!bd) return -1;
+        return ad.getTime() - bd.getTime();
+      }
+      
+      if (sortMode === "po-asc") {
+        return (a.poNo || "").localeCompare(b.poNo || "", undefined, {
+          numeric: true,
+          sensitivity: "base",
+        });
+      }
+
+      if (sortMode === "po-desc") {
+        return (b.poNo || "").localeCompare(a.poNo || "", undefined, {
+          numeric: true,
+          sensitivity: "base",
+        });
+      }
+
+      if (sortMode === "so-asc") {
+        return (a.soNo || "").localeCompare(b.soNo || "", undefined, {
+          numeric: true,
+          sensitivity: "base",
+        });
+      }
+
+      if (sortMode === "so-desc") {
+        return (b.soNo || "").localeCompare(a.soNo || "", undefined, {
+          numeric: true,
+          sensitivity: "base",
+        });
+      }
+
       const ad =
+        a.poDate ??
         a.events.created ??
         a.events.approved ??
         a.events.dispatch ??
         a.events.delivered;
       const bd =
+        b.poDate ??
         b.events.created ??
         b.events.approved ??
         b.events.dispatch ??
@@ -266,66 +384,27 @@ export default function ProcessTimeline({
 
     // compute bars and overall spans
     return arr.map((r: RowGroup) => {
-      const approvalStart = r.events.created ?? null;
-      const approvalEnd = r.events.approved ?? null;
-
-      const dispatchStart = r.events.approved ?? r.events.created ?? null;
-      const dispatchEnd = r.events.dispatch ?? null;
-
-      const deliveryStart =
-        r.events.dispatch ?? r.events.approved ?? r.events.created ?? null;
-      const deliveryEnd = r.events.delivered ?? null;
-
-      const existingDates = [
-        approvalStart,
-        approvalEnd,
-        dispatchStart,
-        dispatchEnd,
-        deliveryStart,
-        deliveryEnd,
-      ].filter(Boolean) as Date[];
-
-      const overallStart = existingDates.length ? existingDates[0] : null;
-      const overallEnd = existingDates.length
-        ? existingDates[existingDates.length - 1]
-        : null;
-
-      const makeDays = (s?: Date | null, e?: Date | null) =>
-        s && e
-          ? Math.max(0, Math.round((e.getTime() - s.getTime()) / MS_PER_DAY))
-          : null;
-
-      const approvalDays = makeDays(approvalStart, approvalEnd);
-      const dispatchDays = makeDays(dispatchStart, dispatchEnd);
-      const deliveryDays = makeDays(deliveryStart, deliveryEnd);
-
       const bars = [
         {
-          stage: "approval",
-          start: approvalStart,
-          end: approvalEnd,
-          days: approvalDays,
-          status: r.approvalStatus,
+          stage: "approval" as const,
+          days: r.approvalDays ?? null,
+          status: r.approvalStatus ?? "pending",
         },
         {
-          stage: "dispatch",
-          start: dispatchStart,
-          end: dispatchEnd,
-          days: dispatchDays,
-          status: r.fulfillmentStatus,
+          stage: "dispatch" as const,
+          days: r.fulfillmentDays ?? null,
+          status: r.fulfillmentStatus ?? "pending",
         },
         {
-          stage: "delivery",
-          start: deliveryStart,
-          end: deliveryEnd,
-          days: deliveryDays,
-          status: r.deliveryStatus,
+          stage: "delivery" as const,
+          days: r.deliveryDays ?? null,
+          status: r.deliveryStatus ?? "pending",
         },
       ];
 
-      return { ...r, bars, overallStart, overallEnd };
+      return { ...r, bars };
     });
-  }, [records]);
+  }, [records, sortMode]);
 
   // Viewport Calculations
   const { startDate, totalDays, widthPx, months } = React.useMemo(() => {
@@ -373,7 +452,18 @@ export default function ProcessTimeline({
   }, [filters.dateFrom, filters.dateTo, dayWidth]);
 
   const rowHeight = 72;
-  const barHeight = rowHeight; // full-height bars (use the entire row)
+  const barHeight = rowHeight;
+  const headerHeight = 56;
+  const dayHeaderTopOffset = 28;
+  const timelineContentHeight = Math.max(
+    headerHeight + rowHeight,
+    headerHeight + rowsWithSegments.length * rowHeight,
+  );
+  const minSegmentWidth = 18;
+  const pendingSegmentWidth = Math.max(
+    minSegmentWidth * 3,
+    Math.round(dayWidth * 1.5),
+  );
 
   // Phase 2: Today Marker Logic
   const todayPx = React.useMemo(() => {
@@ -392,27 +482,56 @@ export default function ProcessTimeline({
         </div>
 
         <div className="flex flex-col items-end gap-3">
-          {/* Zoom Controls */}
-          <div className="flex items-center gap-3 bg-muted/30 p-2 rounded-md border shadow-sm">
-            <label className="text-sm font-medium text-muted-foreground">
-              Zoom
-            </label>
+          <div className="flex  gap-3">
             <div className="flex items-center gap-2">
-              <input
-                type="range"
-                min={25}
-                max={800}
-                step={1}
-                value={Math.round((dayWidth / 32) * 100)}
-                onChange={(e) => {
-                  const v = Number((e.target as HTMLInputElement).value);
-                  const newWidth = Math.round((v / 100) * 32);
-                  setDayWidth(Math.max(8, Math.min(256, newWidth)));
-                }}
-                className="h-2 w-40"
-              />
-              <div className="text-xs font-medium text-muted-foreground w-12 text-right">
-                {Math.round((dayWidth / 32) * 100)}%
+              <label className="text-xs font-medium text-muted-foreground">
+                Sort PO/SO
+              </label>
+              <Select
+                value={sortMode}
+                onValueChange={(value) => setSortMode(value as SortMode)}
+              >
+                <SelectTrigger className="h-8 w-42.5 text-xs text-muted-foreground">
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+
+                <SelectContent className="text-xs font-medium text-muted-foreground">
+                  <SelectItem
+                    className="text-xs font-medium text-muted-foreground"
+                    value="date-desc"
+                  >
+                    By date (descending)
+                  </SelectItem>
+                  <SelectItem value="date-asc">By date (ascending)</SelectItem>
+                  <SelectItem value="po-asc">PO (A-Z)</SelectItem>
+                  <SelectItem value="po-desc">PO (Z-A)</SelectItem>
+                  <SelectItem value="so-asc">SO (A-Z)</SelectItem>
+                  <SelectItem value="so-desc">SO (Z-A)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {/* Zoom Controls */}
+            <div className="flex items-center gap-3 bg-muted/30 p-2 rounded-md border shadow-sm">
+              <label className="text-sm font-medium text-muted-foreground">
+                Zoom
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="range"
+                  min={25}
+                  max={800}
+                  step={1}
+                  value={Math.round((dayWidth / 32) * 100)}
+                  onChange={(e) => {
+                    const v = Number((e.target as HTMLInputElement).value);
+                    const newWidth = Math.round((v / 100) * 32);
+                    setDayWidth(Math.max(8, Math.min(256, newWidth)));
+                  }}
+                  className="h-2 w-40"
+                />
+                <div className="text-xs font-medium text-muted-foreground w-12 text-right">
+                  {Math.round((dayWidth / 32) * 100)}%
+                </div>
               </div>
             </div>
           </div>
@@ -447,14 +566,14 @@ export default function ProcessTimeline({
         <div className="h-150 overflow-auto relative w-full flex flex-col ">
           {/* GLOBAL BACKGROUND: Render vertical day lines once */}
           <div
-            className="absolute top-0 bottom-0 pointer-events-none z-0"
-            style={{ left: 224, width: widthPx }}
+            className="absolute calendar top-0 pointer-events-none z-0"
+            style={{ left: 224, width: widthPx, height: timelineContentHeight }}
           >
             {Array.from({ length: totalDays }).map((_, i) => (
               <div
                 key={i}
                 className={cn(
-                  "absolute top-0 bottom-0 border-r",
+                  "absolute  top-0 bottom-0 border-r",
                   [0, 6].includes(
                     new Date(startDate.getTime() + i * MS_PER_DAY).getDay(),
                   )
@@ -464,18 +583,6 @@ export default function ProcessTimeline({
                 style={{ left: toPx(i, dayWidth), width: dayWidth }}
               />
             ))}
-
-            {/* TODAY MARKER */}
-            {todayPx >= 0 && todayPx <= widthPx && (
-              <div
-                className="absolute top-0 bottom-0 w-0.5 bg-blue-500 z-20 shadow-[0_0_8px_rgba(59,130,246,0.5)]"
-                style={{ left: todayPx }}
-              >
-                <div className="absolute top-10 z-50 -translate-x-1/2 bg-blue-500 text-white  text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1">
-                  <Clock size={10} /> TODAY
-                </div>
-              </div>
-            )}
           </div>
 
           {/* STICKY HEADER ROW */}
@@ -517,6 +624,30 @@ export default function ProcessTimeline({
             </div>
           </div>
 
+          {/* TODAY MARKER OVERLAY (always in front of rows and bars) */}
+          <div
+            className="absolute top-0 pointer-events-none z-70"
+            style={{ left: 224, width: widthPx, height: timelineContentHeight }}
+          >
+            {todayPx >= 0 && todayPx <= widthPx && (
+              <div
+                className="absolute w-0.5 bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]"
+                style={{
+                  left: todayPx,
+                  top: dayHeaderTopOffset,
+                  height: Math.max(
+                    0,
+                    timelineContentHeight - dayHeaderTopOffset,
+                  ),
+                }}
+              >
+                <div className="absolute -top-5  z-80 -translate-x-1/2 bg-blue-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1">
+                  <Clock size={10} /> TODAY
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* BODY ROWS */}
           <div className="min-w-full w-fit flex flex-col z-10 relative">
             {rowsWithSegments.map((r: RowGroup, idx) => {
@@ -526,7 +657,7 @@ export default function ProcessTimeline({
                 <div
                   key={idx}
                   onClick={() => setSelectedRecord(r)}
-                  className="flex border-b border-slate-100 hover:bg-slate-100/50 transition-colors group cursor-pointer"
+                  className="flex border-b border-slate-300 hover:bg-slate-100/50 transition-colors group cursor-pointer"
                   style={{ height: rowHeight }}
                 >
                   {/* STICKY LEFT COLUMN (Permanent) */}
@@ -549,59 +680,111 @@ export default function ProcessTimeline({
                       style={{ top: Math.round(rowHeight / 2) }}
                     />
 
-                    {/* Stage Bars (Flat Block Logic) */}
-                    {(r.bars ?? []).map((bar, bi: number) => {
-                      if (!bar || !bar.start) return null;
-                      const statusClass =
-                        getStatusColor(bar?.status || "") || "";
-                      const fallbackColor =
-                        getStatusHex(bar?.status) || "#e2e8f0";
-                      const left = toPx(
-                        (bar.start!.getTime() - startDate.getTime()) /
-                          MS_PER_DAY,
-                        dayWidth,
-                      );
-                      let width = dayWidth * 2;
-                      if (bar.start && bar.end) {
-                        width = Math.max(
+                    {/* Single lifecycle segmented bar */}
+                    <div
+                      className="absolute z-10 top-0 h-full flex items-stretch gap-1"
+                      style={{
+                        left: toPx(
+                          ((
+                            r.poDate ??
+                            r.events.created ??
+                            r.events.approved ??
+                            r.events.dispatch ??
+                            r.events.delivered ??
+                            startDate
+                          ).getTime() -
+                            startDate.getTime()) /
+                            MS_PER_DAY,
                           dayWidth,
-                          toPx(
-                            (bar.end.getTime() - bar.start.getTime()) /
-                              MS_PER_DAY,
-                            dayWidth,
-                          ),
-                        );
-                      }
-                      const isPending =
-                        bar.days == null || !(bar.start && bar.end);
+                        ),
+                      }}
+                    >
+                      {(r.bars ?? []).map((segment, segmentIndex) => {
+                        const normalizedStatus = (segment.status || "pending")
+                          .trim()
+                          .toLowerCase();
+                        const statusLabel = statusToLabel(normalizedStatus);
+                        const normalizedDays =
+                          segment.days == null
+                            ? null
+                            : Math.max(0, Math.round(segment.days));
+                        const isPending =
+                          normalizedDays == null ||
+                          normalizedStatus === "pending";
+                        const segmentWidth = isPending
+                          ? pendingSegmentWidth
+                          : Math.max(
+                              minSegmentWidth,
+                              normalizedDays * dayWidth,
+                            );
+                        const statusClass =
+                          getStatusColor(normalizedStatus) || "";
+                        const fallbackColor =
+                          getStatusHex(normalizedStatus) || "#9ca3af";
+                        const showLabel = segmentWidth >= 42;
+                        const label = isPending
+                          ? showLabel
+                            ? "Pending"
+                            : ""
+                          : showLabel
+                            ? `${normalizedDays}d`
+                            : "";
+                        const stageLabel =
+                          segment.stage === "approval"
+                            ? "Approval"
+                            : segment.stage === "dispatch"
+                              ? "Dispatch"
+                              : "Delivery";
 
-                      return (
-                        <div
-                          key={bi}
-                          style={{
-                            left,
-                            width,
-                            top: 0,
-                            height: barHeight,
-                          }}
-                          className="absolute z-10"
-                        >
-                          <div
-                            className={cn(
-                              "h-full w-full rounded shadow-sm transition-transform",
-                              isPending
-                                ? "bg-[repeating-linear-gradient(45deg,transparent,transparent_4px,rgba(0,0,0,0.06)_4px,rgba(0,0,0,0.06)_8px)]"
-                                : statusClass,
-                            )}
-                            style={
-                              isPending || statusClass
-                                ? undefined
-                                : { backgroundColor: fallbackColor }
-                            }
-                          />
-                        </div>
-                      );
-                    })}
+                        return (
+                          <Tooltip key={`${segment.stage}-${segmentIndex}`}>
+                            <TooltipTrigger asChild>
+                              <div
+                                className={cn(
+                                  "h-full flex items-center justify-center rounded-md px-2 text-[10px] font-semibold select-none",
+                                  isPending
+                                    ? "border border-dashed border-slate-300 bg-slate-100/80 text-slate-500 dark:border-slate-500 dark:bg-slate-700/30 dark:text-slate-300"
+                                    : statusClass,
+                                )}
+                                style={
+                                  isPending || statusClass
+                                    ? { width: segmentWidth, height: barHeight }
+                                    : {
+                                        width: segmentWidth,
+                                        height: barHeight,
+                                        backgroundColor: fallbackColor,
+                                      }
+                                }
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedRecord({
+                                    ...r,
+                                    stage: segment.stage,
+                                    stageDays: normalizedDays,
+                                    stageStatus: normalizedStatus,
+                                  });
+                                }}
+                              >
+                                {label}
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent sideOffset={6}>
+                              <div className="text-xs font-medium">
+                                {stageLabel}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {normalizedDays == null
+                                  ? "Pending"
+                                  : `${normalizedDays} Day${normalizedDays === 1 ? "" : "s"}`}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                Status: {statusLabel}
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
               );
