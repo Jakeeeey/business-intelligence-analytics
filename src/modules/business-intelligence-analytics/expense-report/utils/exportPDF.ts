@@ -124,7 +124,7 @@ export async function exportToPDF(
       filters.statuses as unknown as string | string[] | undefined,
     );
     if (stats) parts.push(`Statuses: ${stats}`);
-    return parts.length > 0 ? parts.join("\n") : "All";
+    return parts.length > 0 ? parts.join("\n") : "";
   }
 
   // Fetch company profile used by the PDF template header
@@ -215,7 +215,7 @@ export async function exportToPDF(
       doc.setFont("helvetica", "bold");
       doc.setFontSize(9);
       doc.setTextColor(0, 0, 0);
-      doc.text("Filters:", leftX, startY + 14, { baseline: "top" });
+      doc.text(" ", leftX, startY + 14, { baseline: "top" });
 
       doc.setFont("helvetica", "normal");
       doc.setFontSize(8.5);

@@ -217,7 +217,7 @@ export default function Filters({
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-start space-x-3 space-y-0 rounded-md border p-4">
+                    {/* <div className="flex items-start space-x-3 space-y-0 rounded-md border p-4">
                       <RadioGroupItem value="detailed" id="detailed" />
                       <div className="space-y-1 leading-none">
                         <Label htmlFor="detailed" className="font-medium">
@@ -227,7 +227,7 @@ export default function Filters({
                           Includes grouped transaction details with subtotals
                         </p>
                       </div>
-                    </div>
+                    </div> */}
                   </RadioGroup>
 
                   {exportFormat === "detailed" && (
@@ -767,7 +767,7 @@ export default function Filters({
                           </Badge>
 
                           {/* Hover Tooltip */}
-                          <div className="absolute left-0 mt-2 hidden group-hover:block z-50 bg-background border rounded-md shadow-md p-2 w-48">
+                          <div className="absolute left-0 hidden group-hover:block z-50 bg-background border rounded-md shadow-md p-2 w-48">
                             <div className="flex flex-col gap-1">
                               {hidden.map((item, idx) => (
                                 <div
