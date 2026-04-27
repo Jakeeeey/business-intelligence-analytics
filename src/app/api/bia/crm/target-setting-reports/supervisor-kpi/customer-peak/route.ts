@@ -1,84 +1,101 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const UPSTREAM = (process.env.NEXT_PUBLIC_API_BASE_URL || "").replace(/\/+$/, "");
-const STATIC_TOKEN = process.env.DIRECTUS_STATIC_TOKEN || "";
+const SPRING_BASE = (process.env.SPRING_API_BASE_URL || "").replace(/\/+$/, "");
 
-async function fetchDirectus(path: string) {
-  const url = `${UPSTREAM}/${path.startsWith("/") ? path.slice(1) : path}`;
-  const res = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${STATIC_TOKEN}`,
-      "Content-Type": "application/json",
-    },
-    cache: "no-store",
-  });
+/**
+ * Fetch all sales data from Spring Boot
+ */
+async function fetchAllSalesData(token?: string, startDate?: string, endDate?: string) {
+  if (!SPRING_BASE) return [];
 
-  if (!res.ok) {
-    throw new Error(`Directus error: ${res.status}`);
+  const url = new URL(`${SPRING_BASE}/api/view-sales-performance/all`);
+  if (startDate) url.searchParams.append("startDate", startDate);
+  if (endDate) url.searchParams.append("endDate", endDate);
+
+  try {
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    const res = await fetch(url.toString(), {
+      method: "GET",
+      headers,
+      cache: "no-store",
+    });
+
+    if (!res.ok) return [];
+    const resJson = await res.json();
+    return Array.isArray(resJson) ? resJson : (resJson.data || []);
+  } catch (e) {
+    console.error("Spring Fetch Error (All) - Customer Peak:", e);
+    return [];
   }
-  return await res.json();
 }
 
 /**
  * GET /api/bia/crm/target-setting-reports/supervisor-kpi/customer-peak
- * Query Params: storeNames (comma separated)
+ * Query Params: 
+ * - storeNames (comma separated)
+ * - salesmanIds (comma separated)
  */
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const storeNames = searchParams.get("storeNames")?.split(",") || [];
+    const names = searchParams.get("names")?.split("|") || [];
+    const salesmanIds = searchParams.get("ids")?.split(",").map(Number) || [];
+    const viewType = searchParams.get("viewType") || "customer";
 
-    if (storeNames.length === 0) {
-      return NextResponse.json({});
+    if (salesmanIds.length === 0) {
+      return NextResponse.json({ error: "salesmanIds is required" }, { status: 400 });
     }
 
-    // This is a heavy operation if there are many invoices. 
-    // Ideally, the 'all' view would already contain this, but it doesn't.
-    // For now, we fetch aggregated peak sales per storeName from sales_invoice.
-    // However, sales_invoice usually has customer_code, not storeName.
-    // We need to fetch the customer mapping first.
-
-    // 1. Get customer codes for these store names
-    const filter = JSON.stringify({
-        store_name: { _in: storeNames }
-    });
-    const customersRes = await fetchDirectus(`items/customer?filter=${filter}&fields=customer_code,store_name&limit=-1`);
-    const customers = customersRes.data || [];
-    const nameToCode = new Map<string, string>(customers.map((c: any) => [c.store_name, c.customer_code]));
-    const codes = customers.map((c: any) => c.customer_code).filter(Boolean);
-
-    if (codes.length === 0) {
-      return NextResponse.json({});
-    }
-
-    // 2. Fetch total accumulated sales since the beginning for these customers
-    const aggregateQuery = JSON.stringify({
-        customer_code: { _in: codes },
-        transaction_status: { _eq: "POSTED" }
-    });
+    const token = req.cookies.get("vos_access_token")?.value;
     
-    // We can use Directus aggregation for a simple SUM grouped by customer_code
-    // But since limit is 32k and we have multiple customers, we'll fetch or aggregate
-    const aggregateParams = new URLSearchParams({
-        filter: aggregateQuery,
-        aggregate: JSON.stringify({ sum: ["net_amount"] }),
-        groupBy: "customer_code"
+    const allTimeStartDate = "2000-01-01";
+    const today = new Date().toISOString().split("T")[0];
+
+    const allData = await fetchAllSalesData(token, allTimeStartDate, today);
+
+    if (!Array.isArray(allData) || allData.length === 0) {
+      return NextResponse.json({});
+    }
+
+    const salesmanIdsSet = new Set(salesmanIds);
+    const namesSet = names.length > 0 ? new Set(names) : null;
+
+    const monthlyMap: Record<string, Record<string, number>> = {};
+
+    allData.forEach((item: any) => {
+        // Filter by salesman first
+        if (!salesmanIdsSet.has(Number(item.salesmanId))) return;
+
+        // Grouping logic
+        let groupName = "Unknown";
+        if (viewType === "area") {
+            // Province, City per user request
+            groupName = `${(item.province || "").trim()}, ${(item.city || "").trim()}`.replace(/^, |, $/g, "") || "Unknown Area";
+        } else {
+            groupName = (item.storeName || "Unknown Customer").trim();
+        }
+
+        if (namesSet && !namesSet.has(groupName)) return;
+
+        const dateStr = item.transactionDate;
+        if (!dateStr) return;
+
+        const monthKey = dateStr.substring(0, 7);
+        
+        if (!monthlyMap[groupName]) monthlyMap[groupName] = {};
+        monthlyMap[groupName][monthKey] = (monthlyMap[groupName][monthKey] || 0) + (item.netAmount || 0);
     });
 
-    const aggRes = await fetchDirectus(`items/sales_invoice?${aggregateParams.toString()}`);
-    const aggData = aggRes.data || [];
-
-    const finalMap: Record<string, number> = {};
-    const codeToTotal = new Map<string, number>(
-        aggData.map((d: any) => [d.customer_code, Number(d.sum.net_amount) || 0])
-    );
-
-    // Map back to storeName
-    storeNames.forEach(name => {
-        const code = nameToCode.get(name);
-        if (code) {
-          finalMap[name] = codeToTotal.get(code) || 0;
-        }
+    const finalMap: Record<string, { total: number; peak: number }> = {};
+    
+    Object.entries(monthlyMap).forEach(([name, months]) => {
+        const monthlyTotals = Object.values(months);
+        finalMap[name] = {
+            total: monthlyTotals.reduce((a, b) => a + b, 0),
+            peak: monthlyTotals.length > 0 ? Math.max(...monthlyTotals) : 0
+        };
     });
 
     return NextResponse.json(finalMap);

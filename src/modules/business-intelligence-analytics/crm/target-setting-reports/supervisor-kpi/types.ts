@@ -10,6 +10,27 @@ export interface VSalesPerformanceDataDto {
     storeName?: string;
     storeType?: string;
     storeTypeLabel?: string;
+    customerCode?: string;
+}
+
+export interface ProductSalesDetail {
+    customerCode: string;
+    salesmanId: number;
+    supplierId: number;
+    supplierName: string;
+    invoiceNo: string;
+    transactionDate: string;
+    productId: number;
+    productName: string;
+    categoryName: string;
+    brandName: string;
+    unitName: string;
+    totalQuantity: number;
+    quantityInBox: number;
+    quantityInPiece: number;
+    unitPrice: number;
+    discountAmount: number;
+    netAmount: number;
 }
 
 export interface TargetSettingSalesman {

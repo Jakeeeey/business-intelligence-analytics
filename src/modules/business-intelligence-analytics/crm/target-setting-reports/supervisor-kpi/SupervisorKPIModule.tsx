@@ -15,8 +15,8 @@ import { Progress } from "@/components/ui/progress";
 
 import { fetchSalesmanData, fetchDynamicTargets, fetchSupervisorMappings } from "./providers/fetchProvider";
 import { VSalesPerformanceDataDto, TargetSettingSalesman, SupervisorKPIResponse } from "./types";
-import { SalesmanBreakdownModal } from "./components/SalesmanBreakdownModal";
 import { CustomerBreakdownModal } from "./components/CustomerBreakdownModal";
+import { MonthPicker } from "./components/MonthPicker";
 
 type MetricType = "amount" | "achievement" | "count";
 
@@ -66,12 +66,6 @@ function SupervisorKPIContent() {
     const { matrix, personnel, suppliers, maxAmount, totalsMap, supplierTotals } = useMemo(() => {
         if (!mappings) return { matrix: new Map(), personnel: [], suppliers: [], maxAmount: 0, totalsMap: new Map(), supplierTotals: new Map() };
 
-        const dataMap = new Map<string, Map<string, { amount: number; count: number; target: number; customers: Set<string> }>>();
-        const pTotals = new Map<string, { amount: number; target: number; customers: Set<string> }>();
-        const supTotals = new Map<string, number>();
-        const supplierSet = new Set<string>();
-
-        // Helplers for mapping
         const salesmanToSupervisorId = new Map<number, number>();
         mappings.salesmanMappings.forEach(m => {
             salesmanToSupervisorId.set(m.salesman_id, m.supervisor_per_division_id);
@@ -82,44 +76,51 @@ function SupervisorKPIContent() {
             supervisorIdToName.set(s.id, `${s.supervisor_id.first_name} ${s.supervisor_id.last_name}`);
         });
 
-        let highAmt = 0;
         const start = parseISO(fromMonth + "-01");
         const end = parseISO(toMonth + "-01");
 
-        // 1. Process Actual Sales Data
+        const supplierSet = new Set<string>();
+        const supTotals = new Map<string, number>();
+
+        // Maps to store aggregated results keyed by Name (to combine duplicates like 'Men2 Sales' and 'MEN2 SALES')
+        const pTotals = new Map<string, { name: string; amount: number; target: number; customers: Set<string>; ids: Set<number> }>();
+        const dataMap = new Map<string, Map<string, { amount: number; count: number; target: number; customers: Set<string> }>>();
+        
+        let highAmt = 0;
+
+        // 1. Process Raw Performance Data
         rawData.forEach(item => {
-            const salesmanId = item.salesmanId;
-            const supervisorId = salesmanToSupervisorId.get(salesmanId);
+            const salesmanId = item.salesmanId || 0;
+            const supervisorId = salesmanToSupervisorId.get(Number(salesmanId)) || 0;
+            const supervisorName = supervisorId ? (supervisorIdToName.get(supervisorId) || "No Assigned Supervisor") : "No Assigned Supervisor";
+            
+            if (selectedSupervisor && supervisorName !== selectedSupervisor) return;
 
-            // If viewing specific supervisor, only process their data
-            if (selectedSupervisor) {
-                const itemSupervisorName = supervisorId ? supervisorIdToName.get(supervisorId) : "No Assigned Supervisor";
-                if (itemSupervisorName !== selectedSupervisor) return;
-            }
+            // Determine unique display name and key
+            const pName = selectedSupervisor ? (item.salesmanName || "Unknown Salesman") : supervisorName;
+            const pKey = pName.trim().toUpperCase(); // Normalize key to combine duplicates
 
-            const pName = selectedSupervisor
-                ? (item.salesmanName || "No Assigned Supervisor")
-                : (supervisorId ? (supervisorIdToName.get(supervisorId) || "No Assigned Supervisor") : "No Assigned Supervisor");
-
-            const sPly = item.supplierName || "Other";
             const amount = item.netAmount || 0;
-
-            const cId = String(item.storeName || "");
+            const cId = item.storeName;
+            const sPly = item.supplierName || "Other";
 
             supplierSet.add(sPly);
             supTotals.set(sPly, (supTotals.get(sPly) || 0) + amount);
 
-            if (!pTotals.has(pName)) pTotals.set(pName, { amount: 0, target: 0, customers: new Set() });
-            const pTot = pTotals.get(pName)!;
+            if (!pTotals.has(pKey)) {
+                pTotals.set(pKey, { name: pName, amount: 0, target: 0, customers: new Set(), ids: new Set() });
+            }
+            const pTot = pTotals.get(pKey)!;
             pTot.amount += amount;
+            pTot.ids.add(Number(salesmanId));
             if (cId) pTot.customers.add(cId);
 
-            if (!dataMap.has(pName)) dataMap.set(pName, new Map());
-            if (!dataMap.get(pName)!.has(sPly)) {
-                dataMap.get(pName)!.set(sPly, { amount: 0, count: 0, target: 0, customers: new Set() });
+            if (!dataMap.has(pKey)) dataMap.set(pKey, new Map());
+            if (!dataMap.get(pKey)!.has(sPly)) {
+                dataMap.get(pKey)!.set(sPly, { amount: 0, count: 0, target: 0, customers: new Set() });
             }
 
-            const cell = dataMap.get(pName)!.get(sPly)!;
+            const cell = dataMap.get(pKey)!.get(sPly)!;
             cell.amount += amount;
             if (cId) cell.customers.add(cId);
             cell.count = cell.customers.size;
@@ -129,39 +130,44 @@ function SupervisorKPIContent() {
 
         // 2. Process Target Data
         targets.forEach(t => {
-            const salesmanId = t.salesman_id;
-            const supervisorId = salesmanToSupervisorId.get(Number(salesmanId));
+            const salesmanId = Number(t.salesman_id);
+            const supervisorId = salesmanToSupervisorId.get(salesmanId) || 0;
             const targetDate = parseISO(t.fiscal_period);
 
             if (targetDate < start || targetDate > end) return;
 
-            if (selectedSupervisor) {
-                const itemSupervisorName = supervisorId ? supervisorIdToName.get(supervisorId) : "No Assigned Supervisor";
-                if (itemSupervisorName !== selectedSupervisor) return;
-            }
+            const supervisorName = supervisorId ? (supervisorIdToName.get(supervisorId) || "No Assigned Supervisor") : "No Assigned Supervisor";
+            if (selectedSupervisor && supervisorName !== selectedSupervisor) return;
 
             const pName = selectedSupervisor
-                ? (rawData.find(d => Number(d.salesmanId) === Number(salesmanId))?.salesmanName || `Salesman #${salesmanId}`)
-                : (supervisorId ? (supervisorIdToName.get(supervisorId) || "No Assigned Supervisor") : "No Assigned Supervisor");
+                ? (rawData.find(d => Number(d.salesmanId) === salesmanId)?.salesmanName || `Salesman #${salesmanId}`)
+                : supervisorName;
+            
+            const pKey = pName.trim().toUpperCase();
+
+            // Resolve info if not already in pTotals
+            if (!pTotals.has(pKey)) {
+                pTotals.set(pKey, { name: pName, amount: 0, target: 0, customers: new Set(), ids: new Set([salesmanId]) });
+            }
 
             const sData = rawData.find(d => Number(d.supplierId) === Number(t.supplier_id));
             const sPly = sData?.supplierName || "Other";
 
-            if (!pTotals.has(pName)) pTotals.set(pName, { amount: 0, target: 0, customers: new Set() });
-            const pTot = pTotals.get(pName)!;
+            const pTot = pTotals.get(pKey)!;
             pTot.target += (t.target_amount || 0);
+            pTot.ids.add(salesmanId);
 
-            if (!dataMap.has(pName)) dataMap.set(pName, new Map());
-            if (!dataMap.get(pName)!.has(sPly)) {
-                dataMap.get(pName)!.set(sPly, { amount: 0, count: 0, target: 0, customers: new Set() });
+            if (!dataMap.has(pKey)) dataMap.set(pKey, new Map());
+            if (!dataMap.get(pKey)!.has(sPly)) {
+                dataMap.get(pKey)!.set(sPly, { amount: 0, count: 0, target: 0, customers: new Set() });
             }
-            dataMap.get(pName)!.get(sPly)!.target += (t.target_amount || 0);
+            dataMap.get(pKey)!.get(sPly)!.target += (t.target_amount || 0);
         });
 
-        const sortedPersonnel = Array.from(pTotals.entries())
-            .sort((a, b) => b[1].amount - a[1].amount)
-            .map(e => e[0])
-            .filter(name => name.toLowerCase().includes(searchTerm.toLowerCase()));
+        const personnelList = Array.from(pTotals.entries())
+            .map(([key, data]) => ({ key, ...data }))
+            .filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()))
+            .sort((a, b) => b.amount - a.amount);
 
         const sortedSuppliers = Array.from(supplierSet).sort((a, b) => {
             return (supTotals.get(b) || 0) - (supTotals.get(a) || 0);
@@ -169,7 +175,7 @@ function SupervisorKPIContent() {
 
         return {
             matrix: dataMap,
-            personnel: sortedPersonnel,
+            personnel: personnelList,
             suppliers: sortedSuppliers,
             maxAmount: highAmt,
             totalsMap: pTotals,
@@ -209,67 +215,46 @@ function SupervisorKPIContent() {
         return "bg-primary/20 text-primary";
     };
 
-    const [modalData, setModalData] = useState<{ isOpen: boolean; supervisor: string; supplier: string; data: VSalesPerformanceDataDto[]; salesmanTargets: TargetSettingSalesman[] }>({
+    const [customerModalData, setCustomerModalData] = useState<{ 
+        isOpen: boolean; 
+        ids: number[]; 
+        salesman: string; 
+        supplier: string; 
+        data: VSalesPerformanceDataDto[];
+        startDate: string;
+        endDate: string;
+    }>({
         isOpen: false,
-        supervisor: "",
-        supplier: "",
-        data: [],
-        salesmanTargets: []
-    });
-
-    const [customerModalData, setCustomerModalData] = useState<{ isOpen: boolean; salesman: string; supplier: string; data: VSalesPerformanceDataDto[] }>({
-        isOpen: false,
+        ids: [],
         salesman: "",
         supplier: "",
-        data: []
+        data: [],
+        startDate: "",
+        endDate: ""
     });
 
-    const handleCellClick = (pName: string, supplier: string) => {
+    const handleCellClick = (pName: string, supplier: string, ids: Set<number>) => {
         if (selectedSupervisor) {
             // We are already in drill-down mode (viewing individual salesmen)
             // Show customer level breakdown
-            const salesmanId = rawData.find(d => d.salesmanName === pName)?.salesmanId;
             const filtered = rawData.filter(d =>
-                (d.salesmanName === pName || (salesmanId && d.salesmanId === salesmanId)) &&
+                ids.has(Number(d.salesmanId)) &&
                 (d.supplierName || "Other") === supplier
             );
 
             setCustomerModalData({
                 isOpen: true,
+                ids: Array.from(ids),
                 salesman: pName,
                 supplier,
-                data: filtered
+                data: filtered,
+                startDate: format(startOfMonth(parseISO(fromMonth + "-01")), "yyyy-MM-dd"),
+                endDate: format(endOfMonth(parseISO(toMonth + "-01")), "yyyy-MM-dd")
             });
             return;
         }
 
-        // Find all salesmen under this supervisor
-        const supervisorRecord = mappings?.supervisors.find(s => `${s.supervisor_id.first_name} ${s.supervisor_id.last_name}` === pName);
-        if (!supervisorRecord) return;
-
-        const assignedSalesmenIds = mappings?.salesmanMappings
-            .filter(m => m.supervisor_per_division_id === supervisorRecord.id)
-            .map(m => m.salesman_id) || [];
-
-        const filteredSales = rawData.filter(d =>
-            assignedSalesmenIds.includes(d.salesmanId) &&
-            (d.supplierName || "Other") === supplier
-        );
-
-        const filteredTargets = targets.filter(t =>
-            assignedSalesmenIds.includes(Number(t.salesman_id)) &&
-            // We need to match supplier ID too. Let's find supplier ID from one of the sales records or mappings.
-            // Simplified: filter targets that match any salesman in this team for this supplier.
-            rawData.some(d => Number(d.supplierId) === Number(t.supplier_id) && (d.supplierName || "Other") === supplier)
-        );
-
-        setModalData({
-            isOpen: true,
-            supervisor: pName,
-            supplier,
-            data: filteredSales,
-            salesmanTargets: filteredTargets
-        });
+        setSelectedSupervisor(pName);
     };
 
     if (loading) return <div className="flex h-screen w-full items-center justify-center bg-background"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
@@ -318,10 +303,10 @@ function SupervisorKPIContent() {
                         <Input placeholder={selectedSupervisor ? "Filter salesmen..." : "Filter supervisors..."} className="pl-10 w-[180px] bg-card h-10 border-muted-foreground/20" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
                     </div>
 
-                    <div className="flex items-center gap-2 bg-card border rounded-lg px-3 h-10 shadow-sm">
-                        <Calendar className="h-4 w-4 text-primary" />
-                        <Input type="month" value={fromMonth} onChange={e => setFromMonth(e.target.value)} className="w-[130px] border-none bg-transparent focus-visible:ring-0 text-xs font-bold" />
-                        <Input type="month" value={toMonth} onChange={e => setToMonth(e.target.value)} className="w-[130px] border-none bg-transparent focus-visible:ring-0 text-xs font-bold" />
+                    <div className="flex items-center gap-1 bg-card border rounded-lg px-2 h-10 shadow-sm">
+                        <MonthPicker value={fromMonth} onChange={setFromMonth} />
+                        <div className="w-[1px] h-4 bg-muted-foreground/20 mx-1" />
+                        <MonthPicker value={toMonth} onChange={setToMonth} />
                     </div>
                 </div>
             </div>
@@ -356,21 +341,21 @@ function SupervisorKPIContent() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {personnel.map((pName, idx) => {
-                                    const personalTotal = totalsMap.get(pName)!;
+                                {personnel.map((person, idx) => {
+                                    const personalTotal = totalsMap.get(person.key)!;
                                     const totalAchievement = personalTotal.target > 0 ? (personalTotal.amount / personalTotal.target) * 100 : 0;
                                     const totalCount = personalTotal.customers.size;
 
                                     return (
-                                        <tr key={pName} className="group">
+                                        <tr key={person.key} className="group">
                                             <td
                                                 className="sticky left-0 z-40 bg-background/95 backdrop-blur-sm p-4 border-r border-b group-hover:bg-accent transition-all cursor-pointer"
-                                                onClick={() => !selectedSupervisor && setSelectedSupervisor(pName)}
+                                                onClick={() => !selectedSupervisor && setSelectedSupervisor(person.name)}
                                             >
                                                 <div className="flex items-center gap-3">
                                                     <span className="text-[10px] font-mono text-muted-foreground w-4">{idx + 1}</span>
                                                     <div className="flex flex-col">
-                                                        <p className="font-bold text-sm tracking-tight truncate max-w-[160px] text-foreground">{pName}</p>
+                                                        <p className="font-bold text-sm tracking-tight truncate max-w-[160px] text-foreground">{person.name}</p>
                                                         {!selectedSupervisor && <span className="text-[10px] text-primary/60 font-bold uppercase tracking-tighter">Click to drill down</span>}
                                                     </div>
                                                     {idx < 3 && <Trophy className={`h-3 w-3 ${idx === 0 ? "text-yellow-500" : "text-slate-400"}`} />}
@@ -391,7 +376,7 @@ function SupervisorKPIContent() {
                                             </td>
 
                                             {suppliers.map(sup => {
-                                                const cell = matrix.get(pName)?.get(sup);
+                                                const cell = matrix.get(person.key)?.get(sup);
                                                 const amount = cell?.amount || 0;
                                                 const target = cell?.target || 0;
 
@@ -405,7 +390,7 @@ function SupervisorKPIContent() {
                                                 const heatVal = activeMetric === "count" ? (cell?.count || 0) : amount;
 
                                                 return (
-                                                    <td key={`${pName}-${sup}`} className="p-0.5 border-b border-r" onClick={() => handleCellClick(pName, sup)}>
+                                                    <td key={`${person.key}-${sup}`} className="p-0.5 border-b border-r" onClick={() => handleCellClick(person.name, sup, person.ids)}>
                                                         <TooltipProvider>
                                                             <Tooltip>
                                                                 <TooltipTrigger asChild>
@@ -418,7 +403,7 @@ function SupervisorKPIContent() {
                                                                         <div className="flex justify-between items-start">
                                                                             <div>
                                                                                 <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">{sup}</p>
-                                                                                <p className="text-sm font-bold">{pName}</p>
+                                                                                <p className="text-sm font-bold">{person.name}</p>
                                                                             </div>
                                                                             {target > 0 && (
                                                                                 <Badge variant={amount >= target ? "default" : "destructive"}>
@@ -471,23 +456,17 @@ function SupervisorKPIContent() {
                 </ScrollArea>
             </Card>
 
-            <SalesmanBreakdownModal
-                isOpen={modalData.isOpen}
-                onClose={() => setModalData(prev => ({ ...prev, isOpen: false }))}
-                data={modalData.data}
-                targets={modalData.salesmanTargets}
-                supervisorName={modalData.supervisor}
-                supplierName={modalData.supplier}
-                periodLabel={`${fromMonth} to ${toMonth}`}
-            />
 
             <CustomerBreakdownModal
                 isOpen={customerModalData.isOpen}
                 onClose={() => setCustomerModalData(prev => ({ ...prev, isOpen: false }))}
                 data={customerModalData.data}
+                ids={customerModalData.ids}
                 salesmanName={customerModalData.salesman}
                 supplierName={customerModalData.supplier}
                 periodLabel={`${fromMonth} to ${toMonth}`}
+                startDate={customerModalData.startDate}
+                endDate={customerModalData.endDate}
             />
         </div>
     );
