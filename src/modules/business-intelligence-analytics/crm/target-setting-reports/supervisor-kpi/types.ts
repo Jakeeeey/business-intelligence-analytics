@@ -76,3 +76,8 @@ export interface SupervisorKPIResponse {
     salesmanMappings: SalesmanMapping[];
     salesmanMaster: SalesmanMaster[];
 }
+export interface AreaTarget {
+    province: string;
+    city: string;
+    target_amount: number;
+}

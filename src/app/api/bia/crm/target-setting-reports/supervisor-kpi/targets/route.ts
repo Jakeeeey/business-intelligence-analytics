@@ -82,8 +82,9 @@ export async function GET(req: NextRequest) {
       salesmanTargets: salesmanTargets
     });
 
-  } catch (error: any) {
-    console.error("[Supervisor KPI Targets API Error]:", error.message);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    const err = error as Error;
+    console.error("[Supervisor KPI Targets API Error]:", err.message);
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

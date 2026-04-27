@@ -25,13 +25,13 @@ export async function GET(req: NextRequest) {
     const endDate = searchParams.get("endDate");
 
     const viewType = searchParams.get("viewType") || "customer";
-    const names = searchParams.get("names")?.split("|") || [];
+    // const names = searchParams.get("names")?.split("|") || [];
 
     if (salesmanIds.length === 0 || !startDate || !endDate) {
       return NextResponse.json({ error: "Missing required parameters" }, { status: 400 });
     }
 
-    // Helper for fuzzy name matching
+    /*
     const normalize = (s: string) => (s || "").toLowerCase()
         .replace(/city of /g, "")
         .replace(/ city/g, "")
@@ -40,6 +40,7 @@ export async function GET(req: NextRequest) {
         .replace(/\(capital\)/g, "")
         .replace(/[^a-z0-9]/g, "")
         .trim();
+    */
 
     if (viewType === "area") {
       // MEGA BRUTE FORCE: Fetch EVERYTHING with fields=* to find the hidden data
@@ -64,28 +65,28 @@ export async function GET(req: NextRequest) {
 
       // INVESTIGATIVE FETCH: Just match by month to see if ANY data exists for this period
       const validSettingIds = (allSettings || [])
-        .filter((s: any) => {
-            const sFrom = (s.date_range_from || "").substring(0, 7);
-            const sTo = (s.date_range_to || "").substring(0, 7);
+        .filter((s: Record<string, unknown>) => {
+            const sFrom = (s.date_range_from as string || "").substring(0, 7);
+            const sTo = (s.date_range_to as string || "").substring(0, 7);
             return targetMonth >= sFrom && targetMonth <= sTo;
         })
-        .map((s: any) => s.id);
+        .map((s: Record<string, unknown>) => s.id as number);
 
       if (validSettingIds.length === 0) return NextResponse.json([]);
 
       // Map targets raw for frontend to match
       const matchingTargets = (allAreas || [])
-        .filter((item: any) => {
+        .filter((item: Record<string, unknown>) => {
             // Check all possible target setting ID fields
             const rawTid = item.target_setting_id || item.target_setting || item.targetSetting;
-            const areaSettingId = Number(typeof rawTid === 'object' ? rawTid?.id : rawTid);
+            const areaSettingId = Number(typeof rawTid === 'object' && rawTid !== null ? (rawTid as Record<string, unknown>).id : rawTid);
             return validSettingIds.includes(areaSettingId);
         })
-        .map((item: any) => ({
-            province: item.province || "",
-            city: item.city || "",
+        .map((item: Record<string, unknown>) => ({
+            province: (item.province as string) || "",
+            city: (item.city as string) || "",
             // Use target_amount as primary, but check variations if empty
-            target_amount: Number(item.target_amount || item.targetAmount || item.amount || 0)
+            target_amount: Number((item.target_amount as number) || (item.targetAmount as number) || (item.amount as number) || 0)
         }));
 
       return NextResponse.json(matchingTargets);
@@ -117,17 +118,18 @@ export async function GET(req: NextRequest) {
     
     // Map to { [storeName]: targetAmount }
     const targetMap: Record<string, number> = {};
-    (data || []).forEach((item: any) => {
-      const storeName = item.customer_id?.store_name;
+    (data || []).forEach((item: Record<string, unknown>) => {
+      const storeName = (item.customer_id as Record<string, unknown> | undefined)?.store_name as string | undefined;
       if (storeName) {
-        targetMap[storeName] = (targetMap[storeName] || 0) + (item.target_amount || 0);
+        targetMap[storeName] = (targetMap[storeName] || 0) + (item.target_amount as number || 0);
       }
     });
 
     return NextResponse.json(targetMap);
 
-  } catch (error: any) {
-    console.error("[Customer Targets API Error]:", error.message);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    const err = error as Error;
+    console.error("[Customer Targets API Error]:", err.message);
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

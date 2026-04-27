@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,14 +28,16 @@ async function fetchDirectus(path: string) {
   return await res.json();
 }
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
     // Debug info (Remove after fixing)
+    /*
     const debugInfo = {
         upstream: UPSTREAM,
         tokenLength: STATIC_TOKEN?.length || 0,
         tokenPrefix: STATIC_TOKEN?.substring(0, 5) + "..."
     };
+    */
 
     // 1. Fetch all supervisors per division
     const spdRes = await fetchDirectus(
@@ -60,9 +62,9 @@ export async function GET(req: NextRequest) {
     const salesmanData = salesmanRes.data || [];
 
     // 4. Fetch only relevant users to get supervisor names
-    const uniqueSupervisorIds = Array.from(new Set(spdData.map((s: any) => s.supervisor_id).filter(Boolean)));
+    const uniqueSupervisorIds = Array.from(new Set(spdData.map((s: Record<string, unknown>) => s.supervisor_id).filter(Boolean)));
     
-    let usersData: any[] = [];
+    let usersData: Record<string, unknown>[] = [];
     if (uniqueSupervisorIds.length > 0) {
         // SCHEMA DETECTION: The Dummy (8056) and Live (8091) servers have different schemas for the 'user' table.
         // 8056: id, user_firstname, user_lastname
@@ -75,8 +77,9 @@ export async function GET(req: NextRequest) {
                 `items/user?filter[${idField}][_in]=${uniqueSupervisorIds.join(",")}&limit=-1`
             );
             usersData = usersRes.data || [];
-        } catch (e: any) {
-            console.error("Schema detection fallback triggered:", e.message);
+        } catch (e) {
+            const err = e as Error;
+            console.error("Schema detection fallback triggered:", err.message);
             // If the detection above failed, try the other one as a final fallback
             const fallbackField = isDummy ? "user_id" : "id";
             try {
@@ -90,17 +93,17 @@ export async function GET(req: NextRequest) {
         }
     }
     
-    const usersMap = new Map<string, any>(usersData.map((u: any) => [String(u.id || u.user_id), u]));
+    const usersMap = new Map<string, Record<string, unknown>>(usersData.map((u: Record<string, unknown>) => [String(u.id || u.user_id), u]));
 
     // 5. Enrich spdData with user details
-    const enrichedSupervisors = spdData.map((s: any) => {
+    const enrichedSupervisors = spdData.map((s: Record<string, unknown>) => {
         const user = usersMap.get(String(s.supervisor_id));
         return {
             ...s,
             supervisor_id: user ? {
                 id: user.id || user.user_id,
-                first_name: user.user_fname || user.user_firstname || "Unknown",
-                last_name: user.user_lname || user.user_lastname || ""
+                first_name: (user.user_fname as string) || (user.user_firstname as string) || "Unknown",
+                last_name: (user.user_lname as string) || (user.user_lastname as string) || ""
             } : {
                 id: s.supervisor_id,
                 first_name: "Super",
@@ -115,10 +118,11 @@ export async function GET(req: NextRequest) {
         salesmanMaster: salesmanData
     });
 
-  } catch (error: any) {
-    console.error("[Supervisor mapping API error]:", error.message);
+  } catch (error) {
+    const err = error as Error;
+    console.error("[Supervisor mapping API error]:", err.message);
     return NextResponse.json({ 
-        error: error.message, 
+        error: err.message, 
         debug: {
             upstream: UPSTREAM,
             hasToken: !!STATIC_TOKEN

@@ -62,18 +62,18 @@ export function CustomerBreakdownModal({
         const map = new Map<string, { sales: number; count: number; customerCode: string; sId: number; supId: number }>();
 
         data.forEach((item) => {
-            const itemObj = item as any;
+            const itemObj = item as Record<string, unknown>;
             const name = viewType === "customer" 
                 ? (item.storeName || "Unknown Customer").trim()
-                : `${(itemObj.province || "").trim()}, ${(itemObj.city || "").trim()}`.replace(/^, |, $/g, "") || "Unknown Area";
+                : `${(itemObj.province as string || "").trim()}, ${(itemObj.city as string || "").trim()}`.replace(/^, |, $/g, "") || "Unknown Area";
             
             // Based on sample: customerCode might be a name, while province/city might contain the ID (e.g. "EPI-EXT4 - 34095")
             // For Area view, we use the combined name itself as the identifier fallback
             const rawCode = viewType === "area" 
-                ? `${(itemObj.province || "").trim()}::${(itemObj.city || "").trim()}`
-                : (itemObj.province && itemObj.province.includes('-')) ? itemObj.province :
-                  (itemObj.customerCode && itemObj.customerCode.includes('-')) ? itemObj.customerCode :
-                  itemObj.customerCode || itemObj.storeCode || itemObj.customerId || name;
+                ? `${(itemObj.province as string || "").trim()}::${(itemObj.city as string || "").trim()}`
+                : (itemObj.province && (itemObj.province as string).includes('-')) ? itemObj.province as string :
+                  (itemObj.customerCode && (itemObj.customerCode as string).includes('-')) ? itemObj.customerCode as string :
+                  itemObj.customerCode as string || itemObj.storeCode as string || itemObj.customerId as string || name;
             
             const current = map.get(name) || { 
                 sales: 0, 
@@ -83,7 +83,7 @@ export function CustomerBreakdownModal({
                 supId: Number(item.supplierId) 
             };
             
-            current.sales += Number(item.netAmount || itemObj.amount || 0);
+            current.sales += Number(item.netAmount || itemObj.amount as number || 0);
             current.count += 1;
             
             // If code was missing in first record but found in subsequent, update it
@@ -164,11 +164,12 @@ export function CustomerBreakdownModal({
         if (!sortConfig) return metrics;
 
         return [...metrics].sort((a, b) => {
-            const aVal = (a as any)[sortConfig.key];
-            const bVal = (b as any)[sortConfig.key];
+            const aVal = (a as Record<string, unknown>)[sortConfig.key];
+            const bVal = (b as Record<string, unknown>)[sortConfig.key];
 
-            if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
-            if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+            if (aVal === undefined || bVal === undefined) return 0;
+            if ((aVal as number | string) < (bVal as number | string)) return sortConfig.direction === 'asc' ? -1 : 1;
+            if ((aVal as number | string) > (bVal as number | string)) return sortConfig.direction === 'asc' ? 1 : -1;
             return 0;
         });
     }, [customerMetrics, sortConfig]);
@@ -202,7 +203,7 @@ export function CustomerBreakdownModal({
                             
                             <div className="flex items-center gap-6">
                                 <Tabs defaultValue="customer" value={viewType} onValueChange={(v) => {
-                                    setViewType(v as any);
+                                    setViewType(v as "customer" | "area");
                                     setSortConfig(null);
                                 }} className="w-[300px]">
                                     <TabsList className="grid w-full grid-cols-2 bg-muted/20 border border-border/40 p-1 rounded-xl">

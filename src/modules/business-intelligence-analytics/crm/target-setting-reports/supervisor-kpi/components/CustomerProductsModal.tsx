@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
     Dialog,
     DialogContent,
@@ -47,13 +47,7 @@ export const CustomerProductsModal: React.FC<CustomerProductsModalProps> = ({
     const [loading, setLoading] = useState(false);
     const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
 
-    useEffect(() => {
-        if (isOpen && customerName) {
-            loadProducts();
-        }
-    }, [isOpen, customerName, viewType]);
-
-    const loadProducts = async () => {
+    const loadProducts = useCallback(async () => {
         setLoading(true);
         try {
             const data = await fetchCustomerProducts(customerCode, salesmanId, supplierId, startDate, endDate, viewType);
@@ -63,7 +57,13 @@ export const CustomerProductsModal: React.FC<CustomerProductsModalProps> = ({
         } finally {
             setLoading(false);
         }
-    };
+    }, [customerCode, salesmanId, supplierId, startDate, endDate, viewType]);
+
+    useEffect(() => {
+        if (isOpen && customerName) {
+            loadProducts();
+        }
+    }, [isOpen, customerName, viewType, loadProducts]);
 
     const handleSort = (key: string) => {
         let direction: 'asc' | 'desc' = 'asc';
@@ -77,9 +77,10 @@ export const CustomerProductsModal: React.FC<CustomerProductsModalProps> = ({
         if (!sortConfig) return products;
 
         return [...products].sort((a, b) => {
-            const aVal = (a as any)[sortConfig.key];
-            const bVal = (b as any)[sortConfig.key];
+            const aVal = a[sortConfig.key as keyof ProductSalesDetail];
+            const bVal = b[sortConfig.key as keyof ProductSalesDetail];
 
+            if (aVal === undefined || bVal === undefined) return 0;
             if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
             if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
             return 0;

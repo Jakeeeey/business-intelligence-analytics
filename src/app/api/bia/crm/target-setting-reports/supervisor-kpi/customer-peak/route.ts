@@ -64,7 +64,7 @@ export async function GET(req: NextRequest) {
 
     const monthlyMap: Record<string, Record<string, number>> = {};
 
-    allData.forEach((item: any) => {
+    allData.forEach((item: Record<string, unknown>) => {
         // Filter by salesman first
         if (!salesmanIdsSet.has(Number(item.salesmanId))) return;
 
@@ -72,20 +72,20 @@ export async function GET(req: NextRequest) {
         let groupName = "Unknown";
         if (viewType === "area") {
             // Province, City per user request
-            groupName = `${(item.province || "").trim()}, ${(item.city || "").trim()}`.replace(/^, |, $/g, "") || "Unknown Area";
+            groupName = `${(item.province as string || "").trim()}, ${(item.city as string || "").trim()}`.replace(/^, |, $/g, "") || "Unknown Area";
         } else {
-            groupName = (item.storeName || "Unknown Customer").trim();
+            groupName = (item.storeName as string || "Unknown Customer").trim();
         }
 
         if (namesSet && !namesSet.has(groupName)) return;
 
-        const dateStr = item.transactionDate;
+        const dateStr = item.transactionDate as string;
         if (!dateStr) return;
 
         const monthKey = dateStr.substring(0, 7);
         
         if (!monthlyMap[groupName]) monthlyMap[groupName] = {};
-        monthlyMap[groupName][monthKey] = (monthlyMap[groupName][monthKey] || 0) + (item.netAmount || 0);
+        monthlyMap[groupName][monthKey] = (monthlyMap[groupName][monthKey] || 0) + (item.netAmount as number || 0);
     });
 
     const finalMap: Record<string, { total: number; peak: number }> = {};
@@ -100,8 +100,9 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(finalMap);
 
-  } catch (error: any) {
-    console.error("[Customer Peak API Error]:", error.message);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    const err = error as Error;
+    console.error("[Customer Peak API Error]:", err.message);
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    let res = await fetch(url.toString(), {
+    const res = await fetch(url.toString(), {
       method: "GET",
       headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
       cache: "no-store",
@@ -83,9 +83,9 @@ export async function GET(req: NextRequest) {
             const provinceSearch = (parts[0] || "").toLowerCase().trim();
             const citySearch = (parts[1] || "").toLowerCase().trim();
             
-            data = allSales.filter((item: any) => {
-                const itemProv = (item.province || item.provinceName || "").toLowerCase().trim();
-                const itemCity = (item.city || item.cityName || "").toLowerCase().trim();
+            data = allSales.filter((item: Record<string, unknown>) => {
+                const itemProv = (item.province as string || item.provinceName as string || "").toLowerCase().trim();
+                const itemCity = (item.city as string || item.cityName as string || "").toLowerCase().trim();
                 
                 if (provinceSearch && citySearch) {
                     return itemProv.includes(provinceSearch) && itemCity.includes(citySearch);
@@ -97,9 +97,9 @@ export async function GET(req: NextRequest) {
 
     // 3. AGGREGATE PRODUCS: Sum values for the same productId
     if (Array.isArray(data) && data.length > 0) {
-        const aggregatedMap = new Map<number, any>();
+        const aggregatedMap = new Map<number, Record<string, unknown>>();
         
-        data.forEach((item: any) => {
+        data.forEach((item: Record<string, unknown>) => {
             const pId = Number(item.productId);
             if (!pId) return;
             
@@ -113,11 +113,11 @@ export async function GET(req: NextRequest) {
                 });
             }
             
-            const agg = aggregatedMap.get(pId);
-            agg.totalQuantity += Number(item.totalQuantity || 0);
-            agg.quantityInBox += Number(item.quantityInBox || 0);
-            agg.quantityInPiece += Number(item.quantityInPiece || 0);
-            agg.netAmount += Number(item.netAmount || 0);
+            const agg = aggregatedMap.get(pId)!;
+            agg.totalQuantity = (agg.totalQuantity as number || 0) + Number(item.totalQuantity || 0);
+            agg.quantityInBox = (agg.quantityInBox as number || 0) + Number(item.quantityInBox || 0);
+            agg.quantityInPiece = (agg.quantityInPiece as number || 0) + Number(item.quantityInPiece || 0);
+            agg.netAmount = (agg.netAmount as number || 0) + Number(item.netAmount || 0);
         });
         
         data = Array.from(aggregatedMap.values());
@@ -125,8 +125,9 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(data);
 
-  } catch (error: any) {
-    console.error("[Customer Products API Error]:", error.message);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    const err = error as Error;
+    console.error("[Customer Products API Error]:", err.message);
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

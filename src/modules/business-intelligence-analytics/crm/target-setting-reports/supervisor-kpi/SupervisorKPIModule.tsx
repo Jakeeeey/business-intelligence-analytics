@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useMemo, Suspense } from "react";
 import { format, startOfMonth, endOfMonth, parseISO } from "date-fns";
 import { useSearchParams } from "next/navigation";
-import { Loader2, Calendar, ChevronRight, Search, Trophy, Coins, Target as TargetIcon, Hash, Users, User, ArrowLeft } from "lucide-react";
+import { Loader2, ChevronRight, Search, Trophy, Coins, Target as TargetIcon, Hash, ArrowLeft } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";

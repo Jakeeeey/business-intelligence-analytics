@@ -1,4 +1,4 @@
-import { VSalesPerformanceDataDto, TargetSettingResponse, SupervisorKPIResponse, ProductSalesDetail } from "../types";
+import { VSalesPerformanceDataDto, TargetSettingResponse, SupervisorKPIResponse, ProductSalesDetail, AreaTarget } from "../types";
 
 export const fetchSupervisorMappings = async (): Promise<SupervisorKPIResponse> => {
     const url = `/api/bia/crm/target-setting-reports/supervisor-kpi/mapping`;
@@ -51,7 +51,7 @@ export const fetchCustomerTargets = async (salesmanIds: number[], startDate: str
             const normalizedInputMap: Record<string, string> = {};
             (names || []).forEach(n => { normalizedInputMap[smartNormalize(n)] = n; });
 
-            data.forEach((item: any) => {
+            data.forEach((item: AreaTarget) => {
                 const prov = (item.province || "").trim();
                 const city = (item.city || "").trim();
                 const dbAreaName = `${prov}, ${city}`.replace(/^, |, $/g, "");

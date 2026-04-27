@@ -21,13 +21,13 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Search, Users, UserCheck } from "lucide-react";
 
-import { VSalesPerformanceDataDto } from "../types";
+import { VSalesPerformanceDataDto, TargetSettingSalesman } from "../types";
 
 interface SalesmanBreakdownModalProps {
     isOpen: boolean;
     onClose: () => void;
     data: VSalesPerformanceDataDto[];
-    targets: any[]; // Salesman targets
+    targets: TargetSettingSalesman[]; // Salesman targets
     supervisorName: string;
     supplierName: string;
     periodLabel: string;
@@ -99,7 +99,7 @@ export function SalesmanBreakdownModal({
                                 <Users className="h-3 w-3" /> Salesman Breakdown
                             </div>
                             <DialogTitle className="text-2xl font-black tracking-tight uppercase flex flex-col sm:flex-row sm:items-baseline gap-2">
-                                <span className="text-primary italic">{supervisorName}'s Team</span>
+                                <span className="text-primary italic">{supervisorName}&apos;s Team</span>
                                 <span className="text-muted-foreground text-sm font-bold tracking-widest">PERFORMANCE FOR</span>
                                 <span className="text-emerald-500">{supplierName}</span>
                             </DialogTitle>
@@ -211,6 +211,6 @@ export function SalesmanBreakdownModal({
     );
 }
 
-function cn(...classes: any[]) {
+function cn(...classes: (string | boolean | undefined | null)[]) {
     return classes.filter(Boolean).join(" ");
 }
