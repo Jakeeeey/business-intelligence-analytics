@@ -76,19 +76,19 @@ function POVolumeTooltip({
   const datum = payload?.[0]?.payload;
 
   if (!active || !datum) return null;
-
   const hasPrevious = datum.previousCount != null;
+  const isNewFromZeroBaseline =
+    hasPrevious && datum.previousCount === 0 && datum.count > 0;
 
+  const delta = datum.delta ?? 0;
+  const pct = datum.changePct;
   const comparisonLine = !hasPrevious
     ? null
-    : datum.previousCount === 0
-      ? `vs ${datum.previousPeriod}: +${datum.delta ?? 0} (new demand)`
-      : `vs ${datum.previousPeriod}: ${
-          datum.delta && datum.delta > 0 ? "+" : ""
-        }${datum.delta ?? 0} (${
-          datum.changePct != null ? `${Math.round(datum.changePct)}%` : "n/a"
+    : isNewFromZeroBaseline
+      ? `vs ${datum.previousPeriod}: +${delta} (initial demand spike)`
+      : `vs ${datum.previousPeriod}: ${delta > 0 ? "+" : ""}${delta} (${
+          pct != null ? `${Math.round(pct)}%` : "0%"
         })`;
-
   return (
     <div className="border-border/50 bg-background min-w-55 rounded-lg border px-3 py-2 text-xs shadow-xl">
       <div className="font-semibold text-foreground">{datum.periodLong}</div>
@@ -127,20 +127,14 @@ export function POVolumeOverTimeChart({ rows }: Props) {
     // 2. Define time range (min → current month OR max data month)
     const now = new Date();
 
-    const minKey =
-      rows.reduce(
-        (min, r) => {
-          if (!r.poDate) return min;
-          const d = new Date(r.poDate);
-          if (isNaN(d.getTime())) return min;
-          const key = new Date(d.getFullYear(), d.getMonth(), 1).getTime();
-          return min == null ? key : Math.min(min, key);
-        },
-        null as number | null,
-      ) ?? new Date(now.getFullYear(), 0, 1).getTime();
+    // START: January of current year
+    const startDate = new Date(now.getFullYear(), 0, 1);
 
-    const maxKey = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+    // END: next month (buffer period)
+    const endDate = new Date(now.getFullYear(), now.getMonth(), 1);
 
+    const minKey = startDate.getTime();
+    const maxKey = endDate.getTime();
     // 3. Build FULL month sequence (no gaps)
     const fullMonths: number[] = [];
     const cursor = new Date(minKey);
