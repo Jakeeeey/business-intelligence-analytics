@@ -40,36 +40,6 @@ export default function LeadTimeTrackerModule() {
         </Alert>
       ) : null}
 
-      {/* {hook.loadingData && !hook.readyState.hasData ? (
-        <Card>
-          <CardContent className="flex flex-col items-center gap-3 p-8 text-center">
-            <Spinner className="h-8 w-8" />
-            <p className="text-sm text-muted-foreground">
-              Fetching lead time data...
-            </p>
-          </CardContent>
-        </Card>
-      ) : null} */}
-
-      {/* {hasData ? (
-        <Card className="bg-muted/30 border-dashed">
-          <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4 text-sm text-muted-foreground">
-            <span>
-              Showing{" "}
-              <span className="font-semibold text-foreground">{rowCount}</span>{" "}
-              latest PO/SO records.
-            </span>
-            <span className="flex items-center gap-2">
-              <span
-                className="inline-flex h-2 w-2 rounded-full bg-primary/70"
-                aria-hidden
-              />
-              Hover rows or legend chips to spotlight matching statuses.
-            </span>
-          </CardContent>
-        </Card>
-      ) : null} */}
-
       <KPICards rows={hook.rows} loading={hook.loadingData} />
 
       <Tabs defaultValue="table">
@@ -93,7 +63,12 @@ export default function LeadTimeTrackerModule() {
         </TabsContent>
 
         <TabsContent value="timeline">
-          <TimelineView filters={hook.filters} products={hook.products} />
+          <TimelineView
+            filters={hook.filters}
+            rows={hook.rows}
+            loading={hook.loadingData}
+            error={hook.error}
+          />
         </TabsContent>
       </Tabs>
     </div>

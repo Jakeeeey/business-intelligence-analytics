@@ -60,7 +60,7 @@ export function Filters({
   const [yearPick, setYearPick] = React.useState<number>(
     new Date().getFullYear(),
   );
-  const [dayPick, setDayPick] = React.useState<string>(filters.dateFrom || "");
+  // const [dayPick, setDayPick] = React.useState<string>(filters.dateFrom || "");
   const [weekPick, setWeekPick] = React.useState<string>("");
   const [monthPick, setMonthPick] = React.useState<string>("");
   const [productOpen, setProductOpen] = React.useState<boolean>(false);
@@ -268,12 +268,12 @@ export function Filters({
     });
   };
 
-  const applyDayPick = (val?: string) => {
-    const v = val ?? dayPick;
-    if (!v) return;
-    // v is YYYY-MM-DD from input[type=date]
-    onChange({ ...filters, dateRangePreset: "custom", dateFrom: v, dateTo: v });
-  };
+  // const applyDayPick = (val?: string) => {
+  //   const v = val ?? dayPick;
+  //   if (!v) return;
+  //   // v is YYYY-MM-DD from input[type=date]
+  //   onChange({ ...filters, dateRangePreset: "custom", dateFrom: v, dateTo: v });
+  // };
 
   // Single-select: choose one product. Normalize id to string so checks work
   // regardless of numeric/string id shapes. Selecting the same product will
@@ -356,7 +356,7 @@ export function Filters({
             <Label>Date Range</Label>
             <div className="flex flex-wrap gap-2 items-center">
               {/* Daily */}
-              <DropdownMenu>
+              {/* <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm">
                     Daily ▾
@@ -443,7 +443,7 @@ export function Filters({
                     </div>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
-              </DropdownMenu>
+              </DropdownMenu> */}
 
               {/* Weekly */}
               <DropdownMenu>
