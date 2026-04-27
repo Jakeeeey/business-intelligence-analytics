@@ -212,9 +212,9 @@ export default function Filters({
                         <Label htmlFor="summary" className="font-medium">
                           Summary Only
                         </Label>
-                        <p className="text-sm text-muted-foreground">
+                        {/* <p className="text-sm text-muted-foreground">
                           Includes the cover page and compact summary tables
-                        </p>
+                        </p> */}
                       </div>
                     </div>
                     {/* <div className="flex items-start space-x-3 space-y-0 rounded-md border p-4">
