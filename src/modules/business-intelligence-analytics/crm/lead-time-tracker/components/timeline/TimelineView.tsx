@@ -95,10 +95,70 @@ function findNumberFromRecord(rec: Record<string, unknown>, keys: string[]) {
 
 function statusToLabel(status?: string | null) {
   const s = String(status ?? "").toLowerCase();
-  if (s === "on-time" || s === "on time" || s === "ontime") return "On time";
+  if (s === "on-time" || s === "on time" || s === "ontime") return "On Time";
   if (s === "warning" || s === "warn") return "Warning";
   if (s === "delayed" || s === "delay" || s === "late") return "Delayed";
   return "Pending";
+}
+
+function stageToLabel(stage: LifecycleStage) {
+  if (stage === "approval") return "Approval";
+  if (stage === "dispatch") return "Dispatch";
+  return "Delivery";
+}
+
+function formatDateTime(value?: Date | null) {
+  if (!value) return "—";
+  try {
+    return value.toLocaleString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return value.toISOString();
+  }
+}
+
+function formatDurationFromMs(ms?: number | null) {
+  if (ms == null || !Number.isFinite(ms)) return "—";
+  const totalHours = Math.max(0, Math.round(ms / (1000 * 60 * 60)));
+  const days = Math.floor(totalHours / 24);
+  const hours = totalHours % 24;
+  if (days > 0 && hours > 0) return `${days}d ${hours}h`;
+  if (days > 0) return `${days}d`;
+  return `${hours}h`;
+}
+
+// function formatDurationFromDays(days?: number | null) {
+//   if (days == null || !Number.isFinite(days)) return "—";
+//   return formatDurationFromMs(days * MS_PER_DAY);
+// }
+
+function getStageBounds(stage: LifecycleStage, row: RowGroup) {
+  const fallbackStart = row.poDate ?? row.events.created ?? null;
+  if (stage === "approval") {
+    return {
+      start: row.events.created ?? fallbackStart,
+      end: row.events.approved ?? null,
+    };
+  }
+  if (stage === "dispatch") {
+    return {
+      start: row.events.approved ?? row.events.created ?? fallbackStart,
+      end: row.events.dispatch ?? null,
+    };
+  }
+  return {
+    start:
+      row.events.dispatch ??
+      row.events.approved ??
+      row.events.created ??
+      fallbackStart,
+    end: row.events.delivered ?? null,
+  };
 }
 
 function extractEventsFromRecord(r: LeadTimeRecord) {
@@ -140,11 +200,17 @@ export default function ProcessTimeline({
   filters: LeadTimeFilters;
   products: LeadTimeProductOption[];
 }) {
-  type SortMode = "date-desc" | "date-asc" | "po-asc" | "po-desc" | "so-asc" | "so-desc";
+  type SortMode =
+    | "date-desc"
+    | "date-asc"
+    | "po-asc"
+    | "po-desc"
+    | "so-asc"
+    | "so-desc";
 
   const [records, setRecords] = React.useState<LeadTimeRecord[]>([]);
-  const [loading, setLoading] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
+  const [, setLoading] = React.useState(false);
+  const [, setError] = React.useState<string | null>(null);
   const [sortMode, setSortMode] = React.useState<SortMode>("date-desc");
 
   // Phase 1: Smart Zoom System
@@ -155,10 +221,9 @@ export default function ProcessTimeline({
   // const handleZoomReset = () => setDayWidth(32);
 
   // Phase 2: Drawer State
-  const [selectedRecord, setSelectedRecord] = React.useState<Record<
-    string,
-    unknown
-  > | null>(null);
+  const [, setSelectedRecord] = React.useState<Record<string, unknown> | null>(
+    null,
+  );
 
   const productNames = React.useMemo(() => {
     if (!filters.productIds?.length) return undefined;
@@ -320,22 +385,42 @@ export default function ProcessTimeline({
     const arr = Array.from(map.values());
     arr.sort((a, b) => {
       if (sortMode === "date-desc") {
-        const ad = a.poDate ?? a.events.created ?? a.events.approved ?? a.events.dispatch ?? a.events.delivered;
-        const bd = b.poDate ?? b.events.created ?? b.events.approved ?? b.events.dispatch ?? b.events.delivered;
+        const ad =
+          a.poDate ??
+          a.events.created ??
+          a.events.approved ??
+          a.events.dispatch ??
+          a.events.delivered;
+        const bd =
+          b.poDate ??
+          b.events.created ??
+          b.events.approved ??
+          b.events.dispatch ??
+          b.events.delivered;
         if (!ad && !bd) return (a.poNo || "").localeCompare(b.poNo || "");
         if (!ad) return 1;
         if (!bd) return -1;
         return bd.getTime() - ad.getTime();
       }
       if (sortMode === "date-asc") {
-        const ad = a.poDate ?? a.events.created ?? a.events.approved ?? a.events.dispatch ?? a.events.delivered;
-        const bd = b.poDate ?? b.events.created ?? b.events.approved ?? b.events.dispatch ?? b.events.delivered;
+        const ad =
+          a.poDate ??
+          a.events.created ??
+          a.events.approved ??
+          a.events.dispatch ??
+          a.events.delivered;
+        const bd =
+          b.poDate ??
+          b.events.created ??
+          b.events.approved ??
+          b.events.dispatch ??
+          b.events.delivered;
         if (!ad && !bd) return (a.poNo || "").localeCompare(b.poNo || "");
         if (!ad) return 1;
         if (!bd) return -1;
         return ad.getTime() - bd.getTime();
       }
-      
+
       if (sortMode === "po-asc") {
         return (a.poNo || "").localeCompare(b.poNo || "", undefined, {
           numeric: true,
@@ -661,8 +746,8 @@ export default function ProcessTimeline({
                   style={{ height: rowHeight }}
                 >
                   {/* STICKY LEFT COLUMN (Permanent) */}
-                  <div className="sticky left-0 z-30 w-56 shrink-0 border-r bg-background group-hover:bg-slate-50 p-4 flex flex-col justify-center shadow-[1px_0_0_0_#e2e8f0]">
-                    <div className="font-semibold text-sm text-slate-900 truncate">
+                  <div className="sticky left-0 z-30 w-56 shrink-0 border-r bg-background group-hover:bg-slate-100/50 p-4 flex flex-col justify-center shadow-[1px_0_0_0_#e2e8f0]">
+                    <div className="font-semibold text-sm dark:text-slate-200 text-slate-900 truncate">
                       {r.poNo || "Unknown PO"}
                     </div>
                     {r.soNo && (
@@ -704,37 +789,88 @@ export default function ProcessTimeline({
                           .trim()
                           .toLowerCase();
                         const statusLabel = statusToLabel(normalizedStatus);
-                        const normalizedDays =
-                          segment.days == null
-                            ? null
-                            : Math.max(0, Math.round(segment.days));
+                        const stageLabel = stageToLabel(segment.stage);
+                        const stageBounds = getStageBounds(segment.stage, r);
+                        const segmentDays =
+                          typeof segment.days === "number" &&
+                          Number.isFinite(segment.days)
+                            ? Math.max(0, segment.days)
+                            : null;
+                        const derivedStageDays =
+                          segmentDays ??
+                          (stageBounds.start && stageBounds.end
+                            ? Math.max(
+                                0,
+                                (stageBounds.end.getTime() -
+                                  stageBounds.start.getTime()) /
+                                  MS_PER_DAY,
+                              )
+                            : null);
                         const isPending =
-                          normalizedDays == null ||
-                          normalizedStatus === "pending";
+                          !stageBounds.end &&
+                          (normalizedStatus === "pending" ||
+                            derivedStageDays == null);
                         const segmentWidth = isPending
                           ? pendingSegmentWidth
                           : Math.max(
                               minSegmentWidth,
-                              normalizedDays * dayWidth,
+                              Math.max(0.25, derivedStageDays ?? 0) * dayWidth,
                             );
                         const statusClass =
                           getStatusColor(normalizedStatus) || "";
                         const fallbackColor =
                           getStatusHex(normalizedStatus) || "#9ca3af";
                         const showLabel = segmentWidth >= 42;
+                        const compactDuration =
+                          derivedStageDays == null
+                            ? ""
+                            : `${Math.max(1, Math.round(derivedStageDays))}d`;
                         const label = isPending
                           ? showLabel
                             ? "Pending"
                             : ""
                           : showLabel
-                            ? `${normalizedDays}d`
+                            ? compactDuration
                             : "";
-                        const stageLabel =
-                          segment.stage === "approval"
-                            ? "Approval"
-                            : segment.stage === "dispatch"
-                              ? "Dispatch"
-                              : "Delivery";
+                        const runningMs =
+                          isPending && stageBounds.start
+                            ? Math.max(
+                                0,
+                                Date.now() - stageBounds.start.getTime(),
+                              )
+                            : null;
+                        const durationValue =
+                          derivedStageDays != null
+                            ? `${Math.round(Math.max(0, derivedStageDays))} Day${
+                                Math.round(Math.max(0, derivedStageDays)) === 1
+                                  ? ""
+                                  : "s"
+                              }`
+                            : runningMs != null
+                              ? `${Math.floor(
+                                  Math.max(0, runningMs / MS_PER_DAY),
+                                )} Day${
+                                  Math.floor(
+                                    Math.max(0, runningMs / MS_PER_DAY),
+                                  ) === 1
+                                    ? ""
+                                    : "s"
+                                }`
+                              : "0 Days";
+                        const stageStatusLabel = isPending
+                          ? "Pending"
+                          : statusLabel;
+                        const operationalNote = isPending
+                          ? runningMs != null
+                            ? `Running for ${formatDurationFromMs(runningMs)}`
+                            : "Running (start date unavailable)"
+                          : derivedStageDays != null
+                            ? `Completed in ${Math.round(Math.max(0, derivedStageDays))} Day${
+                                Math.round(Math.max(0, derivedStageDays)) === 1
+                                  ? ""
+                                  : "s"
+                              }`
+                            : "Completed";
 
                         return (
                           <Tooltip key={`${segment.stage}-${segmentIndex}`}>
@@ -760,7 +896,7 @@ export default function ProcessTimeline({
                                   setSelectedRecord({
                                     ...r,
                                     stage: segment.stage,
-                                    stageDays: normalizedDays,
+                                    stageDays: derivedStageDays,
                                     stageStatus: normalizedStatus,
                                   });
                                 }}
@@ -768,17 +904,138 @@ export default function ProcessTimeline({
                                 {label}
                               </div>
                             </TooltipTrigger>
-                            <TooltipContent sideOffset={6}>
-                              <div className="text-xs font-medium">
-                                {stageLabel}
-                              </div>
-                              <div className="text-xs text-muted-foreground">
-                                {normalizedDays == null
-                                  ? "Pending"
-                                  : `${normalizedDays} Day${normalizedDays === 1 ? "" : "s"}`}
-                              </div>
-                              <div className="text-xs text-muted-foreground">
-                                Status: {statusLabel}
+                            <TooltipContent
+                              sideOffset={8}
+                              className="w-88 rounded-xl border bg-background/95 p-4 shadow-xl backdrop-blur-sm"
+                            >
+                              <div className="space-y-4 text-xs">
+                                {/* TOP SUMMARY */}
+                                <div className="space-y-1">
+                                  <div className="flex items-center justify-between gap-3">
+                                    <div className="font-semibold text-sm text-foreground truncate">
+                                      PO: {r.poNo || "No PO Number"}
+                                    </div>
+
+                                    <div
+                                      className={cn(
+                                        "rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                                        normalizedStatus === "on-time" &&
+                                          "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-300",
+                                        normalizedStatus === "warning" &&
+                                          "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300",
+                                        normalizedStatus === "delayed" &&
+                                          "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300",
+                                        normalizedStatus === "pending" &&
+                                          "bg-slate-100 text-slate-700 dark:bg-slate-500/20 dark:text-slate-300",
+                                      )}
+                                    >
+                                      {stageStatusLabel}
+                                    </div>
+                                  </div>
+
+                                  <div className="text-muted-foreground truncate">
+                                    SO: {r.soNo || "No SO Number"}
+                                  </div>
+
+                                  <div className="text-muted-foreground line-clamp-2">
+                                    Product: {r.label || "No Product Name"}
+                                  </div>
+                                </div>
+
+                                {/* KPI GRID */}
+                                <div className="grid grid-cols-2 gap-2">
+                                  <div className="rounded-lg border bg-muted/40 p-2">
+                                    <div className="text-[10px] text-muted-foreground">
+                                      Stage
+                                    </div>
+                                    <div className="font-semibold text-foreground">
+                                      {stageLabel}
+                                    </div>
+                                  </div>
+
+                                  <div className="rounded-lg border bg-muted/40 p-2">
+                                    <div className="text-[10px] text-muted-foreground">
+                                      Duration
+                                    </div>
+                                    <div className="font-semibold text-foreground">
+                                      {durationValue}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* DATE FLOW */}
+                                <div className="space-y-2 rounded-lg border bg-muted/20 p-3">
+                                  {segment.stage === "approval" && (
+                                    <>
+                                      <div className="flex justify-between gap-3">
+                                        <span className="text-muted-foreground">
+                                          Started
+                                        </span>
+                                        <span className="font-medium text-right">
+                                          {formatDateTime(r.events.created)}
+                                        </span>
+                                      </div>
+
+                                      <div className="flex justify-between gap-3">
+                                        <span className="text-muted-foreground">
+                                          Completed
+                                        </span>
+                                        <span className="font-medium text-right">
+                                          {formatDateTime(r.events.approved)}
+                                        </span>
+                                      </div>
+                                    </>
+                                  )}
+
+                                  {segment.stage === "dispatch" && (
+                                    <>
+                                      <div className="flex justify-between gap-3">
+                                        <span className="text-muted-foreground">
+                                          Started
+                                        </span>
+                                        <span className="font-medium text-right">
+                                          {formatDateTime(r.events.approved)}
+                                        </span>
+                                      </div>
+
+                                      <div className="flex justify-between gap-3">
+                                        <span className="text-muted-foreground">
+                                          Completed
+                                        </span>
+                                        <span className="font-medium text-right">
+                                          {formatDateTime(r.events.dispatch)}
+                                        </span>
+                                      </div>
+                                    </>
+                                  )}
+
+                                  {segment.stage === "delivery" && (
+                                    <>
+                                      <div className="flex justify-between gap-3">
+                                        <span className="text-muted-foreground">
+                                          Started
+                                        </span>
+                                        <span className="font-medium text-right">
+                                          {formatDateTime(r.events.dispatch)}
+                                        </span>
+                                      </div>
+
+                                      <div className="flex justify-between gap-3">
+                                        <span className="text-muted-foreground">
+                                          Completed
+                                        </span>
+                                        <span className="font-medium text-right">
+                                          {formatDateTime(r.events.delivered)}
+                                        </span>
+                                      </div>
+                                    </>
+                                  )}
+                                </div>
+
+                                {/* NOTE */}
+                                <div className="rounded-lg border-l-2 border-primary/60 bg-primary/5 px-3 py-2 text-muted-foreground leading-relaxed">
+                                  {operationalNote}
+                                </div>
                               </div>
                             </TooltipContent>
                           </Tooltip>

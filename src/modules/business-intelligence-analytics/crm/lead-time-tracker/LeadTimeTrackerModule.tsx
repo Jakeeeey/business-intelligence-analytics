@@ -10,8 +10,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Filters } from "./components/Filters";
 import KPICards from "./components/KPICards";
 import { LeadTimeTable } from "./components/LeadTimeTable";
-import StatusDistributionChart from "./components/charts/StatusDistributionChart";
-import LeadTimeTrendChart from "./components/charts/LeadTimeTrendChart";
 import AverageDaysByStageChart from "./components/charts/AverageDaysByStageChart";
 import POVolumeOverTimeChart from "./components/charts/POVolumeOverTimeChart";
 import TimelineView from "./components/timeline/TimelineView";

@@ -6,7 +6,6 @@ import {
   Bar,
   XAxis,
   YAxis,
-  Tooltip as RechartsTooltip,
   ResponsiveContainer,
   Cell,
   LabelList,
@@ -21,7 +20,6 @@ import {
 import {
   ChartContainer,
   ChartTooltip,
-  ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
 import type { LeadTimeRow } from "../../types";
@@ -36,8 +34,68 @@ const chartConfig = {
   delivered: { label: "Delivery (Days)", color: "#10B981" },
 } satisfies ChartConfig;
 
+type StageDatum = {
+  key: "approval" | "dispatch" | "delivered";
+  stage: "Approval" | "Dispatch" | "Delivery";
+  days: number;
+  count: number;
+  color: string;
+  status: "Pending" | "On Time" | "Warning" | "Delayed";
+};
+
+function interpretStageStatus(
+  days: number,
+  count: number,
+): StageDatum["status"] {
+  if (!count) return "Pending";
+  if (days <= 1) return "On Time";
+  if (days <= 3) return "Warning";
+  return "Delayed";
+}
+
+function formatDurationForTooltip(days: number) {
+  const totalHours = Math.max(0, Math.round(days * 24));
+  const dayPart = Math.floor(totalHours / 24);
+  const hourPart = totalHours % 24;
+
+  const chunks: string[] = [];
+  if (dayPart > 0) chunks.push(`${dayPart} Day${dayPart === 1 ? "" : "s"}`);
+  if (hourPart > 0) chunks.push(`${hourPart} Hour${hourPart === 1 ? "" : "s"}`);
+  if (!chunks.length) return "0 Hours";
+  return chunks.join(" ");
+}
+
+function AverageDaysByStageTooltip({
+  active,
+  payload,
+}: {
+  active?: boolean;
+  payload?: Array<{ payload?: StageDatum }>;
+}) {
+  const datum = payload?.[0]?.payload;
+
+  if (!active || !datum) return null;
+
+  return (
+    <div className="border-border/50 bg-background min-w-55 rounded-lg border px-3 py-2 text-xs shadow-xl">
+      <div className="font-semibold text-foreground">{datum.stage} Stage</div>
+      <div className="text-muted-foreground">
+        Average: {formatDurationForTooltip(datum.days)}
+      </div>
+      <div className="text-muted-foreground">
+        Based on: {datum.count.toLocaleString()} Order
+        {datum.count === 1 ? "" : "s"}
+      </div>
+      <div className="text-muted-foreground">
+        Status:{" "}
+        <span className="font-medium text-foreground">{datum.status}</span>
+      </div>
+    </div>
+  );
+}
+
 export function AverageDaysByStageChart({ rows }: Props) {
-  const data = React.useMemo(() => {
+  const data = React.useMemo<StageDatum[]>(() => {
     let approvalSum = 0,
       approvalCount = 0,
       dispatchSum = 0,
@@ -64,24 +122,30 @@ export function AverageDaysByStageChart({ rows }: Props) {
     const dispatchAvg = dispatchCount ? dispatchSum / dispatchCount : 0;
     const deliveredAvg = deliveredCount ? deliveredSum / deliveredCount : 0;
 
-    const arr = [
+    const arr: StageDatum[] = [
       {
         key: "approval",
         stage: "Approval",
-        days: Number(approvalAvg.toFixed(1)),
+        days: Number(approvalAvg.toFixed(2)),
+        count: approvalCount,
         color: chartConfig.approval.color,
+        status: interpretStageStatus(approvalAvg, approvalCount),
       },
       {
         key: "dispatch",
         stage: "Dispatch",
-        days: Number(dispatchAvg.toFixed(1)),
+        days: Number(dispatchAvg.toFixed(2)),
+        count: dispatchCount,
         color: chartConfig.dispatch.color,
+        status: interpretStageStatus(dispatchAvg, dispatchCount),
       },
       {
         key: "delivered",
         stage: "Delivery",
-        days: Number(deliveredAvg.toFixed(1)),
+        days: Number(deliveredAvg.toFixed(2)),
+        count: deliveredCount,
         color: chartConfig.delivered.color,
+        status: interpretStageStatus(deliveredAvg, deliveredCount),
       },
     ];
 
@@ -104,8 +168,8 @@ export function AverageDaysByStageChart({ rows }: Props) {
               margin={{ top: 20, right: 10, left: 0, bottom: 20 }}
             >
               <XAxis dataKey="stage" />
-              <YAxis />
-              <ChartTooltip content={<ChartTooltipContent />} />
+              <YAxis tickFormatter={(v) => `${Number(v).toFixed(1)}d`} />
+              <ChartTooltip content={<AverageDaysByStageTooltip />} />
               <Bar dataKey="days" fill="#2563eb">
                 {data.map((entry, i) => (
                   <Cell key={`cell-${i}`} fill={entry.color} />
@@ -113,7 +177,9 @@ export function AverageDaysByStageChart({ rows }: Props) {
                 <LabelList
                   dataKey="days"
                   position="top"
-                  formatter={(v: number) => (v == null ? "" : `${v}d`)}
+                  formatter={(v: number) =>
+                    v == null ? "" : `${Number(v).toFixed(1)}d`
+                  }
                 />
               </Bar>
             </BarChart>
