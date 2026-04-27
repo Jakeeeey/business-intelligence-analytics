@@ -484,22 +484,6 @@ export default function FulfillmentTable(props: FulfillmentTableProps) {
           </div>
         </div>
 
-        {/* Legend
-        <div className="flex items-center gap-4 mb-3 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1.5">
-            <span className="inline-block w-3 h-3 rounded-sm bg-emerald-100 border border-emerald-300" />
-            Fulfilled
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="inline-block w-3 h-3 rounded-sm bg-orange-100 border border-orange-300" />
-            Fulfilled with Returns
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="inline-block w-3 h-3 rounded-sm bg-rose-100 border border-rose-300" />
-            Unfulfilled
-          </span>
-        </div> */}
-
         <div className="bg-background rounded-md border border-border/50 overflow-hidden">
           <div className="">
             <Table>
