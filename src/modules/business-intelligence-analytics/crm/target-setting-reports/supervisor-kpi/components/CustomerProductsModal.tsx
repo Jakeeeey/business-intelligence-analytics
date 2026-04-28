@@ -130,18 +130,10 @@ export const CustomerProductsModal: React.FC<CustomerProductsModalProps> = ({
                                 <TableHeader className="bg-muted/30 sticky top-0 z-10 backdrop-blur-sm">
                                     <TableRow className="hover:bg-transparent border-b border-border/40">
                                         <TableHead 
-                                            className="text-[9px] uppercase font-black tracking-wider text-muted-foreground py-4 cursor-pointer hover:text-primary transition-colors"
-                                            onClick={() => handleSort('productName')}
-                                        >
-                                            <div className="flex items-center gap-1.5 ml-2">
-                                                <ShoppingCart className="h-3 w-3" /> Product Name {getSortIcon('productName')}
-                                            </div>
-                                        </TableHead>
-                                        <TableHead 
                                             className="text-center text-[9px] uppercase font-black tracking-wider text-muted-foreground cursor-pointer hover:text-primary transition-colors"
                                             onClick={() => handleSort('brandName')}
                                         >
-                                            <div className="flex items-center justify-center gap-1.5">
+                                            <div className="flex items-center justify-center gap-1.5 ml-2">
                                                 <Tag className="h-3 w-3" /> Brand {getSortIcon('brandName')}
                                             </div>
                                         </TableHead>
@@ -151,6 +143,14 @@ export const CustomerProductsModal: React.FC<CustomerProductsModalProps> = ({
                                         >
                                             <div className="flex items-center justify-center gap-1.5">
                                                 <Layers className="h-3 w-3" /> Category {getSortIcon('categoryName')}
+                                            </div>
+                                        </TableHead>
+                                        <TableHead 
+                                            className="text-[9px] uppercase font-black tracking-wider text-muted-foreground py-4 cursor-pointer hover:text-primary transition-colors pl-6"
+                                            onClick={() => handleSort('productName')}
+                                        >
+                                            <div className="flex items-center gap-1.5">
+                                                <ShoppingCart className="h-3 w-3" /> Product Name {getSortIcon('productName')}
                                             </div>
                                         </TableHead>
                                         <TableHead 
@@ -177,7 +177,7 @@ export const CustomerProductsModal: React.FC<CustomerProductsModalProps> = ({
                                             className="text-right text-[9px] uppercase font-black tracking-wider text-muted-foreground mr-4 cursor-pointer hover:text-primary transition-colors"
                                             onClick={() => handleSort('netAmount')}
                                         >
-                                            <div className="flex items-center justify-end gap-1.5 pr-2">
+                                            <div className="flex items-center justify-end gap-1.5 pr-4">
                                                 <DollarSign className="h-3 w-3" /> Net Amount {getSortIcon('netAmount')}
                                             </div>
                                         </TableHead>
@@ -196,9 +196,6 @@ export const CustomerProductsModal: React.FC<CustomerProductsModalProps> = ({
                                     ) : sortedProducts.length > 0 ? (
                                         sortedProducts.map((product, idx) => (
                                             <TableRow key={idx} className="hover:bg-primary/5 transition-colors border-border/40 group">
-                                                <TableCell className="font-bold text-[11px] text-foreground/80 group-hover:text-primary py-3 uppercase tracking-tight pl-4">
-                                                    {product.productName}
-                                                </TableCell>
                                                 <TableCell className="text-center">
                                                     <span className="text-[9px] bg-primary/10 text-primary px-2 py-0.5 rounded-md font-black uppercase tracking-tighter border border-primary/20">
                                                         {product.brandName}
@@ -208,6 +205,9 @@ export const CustomerProductsModal: React.FC<CustomerProductsModalProps> = ({
                                                     <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-tighter">
                                                         {product.categoryName}
                                                     </span>
+                                                </TableCell>
+                                                <TableCell className="font-bold text-[11px] text-foreground/80 group-hover:text-primary py-3 uppercase tracking-tight pl-6">
+                                                    {product.productName}
                                                 </TableCell>
                                                 <TableCell className="text-right font-mono text-[11px] font-black text-primary/80">
                                                     {product.totalQuantity} <span className="text-[9px] text-muted-foreground font-medium">{product.unitName}</span>
