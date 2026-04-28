@@ -41,7 +41,14 @@ export async function GET(req: NextRequest) {
 
     // 2. Handle Spring Boot Proxy (Dynamic Report Data)
     if (targetUrl) {
-      const token = req.cookies.get("vos_access_token")?.value;
+      // Fallback for different cookie names and cleaning 'base64-' prefix
+      let token = req.cookies.get("vos_access_token")?.value || 
+                  req.cookies.get("sb-xmcamkraqlikbvllgyxj-auth-token")?.value;
+      
+      if (token && token.startsWith("base64-")) {
+        token = token.replace("base64-", "");
+      }
+
       const SPRING_API_BASE = process.env.SPRING_API_BASE_URL;
 
       if (!token) {
@@ -73,9 +80,10 @@ export async function GET(req: NextRequest) {
     }
 
     return NextResponse.json({ error: "Missing required parameters (targetUrl or directusCollection)" }, { status: 400 });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Internal server error";
     console.error("Dynamic Reports API Error:", error);
-    return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
 
@@ -99,8 +107,9 @@ export async function POST(req: NextRequest) {
 
     const data = await res.json();
     return NextResponse.json(data);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || "Failed to save report" }, { status: 500 });
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Failed to save report";
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
 
@@ -125,8 +134,9 @@ export async function PATCH(req: NextRequest) {
 
     const data = await res.json();
     return NextResponse.json(data);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || "Failed to update report" }, { status: 500 });
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Failed to update report";
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
 
@@ -153,7 +163,8 @@ export async function DELETE(req: NextRequest) {
 
     const data = await res.json();
     return NextResponse.json(data);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || "Failed to delete report" }, { status: 500 });
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Failed to delete report";
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

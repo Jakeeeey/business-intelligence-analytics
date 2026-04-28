@@ -1,28 +1,16 @@
-/**
- * Aggregation types for the pivot engine
- */
-export type AggregationType = "sum" | "count" | "presence" | "average";
-
-export interface PivotResult {
-  rows: string[];
-  columns: string[];
-  matrix: Record<string, Record<string, any>>;
-  rowTotals: Record<string, number>;
-  colTotals: Record<string, number>;
-  grandTotal: number;
-}
+import { AggregationType, PivotResult, ReportData, PivotCellValue } from "../types";
 
 /**
  * Transforms a flat JSON array into a pivot matrix.
  */
 export function pivotData(
-  data: any[],
+  data: ReportData[],
   rowKey: string,
   colKey: string,
   valueKey: string,
   aggType: AggregationType
 ): PivotResult {
-  const matrix: Record<string, Record<string, any>> = {};
+  const matrix: Record<string, Record<string, PivotCellValue>> = {};
   const rowSet = new Set<string>();
   const colSet = new Set<string>();
   
@@ -49,21 +37,24 @@ export function pivotData(
       matrix[rVal][cVal] = true;
     } else {
       const num = Number(vVal) || 0;
+      const currentCellVal = matrix[rVal][cVal];
+      const existingNum = typeof currentCellVal === 'number' ? currentCellVal : 0;
       
       if (aggType === "sum") {
-        matrix[rVal][cVal] = (matrix[rVal][cVal] || 0) + num;
+        matrix[rVal][cVal] = existingNum + num;
         rowTotals[rVal] = (rowTotals[rVal] || 0) + num;
         colTotals[cVal] = (colTotals[cVal] || 0) + num;
         grandTotal += num;
       } else if (aggType === "count") {
-        matrix[rVal][cVal] = (matrix[rVal][cVal] || 0) + 1;
+        matrix[rVal][cVal] = existingNum + 1;
         rowTotals[rVal] = (rowTotals[rVal] || 0) + 1;
         colTotals[cVal] = (colTotals[cVal] || 0) + 1;
         grandTotal += 1;
       } else if (aggType === "average") {
         countTracker[rVal][cVal] = (countTracker[rVal][cVal] || 0) + 1;
-        const currentSum = (matrix[rVal][cVal] || 0) * (countTracker[rVal][cVal] - 1);
-        matrix[rVal][cVal] = (currentSum + num) / countTracker[rVal][cVal];
+        const count = countTracker[rVal][cVal];
+        const currentSum = existingNum * (count - 1);
+        matrix[rVal][cVal] = (currentSum + num) / count;
         
         // Totals for average are tricky, we'll keep them as sums for the Grand Totals
         rowTotals[rVal] = (rowTotals[rVal] || 0) + num;

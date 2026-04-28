@@ -1,213 +1,440 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useImperativeHandle, forwardRef } from "react";
 import {
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from "@/components/ui/table";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Check, LayoutGrid, ChevronDown, MousePointer2 } from "lucide-react";
+  useReactTable,
+  getCoreRowModel,
+  getGroupedRowModel,
+  getExpandedRowModel,
+  getFilteredRowModel,
+  flexRender,
+  GroupingState,
+  ExpandedState,
+  Row,
+} from "@tanstack/react-table";
 import { cn } from "@/lib/utils";
-import { PivotResult } from "../utils/pivot-utils";
+import { ChevronRight, ChevronDown } from "lucide-react";
+import { ReportData, PivotConfig, ColumnFilter } from "../types";
+import { createPivotColumns, pivotAggregationFns, formatDateValue } from "../utils/tanstack-pivot-adapter";
 
 interface PivotTableViewProps {
-  pivotData: PivotResult;
-  rowLabel: string;
+  data: ReportData[];
+  config: PivotConfig;
+  activeFilters: ColumnFilter[];
+  onAddFilter: (filter: ColumnFilter) => void;
+  onRemoveFilter: (id: string) => void;
+  onClearAll: () => void;
+  visibleColumns: string[];
+  onToggleColumn: (col: string) => void;
+  onExport?: (rows: Record<string, unknown>[], columns: Record<string, unknown>[]) => void;
+  rowSort?: 'asc' | 'desc' | null;
+  onRowSortChange?: (sort: 'asc' | 'desc' | null) => void;
+  rowFilters?: string[] | null;
+  onRowFiltersChange?: (filters: string[] | null) => void;
 }
 
-export function PivotTableView({ pivotData, rowLabel }: PivotTableViewProps) {
-  const { rows, columns, matrix, rowTotals, colTotals, grandTotal } = pivotData;
-  const [showTopShadow, setShowTopShadow] = useState(false);
-  const [showBottomShadow, setShowBottomShadow] = useState(false);
+export interface PivotTableViewRef {
+  exportToExcel: (fileName: string) => void;
+}
 
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const target = e.currentTarget;
-    const scrollTop = target.scrollTop;
-    const scrollHeight = target.scrollHeight;
-    const clientHeight = target.clientHeight;
+export const PivotTableView = forwardRef<PivotTableViewRef, PivotTableViewProps>(({ 
+  data, 
+  config,
+  rowSort: initialRowSort = null,
+  onRowSortChange,
+  rowFilters: initialRowFilters = null,
+  onRowFiltersChange
+}, ref) => {
+  const [grouping, setGrouping] = useState<GroupingState>(config.rowFields.map(f => f.id));
+  const [expanded, setExpanded] = useState<ExpandedState>({});
+  const [rowSort, setRowSort] = useState<'asc' | 'desc' | null>(initialRowSort);
+  const [rowFilters, setRowFilters] = useState<string[] | null>(initialRowFilters);
 
-    setShowTopShadow(scrollTop > 10);
-    setShowBottomShadow(scrollTop + clientHeight < scrollHeight - 10);
-  };
+  // Sync with props
+  useEffect(() => {
+    setRowSort(initialRowSort);
+  }, [initialRowSort]);
 
   useEffect(() => {
-    // Initial check for scrollability
-    const viewport = document.querySelector('[data-slot="scroll-area-viewport"]');
-    if (viewport) {
-      setShowBottomShadow(viewport.scrollHeight > viewport.clientHeight);
-    }
-  }, [pivotData]);
+    setRowFilters(initialRowFilters);
+  }, [initialRowFilters]);
 
-  // Base styling for sticky elements
-  const headerStickyBase = "sticky bg-muted/95 backdrop-blur-md z-40 border-b border-r shadow-[inset_0_-1px_0_rgba(0,0,0,0.1),inset_-1px_0_0_rgba(0,0,0,0.1)]";
-  const cellStickyBase = "sticky left-0 bg-background/95 backdrop-blur-sm z-30 border-r shadow-[inset_-1px_0_0_rgba(0,0,0,0.1)]";
+  // Sync with external config changes
+  useEffect(() => {
+    setGrouping(config.rowFields.map(f => f.id));
+  }, [config.rowFields]);
+
+  // Apply row-level filtering and sorting
+  const processedData = useMemo(() => {
+    let result = [...data];
+    
+    // Filter
+    if (rowFilters && config.rowFields.length > 0) {
+      const primaryField = config.rowFields[0];
+      result = result.filter(row => {
+        const rawVal = row[primaryField.id as keyof ReportData];
+        const formattedVal = primaryField.type === 'date' 
+          ? formatDateValue(rawVal, primaryField.dateGrouping)
+          : String(rawVal ?? "");
+        return rowFilters.includes(formattedVal);
+      });
+    }
+    
+    // Sort
+    if (rowSort && config.rowFields.length > 0) {
+      const primaryField = config.rowFields[0].id;
+      result.sort((a, b) => {
+        const valA = String(a[primaryField]);
+        const valB = String(b[primaryField]);
+        return rowSort === 'asc' 
+          ? valA.localeCompare(valB, undefined, { numeric: true })
+          : valB.localeCompare(valA, undefined, { numeric: true });
+      });
+    }
+    
+    return result;
+  }, [data, rowSort, rowFilters, config.rowFields]);
+
+  const columns = useMemo(
+    () => createPivotColumns(config, data, { // Use original data for metadata/filters
+      onSort: (s) => {
+        setRowSort(s);
+        if (onRowSortChange) onRowSortChange(s);
+      },
+      onFilter: (f) => {
+        setRowFilters(f);
+        if (onRowFiltersChange) onRowFiltersChange(f);
+      }
+    }),
+    [config, data, onRowSortChange, onRowFiltersChange] // REMOVED rowFilters to keep columns stable
+  );
+
+  // CRITICAL: Ensure grouping/visibility only refers to columns that actually exist in the current definition
+  // This prevents the "Column with id 'X' does not exist" crash during schema transitions.
+  const validatedGrouping = useMemo(() => {
+    const existingIds = new Set(columns.map(c => c.id));
+    return grouping.filter(id => existingIds.has(id));
+  }, [grouping, columns]);
+
+  const validatedVisibility = useMemo(() => {
+    const existingIds = new Set(columns.map(c => c.id));
+    const visibility: Record<string, boolean> = {};
+    config.rowFields.forEach(f => {
+      if (existingIds.has(f.id)) {
+        visibility[f.id] = false;
+      }
+    });
+    return visibility;
+  }, [config.rowFields, columns]);
+
+  const table = useReactTable({
+    data: processedData,
+    columns,
+    state: {
+      grouping: validatedGrouping,
+      expanded,
+      columnVisibility: validatedVisibility,
+    },
+    meta: {
+      rowFilters,
+      rowSort
+    },
+    columnResizeMode: 'onChange',
+    autoResetExpanded: false,
+    onGroupingChange: setGrouping,
+    onExpandedChange: setExpanded,
+    getCoreRowModel: getCoreRowModel(),
+    getGroupedRowModel: getGroupedRowModel(),
+    getExpandedRowModel: getExpandedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    aggregationFns: pivotAggregationFns,
+  });
+
+  const { rows } = table.getRowModel();
+
+    // ═══════════════════════════════════════════════════════════════════
+    // EXPORT LOGIC (Exposed to parent)
+    // ═══════════════════════════════════════════════════════════════════
+    useImperativeHandle(ref, () => {
+      const calculateFooterRow = () => {
+        const leafCols = table.getAllLeafColumns().filter(col => {
+          const isRowField = config.rowFields.some(f => f.id === col.id);
+          const isRowLabels = col.id === "rowLabels";
+          return isRowLabels || !isRowField;
+        });
+        
+        return leafCols.reduce((acc: Record<string, unknown>, col) => {
+          if (col.id === 'rowLabels') {
+            acc[col.id] = "GRAND TOTAL";
+          } else {
+            const topLevelRows = table.getGroupedRowModel().rows;
+            acc[col.id] = topLevelRows.reduce((sum, r) => sum + (Number(r.getValue(col.id)) || 0), 0);
+          }
+          return acc;
+        }, {});
+      };
+
+      return {
+        getFooterRow: calculateFooterRow,
+        exportToExcel: (fileName: string) => {
+          const leafColumns = table.getAllLeafColumns().filter(col => {
+            const isRowField = config.rowFields.some(f => f.id === col.id);
+            const isRowLabels = col.id === "rowLabels";
+            return isRowLabels || !isRowField;
+          });
+
+          // Get the actual header groups (multi-level)
+          const headerGroups = table.getHeaderGroups();
+          const multiLevelHeaders = headerGroups.map(group => {
+            return group.headers
+              .filter(header => {
+                const colId = header.column.id;
+                const isRowField = config.rowFields.some(f => f.id === colId);
+                const isRowLabels = colId === "rowLabels";
+                return isRowLabels || !isRowField;
+              })
+              .map(header => ({
+                id: header.column.id,
+                header: typeof header.column.columnDef.header === 'string' 
+                  ? header.column.columnDef.header 
+                  : (header.column.id === 'rowLabels' ? 'ROW LABELS' : header.column.id),
+                colSpan: header.colSpan,
+                isPlaceholder: header.isPlaceholder
+              }));
+          });
+
+          const exportCols = leafColumns.map(col => {
+            const header = col.columnDef.header;
+            let headerTitle = typeof header === 'string' ? header : col.id;
+            if (col.id === 'rowLabels') headerTitle = 'ROW LABELS';
+            
+            return {
+              id: col.id,
+              header: headerTitle
+            };
+          });
+
+          // Helper to recursively collect all rows in the tree regardless of expansion state
+          const getAllRowsRecursively = (rows: Row<ReportData>[]): { depth: number; getValue: (colId: string) => unknown }[] => {
+            let all: { depth: number; getValue: (colId: string) => unknown }[] = [];
+            rows.forEach(row => {
+              // Only include grouped rows (those that have a dimension label)
+              // This removes the redundant 'leaf' data rows that just repeat the total
+              if (row.getIsGrouped()) {
+                all.push({
+                  depth: row.depth,
+                  getValue: (colId: string) => {
+                    if (colId === 'rowLabels') {
+                      return row.getValue(row.groupingColumnId!);
+                    }
+                    return row.getValue(colId);
+                  }
+                });
+                
+                if (row.subRows && row.subRows.length > 0) {
+                  all = [...all, ...getAllRowsRecursively(row.subRows)];
+                }
+              }
+            });
+            return all;
+          };
+
+          const allRows = getAllRowsRecursively(table.getGroupedRowModel().rows);
+
+          import("../utils/export-styled-utils").then(mod => {
+            mod.exportStyledPivotToExcel(allRows, exportCols, fileName, calculateFooterRow(), multiLevelHeaders);
+          });
+        }
+      };
+    });
+
+  const headerGroups = table.getHeaderGroups();
+  const footerGroups = table.getFooterGroups();
+
+  if (!data || data.length === 0) {
+    return (
+      <div className="flex-1 flex items-center justify-center h-full p-8 text-muted-foreground bg-muted/5 font-mono text-xs uppercase tracking-widest border border-slate-200/50 rounded-xl">
+        No analytics data loaded
+      </div>
+    );
+  }
 
   return (
-    <Card className="rounded-2xl border-none shadow-premium bg-background/50 backdrop-blur-md overflow-hidden relative">
-      {/* Scroll Shadows */}
-      <div 
-        className={cn(
-          "absolute top-[52px] left-0 right-0 h-8 z-50 pointer-events-none transition-opacity duration-300 bg-gradient-to-b from-background/20 to-transparent",
-          showTopShadow ? "opacity-100" : "opacity-0"
-        )} 
-      />
-      <div 
-        className={cn(
-          "absolute bottom-[44px] left-0 right-0 h-12 z-50 pointer-events-none transition-opacity duration-300 bg-gradient-to-t from-background/40 to-transparent",
-          showBottomShadow ? "opacity-100" : "opacity-0"
-        )} 
-      />
-
-      <ScrollArea 
-        className="h-[75vh] w-full"
-        onScrollCapture={handleScroll}
-      >
-        <table className="w-full caption-bottom text-sm border-separate border-spacing-0 min-w-full">
-          <TableHeader className="relative z-50">
-            <TableRow className="hover:bg-transparent border-none">
-              {/* Top-Left Corner */}
-              <TableHead 
-                className={cn(
-                  headerStickyBase, 
-                  "left-0 top-0 z-[60] font-black tracking-tighter text-foreground px-6 py-4"
-                )}
-              >
-                {rowLabel}
-              </TableHead>
-              
-              {/* Column Headers */}
-              {columns.map((col) => (
-                <TableHead 
-                  key={col} 
-                  className={cn(
-                    headerStickyBase, 
-                    "top-0 font-black tracking-tighter text-foreground whitespace-nowrap px-6 py-4 text-center min-w-[150px]"
-                  )}
-                >
-                  {col}
-                </TableHead>
-              ))}
-              
-              {/* Row Total Header */}
-              <TableHead 
-                className={cn(
-                  headerStickyBase, 
-                  "top-0 font-black tracking-tighter text-primary whitespace-nowrap px-6 py-4 text-center bg-primary/10"
-                )}
-              >
-                Grand Total
-              </TableHead>
-            </TableRow>
-          </TableHeader>
+    <div className="flex-1 h-full min-h-0 flex flex-col bg-background font-sans text-[11px] leading-none overflow-hidden border border-border rounded-xl">
+      
+      {/* Viewport: The window that allows both vertical and horizontal scrolling */}
+      <div className="flex-1 min-h-0 overflow-auto custom-scrollbar relative bg-background dark:bg-slate-950">
+        
+        {/* Canvas: The actual wide area containing the table */}
+        {/* CRITICAL: width:100% fills viewport when cols are few (no orphan space) */}
+        {/* minWidth:max-content expands BEYOND viewport when cols are many → triggers scroll */}
+        <div
+          className="flex flex-col relative min-h-full"
+          style={{ minWidth: 'max-content' }}
+        >
           
-          <TableBody>
-            {rows.map((rowKey) => (
-              <TableRow key={rowKey} className="group border-none transition-all duration-200 hover:bg-primary/5 even:bg-muted/5">
-                <TableCell 
+          {/* HEADER ROW */}
+            <div className="sticky top-0 z-40 flex flex-col shrink-0 bg-muted/90 dark:bg-slate-950 border-b border-border"
+            style={{ minWidth: 'max-content' }}>
+            {headerGroups.map((headerGroup) => (
+              <div key={headerGroup.id} className="flex border-b border-border last:border-b-0 h-10">
+                {headerGroup.headers.map((header) => (
+                  <div 
+                    key={header.id}
+                    style={{ 
+                      width: header.getSize(),
+                      flex: `0 0 ${header.getSize()}px`,
+                      position: 'relative'
+                    }}
+                    className="px-5 flex items-center text-foreground font-black uppercase tracking-tight border-r border-border last:border-r-0 bg-muted/50 dark:bg-slate-950"
+                  >
+                    <div className="truncate flex-1">
+                      {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                    </div>
+                    
+                    {/* HIGH-VISIBILITY INDUSTRIAL RESIZER */}
+                    <div
+                      {...{
+                        onMouseDown: header.getResizeHandler(),
+                        onTouchStart: header.getResizeHandler(),
+                        className: cn(
+                          "absolute right-0 top-0 h-full w-4 cursor-col-resize select-none touch-none z-30 flex items-center justify-center transition-all group/resizer",
+                          header.column.getIsResizing() ? "translate-x-0" : "translate-x-1/2"
+                        ),
+                      }}
+                    >
+                      <div className={cn(
+                        "w-1 h-[60%] rounded-full transition-all flex flex-col items-center justify-center gap-0.5",
+                        header.column.getIsResizing() 
+                          ? "bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.5)]" 
+                          : "bg-slate-800 group-hover/resizer:bg-slate-600"
+                      )}>
+                        <div className="w-0.5 h-0.5 rounded-full bg-slate-400/20" />
+                        <div className="w-0.5 h-0.5 rounded-full bg-slate-400/20" />
+                      </div>
+                    </div>
+
+                    {header.column.getIsResizing() && (
+                      <div className="absolute right-0 top-0 h-[1000vh] w-[1px] bg-emerald-500/50 z-50 pointer-events-none" />
+                    )}
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+
+          {/* BODY ROWS */}
+          <div className="flex flex-col bg-white" style={{ minWidth: 'max-content' }}>
+            {rows.map((row) => {
+              // Option A: Strict Pivot - Do not render raw leaf rows
+              if (!row.getIsGrouped()) return null;
+
+              // Determine if this is the deepest grouping level
+              const isLastGroupLevel = row.depth >= config.rowFields.length - 1;
+              const canExpand = row.getCanExpand() && !isLastGroupLevel;
+
+              return (
+                <div 
+                  key={row.id}
                   className={cn(
-                    cellStickyBase,
-                    "font-bold text-sm py-4 px-6 group-hover:bg-primary/10 border-b border-muted/10"
+                    "flex border-b border-border transition-colors h-10 items-center group bg-background dark:bg-slate-950",
+                    "hover:bg-slate-100 dark:hover:bg-slate-800"
                   )}
                 >
-                  {rowKey}
-                </TableCell>
-                
-                {columns.map((colKey) => {
-                  const val = matrix[rowKey][colKey];
-                  return (
-                    <TableCell 
-                      key={`${rowKey}-${colKey}`} 
-                      className="text-sm py-4 text-center border-b border-muted/10 whitespace-nowrap px-6"
-                    >
-                      {val === true ? (
-                        <div className="flex justify-center">
-                          <div className="p-1 px-2 rounded-lg bg-primary/10 text-primary">
-                            <Check className="w-3.5 h-3.5" />
+                  {row.getVisibleCells().map((cell) => {
+                    const isRowLabelColumn = cell.column.id === "rowLabels";
+                    const isPlaceholder = cell.getIsPlaceholder();
+
+                    return (
+                      <div 
+                        key={cell.id}
+                        style={{ 
+                          width: cell.column.getSize(),
+                          flex: `0 0 ${cell.column.getSize()}px`,
+                          paddingLeft: isRowLabelColumn ? `${(row.depth * 20) + 16}px` : undefined
+                        }}
+                        className={cn(
+                          "px-5 flex items-center border-r border-border h-full truncate transition-colors",
+                          isRowLabelColumn 
+                            ? cn(
+                                "tracking-tight bg-muted/5 dark:bg-slate-900/20 justify-start",
+                                row.depth === 0 ? "font-bold text-slate-900 dark:text-slate-50" : 
+                                row.depth === 1 ? "font-semibold text-slate-800 dark:text-slate-100" : 
+                                "font-medium text-slate-700 dark:text-slate-300"
+                              ) 
+                            : "text-slate-900 dark:text-slate-50 font-black font-mono tabular-nums text-[13px] justify-end text-right"
+                        )}
+                      >
+                        {isRowLabelColumn ? (
+                          <div className="flex items-center gap-2 truncate w-full">
+                            {canExpand && (
+                              <button
+                                onClick={row.getToggleExpandedHandler()}
+                                className="shrink-0 p-0.5 rounded-md hover:bg-slate-200/50 text-slate-500 transition-colors"
+                              >
+                                {row.getIsExpanded() ? (
+                                  <ChevronDown className="w-3.5 h-3.5" />
+                                ) : (
+                                  <ChevronRight className="w-3.5 h-3.5" />
+                                )}
+                              </button>
+                            )}
+                            {!canExpand && (
+                              <span className="shrink-0 w-[18px]" /> // Spacer matches exactly the button width (14px icon + 4px padding)
+                            )}
+                            <span className="truncate">
+                              {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                            </span>
                           </div>
-                        </div>
-                      ) : val !== undefined ? (
-                        <span className="font-medium tabular-nums">
-                          {typeof val === 'number' ? val.toLocaleString() : val}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground/20 italic">-</span>
-                      )}
-                    </TableCell>
-                  );
-                })}
-
-                <TableCell className="text-center bg-primary/5 border-b border-primary/5 px-6">
-                  <Badge variant="outline" className="rounded-lg border-primary/20 bg-primary/10 text-primary font-black tabular-nums">
-                    {rowTotals[rowKey]?.toLocaleString() || 0}
-                  </Badge>
-                </TableCell>
-              </TableRow>
-            ))}
-
-            {/* Viewport Padding Spacer */}
-            <TableRow className="bg-transparent pointer-events-none">
-                <TableCell colSpan={columns.length + 2} className="h-20 border-none" />
-            </TableRow>
-
-            {/* Footer Row (Sticky Bottom) */}
-            <TableRow className="relative z-40 bg-primary/5 font-black shadow-[0_-2px_10px_rgba(0,0,0,0.05)] border-none">
-              <TableCell 
-                className={cn(
-                  cellStickyBase,
-                  "bottom-0 left-0 bg-primary/15 border-t border-primary/20 py-6 px-6 z-50 shadow-[0_-1px_0_rgba(0,0,0,0.1)]"
-                )}
-                style={{ position: 'sticky', bottom: 0, left: 0 }}
-              >
-                GRAND TOTAL
-              </TableCell>
-              
-              {columns.map((colKey) => (
-                <TableCell 
-                  key={`total-${colKey}`} 
-                  className="text-center py-6 text-primary tabular-nums border-t border-primary/20 bg-primary/5 sticky bottom-0 z-40"
-                >
-                  {colTotals[colKey]?.toLocaleString() || 0}
-                </TableCell>
-              ))}
-              
-              <TableCell 
-                className="text-center py-6 bg-primary text-primary-foreground font-black text-lg tabular-nums sticky bottom-0 right-0 z-50 border-t border-primary/20"
-              >
-                {grandTotal.toLocaleString()}
-              </TableCell>
-            </TableRow>
-          </TableBody>
-        </table>
-        <ScrollBar orientation="horizontal" />
-        <ScrollBar orientation="vertical" />
-      </ScrollArea>
-
-      <div className="flex items-center justify-between bg-muted/20 px-6 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground border-t border-muted/10 relative z-50">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1.5 text-primary">
-            <LayoutGrid className="w-3.5 h-3.5" />
-            {rows.length} Rows Matrix
-          </div>
-          <span className="opacity-20">|</span>
-          <div className="flex items-center gap-1">
-            <MousePointer2 className="w-3 h-3" />
-             Pan to View All
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-            {showBottomShadow && (
-                <div className="flex items-center gap-1.5 animate-pulse text-primary/60">
-                    <ChevronDown className="w-3.5 h-3.5" />
-                    More Data Below
+                        ) : cell.getIsAggregated() ? (
+                          <span className="font-black text-slate-900 dark:text-slate-50">
+                            {flexRender(cell.column.columnDef.aggregatedCell ?? cell.column.columnDef.cell, cell.getContext())}
+                          </span>
+                        ) : (
+                          <span className="truncate font-black text-slate-900 dark:text-slate-50">
+                            {isPlaceholder ? "" : flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
-            )}
+              );
+            })}
+          </div>
+
+          {/* FOOTER ROW (GRAND TOTAL) - STICKY BOTTOM */}
+          <div 
+            className="sticky bottom-0 z-40 flex shrink-0 bg-background dark:bg-slate-950 border-t-2 border-border h-14"
+            style={{ minWidth: 'max-content' }}
+          >
+            {footerGroups[0].headers.map((header, idx) => (
+              <div 
+                key={header.id}
+                style={{ 
+                  width: header.getSize(),
+                  flex: `0 0 ${header.getSize()}px`
+                }}
+                className={cn(
+                  "px-5 flex items-center border-r border-border last:border-r-0 h-full bg-muted dark:bg-slate-950",
+                  idx === 0 
+                    ? "text-muted-foreground font-black uppercase tracking-widest text-[9px] justify-start" 
+                    : "text-slate-900 dark:text-slate-50 font-black text-base font-mono tabular-nums justify-end text-right"
+                )}
+              >
+                {idx === 0 ? (
+                  <div className="flex flex-col">
+                    <span className="text-[8px] opacity-40 leading-none mb-1">SUMMARY</span>
+                    <span>Grand Total</span>
+                  </div>
+                ) : flexRender(header.column.columnDef.footer, header.getContext())}
+              </div>
+            ))}
+          </div>
+
         </div>
       </div>
-    </Card>
+    </div>
   );
-}
+});
+PivotTableView.displayName = "PivotTableView";
