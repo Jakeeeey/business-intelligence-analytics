@@ -62,7 +62,7 @@ export function CustomerBreakdownModal({
         const map = new Map<string, { sales: number; count: number; customerCode: string; sId: number; supId: number }>();
 
         data.forEach((item) => {
-            const itemObj = item as Record<string, unknown>;
+            const itemObj = item as unknown as Record<string, unknown>;
             const name = viewType === "customer" 
                 ? (item.storeName || "Unknown Customer").trim()
                 : `${(itemObj.province as string || "").trim()}, ${(itemObj.city as string || "").trim()}`.replace(/^, |, $/g, "") || "Unknown Area";
