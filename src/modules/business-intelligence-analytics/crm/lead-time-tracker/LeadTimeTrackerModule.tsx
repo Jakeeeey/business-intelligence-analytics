@@ -55,11 +55,15 @@ export default function LeadTimeTrackerModule() {
               <AverageDaysByStageChart rows={hook.rows} />
             </div>
             <div className="col-span-12 lg:col-span-8">
-              <POVolumeOverTimeChart rows={hook.rows} />
+              <POVolumeOverTimeChart rows={hook.rows} filters={hook.filters} />
             </div>
           </div>
 
-          <LeadTimeTable rows={hook.rows} loading={hook.loadingData} />
+          <LeadTimeTable
+            rows={hook.rows}
+            loading={hook.loadingData}
+            loadedOnce={hook.readyState.loadedOnce}
+          />
         </TabsContent>
 
         <TabsContent value="timeline">
@@ -68,6 +72,7 @@ export default function LeadTimeTrackerModule() {
             rows={hook.rows}
             loading={hook.loadingData}
             error={hook.error}
+            loadedOnce={hook.readyState.loadedOnce}
           />
         </TabsContent>
       </Tabs>

@@ -103,7 +103,7 @@ function stageToLabel(stage: LifecycleStage) {
 }
 
 function formatDateTime(value?: Date | null) {
-  if (!value) return "—";
+  if (!value) return "null";
   try {
     return value.toLocaleString(undefined, {
       year: "numeric",
@@ -193,11 +193,13 @@ export default function ProcessTimeline({
   rows,
   loading = false,
   error = null,
+  loadedOnce = false,
 }: {
   filters: LeadTimeFilters;
   rows: LeadTimeRow[];
   loading?: boolean;
   error?: string | null;
+  loadedOnce?: boolean;
 }) {
   type SortMode =
     | "date-desc"
@@ -261,13 +263,17 @@ export default function ProcessTimeline({
   // }, [filters.dateFrom, filters.dateTo]);
   const title =
     !loading && rows.length === 0
-      ? "No data to display."
+      ? loadedOnce
+        ? "No data to display for this product"
+        : "No data to display."
       : "No records available for the selected period";
   const subtitle =
     !loading && rows.length === 0
-      ? "Please select a product and date range, then click Apply."
+      ? loadedOnce
+        ? "Please select other product or date range, then click Apply."
+        : "Please select a product and date range, then click Apply."
       : "Please try another product or choose a different date range.";
-
+  console.log(rows);
   const rowsWithSegments = React.useMemo(() => {
     const map = new Map<string, RowGroup>();
 
@@ -348,10 +354,9 @@ export default function ProcessTimeline({
           poNo: po || key,
           soNo: so,
           poDate,
-          label:
-            String(
-              rec["productName"] ?? rec["product_name"] ?? rec["name"] ?? "",
-            ) || undefined,
+          label: String(
+            rec["productName"] ?? rec["product_name"] ?? rec["name"] ?? "",
+          ),
           events,
           approvalStatus,
           fulfillmentStatus,
@@ -360,6 +365,7 @@ export default function ProcessTimeline({
           fulfillmentDays,
           deliveryDays,
         });
+        console.log(map.get(key));
       } else {
         // merge events/statuses
         for (const k of [
@@ -383,7 +389,16 @@ export default function ProcessTimeline({
           existing.fulfillmentDays = fulfillmentDays;
         if (existing.deliveryDays == null && deliveryDays != null)
           existing.deliveryDays = deliveryDays;
+        if (!existing.label) {
+          existing.label = String(
+            rec["productName"] ?? rec["product_name"] ?? rec["name"] ?? "",
+          ).trim();
+        }
       }
+      console.log("RAW ROW:", recRaw);
+      console.log("REC:", rec);
+      console.log("productName:", rec["productName"]);
+      console.log(existing);
     }
 
     const arr = Array.from(map.values());
@@ -1008,7 +1023,21 @@ export default function ProcessTimeline({
                                       </div>
 
                                       <div className="text-muted-foreground line-clamp-2">
-                                        Product: {r.label || "No Product Name"}
+                                        Product: {r.label}
+                                      </div>
+                                      <div className="text-muted-foreground truncate">
+                                        {segment.stage === "approval" &&
+                                          `approvedAt: ${formatDateTime(
+                                            r.events.approved,
+                                          )}`}
+                                        {segment.stage === "dispatch" &&
+                                          `dispatchAt: ${formatDateTime(
+                                            r.events.dispatch,
+                                          )}`}
+                                        {segment.stage === "delivery" &&
+                                          `deliveredAt: ${formatDateTime(
+                                            r.events.delivered,
+                                          )}`}
                                       </div>
                                     </div>
 

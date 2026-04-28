@@ -32,6 +32,11 @@ function asNumber(v: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+function asOptionalString(v: unknown): string | null {
+  const s = toStr(v).trim();
+  return s ? s : null;
+}
+
 /**
  * Normalize raw API record into an internal LeadTimeRow-like shape (partial)
  */
@@ -47,6 +52,21 @@ function normalizeRecord(r: unknown): LeadTimeRow {
   const poDate = toStr(
     obj["poDate"] ?? obj["po_date"] ?? obj["date"] ?? "",
   ).trim();
+  const createdAt = asOptionalString(
+    obj["createdAt"] ?? obj["createdDate"] ?? obj["creationDate"] ?? null,
+  );
+  const approvedAt = asOptionalString(
+    obj["approvedAt"] ?? obj["approvalDate"] ?? obj["approved_date"] ?? null,
+  );
+  const dispatchAt = asOptionalString(
+    obj["dispatchAt"] ?? obj["dispatchDate"] ?? obj["dispatch_date"] ?? null,
+  );
+  const deliveredAt = asOptionalString(
+    obj["deliveredAt"] ??
+      obj["deliveredDate"] ??
+      obj["deliveryDate"] ??
+      null,
+  );
 
   const approval = asNumber(
     obj["approval"] ?? obj["approvalDays"] ?? obj["approval_days"] ?? null,
@@ -84,11 +104,22 @@ function normalizeRecord(r: unknown): LeadTimeRow {
     obj["delivery_status"] ??
     obj["deliveryStatusName"] ??
     null;
+  const productName = toStr(
+    obj["productName"] ??
+      obj["product_name"] ??
+      obj["name"] ??
+      obj["product"] ??
+      "",
+  ).trim();
 
   return {
     poNo,
     soNo,
     poDate,
+    createdAt,
+    approvedAt,
+    dispatchAt,
+    deliveredAt,
     approval,
     dispatch,
     delivered,
@@ -99,6 +130,7 @@ function normalizeRecord(r: unknown): LeadTimeRow {
     daysToDeliver: asNumber(
       obj["daysToDeliver"] ?? obj["days_to_deliver"] ?? null,
     ),
+    productName,
   } as LeadTimeRow;
 }
 
@@ -164,11 +196,23 @@ export function normalizeAndAggregate(records: unknown[]): LeadTimeRow[] {
     const approvalStatus = pickStatus("approvalStatus");
     const fulfillmentStatus = pickStatus("fulfillmentStatus");
     const deliveryStatus = pickStatus("deliveryStatus");
+    const pickDate = (
+      key: "createdAt" | "approvedAt" | "dispatchAt" | "deliveredAt",
+    ) => sorted.find((row) => row[key]?.trim())?.[key] ?? null;
+    const productName =
+      sorted.find((row) => row.productName?.trim())?.productName ??
+      sorted.find((row) => row.product_name?.trim())?.product_name ??
+      sorted.find((row) => row.name?.trim())?.name ??
+      "";
 
     aggregated.push({
       poNo: latest.poNo,
       soNo: latest.soNo,
       poDate: latest.poDate,
+      createdAt: pickDate("createdAt"),
+      approvedAt: pickDate("approvedAt"),
+      dispatchAt: pickDate("dispatchAt"),
+      deliveredAt: pickDate("deliveredAt"),
       approval: approvalMax,
       dispatch: dispatchMax,
       delivered: deliveredMax,
@@ -177,6 +221,7 @@ export function normalizeAndAggregate(records: unknown[]): LeadTimeRow[] {
       fulfillmentStatus,
       deliveryStatus,
       daysToDeliver: daysMax,
+      productName,
     });
   }
 

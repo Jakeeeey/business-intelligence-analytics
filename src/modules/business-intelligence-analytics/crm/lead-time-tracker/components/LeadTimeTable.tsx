@@ -23,6 +23,7 @@ import { getStatusColor } from "../utils/getStatusColor";
 type Props = {
   rows: LeadTimeRow[];
   loading: boolean;
+  loadedOnce?: boolean;
 };
 
 function formatDate(dateStr: string) {
@@ -52,7 +53,7 @@ function statusToLabel(s?: string | null) {
   return "Pending";
 }
 
-export function LeadTimeTable({ rows, loading }: Props) {
+export function LeadTimeTable({ rows, loading, loadedOnce = false }: Props) {
   const [search, setSearch] = React.useState("");
   const [sortBy, setSortBy] = React.useState<"poNo" | "poDate" | "soNo" | null>(
     null,
@@ -184,9 +185,15 @@ export function LeadTimeTable({ rows, loading }: Props) {
     return (
       <Card>
         <CardContent className="p-6 text-center">
-          <div className="text-lg font-semibold mb-2">No data to display.</div>
+          <div className="text-lg font-semibold mb-2">
+            {loadedOnce
+              ? "No data to display for this product"
+              : "No data to display. "}
+          </div>
           <div className="text-sm text-muted-foreground">
-            Please select a product and date range, then click Apply.
+            {loadedOnce
+              ? "Please select other product or date range, then click Apply."
+              : "Please select a product and date range, then click Apply."}
           </div>
         </CardContent>
       </Card>

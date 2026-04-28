@@ -21,10 +21,11 @@ import {
   ChartTooltip,
   type ChartConfig,
 } from "@/components/ui/chart";
-import type { LeadTimeRow } from "../../types";
+import type { LeadTimeFilters, LeadTimeRow } from "../../types";
 
 interface Props {
   rows: LeadTimeRow[];
+  filters: LeadTimeFilters;
 }
 
 const chartConfig = {
@@ -109,7 +110,22 @@ function POVolumeTooltip({
   );
 }
 
-export function POVolumeOverTimeChart({ rows }: Props) {
+function parseLocalDate(value?: string | null) {
+  if (!value) return null;
+  const datePart = String(value).slice(0, 10);
+  const match = datePart.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (match) {
+    return new Date(
+      Number(match[1]),
+      Number(match[2]) - 1,
+      Number(match[3]),
+    );
+  }
+  const parsed = new Date(String(value));
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+export function POVolumeOverTimeChart({ rows, filters }: Props) {
   const data = React.useMemo<VolumeDatum[]>(() => {
     const map = new Map<number, number>();
 
@@ -125,13 +141,14 @@ export function POVolumeOverTimeChart({ rows }: Props) {
     }
 
     // 2. Define time range (min → current month OR max data month)
-    const now = new Date();
-
-    // START: January of current year
-    const startDate = new Date(now.getFullYear(), 0, 1);
-
-    // END: next month (buffer period)
-    const endDate = new Date(now.getFullYear(), now.getMonth(), 1);
+    const filterStart = parseLocalDate(filters.dateFrom);
+    const filterEnd = parseLocalDate(filters.dateTo);
+    const startDate = filterStart
+      ? new Date(filterStart.getFullYear(), filterStart.getMonth(), 1)
+      : new Date();
+    const endDate = filterEnd
+      ? new Date(filterEnd.getFullYear(), filterEnd.getMonth(), 1)
+      : startDate;
 
     const minKey = startDate.getTime();
     const maxKey = endDate.getTime();
@@ -185,7 +202,7 @@ export function POVolumeOverTimeChart({ rows }: Props) {
         trend,
       };
     });
-  }, [rows]);
+  }, [filters.dateFrom, filters.dateTo, rows]);
   return (
     <Card>
       <CardHeader>
