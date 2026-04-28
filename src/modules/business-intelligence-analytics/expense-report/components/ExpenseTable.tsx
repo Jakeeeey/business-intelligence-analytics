@@ -492,12 +492,10 @@ export default function ExpenseTable({ data }: ExpenseTableProps) {
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center gap-2">
               <Select
-              
                 value={groupBy}
                 onValueChange={(v) => setGroupBy(v as GroupBy)}
               >
                 <SelectTrigger className="border" size="sm">
-              
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -509,7 +507,13 @@ export default function ExpenseTable({ data }: ExpenseTableProps) {
 
             <Toggle
               // variant="outline"
-              className="border bg-background"
+              className={`border bg-background px-3
+              ${
+                showDocsWithBalanceOnly
+                  ? " text-white  shadow-sm"
+                  : "bg-gray-300 border"
+              }
+                `}
               size="sm"
               pressed={showDocsWithBalanceOnly}
               onPressedChange={(pressed: boolean) => {
