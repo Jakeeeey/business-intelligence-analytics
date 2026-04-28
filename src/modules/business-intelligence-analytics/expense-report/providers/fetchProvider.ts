@@ -9,6 +9,20 @@ import type {
   ExpenseByPeriod,
 } from "../type";
 
+function getUniqueDocuments(
+  records: DisbursementRecord[],
+): DisbursementRecord[] {
+  const uniqueDocuments = new Map<number, DisbursementRecord>();
+
+  records.forEach((record) => {
+    if (!uniqueDocuments.has(record.disbursementId)) {
+      uniqueDocuments.set(record.disbursementId, record);
+    }
+  });
+
+  return Array.from(uniqueDocuments.values());
+}
+
 export async function fetchDisbursements(
   startDate: string,
   endDate: string,
@@ -37,14 +51,7 @@ export async function fetchDisbursements(
 export function calculateKpis(records: DisbursementRecord[]): ExpenseKpis {
   // Deduplicate records by disbursementId to avoid counting header-level totals multiple times
   // (multiple line items with the same disbursementId share the same totalAmount/paidAmount)
-  const uniqueDocuments = new Map<number, DisbursementRecord>();
-  records.forEach((r) => {
-    if (!uniqueDocuments.has(r.disbursementId)) {
-      uniqueDocuments.set(r.disbursementId, r);
-    }
-  });
-
-  const uniqueRecords = Array.from(uniqueDocuments.values());
+  const uniqueRecords = getUniqueDocuments(records);
 
   const totalDisbursementAmount = uniqueRecords.reduce(
     (sum, r) => sum + (r.totalAmount || 0),
@@ -225,13 +232,7 @@ export function calculateExpensesByCategory(
 export function calculateExpensesByEmployee(
   records: DisbursementRecord[],
 ): ExpenseByEmployee[] {
-  // Deduplicate by document number first
-  const uniqueByDoc = new Map<string, DisbursementRecord>();
-  for (const r of records) {
-    const key = r.docNo || String(r.disbursementId);
-    if (!uniqueByDoc.has(key)) uniqueByDoc.set(key, r);
-  }
-  const deduped = Array.from(uniqueByDoc.values());
+  const deduped = getUniqueDocuments(records);
 
   // Aggregate by payee
   const grouped = new Map<string, { totalAmount: number; count: number }>();
@@ -267,13 +268,7 @@ export function calculateExpensesByEmployee(
 export function calculateExpensesByDivision(
   records: DisbursementRecord[],
 ): ExpenseByDivision[] {
-  // Deduplicate by document number first
-  const uniqueByDoc = new Map<string, DisbursementRecord>();
-  for (const r of records) {
-    const key = r.docNo || String(r.disbursementId);
-    if (!uniqueByDoc.has(key)) uniqueByDoc.set(key, r);
-  }
-  const deduped = Array.from(uniqueByDoc.values());
+  const deduped = getUniqueDocuments(records);
 
   // Aggregate totals by division
   const grouped = new Map<string, { totalAmount: number; count: number }>();
@@ -310,8 +305,9 @@ export function calculateExpensesByPeriod(
   granularity: "daily" | "weekly" | "monthly",
 ): ExpenseByPeriod[] {
   const grouped = new Map<string, { totalAmount: number; count: number }>();
+  const uniqueRecords = getUniqueDocuments(records);
 
-  records.forEach((record) => {
+  uniqueRecords.forEach((record) => {
     const date = new Date(record.transactionDate);
     let period = "";
 
@@ -325,7 +321,7 @@ export function calculateExpensesByPeriod(
       period = record.transactionDate.substring(0, 7); // YYYY-MM
     }
 
-    const amount = record.lineAmount || 0;
+    const amount = record.totalAmount || 0;
     const current = grouped.get(period) || { totalAmount: 0, count: 0 };
     grouped.set(period, {
       totalAmount: current.totalAmount + amount,
@@ -361,13 +357,13 @@ export function getDisbursementSummariesGroupedByCoA(
       // Group by document number within this COA to produce document-level summaries
       const docsMap = new Map<string, DisbursementRecord[]>();
       coaRecords.forEach((r) => {
-        const key = r.docNo || String(r.disbursementId);
+        const key = String(r.disbursementId);
         if (!docsMap.has(key)) docsMap.set(key, []);
         docsMap.get(key)!.push(r);
       });
       const recordsSummaries: DisbursementSummary[] = Array.from(
         docsMap.entries(),
-      ).map(([docNo, docLines]) => {
+      ).map(([, docLines]) => {
         const first = docLines[0];
         // Header-level totals (entire document) from the first line record
         const headerTotal = first.totalAmount || 0;
@@ -386,7 +382,7 @@ export function getDisbursementSummariesGroupedByCoA(
 
         return {
           disbursementId: first.disbursementId,
-          docNo: docNo,
+          docNo: first.docNo || String(first.disbursementId),
           payeeName: first.payeeName,
           divisionName: first.divisionName,
           coaTitle: first.coaTitle,
