@@ -70,6 +70,12 @@ const getTotalAmount = (records: DisbursementSummary[]): number => {
   return records.reduce((sum, r) => sum + r.totalAmount, 0);
 };
 
+const getRecordBalance = (record: DisbursementSummary): number => {
+  return typeof record.balance === "number"
+    ? record.balance
+    : (record.totalAmount || 0) - (record.paidAmount || 0);
+};
+
 export default function ExpenseTable({ data }: ExpenseTableProps) {
   const [searchTerm, setSearchTerm] = React.useState("");
   const [sortKey] = React.useState<SortKey>("transactionDate");
@@ -510,8 +516,8 @@ export default function ExpenseTable({ data }: ExpenseTableProps) {
               className={`border bg-background px-3
               ${
                 showDocsWithBalanceOnly
-                  ? " text-white  shadow-sm"
-                  : "bg-gray-300 border"
+                  ? " border  bg-gray-300 shadow-sm"
+                  : "border"
               }
                 `}
               size="sm"
@@ -593,20 +599,12 @@ export default function ExpenseTable({ data }: ExpenseTableProps) {
                       const pagination = getGroupPagination(group.coaTitle);
 
                       // Group subtotal respects the "With Balance" toggle.
-                      // When enabled, compute COA/line-based subtotals (sum of line amounts
-                      // for the group's records) to avoid double-counting header totals across
-                      // COA slices. Otherwise fall back to the precomputed group total.
+                      // When enabled, sum the visible document balances for this group.
+                      // Otherwise fall back to the precomputed group total.
                       const groupSubtotal = (() => {
                         if (showDocsWithBalanceOnly) {
                           return group.records.reduce((sum, r) => {
-                            const lineTotal =
-                              typeof r.coaLineTotal === "number"
-                                ? r.coaLineTotal
-                                : (r.lines || []).reduce(
-                                    (s, ln) => s + (ln.lineAmount || 0),
-                                    0,
-                                  );
-                            return sum + lineTotal;
+                            return sum + Math.max(0, getRecordBalance(r));
                           }, 0);
                         }
 
