@@ -32,12 +32,20 @@ type KpiCardData = {
 
 export default function KpiCards({ kpis }: KpiCardsProps) {
   const balance = kpis.totalDisbursementAmount - kpis.totalPaidAmount;
-  const balanceLabel =
+
+  const balanceTitle =
     balance > 0
-      ? "Outstanding Balance"
+      ? "Unsettled Payables"
       : balance < 0
         ? "Overpayment"
-        : "Balanced";
+        : "Balanced Disbursement";
+
+  const balanceSubtitle =
+    balance > 0
+      ? "Unpaid amount remaining"
+      : balance < 0
+        ? "Paid exceeds disbursement"
+        : "No variance";
 
   const kpiData: KpiCardData[] = [
     {
@@ -48,7 +56,8 @@ export default function KpiCards({ kpis }: KpiCardsProps) {
         </div>
       ),
       icon: PhilippinePeso,
-      tooltip: `Total value of all recorded disbursement transactions before deductions.\nRepresents the gross payable amount across the selected filters and period `,
+      tooltip: `Total value of all recorded disbursement transactions before deductions.
+Represents the gross payable amount across the selected filters and period.`,
     },
     {
       title: "Total Paid Amount",
@@ -58,18 +67,28 @@ export default function KpiCards({ kpis }: KpiCardsProps) {
         </div>
       ),
       icon: Wallet,
-      tooltip: `Total amount released or paid for all disbursement transactions.\nIncludes payments that may exceed or differ from the recorded disbursement amount `,
+      tooltip: `Total amount released or paid for all disbursement transactions.
+Includes payments that may exceed or differ from the recorded disbursement amount.`,
     },
     {
-      title: "Net Disbursement Variance",
+      title: balanceTitle,
       value: (
         <div>
-          <div className="text-2xl font-bold">{formatCurrency(balance)}</div>
-          <div className="text-xs text-muted-foreground">{balanceLabel}</div>
+          <div className="text-2xl font-bold">
+            {formatCurrency(Math.abs(balance))}
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {balanceSubtitle}
+          </div>
         </div>
       ),
       icon: RotateCcw,
-      tooltip: `Difference between Total Paid Amount and Total Disbursement Amount`,
+      tooltip:
+        balance > 0
+          ? "Remaining unpaid amount based on Disbursement Amount minus Paid Amount."
+          : balance < 0
+            ? "Overpayment based on Paid Amount exceeding Disbursement Amount."
+            : "Paid Amount matches Disbursement Amount exactly.",
     },
     {
       title: "Total Transactions",
@@ -79,12 +98,12 @@ export default function KpiCards({ kpis }: KpiCardsProps) {
             {formatNumber(kpis.totalTransactions, "en-PH", 0)}
           </div>
           <div className="text-xs opacity-50 pl-1">
-             {formatNumber(kpis.totalLineTransaction, "en-PH", 0)} Total Line Items
+            {formatNumber(kpis.totalLineTransaction, "en-PH", 0)} Total Line Items
           </div>
         </div>
       ),
       icon: ShoppingCart,
-      tooltip: `Represents all transactions regardless of status (Posted or Pending) `,
+      tooltip: `Represents all transactions regardless of status (Posted or Pending).`,
     },
     {
       title: "Posted Transactions",
@@ -94,7 +113,7 @@ export default function KpiCards({ kpis }: KpiCardsProps) {
         </div>
       ),
       icon: TrendingUp,
-      tooltip: `Posted transactions are considered complete and included in financial records `,
+      tooltip: `Posted transactions are considered complete and included in financial records.`,
     },
     {
       title: "Pending Approvals",
@@ -104,7 +123,7 @@ export default function KpiCards({ kpis }: KpiCardsProps) {
         </div>
       ),
       icon: Users,
-      tooltip: `These may still be under review, pending approval, or awaiting final processing `,
+      tooltip: `Transactions still under review, pending approval, or awaiting final processing.`,
     },
     {
       title: "Total Withholding Tax",
@@ -114,75 +133,51 @@ export default function KpiCards({ kpis }: KpiCardsProps) {
         </div>
       ),
       icon: PhilippinePeso,
-      tooltip: `Calculated from tax-related accounting entries (e.g., BIR Withholding Tax).\nRepresents amounts withheld and payable to tax authorities `,
+      tooltip: `Calculated from tax-related accounting entries (e.g., BIR Withholding Tax).
+Represents amounts withheld and payable to tax authorities.`,
     },
   ];
 
-  // Split into 2 rows: first 3 cards, then remaining 4 cards
   const row1 = kpiData.slice(0, 3);
   const row2 = kpiData.slice(3, 7);
+
+  const renderCard = (kpi: KpiCardData, key: number) => {
+    const Icon = kpi.icon;
+
+    return (
+      <Tooltip key={key}>
+        <TooltipTrigger asChild>
+          <Card className="cursor-pointer transition-all shadow-sm hover:shadow-md">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              <CardTitle className="text-sm font-medium leading-tight">
+                {kpi.title}
+              </CardTitle>
+              <Icon className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+
+            <CardContent>{kpi.value}</CardContent>
+          </Card>
+        </TooltipTrigger>
+
+        <TooltipContent
+          side="right"
+          className="max-w-xs rounded-lg border bg-background text-muted-foreground p-3 shadow-lg text-sm"
+        >
+          <pre className="whitespace-pre-wrap">{kpi.tooltip}</pre>
+        </TooltipContent>
+      </Tooltip>
+    );
+  };
 
   return (
     <TooltipProvider delayDuration={300}>
       <div className="space-y-3">
-        {/* Row 1: 4 cards */}
         <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-          {row1.map((kpi, index) => {
-            const Icon = kpi.icon;
-            return (
-              <Tooltip key={index}>
-                <TooltipTrigger asChild>
-                  <Card className="cursor-pointer transition-all shadow-sm hover:shadow-md">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0">
-                      <CardTitle className="text-sm font-medium leading-tight">
-                        {kpi.title} 
-                      </CardTitle>
-                      <Icon className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>{kpi.value}</CardContent>
-                  </Card>
-                </TooltipTrigger>
-                <TooltipContent
-                  side="right"
-                  className="max-w-xs rounded-lg border bg-background text-muted-foreground p-3 shadow-lg text-sm"
-                >
-                  <pre className="whitespace-pre-wrap">{kpi.tooltip}</pre>
-                </TooltipContent>
-              </Tooltip>
-            );
-          })}
+          {row1.map((kpi, index) => renderCard(kpi, index))}
         </div>
 
-        {/* Row 2: 3 cards */}
         <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-          {row2.map((kpi, index) => {
-            const Icon = kpi.icon;
-            return (
-              <Tooltip key={index + 4}>
-                <TooltipTrigger asChild>
-                  <Card className="cursor-pointer transition-all shadow-sm hover:shadow-md">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0">
-                      <CardTitle className="text-sm font-medium leading-tight">
-                        {kpi.title}
-                      </CardTitle>
-                      <Icon className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                      <div className={`text-2xl font-bold tabular-nums `}>
-                        {kpi.value}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </TooltipTrigger>
-                <TooltipContent
-                  side="right"
-                  className="max-w-xs rounded-lg border bg-background text-muted-foreground p-3 shadow-lg text-sm"
-                >
-                  <pre className="whitespace-pre-wrap">{kpi.tooltip}</pre>
-                </TooltipContent>
-              </Tooltip>
-            );
-          })}
+          {row2.map((kpi, index) => renderCard(kpi, index + 3))}
         </div>
       </div>
     </TooltipProvider>

@@ -245,7 +245,7 @@ export async function exportToPDF(
 
       // small right-side totals (grand total) below the header block
       const grandTotal = records.reduce(
-        (s, r) => s + (r.lineAmount ?? r.totalAmount ?? 0),
+        (s, r) => s + (r.lineAmount || 0),
         0,
       );
       doc.setFont("helvetica", "bold");
@@ -296,7 +296,7 @@ export async function exportToPDF(
             r.payeeName || "-",
             r.coaTitle || "-",
             {
-              content: fmtCurrency(r.lineAmount ?? r.totalAmount ?? 0),
+              content: fmtCurrency(r.lineAmount || 0),
               styles: { halign: "right" },
             },
             r.lineRemarks || r.disbursementRemarks || "",
@@ -304,10 +304,7 @@ export async function exportToPDF(
         }
 
         // Subtotal row for the group
-        const subtotal = grp.rows.reduce(
-          (s, rr) => s + (rr.lineAmount ?? rr.totalAmount ?? 0),
-          0,
-        );
+        const subtotal = grp.rows.reduce((s, rr) => s + (rr.lineAmount || 0), 0);
         body.push([
           {
             content: `Subtotal (${grp.key})`,

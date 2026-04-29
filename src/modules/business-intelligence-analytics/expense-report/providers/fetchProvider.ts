@@ -232,14 +232,12 @@ export function calculateExpensesByCategory(
 export function calculateExpensesByEmployee(
   records: DisbursementRecord[],
 ): ExpenseByEmployee[] {
-  const deduped = getUniqueDocuments(records);
-
   // Aggregate by payee
   const grouped = new Map<string, { totalAmount: number; count: number }>();
   let total = 0;
 
-  deduped.forEach((record) => {
-    const amount = record.totalAmount || 0;
+  records.forEach((record) => {
+    const amount = record.lineAmount || 0;
     const current = grouped.get(record.payeeName) || {
       totalAmount: 0,
       count: 0,
@@ -268,14 +266,12 @@ export function calculateExpensesByEmployee(
 export function calculateExpensesByDivision(
   records: DisbursementRecord[],
 ): ExpenseByDivision[] {
-  const deduped = getUniqueDocuments(records);
-
   // Aggregate totals by division
   const grouped = new Map<string, { totalAmount: number; count: number }>();
   let total = 0;
 
-  deduped.forEach((record) => {
-    const amount = record.totalAmount || 0;
+  records.forEach((record) => {
+    const amount = record.lineAmount || 0;
     const current = grouped.get(record.divisionName) || {
       totalAmount: 0,
       count: 0,
@@ -305,9 +301,7 @@ export function calculateExpensesByPeriod(
   granularity: "daily" | "weekly" | "monthly",
 ): ExpenseByPeriod[] {
   const grouped = new Map<string, { totalAmount: number; count: number }>();
-  const uniqueRecords = getUniqueDocuments(records);
-
-  uniqueRecords.forEach((record) => {
+  records.forEach((record) => {
     const date = new Date(record.transactionDate);
     let period = "";
 
@@ -321,7 +315,7 @@ export function calculateExpensesByPeriod(
       period = record.transactionDate.substring(0, 7); // YYYY-MM
     }
 
-    const amount = record.totalAmount || 0;
+    const amount = record.lineAmount || 0;
     const current = grouped.get(period) || { totalAmount: 0, count: 0 };
     grouped.set(period, {
       totalAmount: current.totalAmount + amount,
@@ -375,10 +369,21 @@ export function getDisbursementSummariesGroupedByCoA(
           0,
         );
 
-        // Display totals: use header-level amounts so per-doc rows reflect the real document figures
-        const totalAmount = headerTotal;
+        // Display totals: use line totals (source of truth) for per-doc rows
+        const totalAmount = coaLineTotal;
         const paidAmount = headerPaid;
         const balance = totalAmount - paidAmount;
+
+        const isTaxOrAdj = docLines.some(
+          (l) =>
+            (l.coaTitle || "").toLowerCase().includes("tax") ||
+            (l.lineAmount && l.lineAmount < 0),
+        );
+        const entryType = isTaxOrAdj
+          ? "ADJUSTMENT"
+          : totalAmount < 0
+            ? "REVERSAL"
+            : "GROSS";
 
         return {
           disbursementId: first.disbursementId,
@@ -393,10 +398,15 @@ export function getDisbursementSummariesGroupedByCoA(
           paidAmountHeader: headerPaid,
           coaLineTotal,
           transactionDate: first.transactionDate,
-          status: first.isPosted === 1 ? "Posted" : "Pending",
+          status: !first.approverId
+            ? "Draft"
+            : !first.isPosted
+              ? "Approved"
+              : "Posted",
           encoderName: first.encoderName,
           lineRemarks: first.lineRemarks,
           lines: docLines,
+          entryType,
         };
       });
 
