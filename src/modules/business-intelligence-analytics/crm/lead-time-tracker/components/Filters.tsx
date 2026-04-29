@@ -584,7 +584,7 @@ export function Filters({
                       <select
                         value={String(quarterPick)}
                         onChange={(e) => setQuarterPick(Number(e.target.value))}
-                        className="rounded border px-2 py-1"
+                        className="rounded-sm border px-2 py-1"
                       >
                         <option value="1">Q1</option>
                         <option value="2">Q2</option>
