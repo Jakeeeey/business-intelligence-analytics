@@ -394,7 +394,7 @@ export default function FulfillmentTable(props: FulfillmentTableProps) {
       (s: FulfillmentStatus) => s === "fulfilled_with_returns",
     );
     if (hasUnfulfilled) return "bg-rose-50 dark:bg-rose-900/20";
-    if (hasReturns) return "bg-orange-50 dark:bg-orange-900/20";
+    if (hasReturns) return "";
     return "";
   }
 

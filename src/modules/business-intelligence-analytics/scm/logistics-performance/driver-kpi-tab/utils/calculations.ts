@@ -1,124 +1,277 @@
 import type { VisitRecord } from "../types";
 
-export function calculateKPIs(visits: VisitRecord[]) {
+/* -------------------------------------------------------------------------- */
+/* Types                                                                      */
+/* -------------------------------------------------------------------------- */
+
+export type FulfillmentStatus =
+  | "fulfilled"
+  | "fulfilled_with_returns"
+  | "unfulfilled";
+
+export type KPIResult = {
+  total: number;
+  fulfilled: number;
+  unfulfilled: number;
+  fulfillmentRate: number;
+  avgDispatchVarianceHours: number;
+  avgArrivalVarianceHours: number;
+  totalFulfilledAmount: number;
+  revenueAtRisk: number;
+};
+
+export type DispatchGroup = {
+  dispatchDocumentNo: string;
+  dispatchPlanId?: number | null;
+  dispatchTime: string | null;
+  arrivalTime: string | null;
+  totalCustomers: number;
+  fulfilledCount: number;
+  unfulfilledCount: number;
+  fulfillmentPercent: number;
+  fulfilledAmount: number;
+  unfulfilledAmount: number;
+  truck: string;
+  customers: VisitRecord[];
+};
+
+export type TruckGroup = {
+  truckKey: string;
+  truckName: string;
+  plateNo: string;
+  truckType: string;
+  dispatchNo: string;
+  dispatchTime: string | null;
+  arrivalTime: string | null;
+  durationHours: number;
+  visits: VisitRecord[];
+};
+
+/* -------------------------------------------------------------------------- */
+/* Helpers                                                                    */
+/* -------------------------------------------------------------------------- */
+
+function toNumber(value: unknown): number {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function round2(value: number): number {
+  return Number(value.toFixed(2));
+}
+
+export function normalizeFulfillmentStatus(
+  raw: unknown,
+): FulfillmentStatus {
+  const value = String(raw ?? "").trim().toLowerCase();
+
+  if (value === "fulfilled") return "fulfilled";
+
+  if (
+    value === "fulfilled with returns" ||
+    value === "fulfilled_with_returns"
+  ) {
+    return "fulfilled_with_returns";
+  }
+
+  return "unfulfilled";
+}
+
+export function isFulfilled(raw: unknown): boolean {
+  const status = normalizeFulfillmentStatus(raw);
+
+  return (
+    status === "fulfilled" ||
+    status === "fulfilled_with_returns"
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* KPI Summary                                                                */
+/* -------------------------------------------------------------------------- */
+
+export function calculateKPIs(
+  visits: VisitRecord[],
+): KPIResult {
+  let fulfilled = 0;
+  let dispatchVarianceTotal = 0;
+  let arrivalVarianceTotal = 0;
+  let totalFulfilledAmount = 0;
+  let revenueAtRisk = 0;
+
   const total = visits.length;
-  const fulfilled = visits.filter(
-    (v) => String(v.fulfillmentStatus).toLowerCase() === "fulfilled",
-  ).length;
+
+  for (const visit of visits) {
+    const amount = toNumber(visit.totalAmount);
+    const fulfilledFlag = isFulfilled(
+      visit.fulfillmentStatus,
+    );
+
+    if (fulfilledFlag) {
+      fulfilled++;
+      totalFulfilledAmount += amount;
+    } else {
+      revenueAtRisk += amount;
+    }
+
+    dispatchVarianceTotal += toNumber(
+      visit.dispatchVarianceHours,
+    );
+
+    arrivalVarianceTotal += toNumber(
+      visit.arrivalVarianceHours,
+    );
+  }
+
   const unfulfilled = total - fulfilled;
-  const fulfillmentRate =
-    total === 0 ? 0 : Number(((fulfilled / total) * 100).toFixed(2));
-  const avgDispatchVarianceHours =
-    total === 0
-      ? 0
-      : Number(
-          (
-            visits.reduce(
-              (s, v) => s + (Number(v.dispatchVarianceHours) || 0),
-              0,
-            ) / total
-          ).toFixed(2),
-        );
-  const avgArrivalVarianceHours =
-    total === 0
-      ? 0
-      : Number(
-          (
-            visits.reduce(
-              (s, v) => s + (Number(v.arrivalVarianceHours) || 0),
-              0,
-            ) / total
-          ).toFixed(2),
-        );
-  const totalFulfilledAmount = visits
-    .filter((v) => String(v.fulfillmentStatus).toLowerCase() === "fulfilled")
-    .reduce((s, v) => s + (Number(v.totalAmount) || 0), 0);
-  const revenueAtRisk = visits
-    .filter((v) => String(v.fulfillmentStatus).toLowerCase() !== "fulfilled")
-    .reduce((s, v) => s + (Number(v.totalAmount) || 0), 0);
 
   return {
     total,
     fulfilled,
     unfulfilled,
-    fulfillmentRate,
-    avgDispatchVarianceHours,
-    avgArrivalVarianceHours,
-    totalFulfilledAmount,
-    revenueAtRisk,
+    fulfillmentRate:
+      total === 0 ? 0 : round2((fulfilled / total) * 100),
+    avgDispatchVarianceHours:
+      total === 0
+        ? 0
+        : round2(dispatchVarianceTotal / total),
+    avgArrivalVarianceHours:
+      total === 0
+        ? 0
+        : round2(arrivalVarianceTotal / total),
+    totalFulfilledAmount: round2(totalFulfilledAmount),
+    revenueAtRisk: round2(revenueAtRisk),
   };
 }
 
-export function groupByDispatch(visits: VisitRecord[]) {
+/* -------------------------------------------------------------------------- */
+/* Group By Dispatch                                                          */
+/* -------------------------------------------------------------------------- */
+
+export function groupByDispatch(
+  visits: VisitRecord[],
+): DispatchGroup[] {
   const map = new Map<string, VisitRecord[]>();
-  visits.forEach((v) => {
-    const key = v.dispatchDocumentNo || `DP-${v.dispatchPlanId}`;
-    if (!map.has(key)) map.set(key, []);
-    map.get(key)!.push(v);
-  });
 
-  return Array.from(map.entries()).map(([dispatchDocumentNo, list]) => {
-    const fulfilledCount = list.filter(
-      (l) => String(l.fulfillmentStatus).toLowerCase() === "fulfilled",
-    ).length;
-    const unfulfilledCount = list.length - fulfilledCount;
-    const fulfilledAmount = list
-      .filter((l) => String(l.fulfillmentStatus).toLowerCase() === "fulfilled")
-      .reduce((s, l) => s + (Number(l.totalAmount) || 0), 0);
-    const unfulfilledAmount = list
-      .filter((l) => String(l.fulfillmentStatus).toLowerCase() !== "fulfilled")
-      .reduce((s, l) => s + (Number(l.totalAmount) || 0), 0);
-    const dispatchTime = list[0]?.timeOfDispatch ?? null;
-    const arrivalTime = list[list.length - 1]?.returnTimeOfArrival ?? null;
+  for (const visit of visits) {
+    const key =
+      visit.dispatchDocumentNo ||
+      `DP-${visit.dispatchPlanId}`;
 
-    return {
+    if (!map.has(key)) {
+      map.set(key, []);
+    }
+
+    map.get(key)!.push(visit);
+  }
+
+  const result: DispatchGroup[] = [];
+
+  for (const [dispatchDocumentNo, list] of map) {
+    let fulfilledCount = 0;
+    let fulfilledAmount = 0;
+    let unfulfilledAmount = 0;
+
+    for (const row of list) {
+      const amount = toNumber(row.totalAmount);
+
+      if (isFulfilled(row.fulfillmentStatus)) {
+        fulfilledCount++;
+        fulfilledAmount += amount;
+      } else {
+        unfulfilledAmount += amount;
+      }
+    }
+
+    const totalCustomers = list.length;
+    const unfulfilledCount =
+      totalCustomers - fulfilledCount;
+
+    const first = list[0];
+    const last = list[list.length - 1];
+
+    result.push({
       dispatchDocumentNo,
-      dispatchPlanId: list[0]?.dispatchPlanId,
-      dispatchTime,
-      arrivalTime,
-      totalCustomers: list.length,
+      dispatchPlanId:
+        first?.dispatchPlanId ?? null,
+      dispatchTime:
+        first?.timeOfDispatch ?? null,
+      arrivalTime:
+        last?.returnTimeOfArrival ?? null,
+      totalCustomers,
       fulfilledCount,
       unfulfilledCount,
       fulfillmentPercent:
-        list.length === 0
+        totalCustomers === 0
           ? 0
-          : Number(((fulfilledCount / list.length) * 100).toFixed(2)),
-      fulfilledAmount,
-      unfulfilledAmount,
-      truck: list[0]?.truckPlateNo ?? "",
+          : round2(
+              (fulfilledCount / totalCustomers) *
+                100,
+            ),
+      fulfilledAmount: round2(
+        fulfilledAmount,
+      ),
+      unfulfilledAmount: round2(
+        unfulfilledAmount,
+      ),
+      truck: first?.truckPlateNo ?? "",
       customers: list,
-    };
-  });
+    });
+  }
+
+  return result;
 }
 
-export function groupByTruck(visits: VisitRecord[]) {
-  const map = new Map<string, VisitRecord[]>();
-  visits.forEach((v) => {
-    const key = v.truckPlateNo || String(v.truckId);
-    if (!map.has(key)) map.set(key, []);
-    map.get(key)!.push(v);
-  });
+/* -------------------------------------------------------------------------- */
+/* Group By Truck                                                             */
+/* -------------------------------------------------------------------------- */
 
-  return Array.from(map.entries()).map(([truckKey, list]) => {
+export function groupByTruck(
+  visits: VisitRecord[],
+): TruckGroup[] {
+  const map = new Map<string, VisitRecord[]>();
+
+  for (const visit of visits) {
+    const key =
+      visit.truckPlateNo ||
+      String(visit.truckId ?? "");
+
+    if (!map.has(key)) {
+      map.set(key, []);
+    }
+
+    map.get(key)!.push(visit);
+  }
+
+  const result: TruckGroup[] = [];
+
+  for (const [truckKey, list] of map) {
+    let durationHours = 0;
+
+    for (const row of list) {
+      durationHours += toNumber(
+        row.actualTripDurationHours,
+      );
+    }
+
     const first = list[0];
     const last = list[list.length - 1];
-    const dispatchTime = first?.timeOfDispatch ?? null;
-    const arrivalTime = last?.returnTimeOfArrival ?? null;
-    const durationHours = list.reduce(
-      (s, l) => s + (Number(l.actualTripDurationHours) || 0),
-      0,
-    );
 
-    return {
+    result.push({
       truckKey,
       truckName: first?.truckName ?? "",
       plateNo: first?.truckPlateNo ?? "",
       truckType: first?.truckType ?? "",
-      dispatchNo: first?.dispatchDocumentNo ?? "",
-      dispatchTime,
-      arrivalTime,
-      durationHours,
+      dispatchNo:
+        first?.dispatchDocumentNo ?? "",
+      dispatchTime:
+        first?.timeOfDispatch ?? null,
+      arrivalTime:
+        last?.returnTimeOfArrival ?? null,
+      durationHours: round2(durationHours),
       visits: list,
-    };
-  });
+    });
+  }
+
+  return result;
 }
