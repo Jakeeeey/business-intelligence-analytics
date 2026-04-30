@@ -363,10 +363,11 @@ export function CustomerBreakdownModal({
                                                                 <div className="w-full h-1 bg-muted/30 rounded-full overflow-hidden border border-border/10">
                                                                     <div
                                                                         className={`h-full transition-all duration-500 ${
+                                                                            customer.sales <= 0 ? "bg-red-500" :
                                                                             (customer.sales / customer.target) >= 0.67 ? "bg-emerald-500" :
                                                                             (customer.sales / customer.target) >= 0.34 ? "bg-orange-500" : "bg-red-500"
                                                                         }`}
-                                                                        style={{ width: `${Math.min((customer.sales / customer.target) * 100, 100)}%` }}
+                                                                        style={{ width: `${customer.sales > 0 ? Math.min((customer.sales / customer.target) * 100, 100) : 0}%` }}
                                                                     />
                                                                 </div>
                                                             </div>
@@ -379,11 +380,13 @@ export function CustomerBreakdownModal({
                                                 </TableCell>
                                                 <TableCell className="text-right">
                                                     <div className="flex flex-col items-end gap-1">
-                                                        <span className="text-[9px] font-mono text-muted-foreground">{((customer.sales / totalSales) * 100).toFixed(1)}%</span>
+                                                        <span className="text-[9px] font-mono text-muted-foreground">
+                                                            {customer.sales > 0 && totalSales > 0 ? ((customer.sales / totalSales) * 100).toFixed(1) : "0.0"}%
+                                                        </span>
                                                         <div className="w-full h-1 bg-muted/20 rounded-full overflow-hidden">
                                                             <div
                                                                 className="h-full bg-emerald-500/80"
-                                                                style={{ width: `${Math.min((customer.sales / totalSales) * 100, 100)}%` }}
+                                                                style={{ width: `${customer.sales > 0 && totalSales > 0 ? Math.min((customer.sales / totalSales) * 100, 100) : 0}%` }}
                                                             />
                                                         </div>
                                                     </div>

@@ -145,7 +145,7 @@ export function CustomerBreakdownModal({
                         <TableBody>
                             {filteredCustomers.length > 0 ? (
                                 filteredCustomers.map((customer, index) => {
-                                    const contribution = totalSales > 0 ? (customer.sales / totalSales) * 100 : 0;
+                                    const contribution = (totalSales > 0 && customer.sales > 0) ? (customer.sales / totalSales) * 100 : 0;
                                     return (
                                         <TableRow key={customer.name} className="hover:bg-muted/20 border-border/40 group">
                                             <TableCell className="font-mono text-xs text-muted-foreground/50 font-bold">{index + 1}</TableCell>
@@ -162,7 +162,7 @@ export function CustomerBreakdownModal({
                                                     <div className="w-full h-1 bg-muted/20 rounded-full overflow-hidden">
                                                         <div
                                                             className="h-full bg-emerald-500/80"
-                                                            style={{ width: `${Math.min(contribution, 100)}%` }}
+                                                            style={{ width: `${Math.min(Math.max(contribution, 0), 100)}%` }}
                                                         />
                                                     </div>
                                                 </div>
