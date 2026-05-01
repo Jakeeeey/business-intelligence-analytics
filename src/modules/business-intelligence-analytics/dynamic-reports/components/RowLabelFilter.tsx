@@ -15,27 +15,8 @@ import {
   Filter
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ReportData, PivotConfig, DateGrouping } from "../types";
-
-/**
- * Excel-standard date formatting based on grouping type
- * (Shared logic with adapter - ideally this would be in a shared util)
- */
-const formatDateValue = (value: unknown, grouping?: DateGrouping): string => {
-  if (!value) return "N/A";
-  const date = new Date(String(value));
-  if (isNaN(date.getTime())) return String(value);
-
-  switch (grouping) {
-    case 'monthly':
-      return date.toLocaleString('en-US', { month: 'short', year: 'numeric' }).toUpperCase();
-    case 'yearly':
-      return date.getFullYear().toString();
-    case 'daily':
-    default:
-      return date.toISOString().split('T')[0];
-  }
-};
+import { ReportData, PivotConfig } from "../types";
+import { formatDateValue } from "../utils/tanstack-pivot-adapter";
 
 interface RowLabelFilterProps {
   data: ReportData[];
@@ -54,7 +35,8 @@ export function RowLabelFilter({ data, config, onSortChange, onFilterChange, sel
     if (!primaryField || !data.length) return [];
     const values = new Set<string>();
     data.forEach(row => {
-      const val = row[primaryField.id as keyof ReportData];
+      const sourceKey = primaryField.sourceId || primaryField.id;
+      const val = row[sourceKey as keyof ReportData];
       if (val !== undefined && val !== null) {
         if (primaryField.type === 'date') {
           values.add(formatDateValue(val, primaryField.dateGrouping));

@@ -5,6 +5,7 @@ import {
 } from "@tanstack/react-table";
 import { ReportData, PivotConfig, DateGrouping } from "../types";
 import { RowLabelFilter } from "../components/RowLabelFilter";
+import { ChevronsUpDown, ChevronsDownUp } from "lucide-react";
 
 const formatHeader = (key: string) => {
   if (!key) return "";
@@ -32,8 +33,21 @@ export const formatDateValue = (value: unknown, grouping?: DateGrouping): string
   if (isNaN(date.getTime())) return String(value);
 
   switch (grouping) {
+    case 'weekly': {
+      // Calculate ISO week number and year
+      const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+      const dayNum = d.getUTCDay() || 7;
+      d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+      const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+      const weekNo = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1)/7);
+      return `${d.getUTCFullYear()}-W${weekNo.toString().padStart(2, '0')}`;
+    }
     case 'monthly':
       return date.toLocaleString('en-US', { month: 'short', year: 'numeric' }).toUpperCase();
+    case 'quarterly': {
+      const quarter = Math.floor(date.getMonth() / 3) + 1;
+      return `${date.getFullYear()}-Q${quarter}`;
+    }
     case 'yearly':
       return date.getFullYear().toString();
     default:
@@ -83,20 +97,34 @@ export function createPivotColumns(
   // ═══════════════════════════════════════════════════════════════════
   const treeColumn = columnHelper.accessor((row) => row, {
     id: "rowLabels",
-    header: ({ table }) => (
-      <div className="flex items-center w-full pr-1">
-        <span className="font-bold uppercase tracking-tight truncate flex-1">
-          ROW LABELS
-        </span>
-        <RowLabelFilter 
-          data={data}
-          config={config}
-          onSortChange={(order) => handlers?.onSort(order)}
-          onFilterChange={(values) => handlers?.onFilter(values)}
-          selectedValues={(table.options.meta as { rowFilters?: string[] | null })?.rowFilters || null}
-        />
-      </div>
-    ),
+    header: ({ table }) => {
+      const isAllExpanded = table.getIsAllRowsExpanded();
+      const hasExpandableRows = config.rowFields.length > 1;
+
+      return (
+        <div className="flex items-center w-full pr-1 gap-1">
+          {hasExpandableRows && (
+            <button
+              onClick={table.getToggleAllRowsExpandedHandler()}
+              className="shrink-0 p-1 rounded-md hover:bg-slate-200/50 text-slate-500 transition-colors"
+              title={isAllExpanded ? "Collapse All" : "Expand All"}
+            >
+              {isAllExpanded ? <ChevronsDownUp className="w-3.5 h-3.5" /> : <ChevronsUpDown className="w-3.5 h-3.5" />}
+            </button>
+          )}
+          <span className="font-bold uppercase tracking-tight truncate flex-1">
+            ROW LABELS
+          </span>
+          <RowLabelFilter 
+            data={data}
+            config={config}
+            onSortChange={(order) => handlers?.onSort(order)}
+            onFilterChange={(values) => handlers?.onFilter(values)}
+            selectedValues={(table.options.meta as { rowFilters?: string[] | null })?.rowFilters || null}
+          />
+        </div>
+      );
+    },
     size: 300,
     minSize: 200,
     cell: (info) => {
@@ -112,7 +140,8 @@ export function createPivotColumns(
   // 1b. HIDDEN DATA COLUMNS (Required for Grouping to work)
   const hiddenRowColumns = config.rowFields.map(field => 
     columnHelper.accessor((row) => {
-      const val = row[field.id as keyof ReportData];
+      const sourceKey = field.sourceId || field.id;
+      const val = row[sourceKey as keyof ReportData];
       if (field.type === 'date') {
         return formatDateValue(val, field.dateGrouping);
       }
@@ -135,7 +164,8 @@ export function createPivotColumns(
     
     // Extract unique values with date grouping support
     const uniqueColValues = Array.from(new Set(data.map(d => {
-      const val = d[colField.id as keyof ReportData];
+      const sourceKey = colField.sourceId || colField.id;
+      const val = d[sourceKey as keyof ReportData];
       return colField.type === 'date' ? formatDateValue(val, colField.dateGrouping) : String(val ?? 'N/A');
     }))).sort();
 
@@ -150,13 +180,15 @@ export function createPivotColumns(
         columns: config.valueFields.map(vField => 
           columnHelper.accessor(
             (row: ReportData) => {
-              const rawVal = row[colField.id as keyof ReportData];
+              const colSourceKey = colField.sourceId || colField.id;
+              const rawVal = row[colSourceKey as keyof ReportData];
               const formattedColVal = colField.type === 'date' 
                 ? formatDateValue(rawVal, colField.dateGrouping) 
                 : String(rawVal ?? 'N/A');
 
               if (formattedColVal === val) {
-                const numVal = Number(row[vField.key]);
+                const valSourceKey = vField.sourceId || vField.key;
+                const numVal = Number(row[valSourceKey as keyof ReportData]);
                 return isNaN(numVal) ? undefined : numVal;
               }
               return undefined;
@@ -208,7 +240,7 @@ export function createPivotColumns(
         </div>
       ),
       columns: config.valueFields.map(vField => 
-        columnHelper.accessor(vField.key as keyof ReportData, {
+        columnHelper.accessor((row) => row[ (vField.sourceId || vField.key) as keyof ReportData ], {
           id: `gt_${vField.key}_${vField.aggType}`,
           header: () => (
             <span className="text-[9px] opacity-60 font-bold whitespace-nowrap block text-right">
@@ -249,14 +281,14 @@ export function createPivotColumns(
     // NO COLUMN FIELDS — Show metrics directly
     // ═══════════════════════════════════════════════════════════════════
     matrixColumns = config.valueFields.map(vField => 
-      columnHelper.accessor(vField.key as keyof ReportData, {
+      columnHelper.accessor((row) => row[ (vField.sourceId || vField.key) as keyof ReportData ], {
         id: `${vField.key}_${vField.aggType}`,
         header: () => (
           <span className="font-bold uppercase tracking-tight text-[10px] whitespace-nowrap block text-right">
             {formatHeader(vField.key)} ({vField.aggType.toUpperCase()})
           </span>
         ),
-        size: getEstimatedWidth(`${formatHeader(vField.key)} (${vField.aggType})`, vField.key),
+        size: getEstimatedWidth(`${formatHeader(vField.key)} (${vField.aggType})`, vField.sourceId || vField.key),
         minSize: VALUE_COL_MIN,
         aggregationFn: vField.aggType as unknown as AggregationFn<ReportData>,
         footer: (info) => {

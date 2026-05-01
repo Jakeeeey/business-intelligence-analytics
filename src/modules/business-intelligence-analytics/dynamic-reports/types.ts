@@ -2,7 +2,7 @@ export type FilterOperator = "equals" | "contains" | "not_equals" | "gt" | "lt";
 
 export interface ColumnFilter {
   id: string;
-  column: string;
+  sourceId: string;
   operator: FilterOperator;
   value: string;
 }
@@ -31,10 +31,11 @@ export type ReportData = Record<string, string | number | boolean | null | undef
 // --- New TanStack & DND Types ---
 
 export type SortOrder = "asc" | "desc";
-export type DateGrouping = "daily" | "monthly" | "yearly";
+export type DateGrouping = "daily" | "weekly" | "monthly" | "quarterly" | "yearly";
 
 export interface DraggableField {
-  id: string;
+  id: string; // Unique ID for DND (e.g., 'val_INVOICE_DATE_123')
+  sourceId?: string; // The actual data column name (e.g., 'INVOICE_DATE')
   name: string;
   type: 'string' | 'number' | 'boolean' | 'date';
   aggType?: AggregationType;
@@ -53,7 +54,8 @@ export interface PivotConfig {
   rowFields: DraggableField[];
   columnFields: DraggableField[];
   valueFields: Array<{
-    key: string;
+    key: string; // The unique ID of the field
+    sourceId?: string; // The original data column name
     aggType: AggregationType;
   }>;
   filterFields: ColumnFilter[];

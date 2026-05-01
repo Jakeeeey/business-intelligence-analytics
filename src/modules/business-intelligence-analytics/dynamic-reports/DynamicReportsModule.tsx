@@ -92,14 +92,15 @@ export default function DynamicReportsModule() {
     columnFields: zones.columns.fields,
     valueFields: zones.values.fields.map(f => ({
       key: f.id,
+      sourceId: f.sourceId || f.id,
       aggType: (f as unknown as ValueFieldWithAgg).aggType || 'sum'
     })),
-    filterFields: zones.filters.fields.map(f => ({
+    filterFields: (zones.filters?.fields || []).map(f => ({
       id: f.id,
-      column: f.id,
+      sourceId: f.sourceId || f.id,
       operator: f.filterOperator || 'equals',
       value: f.filterValue || ''
-    })),
+    }))
   }), [zones]);
 
   // Filter States
@@ -176,17 +177,23 @@ export default function DynamicReportsModule() {
           const sample = normalizedData.find((d: ReportData) => d[c] !== null && d[c] !== undefined)?.[c];
           const isNumeric = typeof sample === 'number' || (typeof sample === 'string' && sample.trim() !== '' && !isNaN(Number(sample)));
           
-          // Strict Date Detection (Matches YYYY-MM-DD, MM/DD/YYYY, or ISO formats)
-          const cLower = c.toLowerCase();
+          // 1. Strict Date Value Detection (Regex + Date.parse)
           const dateRegex = /^\d{4}[-/]\d{2}[-/]\d{2}|^\d{2}[-/]\d{2}[-/]\d{4}/;
-          const isDateKey = cLower.includes('date') || cLower.includes('time') || cLower.includes('at') || cLower.includes('created');
           const isDateValue = typeof sample === 'string' && dateRegex.test(sample) && !isNaN(Date.parse(sample));
+
+          // 2. Strict Key Detection (Matches _at, At, date, time, timestamp)
+          const cLower = c.toLowerCase();
+          const isDateKey = /date|time|timestamp|_at$|[a-z]At$/.test(cLower);
+
+          // 3. Final Decision: If value exists, trust the value. If null/undefined, trust the key.
+          const isDate = sample !== null && sample !== undefined ? isDateValue : isDateKey;
 
           return {
             id: c,
+            sourceId: c,
             name: c,
-            type: (isDateKey || isDateValue) ? 'date' : isNumeric ? 'number' : 'string',
-            dateGrouping: (isDateKey || isDateValue) ? 'daily' : undefined
+            type: isDate ? 'date' : isNumeric ? 'number' : 'string',
+            dateGrouping: isDate ? 'daily' : undefined
           };
         });
         

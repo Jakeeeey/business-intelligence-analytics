@@ -46,7 +46,7 @@ export const PivotTableView = forwardRef<PivotTableViewRef, PivotTableViewProps>
   onRowFiltersChange
 }, ref) => {
   const [grouping, setGrouping] = useState<GroupingState>(config.rowFields.map(f => f.id));
-  const [expanded, setExpanded] = useState<ExpandedState>({});
+  const [expanded, setExpanded] = useState<ExpandedState>(true);
   const [rowSort, setRowSort] = useState<'asc' | 'desc' | null>(initialRowSort);
   const [rowFilters, setRowFilters] = useState<string[] | null>(initialRowFilters);
 
@@ -62,6 +62,7 @@ export const PivotTableView = forwardRef<PivotTableViewRef, PivotTableViewProps>
   // Sync with external config changes
   useEffect(() => {
     setGrouping(config.rowFields.map(f => f.id));
+    setExpanded(true); // Always expand all when layout/grouping changes
   }, [config.rowFields]);
 
   // Apply row-level filtering and sorting
@@ -71,8 +72,9 @@ export const PivotTableView = forwardRef<PivotTableViewRef, PivotTableViewProps>
     // Filter
     if (rowFilters && config.rowFields.length > 0) {
       const primaryField = config.rowFields[0];
+      const sourceKey = primaryField.sourceId || primaryField.id;
       result = result.filter(row => {
-        const rawVal = row[primaryField.id as keyof ReportData];
+        const rawVal = row[sourceKey as keyof ReportData];
         const formattedVal = primaryField.type === 'date' 
           ? formatDateValue(rawVal, primaryField.dateGrouping)
           : String(rawVal ?? "");
@@ -82,13 +84,45 @@ export const PivotTableView = forwardRef<PivotTableViewRef, PivotTableViewProps>
     
     // Sort
     if (rowSort && config.rowFields.length > 0) {
-      const primaryField = config.rowFields[0].id;
+      const primaryField = config.rowFields[0];
+      const sourceKey = primaryField.sourceId || primaryField.id;
       result.sort((a, b) => {
-        const valA = String(a[primaryField]);
-        const valB = String(b[primaryField]);
+        const valA = String(a[sourceKey] ?? "");
+        const valB = String(b[sourceKey] ?? "");
         return rowSort === 'asc' 
           ? valA.localeCompare(valB, undefined, { numeric: true })
           : valB.localeCompare(valA, undefined, { numeric: true });
+      });
+    }
+
+    // Global Filters (from the "Filters" zone)
+    if (config.filterFields && config.filterFields.length > 0) {
+      config.filterFields.forEach(filter => {
+        const sourceKey = filter.sourceId || filter.id;
+        const val = filter.value;
+        if (!val && filter.operator === 'equals') return; // Skip empty equals
+
+        result = result.filter(row => {
+          const rowVal = row[sourceKey as keyof ReportData];
+          if (rowVal === undefined || rowVal === null) return false;
+          
+          const sRowVal = String(rowVal).toLowerCase();
+          const sFilterVal = String(val).toLowerCase();
+
+          switch (filter.operator) {
+            case 'contains': return sRowVal.includes(sFilterVal);
+            case 'not_equals': return sRowVal !== sFilterVal;
+            case 'gt': return Number(rowVal) > Number(val);
+            case 'lt': return Number(rowVal) < Number(val);
+            case 'equals':
+            default:
+              if (val.includes(',')) {
+                const allowed = val.split(',').map(v => v.trim().toLowerCase());
+                return allowed.includes(sRowVal);
+              }
+              return sRowVal === sFilterVal;
+          }
+        });
       });
     }
     
@@ -367,20 +401,22 @@ export const PivotTableView = forwardRef<PivotTableViewRef, PivotTableViewProps>
                       >
                         {isRowLabelColumn ? (
                           <div className="flex items-center gap-2 truncate w-full">
-                            {canExpand && (
-                              <button
-                                onClick={row.getToggleExpandedHandler()}
-                                className="shrink-0 p-0.5 rounded-md hover:bg-slate-200/50 text-slate-500 transition-colors"
-                              >
-                                {row.getIsExpanded() ? (
-                                  <ChevronDown className="w-3.5 h-3.5" />
-                                ) : (
-                                  <ChevronRight className="w-3.5 h-3.5" />
-                                )}
-                              </button>
-                            )}
-                            {!canExpand && (
-                              <span className="shrink-0 w-[18px]" /> // Spacer matches exactly the button width (14px icon + 4px padding)
+                            {/* Only show expand/collapse UI when there are multiple row dimensions */}
+                            {config.rowFields.length > 1 && (
+                              canExpand ? (
+                                <button
+                                  onClick={row.getToggleExpandedHandler()}
+                                  className="shrink-0 p-0.5 rounded-md hover:bg-slate-200/50 text-slate-500 transition-colors"
+                                >
+                                  {row.getIsExpanded() ? (
+                                    <ChevronDown className="w-3.5 h-3.5" />
+                                  ) : (
+                                    <ChevronRight className="w-3.5 h-3.5" />
+                                  )}
+                                </button>
+                              ) : (
+                                <span className="shrink-0 w-[18px]" />
+                              )
                             )}
                             <span className="truncate">
                               {flexRender(cell.column.columnDef.cell, cell.getContext())}

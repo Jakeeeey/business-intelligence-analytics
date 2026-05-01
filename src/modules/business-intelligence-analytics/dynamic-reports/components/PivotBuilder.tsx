@@ -37,7 +37,9 @@ import {
   Trash2,
   Plus,
   FolderOpen,
-  ChevronDown
+  ChevronDown,
+  X,
+  CheckCircle2
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
@@ -174,7 +176,6 @@ export function PivotBuilder({
     if (field) {
       const newZones = { ...zones };
       
-      // Validation: If moving to values, set default agg type
       const updatedField = { ...field };
       if (overContainer === 'values' && activeContainer !== 'values') {
         updatedField.aggType = 'sum';
@@ -182,17 +183,20 @@ export function PivotBuilder({
 
       if (overContainer === 'filters') {
         updatedField.filterOperator = 'equals';
-        // Automatically Select All values when adding a new filter
         if (field.type === 'string' && !field.filterValue) {
           const uniqueVals = new Set<string>();
           data.forEach(r => {
-            const v = r[field.id];
+            const v = r[field.sourceId || field.id];
             if (v !== undefined && v !== null) uniqueVals.add(String(v));
           });
           updatedField.filterValue = Array.from(uniqueVals).join(',');
         }
       }
 
+      // If dragging from available, we DON'T remove it from available (Cloning behavior).
+      // However, dnd-kit Sortable expects it to move. So we temporarily remove it here, 
+      // and we will ensure the 'available' list always stays full in our master state or handleDragEnd.
+      // Actually, to avoid UI flicker, let's just let it be removed during drag, and we'll restore it in handleDragEnd.
       newZones[activeContainer] = {
         ...zones[activeContainer],
         fields: activeFields.filter(f => f.id !== rawActiveId)
@@ -217,7 +221,22 @@ export function PivotBuilder({
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
     
-    if (over && active.id !== over.id) {
+    // Restore the full available list from data columns so it never depletes
+    const masterAvailableFields = Object.keys(data[0] || {}).map(c => {
+      const isDate = c.toLowerCase().includes('date') || c.toLowerCase().includes('time') || c.toLowerCase().endsWith('_at');
+      const isNumeric = data.some(r => typeof r[c] === 'number');
+      return {
+        id: c,
+        sourceId: c,
+        name: c,
+        type: isDate ? 'date' : isNumeric ? 'number' : 'string',
+        dateGrouping: isDate ? 'daily' : undefined
+      } as DraggableField;
+    });
+
+    let newZones = { ...zones };
+
+    if (over) {
       const activeId = active.id as string;
       const overId = over.id as string;
 
@@ -225,33 +244,107 @@ export function PivotBuilder({
       const overContainer = findContainer(overId);
 
       if (activeContainer && activeContainer === overContainer) {
+        // Reordering within the same container
         const rawActiveId = activeId.includes('-') ? activeId.split('-')[1] : activeId;
         const rawOverId = overId.includes('-') ? overId.split('-')[1] : overId;
         
-        const fields = zones[activeContainer].fields;
+        const fields = newZones[activeContainer].fields;
         const oldIndex = fields.findIndex((f) => f.id === rawActiveId);
         const newIndex = fields.findIndex((f) => f.id === rawOverId);
 
-        const newZones = { ...zones };
         newZones[activeContainer] = {
-          ...zones[activeContainer],
+          ...newZones[activeContainer],
           fields: arrayMove(fields, oldIndex, newIndex)
         };
-        setZones(newZones);
+      } else if (activeContainer && overContainer) {
+        // Just finished a cross-container move (handled visually by DragOver)
+        // Now we assign a permanent unique ID to the dropped item so it can be duplicated later
+        const rawActiveId = activeId.includes('-') ? activeId.split('-')[1] : activeId;
+        
+        const fieldIndex = newZones[overContainer].fields.findIndex(f => f.id === rawActiveId);
+        if (fieldIndex !== -1) {
+          const field = { ...newZones[overContainer].fields[fieldIndex] };
+          
+          // Generate unique ID for Values zone to allow duplicates
+          if (overContainer === 'values') {
+            field.id = `val_${field.sourceId || field.id}_${Math.random().toString(36).substr(2, 9)}`;
+          }
+
+          // EXCLUSIVITY RULE: Rows, Columns, Filters can only have ONE instance of a sourceId
+          if (overContainer !== 'values' && overContainer !== 'available') {
+            const sourceId = field.sourceId || field.id;
+            ['rows', 'columns', 'filters'].forEach(zoneKey => {
+              if (zoneKey !== overContainer) {
+                newZones[zoneKey] = {
+                  ...newZones[zoneKey],
+                  fields: newZones[zoneKey].fields.filter(f => (f.sourceId || f.id) !== sourceId)
+                };
+              }
+            });
+          }
+
+          newZones[overContainer].fields[fieldIndex] = field;
+        }
+      }
+    } else {
+      // Dropped outside any valid container -> DELETE it (unless it was already in available)
+      const activeId = active.id as string;
+      const activeContainer = findContainer(activeId);
+      if (activeContainer && activeContainer !== 'available') {
+        const rawActiveId = activeId.includes('-') ? activeId.split('-')[1] : activeId;
+        newZones[activeContainer] = {
+          ...newZones[activeContainer],
+          fields: newZones[activeContainer].fields.filter(f => f.id !== rawActiveId)
+        };
       }
     }
+
+    // Always reset available fields to the master list to ensure it's persistent
+    newZones.available = {
+      ...newZones.available,
+      fields: masterAvailableFields
+    };
+
+    setZones(newZones);
     setActiveId(null);
-  }, [zones, findContainer, setZones]);
+  }, [zones, findContainer, setZones, data]);
 
   const activeField = useMemo(() => {
     if (!activeId) return null;
     const rawId = activeId.includes('-') ? activeId.split('-')[1] : activeId;
+    // When dragging from available, it might be in the master list
+    const masterAvailableFields = Object.keys(data[0] || {}).map(c => ({ id: c, sourceId: c, name: c, type: 'string' }));
+    
     for (const zone of Object.values(zones)) {
       const field = zone.fields.find(f => f.id === rawId);
       if (field) return field;
     }
-    return null;
-  }, [activeId, zones]);
+    
+    return masterAvailableFields.find(f => f.id === rawId) as DraggableField || null;
+  }, [activeId, zones, data]);
+
+  const activeSourceIds = useMemo(() => {
+    const ids = new Set<string>();
+    ['rows', 'columns', 'values', 'filters'].forEach(z => {
+      if (zones[z]) {
+        zones[z].fields.forEach(f => ids.add(f.sourceId || f.id));
+      }
+    });
+    return ids;
+  }, [zones]);
+
+  const handleRemoveField = useCallback((fieldId: string) => {
+    const newZones = { ...zones };
+    for (const zoneKey of ['rows', 'columns', 'values', 'filters']) {
+      if (newZones[zoneKey]) {
+        newZones[zoneKey] = {
+          ...newZones[zoneKey],
+          fields: newZones[zoneKey].fields.filter(f => f.id !== fieldId)
+        };
+      }
+    }
+    setZones(newZones);
+  }, [zones, setZones]);
 
   return (
     <div className="h-full p-4">
@@ -391,6 +484,7 @@ export function PivotBuilder({
                 <DroppableZone 
                   id="available" 
                   fields={filteredAvailableFields} 
+                  activeSourceIds={activeSourceIds}
                   placeholder={searchQuery ? "NO MATCHING FIELDS" : "NO FIELDS AVAILABLE"}
                   className="bg-transparent border-none min-h-0 p-0"
                   data={data}
@@ -409,6 +503,7 @@ export function PivotBuilder({
                       placeholder="DROP ROWS" 
                       isCompact 
                       onDateGroupingChange={onDateGroupingChange}
+                      onRemove={handleRemoveField}
                       className={zoneStyles.rows}
                       data={data}
                     />
@@ -422,6 +517,7 @@ export function PivotBuilder({
                       placeholder="DROP COLUMNS" 
                       isCompact 
                       onDateGroupingChange={onDateGroupingChange}
+                      onRemove={handleRemoveField}
                       className={zoneStyles.columns}
                       data={data}
                     />
@@ -436,6 +532,7 @@ export function PivotBuilder({
                       onAggChange={onValueAggChange}
                       placeholder="DROP VALUES" 
                       isCompact
+                      onRemove={handleRemoveField}
                       className={zoneStyles.values}
                       data={data}
                     />
@@ -449,6 +546,7 @@ export function PivotBuilder({
                       placeholder="DROP FILTERS" 
                       isCompact
                       onFilterChange={onFilterChange}
+                      onRemove={handleRemoveField}
                       className={zoneStyles.filters}
                       data={data}
                     />
@@ -499,13 +597,15 @@ interface DroppableZoneProps {
   onAggChange?: (fieldId: string, agg: AggregationType) => void;
   onDateGroupingChange?: (zoneId: string, fieldId: string, grouping: DateGrouping) => void;
   onFilterChange?: (fieldId: string, operator: FilterOperator, value: string) => void;
+  onRemove?: (fieldId: string) => void;
+  activeSourceIds?: Set<string>;
   placeholder?: string;
   isCompact?: boolean;
   className?: string;
   data: Record<string, unknown>[];
 }
 
-function DroppableZone({ id, fields, isValues, onAggChange, onDateGroupingChange, onFilterChange, placeholder, isCompact, className, data }: DroppableZoneProps) {
+function DroppableZone({ id, fields, isValues, onAggChange, onDateGroupingChange, onFilterChange, onRemove, activeSourceIds, placeholder, isCompact, className, data }: DroppableZoneProps) {
   const { setNodeRef, isOver } = useSortable({ id });
   const sortableItems = useMemo(() => fields.map(f => `${id}-${f.id}`), [id, fields]);
 
@@ -537,6 +637,8 @@ function DroppableZone({ id, fields, isValues, onAggChange, onDateGroupingChange
               onAggChange={onAggChange}
               onDateGroupingChange={onDateGroupingChange}
               onFilterChange={onFilterChange}
+              onRemove={onRemove}
+              isActiveInLayout={id === 'available' && activeSourceIds?.has(field.sourceId || field.id)}
               isCompact={isCompact}
               data={data}
             />
@@ -547,7 +649,7 @@ function DroppableZone({ id, fields, isValues, onAggChange, onDateGroupingChange
   );
 }
 
-function SortableItem({ id, zoneId, field, isValues, onAggChange, onDateGroupingChange, onFilterChange, isCompact, data }: { 
+function SortableItem({ id, zoneId, field, isValues, onAggChange, onDateGroupingChange, onFilterChange, onRemove, isActiveInLayout, isCompact, data }: { 
   id: string; 
   zoneId: string;
   field: DraggableField; 
@@ -555,6 +657,8 @@ function SortableItem({ id, zoneId, field, isValues, onAggChange, onDateGrouping
   onAggChange?: (fieldId: string, agg: AggregationType) => void;
   onDateGroupingChange?: (zoneId: string, fieldId: string, grouping: DateGrouping) => void;
   onFilterChange?: (fieldId: string, operator: FilterOperator, value: string) => void;
+  onRemove?: (fieldId: string) => void;
+  isActiveInLayout?: boolean;
   isCompact?: boolean;
   data: Record<string, unknown>[];
 }) {
@@ -586,9 +690,18 @@ function SortableItem({ id, zoneId, field, isValues, onAggChange, onDateGrouping
   return (
     <div
       ref={setNodeRef}
+      {...attributes}
+      {...listeners}
+      onContextMenu={(e) => {
+        if (zoneId !== 'available' && onRemove) {
+          e.preventDefault();
+          onRemove(field.id);
+        }
+      }}
       style={style}
       className={cn(
         "group flex flex-col gap-1 px-2 py-1.5 rounded-lg border shadow-sm transition-all duration-200",
+        "cursor-grab active:cursor-grabbing",
         itemZoneStyles[zoneId as keyof typeof itemZoneStyles] || itemZoneStyles.available,
         "hover:border-primary/60 hover:shadow-md active:scale-[0.98]",
         isDragging && "opacity-20 scale-95",
@@ -596,11 +709,7 @@ function SortableItem({ id, zoneId, field, isValues, onAggChange, onDateGrouping
       )}
     >
       <div className="flex items-center gap-2">
-        <div 
-          {...attributes} 
-          {...listeners} 
-          className="cursor-grab active:cursor-grabbing text-muted-foreground/30 group-hover:text-primary transition-colors"
-        >
+        <div className="text-muted-foreground/30 group-hover:text-primary transition-colors">
           <GripVertical className="w-3 h-3" />
         </div>
         
@@ -617,7 +726,24 @@ function SortableItem({ id, zoneId, field, isValues, onAggChange, onDateGrouping
           )}
         </Tooltip>
         
+        {/* Active Indicator for Available Zone */}
+        {zoneId === 'available' && isActiveInLayout && (
+          <CheckCircle2 className="w-3.5 h-3.5 text-primary" />
+        )}
 
+        {/* Remove Button for Layout Zones */}
+        {zoneId !== 'available' && onRemove && (
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemove(field.id);
+            }}
+            className="p-1 rounded-md opacity-0 group-hover:opacity-100 hover:bg-destructive/10 text-destructive/70 hover:text-destructive transition-all"
+            title="Remove field"
+          >
+            <X className="w-3 h-3" />
+          </button>
+        )}
 
         {/* Aggregation Selector (for Values) */}
         {isValues && onAggChange && (
@@ -644,7 +770,7 @@ function SortableItem({ id, zoneId, field, isValues, onAggChange, onDateGrouping
         <div className="flex items-center gap-1 mt-0.5 pt-1 border-t border-border/30">
           <CalendarDays className="w-2.5 h-2.5 text-primary opacity-40" />
           <Select 
-            defaultValue={field.dateGrouping || "daily"}
+            value={field.dateGrouping || "daily"}
             onValueChange={(val) => onDateGroupingChange(zoneId, field.id, val as DateGrouping)}
           >
             <SelectTrigger className="h-5 flex-1 text-[7px] font-black uppercase rounded bg-muted/30 border-none focus:ring-0 p-1">
@@ -652,7 +778,9 @@ function SortableItem({ id, zoneId, field, isValues, onAggChange, onDateGrouping
             </SelectTrigger>
             <SelectContent className="rounded-lg border-border shadow-premium font-mono z-[600]">
               <SelectItem value="daily" className="text-[8px] font-bold uppercase py-1">Daily</SelectItem>
+              <SelectItem value="weekly" className="text-[8px] font-bold uppercase py-1">Weekly</SelectItem>
               <SelectItem value="monthly" className="text-[8px] font-bold uppercase py-1">Monthly</SelectItem>
+              <SelectItem value="quarterly" className="text-[8px] font-bold uppercase py-1">Quarterly</SelectItem>
               <SelectItem value="yearly" className="text-[8px] font-bold uppercase py-1">Yearly</SelectItem>
             </SelectContent>
           </Select>
@@ -673,7 +801,7 @@ function SortableItem({ id, zoneId, field, isValues, onAggChange, onDateGrouping
               <div className="flex items-center gap-1">
                 <FilterIcon className="w-2.5 h-2.5 text-primary opacity-40" />
                 <Select 
-                  defaultValue={field.filterOperator || "equals"}
+                  value={field.filterOperator || "equals"}
                   onValueChange={(val) => onFilterChange(field.id, val as FilterOperator, field.filterValue || "")}
                 >
                   <SelectTrigger className="h-6 flex-1 text-[8px] font-black uppercase rounded bg-muted/30 border border-border/40 focus:ring-0 p-1">
