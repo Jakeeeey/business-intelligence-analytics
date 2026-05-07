@@ -38,10 +38,14 @@ async function proxy(req: NextRequest) {
 
   const url = buildUpstreamUrl(req, DIRECTUS_COLLECTION);
 
-  // Force optimization & strict filters for the dropdown
+  // Force optimization & strict filters for the dropdown unless 'all' is requested
+  const showAll = req.nextUrl.searchParams.get("all") === "true";
+  
   url.searchParams.set("limit", "-1");
-  url.searchParams.set("filter[isActive][_eq]", "1");
-  url.searchParams.set("filter[nonBuy][_eq]", "0"); // <-- MUST be 0 to match your SQL View
+  if (!showAll) {
+    url.searchParams.set("filter[isActive][_eq]", "1");
+    url.searchParams.set("filter[nonBuy][_eq]", "0"); // <-- MUST be 0 to match your SQL View
+  }
   url.searchParams.set("sort", "supplier_name");
   url.searchParams.set("fields", "id,supplier_name");
 

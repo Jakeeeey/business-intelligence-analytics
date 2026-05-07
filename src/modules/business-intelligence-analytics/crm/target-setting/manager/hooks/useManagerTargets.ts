@@ -166,6 +166,11 @@ export function useManagerTargets() {
     return (raw.target_setting_division ?? []).find((x) => x.id === selectedDivisionTsdId) ?? null;
   }, [raw, selectedDivisionTsdId]);
 
+  const supplierNameById = React.useCallback(
+    (id: number) => raw?.suppliers?.find((x) => Number(x.id) === id)?.supplier_name ?? `Supplier #${id}`,
+    [raw?.suppliers],
+  );
+
   const supplierOptions = React.useMemo<SupplierOption[]>(() => {
     const suppliers = raw?.suppliers ?? [];
     return suppliers
@@ -425,6 +430,7 @@ export function useManagerTargets() {
   }
 
   return {
+    raw,
     loading,
     refreshing,
 
@@ -454,6 +460,7 @@ export function useManagerTargets() {
     supplierAllocationsForSelectedDivision,
     supervisorAllocationsForSelectedDivision,
     supervisorNamesByAllocationId,
+    supplierNameById,
     allocationLog,
 
     totals,
