@@ -119,13 +119,13 @@ export function CustomerBreakdownModal({
                 const names = baseCustomerMetrics.map(c => c.name);
                 
                 // Determine effective viewType for API
-                const effectiveViewType = viewType === "customer" 
+                const effectiveViewType: 'customer' | 'area' | 'storeType' = viewType === "customer" 
                     ? (selectedStoreType === null ? "storeType" : "customer")
                     : "area";
 
                 const [peaks, targetsMap] = await Promise.all([
-                    fetchCustomerPeaks(names, ids, effectiveViewType as any),
-                    fetchCustomerTargets(ids, startDate, endDate, effectiveViewType as any, names)
+                    fetchCustomerPeaks(names, ids, effectiveViewType),
+                    fetchCustomerTargets(ids, startDate, endDate, effectiveViewType, names)
                 ]);
 
                 setPeakSales(peaks);
