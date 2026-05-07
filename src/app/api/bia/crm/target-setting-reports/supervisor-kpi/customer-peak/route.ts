@@ -73,6 +73,8 @@ export async function GET(req: NextRequest) {
         if (viewType === "area") {
             // Province, City per user request
             groupName = `${(item.province as string || "").trim()}, ${(item.city as string || "").trim()}`.replace(/^, |, $/g, "") || "Unknown Area";
+        } else if (viewType === "storeType") {
+            groupName = (item.storeTypeLabel as string || "OTHERS").trim();
         } else {
             groupName = (item.storeName as string || "Unknown Customer").trim();
         }

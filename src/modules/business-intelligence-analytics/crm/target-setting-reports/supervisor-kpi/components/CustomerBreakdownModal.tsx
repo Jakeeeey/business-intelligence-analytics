@@ -20,7 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, Store, Users, TrendingUp, Loader2, MapPin, ArrowUpDown, ChevronUp, ChevronDown } from "lucide-react";
+import { Search, Store, Users, TrendingUp, Loader2, MapPin, ArrowUpDown, ChevronUp, ChevronDown, ArrowLeft } from "lucide-react";
 
 import { VSalesPerformanceDataDto } from "../types";
 import { fetchCustomerPeaks, fetchCustomerTargets } from "../providers/fetchProvider";
@@ -51,6 +51,7 @@ export function CustomerBreakdownModal({
                                        }: CustomerBreakdownModalProps) {
     const [searchTerm, setSearchTerm] = useState("");
     const [viewType, setViewType] = useState<"customer" | "area">("customer");
+    const [selectedStoreType, setSelectedStoreType] = useState<string | null>(null);
     const [peakSales, setPeakSales] = useState<Record<string, { total: number; peak: number }>>({});
     const [customerTargets, setCustomerTargets] = useState<Record<string, number>>({});
     const [selectedProdCust, setSelectedProdCust] = useState<{ name: string; code: string; sId: number; supId: number } | null>(null);
@@ -63,17 +64,28 @@ export function CustomerBreakdownModal({
 
         data.forEach((item) => {
             const itemObj = item as unknown as Record<string, unknown>;
-            const name = viewType === "customer" 
-                ? (item.storeName || "Unknown Customer").trim()
-                : `${(itemObj.province as string || "").trim()}, ${(itemObj.city as string || "").trim()}`.replace(/^, |, $/g, "") || "Unknown Area";
             
-            // Based on sample: customerCode might be a name, while province/city might contain the ID (e.g. "EPI-EXT4 - 34095")
-            // For Area view, we use the combined name itself as the identifier fallback
-            const rawCode = viewType === "area" 
-                ? `${(itemObj.province as string || "").trim()}::${(itemObj.city as string || "").trim()}`
-                : (itemObj.province && (itemObj.province as string).includes('-')) ? itemObj.province as string :
-                  (itemObj.customerCode && (itemObj.customerCode as string).includes('-')) ? itemObj.customerCode as string :
-                  itemObj.customerCode as string || itemObj.storeCode as string || itemObj.customerId as string || name;
+            let name = "";
+            let rawCode = "";
+
+            if (viewType === "area") {
+                name = `${(itemObj.province as string || "").trim()}, ${(itemObj.city as string || "").trim()}`.replace(/^, |, $/g, "") || "Unknown Area";
+                rawCode = `${(itemObj.province as string || "").trim()}::${(itemObj.city as string || "").trim()}`;
+            } else {
+                // Channel/Customer View
+                if (selectedStoreType === null) {
+                    // Level 1: Show Store Types (Channel)
+                    name = (item.storeTypeLabel || "OTHERS").trim();
+                    rawCode = name; // For Store Type, use name as code for lookup
+                } else {
+                    // Level 2: Show Customers for selected Store Type
+                    if (item.storeTypeLabel !== selectedStoreType) return;
+                    name = (item.storeName || "Unknown Customer").trim();
+                    rawCode = (itemObj.province && (itemObj.province as string).includes('-')) ? itemObj.province as string :
+                              (itemObj.customerCode && (itemObj.customerCode as string).includes('-')) ? itemObj.customerCode as string :
+                              itemObj.customerCode as string || itemObj.storeCode as string || itemObj.customerId as string || name;
+                }
+            }
             
             const current = map.get(name) || { 
                 sales: 0, 
@@ -86,7 +98,6 @@ export function CustomerBreakdownModal({
             current.sales += Number(item.netAmount || itemObj.amount as number || 0);
             current.count += 1;
             
-            // If code was missing in first record but found in subsequent, update it
             if (!current.customerCode && rawCode) {
                 current.customerCode = rawCode;
             }
@@ -95,7 +106,7 @@ export function CustomerBreakdownModal({
         });
 
         return Array.from(map.entries()).map(([name, metrics]) => ({ name, ...metrics }));
-    }, [data, viewType]);
+    }, [data, viewType, selectedStoreType]);
 
     // Fetch historical peaks when modal opens or raw data changes
     useEffect(() => {
@@ -107,14 +118,17 @@ export function CustomerBreakdownModal({
             try {
                 const names = baseCustomerMetrics.map(c => c.name);
                 
+                // Determine effective viewType for API
+                const effectiveViewType = viewType === "customer" 
+                    ? (selectedStoreType === null ? "storeType" : "customer")
+                    : "area";
+
                 const [peaks, targetsMap] = await Promise.all([
-                    fetchCustomerPeaks(names, ids, viewType),
-                    fetchCustomerTargets(ids, startDate, endDate, viewType, names)
+                    fetchCustomerPeaks(names, ids, effectiveViewType as any),
+                    fetchCustomerTargets(ids, startDate, endDate, effectiveViewType as any, names)
                 ]);
 
                 setPeakSales(peaks);
-                
-                // Use targetsMap directly for both views since the API/Provider now handles the consolidation correctly
                 setCustomerTargets(targetsMap);
             } catch (err) {
                 console.error("Failed to fetch customer data:", err);
@@ -125,7 +139,7 @@ export function CustomerBreakdownModal({
         };
 
         loadPeaks();
-    }, [isOpen, baseCustomerMetrics, ids, startDate, endDate, viewType]);
+    }, [isOpen, baseCustomerMetrics, ids, startDate, endDate, viewType, selectedStoreType]);
 
     const { customerMetrics, totalSales, uniqueCustomers } = useMemo(() => {
         const filtered = baseCustomerMetrics
@@ -204,11 +218,12 @@ export function CustomerBreakdownModal({
                             <div className="flex items-center gap-6">
                                 <Tabs defaultValue="customer" value={viewType} onValueChange={(v) => {
                                     setViewType(v as "customer" | "area");
+                                    setSelectedStoreType(null); // Reset drill-down on tab change
                                     setSortConfig(null);
                                 }} className="w-[300px]">
                                     <TabsList className="grid w-full grid-cols-2 bg-muted/20 border border-border/40 p-1 rounded-xl">
                                         <TabsTrigger value="customer" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-black text-[10px] uppercase tracking-widest rounded-lg">
-                                            <Users className="h-3 w-3 mr-2" /> Customer
+                                            <Users className="h-3 w-3 mr-2" /> Channel
                                         </TabsTrigger>
                                         <TabsTrigger value="area" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-black text-[10px] uppercase tracking-widest rounded-lg">
                                             <MapPin className="h-3 w-3 mr-2" /> Area
@@ -246,21 +261,34 @@ export function CustomerBreakdownModal({
                                     <div className="flex items-baseline gap-2">
                                         <div className="text-3xl font-black tracking-tighter text-foreground">{uniqueCustomers}</div>
                                         <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
-                                            {viewType === "customer" ? "Active Customers" : "Active Areas"}
+                                            {viewType === "customer" 
+                                                ? (selectedStoreType ? "Customers" : "Store Types") 
+                                                : "Active Areas"}
                                         </p>
                                     </div>
                                 </CardContent>
                             </Card>
                         </div>
 
-                        <div className="flex items-center gap-2 mb-4 bg-muted/10 p-1 rounded-lg border border-border/40 flex-shrink-0">
-                            <Search className="h-4 w-4 text-muted-foreground ml-2" />
-                            <Input
-                                placeholder={`FILTER BY ${viewType === "customer" ? "CUSTOMER" : "AREA"} NAME...`}
-                                className="border-none bg-transparent h-8 text-xs font-bold uppercase placeholder:text-muted-foreground/50 focus-visible:ring-0"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
+                        <div className="flex items-center gap-2 mb-4 flex-shrink-0">
+                            {viewType === "customer" && selectedStoreType && (
+                                <button 
+                                    onClick={() => setSelectedStoreType(null)}
+                                    className="p-2 hover:bg-muted/20 rounded-lg border border-border/40 transition-colors group flex items-center gap-2"
+                                >
+                                    <ArrowLeft className="h-4 w-4 text-primary group-hover:-translate-x-1 transition-transform" />
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Back to Channels</span>
+                                </button>
+                            )}
+                            <div className="flex-1 flex items-center gap-2 bg-muted/10 p-1 rounded-lg border border-border/40">
+                                <Search className="h-4 w-4 text-muted-foreground ml-2" />
+                                <Input
+                                    placeholder={`FILTER BY ${viewType === "customer" ? (selectedStoreType ? "CUSTOMER" : "CHANNEL") : "AREA"} NAME...`}
+                                    className="border-none bg-transparent h-8 text-xs font-bold uppercase placeholder:text-muted-foreground/50 focus-visible:ring-0"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                />
+                            </div>
                         </div>
 
                         <ScrollArea className="flex-1 min-h-0 h-full border border-border/40 rounded-xl bg-card/10">
@@ -273,7 +301,7 @@ export function CustomerBreakdownModal({
                                             onClick={() => handleSort('name')}
                                         >
                                             <div className="flex items-center">
-                                                {viewType === "customer" ? "Customer Name" : "Area Name"} {getSortIcon('name')}
+                                                {viewType === "customer" ? (selectedStoreType ? "Customer Name" : "Channel Name") : "Area Name"} {getSortIcon('name')}
                                             </div>
                                         </TableHead>
                                         <TableHead 
@@ -326,12 +354,19 @@ export function CustomerBreakdownModal({
                                             <TableRow 
                                                 key={idx} 
                                                 className="hover:bg-primary/5 transition-colors border-border/40 group cursor-pointer"
-                                                onClick={() => setSelectedProdCust({
-                                                    name: customer.name,
-                                                    code: customer.customerCode,
-                                                    sId: customer.sId,
-                                                    supId: customer.supId
-                                                })}
+                                                onClick={() => {
+                                                    if (viewType === "customer" && !selectedStoreType) {
+                                                        setSelectedStoreType(customer.name);
+                                                        setSearchTerm("");
+                                                    } else {
+                                                        setSelectedProdCust({
+                                                            name: customer.name,
+                                                            code: customer.customerCode,
+                                                            sId: customer.sId,
+                                                            supId: customer.supId
+                                                        });
+                                                    }
+                                                }}
                                             >
                                                 <TableCell className="font-mono text-xs text-muted-foreground/50 font-bold text-center">
                                                     {idx + 1}
