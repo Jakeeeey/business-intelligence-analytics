@@ -101,7 +101,7 @@ export async function GET(req: NextRequest) {
       ]
     });
 
-    const fields = "target_amount,customer_id.store_name,target_setting_id.status";
+    const fields = "target_amount,customer_id.store_name,customer_id.store_type.store_type,target_setting_id.status";
     const url = `${DIRECTUS_BASE}/items/salesman_target_customer_sales?filter=${encodeURIComponent(filter)}&fields=${fields}&limit=-1`;
 
     const res = await fetch(url, {
@@ -116,12 +116,16 @@ export async function GET(req: NextRequest) {
 
     const { data } = await res.json();
     
-    // Map to { [storeName]: targetAmount }
+    // Map to { [key]: targetAmount }
     const targetMap: Record<string, number> = {};
     (data || []).forEach((item: Record<string, unknown>) => {
-      const storeName = (item.customer_id as Record<string, unknown> | undefined)?.store_name as string | undefined;
-      if (storeName) {
-        targetMap[storeName] = (targetMap[storeName] || 0) + (item.target_amount as number || 0);
+      const customer = item.customer_id as Record<string, unknown> | undefined;
+      const storeName = customer?.store_name as string | undefined;
+      const storeType = (customer?.store_type as Record<string, unknown> | undefined)?.store_type as string | undefined;
+
+      const key = viewType === "storeType" ? (storeType || "OTHERS") : storeName;
+      if (key) {
+        targetMap[key] = (targetMap[key] || 0) + (item.target_amount as number || 0);
       }
     });
 

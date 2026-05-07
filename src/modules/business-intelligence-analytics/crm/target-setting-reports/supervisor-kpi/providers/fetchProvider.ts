@@ -23,14 +23,14 @@ export const fetchDynamicTargets = async (startDate: string, endDate: string): P
     return await res.json();
 };
 
-export const fetchCustomerPeaks = async (names: string[], salesmanIds: number[], viewType: 'customer' | 'area' = 'customer'): Promise<Record<string, { total: number; peak: number }>> => {
+export const fetchCustomerPeaks = async (names: string[], salesmanIds: number[], viewType: 'customer' | 'area' | 'storeType' = 'customer'): Promise<Record<string, { total: number; peak: number }>> => {
     if (names.length === 0) return {};
     const url = `/api/bia/crm/target-setting-reports/supervisor-kpi/customer-peak?ids=${salesmanIds.join(",")}&names=${encodeURIComponent(names.join("|"))}&viewType=${viewType}`;
     const res = await fetch(url, { cache: "no-store" });
     if (!res.ok) return {};
     return await res.json();
 };
-export const fetchCustomerTargets = async (salesmanIds: number[], startDate: string, endDate: string, viewType: 'customer' | 'area' = 'customer', names: string[] = []): Promise<Record<string, number>> => {
+export const fetchCustomerTargets = async (salesmanIds: number[], startDate: string, endDate: string, viewType: 'customer' | 'area' | 'storeType' = 'customer', names: string[] = []): Promise<Record<string, number>> => {
     try {
         const url = `/api/bia/crm/target-setting-reports/supervisor-kpi/customer-targets?salesmanIds=${salesmanIds.join(",")}&startDate=${startDate}&endDate=${endDate}&viewType=${viewType}${names.length > 0 ? `&names=${encodeURIComponent(names.join("|"))}` : ""}`;
         const res = await fetch(url, { cache: "no-store" });
@@ -87,7 +87,7 @@ export const fetchCustomerProducts = async (
     supplierId: number,
     startDate: string,
     endDate: string,
-    viewType: 'customer' | 'area' = 'customer'
+    viewType: 'customer' | 'area' | 'storeType' = 'customer'
 ): Promise<ProductSalesDetail[]> => {
     const params = new URLSearchParams({
         customerCode,
