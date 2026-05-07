@@ -50,7 +50,7 @@ export function AllocationHierarchyLog({
         allocations.forEach(div => {
             divIds.push(div.id);
             const suppliers = supplierAllocations.filter(s => s.tsd_id === div.id);
-            let divStartIdx = grid.length;
+            const divStartIdx = grid.length;
 
             if (suppliers.length === 0) {
                 grid.push({
@@ -62,7 +62,7 @@ export function AllocationHierarchyLog({
             } else {
                 suppliers.forEach(sup => {
                     const supervisors = supervisorAllocations.filter(s => s.tss_id === sup.id);
-                    let supStartIdx = grid.length;
+                    const supStartIdx = grid.length;
 
                     if (supervisors.length === 0) {
                         grid.push({
@@ -74,7 +74,7 @@ export function AllocationHierarchyLog({
                     } else {
                         supervisors.forEach(srv => {
                             const salesmen = salesmanAllocations.filter(s => s.ts_supervisor_id === srv.id);
-                            let srvStartIdx = grid.length;
+                            const srvStartIdx = grid.length;
 
                             if (salesmen.length === 0) {
                                 grid.push({

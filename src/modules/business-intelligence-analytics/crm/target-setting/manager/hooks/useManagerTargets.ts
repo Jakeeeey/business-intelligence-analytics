@@ -460,6 +460,7 @@ export function useManagerTargets() {
     supplierAllocationsForSelectedDivision,
     supervisorAllocationsForSelectedDivision,
     supervisorNamesByAllocationId,
+    supplierNameById,
     allocationLog,
 
     totals,

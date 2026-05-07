@@ -38,7 +38,7 @@ export default function ManagerModule() {
 
   const supplierNameById = React.useCallback(
     (id: number) => {
-        const found = m.raw?.suppliers?.find((x: any) => Number(x.id) === id);
+        const found = m.raw?.suppliers?.find((x: { id: number | string; supplier_name: string }) => Number(x.id) === id);
         return found?.supplier_name ?? `Supplier #${id}`;
     },
     [m.raw?.suppliers],

@@ -51,7 +51,7 @@ export function ManagerAllocationHierarchyLog({
         } else {
             supplierAllocations.forEach(sup => {
                 const supervisors = supervisorAllocations.filter(s => s.tss_id === sup.id);
-                let supStartIdx = grid.length;
+                const supStartIdx = grid.length;
 
                 if (supervisors.length === 0) {
                     grid.push({
