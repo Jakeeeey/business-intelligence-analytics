@@ -49,7 +49,7 @@ export function useExecutiveTargetSetting() {
   useEffect(() => {
     Promise.all([
       getDivisions(),
-      getSuppliers(),
+      getSuppliers(true), // Fetch all for logs
       getSalesmen(),
       getAllUsers(),
       getTestUser()
