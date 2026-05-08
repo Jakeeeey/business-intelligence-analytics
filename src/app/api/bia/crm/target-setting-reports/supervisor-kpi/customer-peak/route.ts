@@ -117,7 +117,18 @@ export async function GET(req: NextRequest) {
         monthlyMap[groupKey][monthKey] = (monthlyMap[groupKey][monthKey] || 0) + (item.netAmount || 0);
         
         const currentMonthAmt = monthlyMap[groupKey][monthKey];
-        const meta = metadataMap[groupKey] as any;
+        const meta = metadataMap[groupKey] as { 
+            name: string; 
+            peakMonthAmt: number; 
+            peakMonth: string;
+            customerCode: string;
+            storeTypeLabel: string;
+            sId: number;
+            supId: number;
+            province?: string;
+            city?: string;
+        };
+        
         if (currentMonthAmt > meta.peakMonthAmt) {
             meta.peakMonthAmt = currentMonthAmt;
             meta.peakMonth = monthKey;
@@ -139,12 +150,7 @@ export async function GET(req: NextRequest) {
             metadata: meta
         };
     });
-
-    console.log(`[DEBUG] Customer Peak Response: Found ${Object.keys(finalMap).length} groups for storeType=${storeTypeFilter}`);
-    if (Object.keys(finalMap).length < 5) {
-        console.log("[DEBUG] Sample Groups:", Object.keys(finalMap).slice(0, 5));
-    }
-
+    
     return NextResponse.json(finalMap);
 
   } catch (error) {
