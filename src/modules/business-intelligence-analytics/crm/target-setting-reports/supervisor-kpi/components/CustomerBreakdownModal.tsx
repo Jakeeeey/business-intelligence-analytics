@@ -129,7 +129,7 @@ export function CustomerBreakdownModal({
                     effectiveViewType === "storeType" ? fetchCustomerTargets(ids, startDate, endDate, "customer") : Promise.resolve<Record<string, number>>({})
                 ]);
 
-                let finalTargets = { ...mainTargetsMap };
+                const finalTargets = { ...mainTargetsMap };
 
                 if (effectiveViewType === "storeType") {
                     // Create a roll-up of customer targets by Store Type
@@ -172,7 +172,7 @@ export function CustomerBreakdownModal({
         };
 
         loadPeaks();
-    }, [isOpen, baseCustomerMetrics, ids, startDate, endDate, viewType, selectedStoreType]);
+    }, [isOpen, baseCustomerMetrics, ids, startDate, endDate, viewType, selectedStoreType, data]);
 
     const { customerMetrics, totalSales, uniqueCustomers } = useMemo(() => {
         // Create a union of all names from current sales, historical peaks, and targets

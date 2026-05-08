@@ -39,17 +39,14 @@ export function AllocationHierarchyLog({
     const currency = (amount: number) => 
         new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount);
 
-    const { rows, spans, divIds } = useMemo(() => {
-        if (!companyTarget) return { rows: [], spans: { divSpans: {}, supSpans: {}, srvSpans: {} }, divIds: [] };
+    const { rows, spans } = useMemo(() => {
+        if (!companyTarget) return { rows: [], spans: { divSpans: {}, supSpans: {}, srvSpans: {} } };
 
         const grid: GridRow[] = [];
         const divSpans: Record<number, number> = {};
         const supSpans: Record<number, number> = {};
         const srvSpans: Record<number, number> = {};
-        const divIds: number[] = [];
-
         allocations.forEach(div => {
-            divIds.push(div.id);
             const suppliers = supplierAllocations.filter(s => s.tsd_id === div.id);
             const divStartIdx = grid.length;
 
@@ -126,7 +123,7 @@ export function AllocationHierarchyLog({
             });
         });
 
-        return { rows: grid, spans: { divSpans, supSpans, srvSpans }, divIds };
+        return { rows: grid, spans: { divSpans, supSpans, srvSpans } };
     }, [companyTarget, allocations, supplierAllocations, supervisorAllocations, salesmanAllocations]);
 
     if (!companyTarget) return null;

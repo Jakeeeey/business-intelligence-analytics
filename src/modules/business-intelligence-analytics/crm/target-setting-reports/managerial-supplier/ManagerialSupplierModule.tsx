@@ -2,10 +2,10 @@
 
 import React, { useEffect, useState, useMemo, Suspense } from "react";
 import {
-    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList, ComposedChart, Scatter
+    Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList, ComposedChart, Scatter
 } from 'recharts';
 import {
-    Filter, Loader2, Calendar, ChevronRight, User2, ArrowLeft, LayoutDashboard, Trophy, Coins, Target as TargetIcon, TrendingUp, TrendingDown, AlertCircle
+    Filter, Loader2, Calendar, ChevronRight, User2, ArrowLeft, LayoutDashboard, Trophy, Coins, TrendingUp, TrendingDown, AlertCircle
 } from "lucide-react";
 import { format, startOfMonth, endOfMonth, parseISO } from "date-fns";
 import { useSearchParams } from "next/navigation";
@@ -14,7 +14,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 

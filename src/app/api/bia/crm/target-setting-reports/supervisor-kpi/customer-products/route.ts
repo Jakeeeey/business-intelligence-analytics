@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { ProductSalesDetail, VSalesPerformanceDataDto } from "@/modules/business-intelligence-analytics/crm/target-setting-reports/supervisor-kpi/types";
 
 const SPRING_BASE = (process.env.SPRING_API_BASE_URL || "http://100.81.225.79:8086").replace(/\/+$/, "");
 
@@ -52,7 +53,7 @@ export async function GET(req: NextRequest) {
       cache: "no-store",
     });
 
-    let data = [];
+    let data: ProductSalesDetail[] = [];
     if (res.ok) {
         data = await res.json();
     }
@@ -72,15 +73,15 @@ export async function GET(req: NextRequest) {
         });
         
         if (fallbackRes.ok) {
-            const allSales = await fallbackRes.json();
+            const allSales: VSalesPerformanceDataDto[] = await fallbackRes.json();
             const parts = (identifier || "").split("::");
             const provinceSearch = (parts[0] || "").toLowerCase().trim();
             const citySearch = (parts[1] || "").toLowerCase().trim();
-            data = allSales.filter((item: any) => {
+            data = allSales.filter((item) => {
                 const itemProv = (item.province || item.provinceName || "").toLowerCase().trim();
                 const itemCity = (item.city || item.cityName || "").toLowerCase().trim();
                 return provinceSearch && citySearch ? (itemProv.includes(provinceSearch) && itemCity.includes(citySearch)) : (itemProv.includes(provinceSearch) || itemCity.includes(citySearch));
-            });
+            }) as unknown as ProductSalesDetail[];
         }
     }
 
@@ -110,13 +111,13 @@ export async function GET(req: NextRequest) {
 
     const highestSalesMap = new Map<number, number>();
     if (hRes.ok) {
-        let hData = await hRes.json();
+        let hData: VSalesPerformanceDataDto[] = await hRes.json();
         // Area filtering if needed
         if (viewType === "area") {
             const parts = (identifier || "").split("::");
             const provinceSearch = (parts[0] || "").toLowerCase().trim();
             const citySearch = (parts[1] || "").toLowerCase().trim();
-            hData = hData.filter((item: any) => {
+            hData = hData.filter((item) => {
                 const itemProv = (item.province || item.provinceName || "").toLowerCase().trim();
                 const itemCity = (item.city || item.cityName || "").toLowerCase().trim();
                 return provinceSearch && citySearch ? (itemProv.includes(provinceSearch) && itemCity.includes(citySearch)) : (itemProv.includes(provinceSearch) || itemCity.includes(citySearch));
@@ -124,7 +125,7 @@ export async function GET(req: NextRequest) {
         }
 
         const productMonthSum = new Map<string, number>(); // "productId-YYYY-MM"
-        hData.forEach((item: any) => {
+        hData.forEach((item) => {
             const pId = item.productId;
             const date = item.transactionDate;
             if (!pId || !date) return;
@@ -142,9 +143,9 @@ export async function GET(req: NextRequest) {
 
     // 3. Aggregate Current Period and Merge Highest Sales
     if (Array.isArray(data) && data.length > 0) {
-        const aggregatedMap = new Map<number, any>();
+        const aggregatedMap = new Map<number, ProductSalesDetail>();
         
-        data.forEach((item: any) => {
+        data.forEach((item) => {
             const pId = Number(item.productId);
             if (!pId) return;
             

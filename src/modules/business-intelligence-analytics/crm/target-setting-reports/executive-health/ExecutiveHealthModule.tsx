@@ -6,13 +6,12 @@ import {
     Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList, Scatter, ComposedChart 
 } from 'recharts';
 import { 
-    Loader2, Calendar, LayoutDashboard, ChevronRight, AlertCircle, Trophy, Coins, Target as TargetIcon
+    Loader2, Calendar, LayoutDashboard, ChevronRight, AlertCircle, Trophy
 } from "lucide-react";
 import { format, startOfMonth, endOfMonth, parseISO } from "date-fns";
 
 // Shadcn UI Components
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
