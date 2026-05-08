@@ -84,7 +84,7 @@ function getJwtSub(token: string | null) {
 
 async function resolveExecutiveContextByTsdId(tsd_id: number) {
   const divRes = await fetchDirectus<{ data: Record<string, unknown>[] }>(
-    `/items/target_setting_division?filter[id][_eq]=${encodeURIComponent(String(tsd_id))}&limit=1`,
+    `/items/target_setting_division?filter[id][_eq]=${encodeURIComponent(String(tsd_id))}&limit=1&fields=id,tse_id,division_id,target_amount,status,fiscal_period`,
   );
   const div = divRes.data?.[0];
   if (!div) throw new Error("Division target (target_setting_division) not found.");
@@ -93,7 +93,7 @@ async function resolveExecutiveContextByTsdId(tsd_id: number) {
   if (!tse_id) throw new Error("Missing tse_id on target_setting_division.");
 
   const execRes = await fetchDirectus<{ data: Record<string, unknown>[] }>(
-    `/items/target_setting_executive?filter[id][_eq]=${encodeURIComponent(String(tse_id))}&limit=1`,
+    `/items/target_setting_executive?filter[id][_eq]=${encodeURIComponent(String(tse_id))}&limit=1&fields=id,target_amount,fiscal_period,status`,
   );
   const exec = execRes.data?.[0];
   if (!exec) throw new Error("Executive target (target_setting_executive) not found.");
@@ -109,7 +109,7 @@ async function resolveExecutiveContextByTsdId(tsd_id: number) {
 async function findSupervisorRowsByTssId(tss_id: number) {
   const q =
     `/items/target_setting_supervisor?limit=-1` +
-    `&filter[tss_id][_eq]=${encodeURIComponent(String(tss_id))}`;
+    `&filter[tss_id][_eq]=${encodeURIComponent(String(tss_id))}&fields=id,tss_id,supervisor_user_id,target_amount,fiscal_period,status`;
   const r = await fetchDirectus<{ data: Record<string, unknown>[] }>(q);
   return r.data ?? [];
 }
@@ -171,19 +171,19 @@ export async function GET(req: NextRequest) {
       supervisorPerDivision,
       divisionSalesHead,
     ] = await Promise.all([
-      fetchDirectus<{ data: Record<string, unknown>[] }>(`/items/target_setting_executive?limit=-1`),
-      fetchDirectus<{ data: Record<string, unknown>[] }>(`/items/target_setting_division?limit=-1`),
-      fetchDirectus<{ data: Record<string, unknown>[] }>(`/items/target_setting_supplier?limit=-1`),
-      fetchDirectus<{ data: Record<string, unknown>[] }>(`/items/target_setting_supervisor?limit=-1`),
-      fetchDirectus<{ data: Record<string, unknown>[] }>(`/items/division?limit=-1`),
-      fetchDirectus<{ data: Record<string, unknown>[] }>(`/items/suppliers?limit=-1`),
-      fetchDirectus<{ data: Record<string, unknown>[] }>(`/items/user?limit=-1`),
+      fetchDirectus<{ data: Record<string, unknown>[] }>(`/items/target_setting_executive?limit=-1&fields=id,target_amount,fiscal_period,status`),
+      fetchDirectus<{ data: Record<string, unknown>[] }>(`/items/target_setting_division?limit=-1&fields=id,tse_id,division_id,target_amount,status,fiscal_period`),
+      fetchDirectus<{ data: Record<string, unknown>[] }>(`/items/target_setting_supplier?limit=-1&fields=id,tsd_id,supplier_id,target_amount,status,fiscal_period`),
+      fetchDirectus<{ data: Record<string, unknown>[] }>(`/items/target_setting_supervisor?limit=-1&fields=id,tss_id,supervisor_user_id,target_amount,status,fiscal_period`),
+      fetchDirectus<{ data: Record<string, unknown>[] }>(`/items/division?limit=-1&fields=division_id,division_name`),
+      fetchDirectus<{ data: Record<string, unknown>[] }>(`/items/suppliers?limit=-1&fields=id,supplier_name,supplier_type,isActive`),
+      fetchDirectus<{ data: Record<string, unknown>[] }>(`/items/user?limit=-1&fields=user_id,user_fname,user_mname,user_lname,role,is_deleted`),
 
       // ✅ new
-      fetchDirectus<{ data: Record<string, unknown>[] }>(`/items/supervisor_per_division?limit=-1`),
+      fetchDirectus<{ data: Record<string, unknown>[] }>(`/items/supervisor_per_division?limit=-1&fields=id,division_id,supervisor_id,is_deleted`),
 
       // ✅ Manager division mapping
-      fetchDirectus<{ data: Record<string, unknown>[] }>(`/items/division_sales_head?limit=-1`),
+      fetchDirectus<{ data: Record<string, unknown>[] }>(`/items/division_sales_head?limit=-1&fields=id,division_id,user_id,is_deleted`),
     ]);
 
     return NextResponse.json({

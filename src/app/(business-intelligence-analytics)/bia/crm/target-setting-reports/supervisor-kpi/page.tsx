@@ -1,3 +1,4 @@
+import React, { Suspense } from "react";
 import {
     Breadcrumb,
     BreadcrumbItem,
@@ -12,8 +13,7 @@ import { NavUser } from "@/components/shared/app-sidebar/nav-user";
 
 import { cookies } from "next/headers";
 
-// ✅ Wire the module you asked for
-import { ExecutiveHealthModule } from "@/modules/business-intelligence-analytics/crm/target-setting-reports/executive-health";
+import { SupervisorKPIModule } from "@/modules/business-intelligence-analytics/crm/target-setting-reports/supervisor-kpi";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -73,25 +73,19 @@ function buildHeaderUserFromToken(token: string | null | undefined) {
 }
 
 export default async function Page() {
-    // ✅ Next.js 16: cookies() is async
     const cookieStore = await cookies();
     const token = cookieStore.get(COOKIE_NAME)?.value ?? null;
-
     const headerUser = buildHeaderUserFromToken(token);
 
     return (
-        // ✅ This fills the RIGHT column provided by SidebarInset (which is now fixed-height).
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-            {/* ✅ Topbar is fixed in place because ONLY <main> scrolls */}
             <header className="relative z-10 flex h-14 shrink-0 items-center justify-between border-b shadow-sm bg-background sm:h-16 overflow-hidden">
                 <div className="flex h-full min-w-0 items-center gap-2 px-3 sm:px-4 overflow-hidden">
                     <SidebarTrigger className="-ml-1 shrink-0" />
-
                     <Separator
                         orientation="vertical"
                         className="hidden sm:block mr-2 data-[orientation=vertical]:h-4 shrink-0"
                     />
-
                     <div className="min-w-0 overflow-hidden">
                         <Breadcrumb>
                             <BreadcrumbList className="min-w-0 overflow-hidden">
@@ -104,12 +98,12 @@ export default async function Page() {
                                 </BreadcrumbItem>
                                 <BreadcrumbSeparator className="hidden md:block shrink-0" />
                                 <BreadcrumbItem className="hidden md:block shrink-0">
-                                    <BreadcrumbLink href="#">Sales BIA</BreadcrumbLink>
+                                    <BreadcrumbLink href="#">Target Setting Reports</BreadcrumbLink>
                                 </BreadcrumbItem>
                                 <BreadcrumbSeparator className="hidden md:block shrink-0" />
                                 <BreadcrumbItem className="min-w-0 overflow-hidden">
                                     <BreadcrumbPage className="truncate max-w-[56vw] sm:max-w-[60vw] md:max-w-none">
-                                        Executive Health
+                                        Supervisor KPIs
                                     </BreadcrumbPage>
                                 </BreadcrumbItem>
                             </BreadcrumbList>
@@ -122,9 +116,10 @@ export default async function Page() {
                 </div>
             </header>
 
-            {/* ✅ Only content scrolls inside RIGHT column */}
             <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-2 sm:p-4">
-                <ExecutiveHealthModule />
+                <Suspense fallback={<div className="p-4 text-sm text-muted-foreground">Loading Supervisor KPIs...</div>}>
+                    <SupervisorKPIModule />
+                </Suspense>
             </main>
         </div>
     );
