@@ -52,7 +52,7 @@ export function CustomerBreakdownModal({
     const [searchTerm, setSearchTerm] = useState("");
     const [viewType, setViewType] = useState<"customer" | "area">("customer");
     const [selectedStoreType, setSelectedStoreType] = useState<string | null>(null);
-    const [peakSales, setPeakSales] = useState<Record<string, { total: number; peak: number }>>({});
+    const [peakSales, setPeakSales] = useState<Record<string, { total: number; peak: number; metadata?: Record<string, unknown> }>>({});
     const [customerTargets, setCustomerTargets] = useState<Record<string, number>>({});
     const [selectedProdCust, setSelectedProdCust] = useState<{ name: string; code: string; sId: number; supId: number } | null>(null);
     const [loadingPeaks, setLoadingPeaks] = useState(false);

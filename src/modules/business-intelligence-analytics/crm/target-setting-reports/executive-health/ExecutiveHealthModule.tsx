@@ -93,6 +93,7 @@ function ExecutiveHealthContent() {
 
             return {
                 ...div,
+                name: div.name.toUpperCase(),
                 target: divTarget,
                 achievement: divTarget > 0 ? (div.sales / divTarget) * 100 : 0
             };
@@ -242,7 +243,7 @@ function ExecutiveHealthContent() {
                                     type="category" 
                                     width={140} 
                                     fontSize={10} 
-                                    tick={{ fill: 'hsl(var(--foreground))', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em' }} 
+                                    tick={{ fill: 'hsl(var(--foreground))', fontWeight: 900, fontSize: 10 }} 
                                     axisLine={false} 
                                     tickLine={false} 
                                 />

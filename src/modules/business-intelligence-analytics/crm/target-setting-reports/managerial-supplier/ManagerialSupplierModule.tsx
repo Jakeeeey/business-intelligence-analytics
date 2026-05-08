@@ -104,7 +104,7 @@ function ManagerialSupplierContent() {
             const target = relevantTargets?.reduce((sum: number, t: TargetItem) => sum + (t.target_amount || 0), 0) || 0;
 
             return {
-                name,
+                name: name.toUpperCase(),
                 sales,
                 target,
                 achievement: target > 0 ? (sales / target) * 100 : 0,
@@ -161,7 +161,7 @@ function ManagerialSupplierContent() {
                 const target = relevantSalesmanTargets?.reduce((sum: number, t: TargetItem) => sum + (t.target_amount || 0), 0) || 0;
 
                 return {
-                    name,
+                    name: name.toUpperCase(),
                     sales: data.sales,
                     target,
                     achievement: target > 0 ? (data.sales / target) * 100 : 0,
@@ -326,7 +326,7 @@ function ManagerialSupplierContent() {
                                     type="category" 
                                     width={140} 
                                     fontSize={10} 
-                                    tick={{ fill: 'hsl(var(--foreground))', fontWeight: 900, style: { textTransform: 'uppercase', letterSpacing: '0.05em' } }} 
+                                    tick={{ fill: 'hsl(var(--foreground))', fontWeight: 900, fontSize: 10 }} 
                                     axisLine={false} 
                                     tickLine={false} 
                                 />
