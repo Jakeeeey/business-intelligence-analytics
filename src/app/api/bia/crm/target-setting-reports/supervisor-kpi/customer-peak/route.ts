@@ -33,9 +33,6 @@ async function fetchAllSalesData(token?: string, startDate?: string, endDate?: s
 
 /**
  * GET /api/bia/crm/target-setting-reports/supervisor-kpi/customer-peak
- * Query Params: 
- * - storeNames (comma separated)
- * - salesmanIds (comma separated)
  */
 export async function GET(req: NextRequest) {
   try {
@@ -63,20 +60,23 @@ export async function GET(req: NextRequest) {
     const namesSet = names.length > 0 ? new Set(names) : null;
 
     const monthlyMap: Record<string, Record<string, number>> = {};
+    const metadataMap: Record<string, any> = {};
 
-    allData.forEach((item: Record<string, unknown>) => {
-        // Filter by salesman first
+    allData.forEach((item: Record<string, any>) => {
         if (!salesmanIdsSet.has(Number(item.salesmanId))) return;
 
-        // Grouping logic
         let groupName = "Unknown";
+        let rawCode = "";
+        
         if (viewType === "area") {
-            // Province, City per user request
             groupName = `${(item.province as string || "").trim()}, ${(item.city as string || "").trim()}`.replace(/^, |, $/g, "") || "Unknown Area";
+            rawCode = `${(item.province as string || "").trim()}::${(item.city as string || "").trim()}`;
         } else if (viewType === "storeType") {
             groupName = (item.storeTypeLabel as string || "OTHERS").trim();
+            rawCode = groupName;
         } else {
             groupName = (item.storeName as string || "Unknown Customer").trim();
+            rawCode = item.customerCode || item.storeCode || item.customerId || groupName;
         }
 
         if (namesSet && !namesSet.has(groupName)) return;
@@ -86,17 +86,29 @@ export async function GET(req: NextRequest) {
 
         const monthKey = dateStr.substring(0, 7);
         
-        if (!monthlyMap[groupName]) monthlyMap[groupName] = {};
+        if (!monthlyMap[groupName]) {
+            monthlyMap[groupName] = {};
+            metadataMap[groupName] = {
+                name: groupName,
+                customerCode: rawCode,
+                storeTypeLabel: item.storeTypeLabel || "OTHERS",
+                sId: Number(item.salesmanId),
+                supId: Number(item.supplierId),
+                province: item.province,
+                city: item.city
+            };
+        }
         monthlyMap[groupName][monthKey] = (monthlyMap[groupName][monthKey] || 0) + (item.netAmount as number || 0);
     });
 
-    const finalMap: Record<string, { total: number; peak: number }> = {};
+    const finalMap: Record<string, { total: number; peak: number; metadata: any }> = {};
     
     Object.entries(monthlyMap).forEach(([name, months]) => {
         const monthlyTotals = Object.values(months);
         finalMap[name] = {
             total: monthlyTotals.reduce((a, b) => a + b, 0),
-            peak: monthlyTotals.length > 0 ? Math.max(...monthlyTotals) : 0
+            peak: monthlyTotals.length > 0 ? Math.max(...monthlyTotals) : 0,
+            metadata: metadataMap[name]
         };
     });
 

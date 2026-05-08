@@ -20,30 +20,6 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Missing required parameters" }, { status: 400 });
     }
 
-    let urlPath = "/api/sales-kpi";
-    if (viewType === "area") {
-        urlPath = "/api/sales-kpi-per-area";
-    }
-    
-    const url = new URL(`${SPRING_BASE}${urlPath}`);
-    
-    // Pass parameters based on viewType
-    if (viewType === "customer") {
-        url.searchParams.append("customerCode", identifier || "");
-    } else if (viewType === "area" && identifier) {
-        // identifier is "Province::City" (Preserves Casing from rawData)
-        const parts = identifier.split("::");
-        const province = (parts[0] || "").trim();
-        const city = (parts[1] || "").trim();
-        url.searchParams.append("province", province);
-        url.searchParams.append("city", city);
-    }
-    
-    url.searchParams.append("salesmanId", salesmanId || "");
-    url.searchParams.append("supplierId", supplierId || "");
-    url.searchParams.append("startDate", startDate || "");
-    url.searchParams.append("endDate", endDate || "");
-
     const token =
       req.headers.get("authorization")?.replace("Bearer ", "") ||
       req.cookies.get("vos_access_token")?.value;
@@ -51,6 +27,24 @@ export async function GET(req: NextRequest) {
     if (!token) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    // 1. Fetch Current Data
+    let urlPath = "/api/sales-kpi";
+    if (viewType === "area") {
+        urlPath = "/api/sales-kpi-per-area";
+    }
+    const url = new URL(`${SPRING_BASE}${urlPath}`);
+    if (viewType === "customer") {
+        url.searchParams.append("customerCode", identifier || "");
+    } else if (viewType === "area" && identifier) {
+        const parts = identifier.split("::");
+        url.searchParams.append("province", (parts[0] || "").trim());
+        url.searchParams.append("city", (parts[1] || "").trim());
+    }
+    url.searchParams.append("salesmanId", salesmanId || "");
+    url.searchParams.append("supplierId", supplierId || "");
+    url.searchParams.append("startDate", startDate || "");
+    url.searchParams.append("endDate", endDate || "");
 
     const res = await fetch(url.toString(), {
       method: "GET",
@@ -63,7 +57,7 @@ export async function GET(req: NextRequest) {
         data = await res.json();
     }
 
-    // FALLBACK: If Area view primary endpoint returned nothing, try the general endpoint and filter manually
+    // 1.1 FALLBACK for Area view if needed
     if (viewType === "area" && (!data || data.length === 0)) {
         const fallbackUrl = new URL(`${SPRING_BASE}/api/sales-kpi`);
         fallbackUrl.searchParams.append("salesmanId", salesmanId || "");
@@ -82,24 +76,75 @@ export async function GET(req: NextRequest) {
             const parts = (identifier || "").split("::");
             const provinceSearch = (parts[0] || "").toLowerCase().trim();
             const citySearch = (parts[1] || "").toLowerCase().trim();
-            
-            data = allSales.filter((item: Record<string, unknown>) => {
-                const itemProv = (item.province as string || item.provinceName as string || "").toLowerCase().trim();
-                const itemCity = (item.city as string || item.cityName as string || "").toLowerCase().trim();
-                
-                if (provinceSearch && citySearch) {
-                    return itemProv.includes(provinceSearch) && itemCity.includes(citySearch);
-                }
-                return itemProv.includes(provinceSearch) || itemCity.includes(citySearch);
+            data = allSales.filter((item: any) => {
+                const itemProv = (item.province || item.provinceName || "").toLowerCase().trim();
+                const itemCity = (item.city || item.cityName || "").toLowerCase().trim();
+                return provinceSearch && citySearch ? (itemProv.includes(provinceSearch) && itemCity.includes(citySearch)) : (itemProv.includes(provinceSearch) || itemCity.includes(citySearch));
             });
         }
     }
 
-    // 3. AGGREGATE PRODUCS: Sum values for the same productId
+    // 2. Fetch 6 Months History for "Highest Sales"
+    const now = new Date();
+    const historyStart = new Date();
+    historyStart.setMonth(now.getMonth() - 6);
+    historyStart.setDate(1); // Start of month
+
+    const hStartStr = historyStart.toISOString().split('T')[0];
+    const hEndStr = now.toISOString().split('T')[0];
+
+    const hUrl = new URL(`${SPRING_BASE}/api/sales-kpi`);
+    hUrl.searchParams.append("salesmanId", salesmanId || "");
+    hUrl.searchParams.append("supplierId", supplierId || "");
+    hUrl.searchParams.append("startDate", hStartStr);
+    hUrl.searchParams.append("endDate", hEndStr);
+    if (viewType === "customer") {
+        hUrl.searchParams.append("customerCode", identifier || "");
+    }
+
+    const hRes = await fetch(hUrl.toString(), {
+        method: "GET",
+        headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+        cache: "no-store",
+    });
+
+    const highestSalesMap = new Map<number, number>();
+    if (hRes.ok) {
+        let hData = await hRes.json();
+        // Area filtering if needed
+        if (viewType === "area") {
+            const parts = (identifier || "").split("::");
+            const provinceSearch = (parts[0] || "").toLowerCase().trim();
+            const citySearch = (parts[1] || "").toLowerCase().trim();
+            hData = hData.filter((item: any) => {
+                const itemProv = (item.province || item.provinceName || "").toLowerCase().trim();
+                const itemCity = (item.city || item.cityName || "").toLowerCase().trim();
+                return provinceSearch && citySearch ? (itemProv.includes(provinceSearch) && itemCity.includes(citySearch)) : (itemProv.includes(provinceSearch) || itemCity.includes(citySearch));
+            });
+        }
+
+        const productMonthSum = new Map<string, number>(); // "productId-YYYY-MM"
+        hData.forEach((item: any) => {
+            const pId = item.productId;
+            const date = item.transactionDate;
+            if (!pId || !date) return;
+            const monthKey = `${pId}-${date.substring(0, 7)}`;
+            productMonthSum.set(monthKey, (productMonthSum.get(monthKey) || 0) + Number(item.netAmount || 0));
+        });
+
+        productMonthSum.forEach((sum, key) => {
+            const pId = Number(key.split('-')[0]);
+            if (!highestSalesMap.has(pId) || sum > highestSalesMap.get(pId)!) {
+                highestSalesMap.set(pId, sum);
+            }
+        });
+    }
+
+    // 3. Aggregate Current Period and Merge Highest Sales
     if (Array.isArray(data) && data.length > 0) {
-        const aggregatedMap = new Map<number, Record<string, unknown>>();
+        const aggregatedMap = new Map<number, any>();
         
-        data.forEach((item: Record<string, unknown>) => {
+        data.forEach((item: any) => {
             const pId = Number(item.productId);
             if (!pId) return;
             
@@ -109,15 +154,16 @@ export async function GET(req: NextRequest) {
                     totalQuantity: 0,
                     quantityInBox: 0,
                     quantityInPiece: 0,
-                    netAmount: 0
+                    netAmount: 0,
+                    highestMonthlySales: highestSalesMap.get(pId) || 0
                 });
             }
             
             const agg = aggregatedMap.get(pId)!;
-            agg.totalQuantity = (agg.totalQuantity as number || 0) + Number(item.totalQuantity || 0);
-            agg.quantityInBox = (agg.quantityInBox as number || 0) + Number(item.quantityInBox || 0);
-            agg.quantityInPiece = (agg.quantityInPiece as number || 0) + Number(item.quantityInPiece || 0);
-            agg.netAmount = (agg.netAmount as number || 0) + Number(item.netAmount || 0);
+            agg.totalQuantity += Number(item.totalQuantity || 0);
+            agg.quantityInBox += Number(item.quantityInBox || 0);
+            agg.quantityInPiece += Number(item.quantityInPiece || 0);
+            agg.netAmount += Number(item.netAmount || 0);
         });
         
         data = Array.from(aggregatedMap.values());

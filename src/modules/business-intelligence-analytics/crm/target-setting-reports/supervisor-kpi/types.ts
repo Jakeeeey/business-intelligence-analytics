@@ -31,6 +31,7 @@ export interface ProductSalesDetail {
     unitPrice: number;
     discountAmount: number;
     netAmount: number;
+    highestMonthlySales?: number;
 }
 
 export interface TargetSettingSalesman {

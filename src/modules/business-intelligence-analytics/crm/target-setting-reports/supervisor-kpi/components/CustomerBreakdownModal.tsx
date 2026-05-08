@@ -123,13 +123,46 @@ export function CustomerBreakdownModal({
                     ? (selectedStoreType === null ? "storeType" : "customer")
                     : "area";
 
-                const [peaks, targetsMap] = await Promise.all([
-                    fetchCustomerPeaks(names, ids, effectiveViewType),
-                    fetchCustomerTargets(ids, startDate, endDate, effectiveViewType, names)
+                const [peaks, mainTargetsMap, allCustomerTargets] = await Promise.all([
+                    fetchCustomerPeaks([], ids, effectiveViewType),
+                    fetchCustomerTargets(ids, startDate, endDate, effectiveViewType, []),
+                    effectiveViewType === "storeType" ? fetchCustomerTargets(ids, startDate, endDate, "customer") : Promise.resolve<Record<string, number>>({})
                 ]);
 
+                let finalTargets = { ...mainTargetsMap };
+
+                if (effectiveViewType === "storeType") {
+                    // Create a roll-up of customer targets by Store Type
+                    const rollup: Record<string, number> = {};
+                    
+                    // Build a mapping of Customer -> Store Type from the current data set
+                    const customerToType: Record<string, string> = {};
+                    data.forEach(item => {
+                        const type = (item.storeTypeLabel || "OTHERS").trim();
+                        const cust = (item.storeName || "Unknown Customer").trim();
+                        customerToType[cust] = type;
+                    });
+
+                    // Aggregate all fetched customer targets into their respective Store Types
+                    Object.entries(allCustomerTargets).forEach(([custName, targetAmt]) => {
+                        const type = customerToType[custName];
+                        if (type) {
+                            rollup[type] = (rollup[type] || 0) + targetAmt;
+                        }
+                    });
+
+                    // If a Store Type target is missing or 0, use the aggregated sum from its customers
+                    names.forEach(type => {
+                        if (!finalTargets[type] || finalTargets[type] === 0) {
+                            if (rollup[type]) {
+                                finalTargets[type] = rollup[type];
+                            }
+                        }
+                    });
+                }
+
                 setPeakSales(peaks);
-                setCustomerTargets(targetsMap);
+                setCustomerTargets(finalTargets);
             } catch (err) {
                 console.error("Failed to fetch customer data:", err);
             } finally {
@@ -142,12 +175,53 @@ export function CustomerBreakdownModal({
     }, [isOpen, baseCustomerMetrics, ids, startDate, endDate, viewType, selectedStoreType]);
 
     const { customerMetrics, totalSales, uniqueCustomers } = useMemo(() => {
-        const filtered = baseCustomerMetrics
-            .map(c => ({
-                ...c,
-                peak: peakSales[c.name]?.peak || 0,
-                target: customerTargets[c.name] || 0
-            }))
+        // Create a union of all names from current sales, historical peaks, and targets
+        const allNamesSet = new Set<string>();
+        baseCustomerMetrics.forEach(c => allNamesSet.add(c.name));
+        
+        // Filter peakSales and customerTargets by effective view/type if needed
+        Object.keys(peakSales).forEach(name => {
+            const peak = peakSales[name];
+            if (viewType === "customer" && selectedStoreType !== null) {
+                if (peak.metadata?.storeTypeLabel !== selectedStoreType) return;
+            }
+            allNamesSet.add(name);
+        });
+
+        Object.keys(customerTargets).forEach(name => {
+            // Target matching is harder without metadata, but we can try to filter by current sales data context if available
+            // For now, if it's in targets, we include it (fetchCustomerTargets already filtered by effectiveViewType)
+            allNamesSet.add(name);
+        });
+
+        const filtered = Array.from(allNamesSet)
+            .map(name => {
+                const current = baseCustomerMetrics.find(c => c.name === name);
+                const peakData = peakSales[name];
+                const target = customerTargets[name] || 0;
+
+                return {
+                    name,
+                    sales: current?.sales || 0,
+                    count: current?.count || 0,
+                    customerCode: current?.customerCode || peakData?.metadata?.customerCode || "",
+                    sId: current?.sId || peakData?.metadata?.sId || ids[0],
+                    supId: current?.supId || peakData?.metadata?.supId || 0,
+                    peak: peakData?.peak || 0,
+                    target: target
+                };
+            })
+            // Only keep those that fit the current filter/drill-down context
+            .filter(c => {
+                // If drilling down to a store type, only show items belonging to that type
+                if (viewType === "customer" && selectedStoreType !== null) {
+                    const peak = peakSales[c.name];
+                    const inCurrent = baseCustomerMetrics.some(b => b.name === c.name);
+                    const historicalMatch = peak?.metadata?.storeTypeLabel === selectedStoreType;
+                    return inCurrent || historicalMatch;
+                }
+                return true;
+            })
             .sort((a, b) => b.sales - a.sales)
             .filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
@@ -156,11 +230,11 @@ export function CustomerBreakdownModal({
             totalSales: filtered.reduce((sum, c) => sum + (c.sales > 0 ? c.sales : 0), 0),
             uniqueCustomers: filtered.length
         };
-    }, [baseCustomerMetrics, peakSales, customerTargets, searchTerm]);
+    }, [baseCustomerMetrics, peakSales, customerTargets, searchTerm, ids, viewType, selectedStoreType]);
 
     const formatPHP = (val: number) => {
         if (!val || isNaN(val)) return "₱0";
-        return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 0 }).format(val);
+        return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(val);
     }
 
     const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
@@ -416,7 +490,7 @@ export function CustomerBreakdownModal({
                                                 <TableCell className="text-right">
                                                     <div className="flex flex-col items-end gap-1">
                                                         <span className="text-[9px] font-mono text-muted-foreground">
-                                                            {customer.sales > 0 && totalSales > 0 ? ((customer.sales / totalSales) * 100).toFixed(1) : "0.0"}%
+                                                            {customer.sales > 0 && totalSales > 0 ? ((customer.sales / totalSales) * 100).toFixed(0) : "0"}%
                                                         </span>
                                                         <div className="w-full h-1 bg-muted/20 rounded-full overflow-hidden">
                                                             <div
