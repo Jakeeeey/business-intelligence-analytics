@@ -52,7 +52,7 @@ export function CustomerBreakdownModal({
     const [searchTerm, setSearchTerm] = useState("");
     const [viewType, setViewType] = useState<"customer" | "area">("customer");
     const [selectedStoreType, setSelectedStoreType] = useState<string | null>(null);
-    const [peakSales, setPeakSales] = useState<Record<string, { total: number; peak: number }>>({});
+    const [peakSales, setPeakSales] = useState<Record<string, { total: number; peak: number; metadata?: Record<string, unknown> }>>({});
     const [customerTargets, setCustomerTargets] = useState<Record<string, number>>({});
     const [selectedProdCust, setSelectedProdCust] = useState<{ name: string; code: string; sId: number; supId: number } | null>(null);
     const [loadingPeaks, setLoadingPeaks] = useState(false);
@@ -111,10 +111,12 @@ export function CustomerBreakdownModal({
     // Fetch historical peaks when modal opens or raw data changes
     useEffect(() => {
         const loadPeaks = async () => {
-            if (!isOpen || baseCustomerMetrics.length === 0) return;
+            if (!isOpen) return;
             
             setLoadingPeaks(true);
             setLoadingTargets(true);
+            setPeakSales({}); // Clear old peaks to avoid stale data from previous level
+            setCustomerTargets({}); // Clear old targets
             try {
                 const names = baseCustomerMetrics.map(c => c.name);
                 
@@ -123,13 +125,46 @@ export function CustomerBreakdownModal({
                     ? (selectedStoreType === null ? "storeType" : "customer")
                     : "area";
 
-                const [peaks, targetsMap] = await Promise.all([
-                    fetchCustomerPeaks(names, ids, effectiveViewType),
-                    fetchCustomerTargets(ids, startDate, endDate, effectiveViewType, names)
+                const [peaks, mainTargetsMap, allCustomerTargets] = await Promise.all([
+                    fetchCustomerPeaks([], ids, effectiveViewType, selectedStoreType || undefined),
+                    fetchCustomerTargets(ids, startDate, endDate, effectiveViewType, []),
+                    effectiveViewType === "storeType" ? fetchCustomerTargets(ids, startDate, endDate, "customer") : Promise.resolve<Record<string, number>>({})
                 ]);
 
+                const finalTargets = { ...mainTargetsMap };
+
+                if (effectiveViewType === "storeType") {
+                    // Create a roll-up of customer targets by Store Type
+                    const rollup: Record<string, number> = {};
+                    
+                    // Build a mapping of Customer -> Store Type from the current data set
+                    const customerToType: Record<string, string> = {};
+                    data.forEach(item => {
+                        const type = (item.storeTypeLabel || "OTHERS").trim();
+                        const cust = (item.storeName || "Unknown Customer").trim();
+                        customerToType[cust] = type;
+                    });
+
+                    // Aggregate all fetched customer targets into their respective Store Types
+                    Object.entries(allCustomerTargets).forEach(([custName, targetAmt]) => {
+                        const type = customerToType[custName];
+                        if (type) {
+                            rollup[type] = (rollup[type] || 0) + targetAmt;
+                        }
+                    });
+
+                    // If a Store Type target is missing or 0, use the aggregated sum from its customers
+                    names.forEach(type => {
+                        if (!finalTargets[type] || finalTargets[type] === 0) {
+                            if (rollup[type]) {
+                                finalTargets[type] = rollup[type];
+                            }
+                        }
+                    });
+                }
+
                 setPeakSales(peaks);
-                setCustomerTargets(targetsMap);
+                setCustomerTargets(finalTargets);
             } catch (err) {
                 console.error("Failed to fetch customer data:", err);
             } finally {
@@ -139,15 +174,113 @@ export function CustomerBreakdownModal({
         };
 
         loadPeaks();
-    }, [isOpen, baseCustomerMetrics, ids, startDate, endDate, viewType, selectedStoreType]);
+    }, [isOpen, baseCustomerMetrics, ids, startDate, endDate, viewType, selectedStoreType, data]);
 
     const { customerMetrics, totalSales, uniqueCustomers } = useMemo(() => {
-        const filtered = baseCustomerMetrics
-            .map(c => ({
-                ...c,
-                peak: peakSales[c.name]?.peak || 0,
-                target: customerTargets[c.name] || 0
-            }))
+        // Map to group everything by unique code (customerCode or area key)
+        const groupedMap = new Map<string, {
+            name: string;
+            sales: number;
+            count: number;
+            customerCode: string;
+            sId: number;
+            supId: number;
+            peak: number;
+            target: number;
+            storeTypeLabel?: string;
+        }>();
+
+        // 1. Process current metrics
+        baseCustomerMetrics.forEach(c => {
+            const key = c.customerCode || c.name;
+            if (!groupedMap.has(key)) {
+                groupedMap.set(key, {
+                    name: c.name,
+                    sales: 0,
+                    count: 0,
+                    customerCode: c.customerCode,
+                    sId: c.sId,
+                    supId: c.supId,
+                    peak: 0,
+                    target: 0
+                });
+            }
+            const existing = groupedMap.get(key)!;
+            existing.sales += c.sales;
+            existing.count += c.count;
+            // Store type label from current data if available
+            const item = data.find(d => (d.customerCode || d.storeName) === key || d.storeName === c.name);
+            if (item) existing.storeTypeLabel = item.storeTypeLabel;
+        });
+
+        // 2. Merge peak sales
+        Object.entries(peakSales).forEach(([pName, pData]) => {
+            const key = (pData.metadata?.customerCode as string) || pName;
+            if (!groupedMap.has(key)) {
+                groupedMap.set(key, {
+                    name: pName,
+                    sales: 0,
+                    count: 0,
+                    customerCode: key,
+                    sId: Number(pData.metadata?.sId) || ids[0],
+                    supId: Number(pData.metadata?.supId) || 0,
+                    peak: 0,
+                    target: 0,
+                    storeTypeLabel: pData.metadata?.storeTypeLabel as string
+                });
+            }
+            const existing = groupedMap.get(key)!;
+            existing.peak = pData.peak;
+            // IMPORTANT: If we have a name from peakSales metadata, it's the "Best Name" (from the highest month)
+            // We should use it if the current name is generic or if this is the peak name
+            if (pData.metadata?.name) {
+                existing.name = pData.metadata.name as string;
+            }
+            if (pData.metadata?.storeTypeLabel) {
+                existing.storeTypeLabel = pData.metadata.storeTypeLabel as string;
+            }
+        });
+
+        // 3. Merge targets
+        Object.entries(customerTargets).forEach(([tName, targetAmt]) => {
+            // Target matching is by name (since customerTargets map uses names as keys from fetchCustomerTargets)
+            // We try to find the group that matches this name
+            let found = false;
+            for (const group of groupedMap.values()) {
+                if (group.name === tName) {
+                    group.target = targetAmt;
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                groupedMap.set(tName, {
+                    name: tName,
+                    sales: 0,
+                    count: 0,
+                    customerCode: tName,
+                    sId: ids[0],
+                    supId: 0,
+                    peak: 0,
+                    target: targetAmt
+                });
+            }
+        });
+
+        const filtered = Array.from(groupedMap.values())
+            .filter(c => {
+                if (viewType === "customer" && selectedStoreType !== null) {
+                    // Only show if it belongs to the selected channel
+                    const currentType = (c.storeTypeLabel || "").trim().toLowerCase();
+                    const targetType = selectedStoreType.trim().toLowerCase();
+                    
+                    // If we have a type, it must match. 
+                    // If we DON'T have a type (historical only), we trust the API result 
+                    // because we already filtered the API by storeType on the server.
+                    return currentType === targetType || !currentType;
+                }
+                return true;
+            })
             .sort((a, b) => b.sales - a.sales)
             .filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
@@ -156,11 +289,11 @@ export function CustomerBreakdownModal({
             totalSales: filtered.reduce((sum, c) => sum + (c.sales > 0 ? c.sales : 0), 0),
             uniqueCustomers: filtered.length
         };
-    }, [baseCustomerMetrics, peakSales, customerTargets, searchTerm]);
+    }, [baseCustomerMetrics, peakSales, customerTargets, searchTerm, ids, viewType, selectedStoreType, data]);
 
     const formatPHP = (val: number) => {
         if (!val || isNaN(val)) return "₱0";
-        return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 0 }).format(val);
+        return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(val);
     }
 
     const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
@@ -416,7 +549,7 @@ export function CustomerBreakdownModal({
                                                 <TableCell className="text-right">
                                                     <div className="flex flex-col items-end gap-1">
                                                         <span className="text-[9px] font-mono text-muted-foreground">
-                                                            {customer.sales > 0 && totalSales > 0 ? ((customer.sales / totalSales) * 100).toFixed(1) : "0.0"}%
+                                                            {customer.sales > 0 && totalSales > 0 ? ((customer.sales / totalSales) * 100).toFixed(0) : "0"}%
                                                         </span>
                                                         <div className="w-full h-1 bg-muted/20 rounded-full overflow-hidden">
                                                             <div

@@ -66,34 +66,33 @@ export async function GET() {
     
     let usersData: Record<string, unknown>[] = [];
     if (uniqueSupervisorIds.length > 0) {
-        // SCHEMA DETECTION: The Dummy (8056) and Live (8091) servers have different schemas for the 'user' table.
-        // 8056: id, user_firstname, user_lastname
-        // 8091: user_id, user_fname, user_lname
-        const isDummy = UPSTREAM.includes("8056");
-        const idField = isDummy ? "id" : "user_id";
-        
-        try {
-            const usersRes = await fetchDirectus(
-                `items/user?filter[${idField}][_in]=${uniqueSupervisorIds.join(",")}&limit=-1`
-            );
-            usersData = usersRes.data || [];
-        } catch (e) {
-            const err = e as Error;
-            console.error("Schema detection fallback triggered:", err.message);
-            // If the detection above failed, try the other one as a final fallback
-            const fallbackField = isDummy ? "user_id" : "id";
+        const tryFetch = async (collection: string, id: string, f: string, l: string) => {
+            const query = `items/${collection}?fields=${id},${f},${l}&filter[${id}][_in]=${uniqueSupervisorIds.join(",")}&limit=-1`;
+            return await fetchDirectus(query);
+        };
+
+        const strategies = [
+            { col: "user", id: "user_id", f: "user_fname", l: "user_lname" },
+            { col: "users", id: "user_id", f: "user_fname", l: "user_lname" },
+            { col: "user", id: "id", f: "user_fname", l: "user_lname" },
+            { col: "user", id: "id", f: "user_firstname", l: "user_lastname" }
+        ];
+
+        for (const s of strategies) {
             try {
-                const usersRes = await fetchDirectus(
-                    `items/user?filter[${fallbackField}][_in]=${uniqueSupervisorIds.join(",")}&limit=-1`
-                );
-                usersData = usersRes.data || [];
+                const res = await tryFetch(s.col, s.id, s.f, s.l);
+                usersData = res.data || [];
+                break;
             } catch {
-                usersData = [];
+                // move to next strategy
             }
         }
     }
     
-    const usersMap = new Map<string, Record<string, unknown>>(usersData.map((u: Record<string, unknown>) => [String(u.id || u.user_id), u]));
+    const usersMap = new Map<string, Record<string, unknown>>(usersData.map((u: Record<string, unknown>) => {
+        const id = String(u.user_id || u.id || "");
+        return [id, u];
+    }));
 
     // 5. Enrich spdData with user details
     const enrichedSupervisors = spdData.map((s: Record<string, unknown>) => {
