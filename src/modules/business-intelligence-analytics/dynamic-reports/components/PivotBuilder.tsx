@@ -692,7 +692,7 @@ const SortableItem = React.memo(({ id, zoneId, field, isValues, onAggChange, onD
         </div>
         
         {isLongLabel ? (
-          <Tooltip>
+          <Tooltip delayDuration={400}>
             <TooltipTrigger asChild>
               <span className={cn(
                 "flex-1 text-[10px] font-black uppercase tracking-tight truncate select-none transition-colors",

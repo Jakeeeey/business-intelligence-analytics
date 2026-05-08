@@ -20,7 +20,6 @@ import { Loader2, Database, Download, LayoutGrid, Layers, RefreshCw, Filter, Set
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { usePivotState } from "./hooks/usePivotState";
-import { TooltipProvider } from "@/components/ui/tooltip";
 
 import {
   Select,
@@ -615,179 +614,177 @@ export default function DynamicReportsModule() {
   ), [reports, selectedReport, isLoadingReports, startDate, endDate, isFetchingData, isPivotMode, isBuilderOpen, fetchReportData, handleExport, loadReports, data.length]);
 
   return (
-    <TooltipProvider delayDuration={400}>
-      <div className="flex flex-col h-full bg-background overflow-hidden">
-        <FilterBar 
-          searchTerm={searchTerm}
-          onSearchChange={setSearchTerm}
-          actionStrip={actionStrip}
-        />
+    <div className="flex flex-col h-full bg-background overflow-hidden">
+      <FilterBar 
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        actionStrip={actionStrip}
+      />
 
-        <div className="flex-1 min-h-0 overflow-hidden flex flex-col" style={{ overflow: 'hidden' }}>
-          {isFetchingData ? (
-            <div className="h-full flex flex-col items-center justify-center p-24 space-y-4 bg-muted/5">
-              <Loader2 className="w-12 h-12 animate-spin text-primary" />
-              <p className="font-mono text-xs font-bold uppercase tracking-widest text-muted-foreground opacity-50">Synchronizing Analytics Engine...</p>
+      <div className="flex-1 min-h-0 overflow-hidden flex flex-col" style={{ overflow: 'hidden' }}>
+        {isFetchingData ? (
+          <div className="h-full flex flex-col items-center justify-center p-24 space-y-4 bg-muted/5">
+            <Loader2 className="w-12 h-12 animate-spin text-primary" />
+            <p className="font-mono text-xs font-bold uppercase tracking-widest text-muted-foreground opacity-50">Synchronizing Analytics Engine...</p>
+          </div>
+        ) : !selectedReport ? (
+          <div className="flex-1 flex flex-col min-h-0 bg-background border border-border shadow-sm rounded-md mx-4 mb-4 select-none items-center justify-center">
+            <div className="flex flex-col items-center justify-center opacity-40">
+              <Database className="w-16 h-16 mb-4 text-muted-foreground" />
+              <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground italic font-mono text-center">Select an analytics endpoint to begin</p>
             </div>
-          ) : !selectedReport ? (
-            <div className="flex-1 flex flex-col min-h-0 bg-background border border-border shadow-sm rounded-md mx-4 mb-4 select-none items-center justify-center">
-              <div className="flex flex-col items-center justify-center opacity-40">
-                <Database className="w-16 h-16 mb-4 text-muted-foreground" />
-                <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground italic font-mono text-center">Select an analytics endpoint to begin</p>
-              </div>
-            </div>
-          ) : isPivotMode ? (
-            <div className="flex-1 flex min-h-0" style={{ overflow: 'hidden' }}>
-              {isBuilderOpen && (
-                <div className="h-full flex-col shrink-0 animate-in slide-in-from-left-4 duration-300">
-                  <PivotBuilder 
-                    zones={zones} 
-                    setZones={setZones} 
-                    data={data} // Pass raw data for filter value extraction
-                    onValueAggChange={updateFieldAgg}
-                    onDateGroupingChange={updateFieldDateGrouping}
-                    onFilterChange={updateFieldFilter}
-                    onSaveLayout={handleSaveClick}
-                    savedLayouts={savedLayouts}
-                    onApplyLayout={handleApplyLayout}
-                    onNewLayout={() => {
-                      setActiveLayout(null);
-                      setLayoutName("");
-                      // Reset zones to initial (all fields in available)
-                      if (rawFields.length > 0) {
-                        resetInitialZones(rawFields);
-                      }
-                      // Reset other local view states
-                      setActiveFilters([]);
-                      setRowSort(null);
-                      setRowFilters(null);
-                      toast.info("Switched to Create New Layout mode. All zones have been cleared.");
-                    }}
-                    layoutName={layoutName}
-                    onLayoutNameChange={setLayoutName}
-                    activeLayoutId={activeLayout?.id}
-                    showGrandTotals={showGrandTotals}
-                    showSubtotals={showSubtotals}
-                    onToggleGrandTotals={toggleGrandTotals}
-                    onToggleSubtotals={toggleSubtotals}
-                  />
-                </div>
-              )}
-              <div className={cn(
-                "flex-1 min-h-0 h-full p-4 transition-all duration-300 overflow-hidden",
-                isBuilderOpen ? "pl-0" : "pl-4"
-              )}>
-                <PivotTableView 
-                  ref={pivotTableRef}
-                  data={deferredFilteredData} 
-                  config={deferredPivotConfig} 
-                  activeFilters={activeFilters}
-                  onAddFilter={(f) => setActiveFilters([...activeFilters, f])}
-                  onRemoveFilter={(id) => setActiveFilters(activeFilters.filter(f => f.id !== id))}
-                  onClearAll={() => {
+          </div>
+        ) : isPivotMode ? (
+          <div className="flex-1 flex min-h-0" style={{ overflow: 'hidden' }}>
+            {isBuilderOpen && (
+              <div className="h-full flex-col shrink-0 animate-in slide-in-from-left-4 duration-300">
+                <PivotBuilder 
+                  zones={zones} 
+                  setZones={setZones} 
+                  data={data} // Pass raw data for filter value extraction
+                  onValueAggChange={updateFieldAgg}
+                  onDateGroupingChange={updateFieldDateGrouping}
+                  onFilterChange={updateFieldFilter}
+                  onSaveLayout={handleSaveClick}
+                  savedLayouts={savedLayouts}
+                  onApplyLayout={handleApplyLayout}
+                  onNewLayout={() => {
+                    setActiveLayout(null);
+                    setLayoutName("");
+                    // Reset zones to initial (all fields in available)
+                    if (rawFields.length > 0) {
+                      resetInitialZones(rawFields);
+                    }
+                    // Reset other local view states
                     setActiveFilters([]);
-                    setSearchTerm("");
+                    setRowSort(null);
+                    setRowFilters(null);
+                    toast.info("Switched to Create New Layout mode. All zones have been cleared.");
                   }}
-                  rowSort={rowSort}
-                  onRowSortChange={setRowSort}
-                  rowFilters={rowFilters}
-                  onRowFiltersChange={setRowFilters}
-                  visibleColumns={visibleColumns}
-                  onToggleColumn={(col) => {
-                    setVisibleColumns(prev => 
-                      prev.includes(col) 
-                        ? (prev.length > 1 ? prev.filter(c => c !== col) : prev) 
-                        : [...prev, col]
-                    );
-                  }}
-                  onExport={(rows, cols) => handleExport(rows, cols)}
+                  layoutName={layoutName}
+                  onLayoutNameChange={setLayoutName}
+                  activeLayoutId={activeLayout?.id}
+                  showGrandTotals={showGrandTotals}
+                  showSubtotals={showSubtotals}
+                  onToggleGrandTotals={toggleGrandTotals}
+                  onToggleSubtotals={toggleSubtotals}
                 />
               </div>
+            )}
+            <div className={cn(
+              "flex-1 min-h-0 h-full p-4 transition-all duration-300 overflow-hidden",
+              isBuilderOpen ? "pl-0" : "pl-4"
+            )}>
+              <PivotTableView 
+                ref={pivotTableRef}
+                data={deferredFilteredData} 
+                config={deferredPivotConfig} 
+                activeFilters={activeFilters}
+                onAddFilter={(f) => setActiveFilters([...activeFilters, f])}
+                onRemoveFilter={(id) => setActiveFilters(activeFilters.filter(f => f.id !== id))}
+                onClearAll={() => {
+                  setActiveFilters([]);
+                  setSearchTerm("");
+                }}
+                rowSort={rowSort}
+                onRowSortChange={setRowSort}
+                rowFilters={rowFilters}
+                onRowFiltersChange={setRowFilters}
+                visibleColumns={visibleColumns}
+                onToggleColumn={(col) => {
+                  setVisibleColumns(prev => 
+                    prev.includes(col) 
+                      ? (prev.length > 1 ? prev.filter(c => c !== col) : prev) 
+                      : [...prev, col]
+                  );
+                }}
+                onExport={(rows, cols) => handleExport(rows, cols)}
+              />
             </div>
-          ) : (
-            <DynamicTable 
-              ref={rawTableRef}
-              data={deferredFilteredData} 
-              columns={columns}
-              activeFilters={activeFilters}
-              onAddFilter={(f) => setActiveFilters([...activeFilters, f])}
-              onRemoveFilter={(id) => setActiveFilters(activeFilters.filter(f => f.id !== id))}
-              onClearAll={() => {
-                setActiveFilters([]);
-                setSearchTerm("");
-              }}
-              visibleColumns={visibleColumns}
-              onToggleColumn={(col) => {
-                setVisibleColumns(prev => 
-                  prev.includes(col) 
-                    ? (prev.length > 1 ? prev.filter(c => c !== col) : prev) 
-                    : [...prev, col]
-                );
-              }}
-            />
-          )}
-        </div>
-        {/* CONFIRMATION DIALOGS */}
-        <AlertDialog open={showSaveConfirm} onOpenChange={setShowSaveConfirm}>
-          <AlertDialogContent className="rounded-2xl border-border shadow-premium">
-            <AlertDialogHeader>
-              <AlertDialogTitle className="text-sm font-black uppercase tracking-widest">Save New Layout</AlertDialogTitle>
-              <AlertDialogDescription className="text-xs font-medium">
-                Do you want to save this as a new layout named <span className="font-bold text-primary italic">&quot;{layoutName}&quot;</span>?
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel className="rounded-xl text-[10px] font-bold uppercase tracking-widest">Cancel</AlertDialogCancel>
-              <AlertDialogAction 
-                onClick={() => executeSave(false)}
-                className="rounded-xl text-[10px] font-bold uppercase tracking-widest bg-primary hover:bg-primary/90"
-              >
-                Confirm Save
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-
-        <AlertDialog open={showUpdateConfirm} onOpenChange={setShowUpdateConfirm}>
-          <AlertDialogContent className="rounded-2xl border-border shadow-premium">
-            <AlertDialogHeader>
-              <AlertDialogTitle className="text-sm font-black uppercase tracking-widest">Update Existing Layout</AlertDialogTitle>
-              <AlertDialogDescription className="text-xs font-medium">
-                Do you want to update <span className="font-bold text-primary italic">&quot;{activeLayout?.name}&quot;</span> with your current settings and filters?
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel className="rounded-xl text-[10px] font-bold uppercase tracking-widest">Cancel</AlertDialogCancel>
-              <AlertDialogAction 
-                onClick={() => executeSave(true)}
-                className="rounded-xl text-[10px] font-bold uppercase tracking-widest bg-primary hover:bg-primary/90"
-              >
-                Update Layout
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-
-        <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-          <AlertDialogContent className="rounded-2xl border-border shadow-premium">
-            <AlertDialogHeader>
-              <AlertDialogTitle className="text-sm font-black uppercase tracking-widest text-destructive">Delete Layout</AlertDialogTitle>
-              <AlertDialogDescription className="text-xs font-medium">
-                Are you sure you want to delete <span className="font-bold text-destructive italic">&quot;{savedLayouts.find(l => l.id === (layoutToDelete || activeLayout?.id))?.name}&quot;</span>? This action cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel className="rounded-xl text-[10px] font-bold uppercase tracking-widest">Cancel</AlertDialogCancel>
-              <AlertDialogAction 
-                onClick={executeDelete}
-                className="rounded-xl text-[10px] font-bold uppercase tracking-widest bg-destructive hover:bg-destructive/90 text-white"
-              >
-                Confirm Delete
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+          </div>
+        ) : (
+          <DynamicTable 
+            ref={rawTableRef}
+            data={deferredFilteredData} 
+            columns={columns}
+            activeFilters={activeFilters}
+            onAddFilter={(f) => setActiveFilters([...activeFilters, f])}
+            onRemoveFilter={(id) => setActiveFilters(activeFilters.filter(f => f.id !== id))}
+            onClearAll={() => {
+              setActiveFilters([]);
+              setSearchTerm("");
+            }}
+            visibleColumns={visibleColumns}
+            onToggleColumn={(col) => {
+              setVisibleColumns(prev => 
+                prev.includes(col) 
+                  ? (prev.length > 1 ? prev.filter(c => c !== col) : prev) 
+                  : [...prev, col]
+              );
+            }}
+          />
+        )}
       </div>
-    </TooltipProvider>
+      {/* CONFIRMATION DIALOGS */}
+      <AlertDialog open={showSaveConfirm} onOpenChange={setShowSaveConfirm}>
+        <AlertDialogContent className="rounded-2xl border-border shadow-premium">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-sm font-black uppercase tracking-widest">Save New Layout</AlertDialogTitle>
+            <AlertDialogDescription className="text-xs font-medium">
+              Do you want to save this as a new layout named <span className="font-bold text-primary italic">&quot;{layoutName}&quot;</span>?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-xl text-[10px] font-bold uppercase tracking-widest">Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => executeSave(false)}
+              className="rounded-xl text-[10px] font-bold uppercase tracking-widest bg-primary hover:bg-primary/90"
+            >
+              Confirm Save
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showUpdateConfirm} onOpenChange={setShowUpdateConfirm}>
+        <AlertDialogContent className="rounded-2xl border-border shadow-premium">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-sm font-black uppercase tracking-widest">Update Existing Layout</AlertDialogTitle>
+            <AlertDialogDescription className="text-xs font-medium">
+              Do you want to update <span className="font-bold text-primary italic">&quot;{activeLayout?.name}&quot;</span> with your current settings and filters?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-xl text-[10px] font-bold uppercase tracking-widest">Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => executeSave(true)}
+              className="rounded-xl text-[10px] font-bold uppercase tracking-widest bg-primary hover:bg-primary/90"
+            >
+              Update Layout
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent className="rounded-2xl border-border shadow-premium">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-sm font-black uppercase tracking-widest text-destructive">Delete Layout</AlertDialogTitle>
+            <AlertDialogDescription className="text-xs font-medium">
+              Are you sure you want to delete <span className="font-bold text-destructive italic">&quot;{savedLayouts.find(l => l.id === (layoutToDelete || activeLayout?.id))?.name}&quot;</span>? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-xl text-[10px] font-bold uppercase tracking-widest">Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={executeDelete}
+              className="rounded-xl text-[10px] font-bold uppercase tracking-widest bg-destructive hover:bg-destructive/90 text-white"
+            >
+              Confirm Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
   );
 }
