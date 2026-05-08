@@ -41,6 +41,7 @@ export async function GET(req: NextRequest) {
     const names = searchParams.get("names")?.split("|") || [];
     const salesmanIds = searchParams.get("ids")?.split(",").map(Number) || [];
     const viewType = searchParams.get("viewType") || "customer";
+    const storeTypeFilter = searchParams.get("storeType");
 
     if (salesmanIds.length === 0) {
       return NextResponse.json({ error: "salesmanIds is required" }, { status: 400 });
@@ -76,42 +77,73 @@ export async function GET(req: NextRequest) {
             groupName = (item.storeTypeLabel || "OTHERS").trim();
             rawCode = groupName;
         } else {
+            rawCode = (item.customerCode || item.storeName || "Unknown").trim();
             groupName = (item.storeName || "Unknown Customer").trim();
-            rawCode = item.customerCode || groupName;
         }
 
         if (namesSet && !namesSet.has(groupName)) return;
+        
+        const itemStoreType = (item.storeTypeLabel || "OTHERS").trim();
+        if (storeTypeFilter) {
+            const filterNorm = storeTypeFilter.trim().toLowerCase();
+            const itemNorm = itemStoreType.toLowerCase();
+            if (itemNorm !== filterNorm) {
+                // If the filter is "DISTRIBUTOR" but item is "LOCAL KEY ACCOUNT", skip.
+                return;
+            }
+        }
 
         const dateStr = item.transactionDate;
         if (!dateStr) return;
 
         const monthKey = dateStr.substring(0, 7);
+        const groupKey = rawCode;
         
-        if (!monthlyMap[groupName]) {
-            monthlyMap[groupName] = {};
-            metadataMap[groupName] = {
+        if (!monthlyMap[groupKey]) {
+            monthlyMap[groupKey] = {};
+            metadataMap[groupKey] = {
                 name: groupName,
                 customerCode: rawCode,
-                storeTypeLabel: item.storeTypeLabel || "OTHERS",
+                storeTypeLabel: itemStoreType,
                 sId: Number(item.salesmanId),
                 supId: Number(item.supplierId),
                 province: item.province,
-                city: item.city
+                city: item.city,
+                peakMonth: "",
+                peakMonthAmt: -1
             };
         }
-        monthlyMap[groupName][monthKey] = (monthlyMap[groupName][monthKey] || 0) + (item.netAmount || 0);
+
+        monthlyMap[groupKey][monthKey] = (monthlyMap[groupKey][monthKey] || 0) + (item.netAmount || 0);
+        
+        const currentMonthAmt = monthlyMap[groupKey][monthKey];
+        const meta = metadataMap[groupKey] as any;
+        if (currentMonthAmt > meta.peakMonthAmt) {
+            meta.peakMonthAmt = currentMonthAmt;
+            meta.peakMonth = monthKey;
+            meta.name = groupName;
+        }
     });
 
     const finalMap: Record<string, { total: number; peak: number; metadata: Record<string, unknown> }> = {};
     
-    Object.entries(monthlyMap).forEach(([name, months]) => {
+    Object.entries(monthlyMap).forEach(([groupKey, months]) => {
         const monthlyTotals = Object.values(months);
-        finalMap[name] = {
+        const peak = monthlyTotals.length > 0 ? Math.max(...monthlyTotals) : 0;
+        const meta = metadataMap[groupKey];
+        const displayName = (meta.name as string) || groupKey;
+
+        finalMap[displayName] = {
             total: monthlyTotals.reduce((a, b) => a + b, 0),
-            peak: monthlyTotals.length > 0 ? Math.max(...monthlyTotals) : 0,
-            metadata: metadataMap[name]
+            peak: peak,
+            metadata: meta
         };
     });
+
+    console.log(`[DEBUG] Customer Peak Response: Found ${Object.keys(finalMap).length} groups for storeType=${storeTypeFilter}`);
+    if (Object.keys(finalMap).length < 5) {
+        console.log("[DEBUG] Sample Groups:", Object.keys(finalMap).slice(0, 5));
+    }
 
     return NextResponse.json(finalMap);
 

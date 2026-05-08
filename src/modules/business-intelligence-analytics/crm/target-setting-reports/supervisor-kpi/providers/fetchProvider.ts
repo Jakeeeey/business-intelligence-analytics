@@ -23,8 +23,9 @@ export const fetchDynamicTargets = async (startDate: string, endDate: string): P
     return await res.json();
 };
 
-export const fetchCustomerPeaks = async (names: string[] = [], salesmanIds: number[], viewType: 'customer' | 'area' | 'storeType' = 'customer'): Promise<Record<string, { total: number; peak: number; metadata?: Record<string, unknown> }>> => {
-    const url = `/api/bia/crm/target-setting-reports/supervisor-kpi/customer-peak?ids=${salesmanIds.join(",")}${names.length > 0 ? `&names=${encodeURIComponent(names.join("|"))}` : ""}&viewType=${viewType}`;
+export const fetchCustomerPeaks = async (names: string[] = [], salesmanIds: number[], viewType: 'customer' | 'area' | 'storeType' = 'customer', storeType?: string): Promise<Record<string, { total: number; peak: number; metadata?: Record<string, unknown> }>> => {
+    let url = `/api/bia/crm/target-setting-reports/supervisor-kpi/customer-peak?ids=${salesmanIds.join(",")}${names.length > 0 ? `&names=${encodeURIComponent(names.join("|"))}` : ""}&viewType=${viewType}`;
+    if (storeType) url += `&storeType=${encodeURIComponent(storeType)}`;
     const res = await fetch(url, { cache: "no-store" });
     if (!res.ok) return {};
     return await res.json();
