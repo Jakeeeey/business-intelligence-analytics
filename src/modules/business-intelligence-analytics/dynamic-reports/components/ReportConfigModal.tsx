@@ -40,15 +40,37 @@ export function ReportConfigModal({ onSuccess, mode = "create", initialData, tri
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !url) return;
+    
+    // 1. Clean URL - Robust sanitization
+    let cleanUrl = url.trim();
+    
+    // If it contains /api but doesn't start with it (e.g. merged URLs), strip the prefix
+    const apiIndex = cleanUrl.indexOf("/api");
+    if (apiIndex !== -1 && apiIndex !== 0) {
+      cleanUrl = cleanUrl.substring(apiIndex);
+    }
+
+    // 2. Strict Validation - Must start with /api after cleaning
+    if (!cleanUrl.startsWith("/api")) {
+      toast.error("Invalid Endpoint: Connection string must start with '/api'");
+      return;
+    }
+
+    // 3. Remove accidental query parameters (dates are handled by the engine)
+    if (cleanUrl.includes("?")) {
+      cleanUrl = cleanUrl.split("?")[0];
+      toast.info("Base path extracted. Query parameters are managed automatically.");
+    }
+
+    if (!name || !cleanUrl) return;
 
     setIsSubmitting(true);
     try {
       if (mode === "edit" && initialData?.id) {
-        await DynamicReportService.updateReport(initialData.id, name, url);
+        await DynamicReportService.updateReport(initialData.id, name, cleanUrl);
         toast.success("Connection parameters updated!");
       } else {
-        await DynamicReportService.registerReport(name, url);
+        await DynamicReportService.registerReport(name, cleanUrl);
         toast.success("New data endpoint registered!");
         setName("");
         setUrl("");
@@ -121,20 +143,35 @@ export function ReportConfigModal({ onSuccess, mode = "create", initialData, tri
             </div>
 
             <div className="space-y-3">
-              <div className="flex items-center gap-2 mb-1">
-                <Globe className="w-3.5 h-3.5 text-primary opacity-60" />
-                <Label htmlFor="url" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                  API Connection String
-                </Label>
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-2">
+                  <Globe className="w-3.5 h-3.5 text-primary opacity-60" />
+                  <Label htmlFor="url" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                    API Connection String
+                  </Label>
+                </div>
+                {url && !url.trim().includes("/api") && (
+                   <span className="text-[9px] font-bold text-destructive animate-pulse uppercase tracking-tight">Must contain /api</span>
+                )}
               </div>
               <Input
                 id="url"
                 placeholder="/api/v1/analytics/raw-data"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
-                className="h-14 rounded-2xl bg-muted/30 border-2 border-transparent focus-visible:border-primary/30 focus-visible:ring-0 px-5 font-mono text-sm transition-all"
+                className={cn(
+                  "h-14 rounded-2xl bg-muted/30 border-2 px-5 font-mono text-sm transition-all",
+                  url && !url.trim().startsWith("/api") 
+                    ? "border-destructive/50 focus-visible:border-destructive shadow-[0_0_15px_rgba(239,68,68,0.1)]" 
+                    : "border-transparent focus-visible:border-primary/30"
+                )}
                 required
               />
+              {url && !url.trim().startsWith("/api") && (
+                <p className="text-[9px] font-medium text-destructive/70 px-2">
+                  Protocols (http/https) and prefixes will be auto-stripped on save. Path must start with <span className="font-bold">/api</span>
+                </p>
+              )}
             </div>
           </div>
 

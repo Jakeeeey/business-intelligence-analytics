@@ -37,9 +37,7 @@ import {
   Trash2,
   Plus,
   FolderOpen,
-  ChevronDown,
-  X,
-  CheckCircle2
+  ChevronDown
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
@@ -51,6 +49,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
+import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DraggableField, PivotZone, AggregationType, DateGrouping, FilterOperator } from "../types";
 import { ReportLayout } from "../services/DynamicReportService";
@@ -65,9 +70,12 @@ import {
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 
 interface PivotBuilderProps {
   zones: Record<string, PivotZone>;
@@ -79,11 +87,15 @@ interface PivotBuilderProps {
   onSaveLayout?: () => void;
   savedLayouts?: ReportLayout[];
   onApplyLayout?: (layout: ReportLayout) => void;
-  onDeleteLayout?: (id: string | number) => void;
   onNewLayout?: () => void;
   activeLayoutId?: string | number | null;
   layoutName?: string;
   onLayoutNameChange?: (name: string) => void;
+  // New Pivot Settings
+  showGrandTotals: boolean;
+  showSubtotals: boolean;
+  onToggleGrandTotals: () => void;
+  onToggleSubtotals: () => void;
 }
 
 const zoneStyles = {
@@ -102,6 +114,10 @@ const formatHeader = (key: string) => {
     .toUpperCase();             // Convert to ALL CAPS
 };
 
+const activationConstraint: PointerActivationConstraint = {
+  distance: 5,
+};
+
 export function PivotBuilder({ 
   zones, 
   setZones, 
@@ -112,11 +128,14 @@ export function PivotBuilder({
   onSaveLayout,
   savedLayouts = [],
   onApplyLayout,
-  onDeleteLayout,
   onNewLayout,
   activeLayoutId,
   layoutName = "",
-  onLayoutNameChange
+  onLayoutNameChange,
+  showGrandTotals,
+  showSubtotals,
+  onToggleGrandTotals,
+  onToggleSubtotals
 }: PivotBuilderProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -128,14 +147,24 @@ export function PivotBuilder({
     );
   }, [zones.available.fields, searchQuery]);
 
-  const activationConstraint: PointerActivationConstraint = {
-    distance: 5,
-  };
+  const handleRemoveField = useCallback((zoneId: string, fieldId: string) => {
+    if (!zones[zoneId]) return;
+    setZones({
+      ...zones,
+      [zoneId]: {
+        ...zones[zoneId],
+        fields: zones[zoneId].fields.filter(f => f.id !== fieldId)
+      }
+    });
+  }, [zones, setZones]);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-  );
+  const isActiveInLayout = useCallback((sourceId: string) => {
+    const layoutZones = [zones.rows, zones.columns, zones.values, zones.filters];
+    return layoutZones.some(zone => 
+      zone?.fields?.some(f => (f.sourceId || f.id) === sourceId)
+    );
+  }, [zones]);
+
 
   const findContainer = useCallback((id: string): string | undefined => {
     if (zones[id]) return id;
@@ -149,8 +178,21 @@ export function PivotBuilder({
     setActiveId(event.active.id as string);
   }, []);
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
   const handleDragOver = useCallback((event: DragOverEvent) => {
+    const { over } = event;
+    if (!over) return;
+    // We intentionally do nothing here to achieve "Drop-to-Apply" behavior.
+    // The state only updates in handleDragEnd.
+  }, []);
+
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
+    setActiveId(null);
     if (!over) return;
 
     const activeId = active.id as string;
@@ -159,24 +201,61 @@ export function PivotBuilder({
     const activeContainer = findContainer(activeId);
     const overContainer = findContainer(overId);
 
-    if (!activeContainer || !overContainer || activeContainer === overContainer) {
+    if (!activeContainer || !overContainer) return;
+
+    const rawActiveId = activeId.includes('-') ? activeId.split('-')[1] : activeId;
+    const rawOverId = overId.includes('-') ? overId.split('-')[1] : overId;
+
+    const newZones = { ...zones };
+
+    // 1. REORDERING WITHIN THE SAME CONTAINER
+    if (activeContainer === overContainer) {
+      if (activeContainer !== 'available') {
+        const fields = zones[activeContainer].fields;
+        const oldIndex = fields.findIndex((f) => f.id === rawActiveId);
+        const newIndex = fields.findIndex((f) => f.id === rawOverId);
+        
+        if (oldIndex !== newIndex) {
+          newZones[activeContainer] = {
+            ...zones[activeContainer],
+            fields: arrayMove(fields, oldIndex, newIndex)
+          };
+          setZones(newZones);
+        }
+      }
       return;
     }
 
-    const rawActiveId = activeId.includes('-') ? activeId.split('-')[1] : activeId;
-    
-    if (!zones[activeContainer] || !zones[overContainer]) return;
-
+    // 2. MOVING BETWEEN DIFFERENT CONTAINERS
     const activeFields = zones[activeContainer].fields;
     const overFields = zones[overContainer].fields;
-
     const activeIndex = activeFields.findIndex((f) => f.id === rawActiveId);
     const field = activeFields[activeIndex];
 
     if (field) {
-      const newZones = { ...zones };
-      
+      const isCloning = activeContainer === 'available';
       const updatedField = { ...field };
+
+      if (isCloning) {
+        updatedField.sourceId = field.id;
+        updatedField.id = `${field.id}_${Math.random().toString(36).substring(2, 9)}`;
+      }
+
+      // Check Exclusivity Rules (Mutual exclusivity for ROWS, COLUMNS, and FILTERS)
+      const exclusiveZones = ['rows', 'columns', 'filters'];
+      if (exclusiveZones.includes(overContainer)) {
+        const sourceFieldId = updatedField.sourceId || updatedField.id;
+        const alreadyInAnyExclusive = exclusiveZones.some(z => 
+          z !== activeContainer && 
+          zones[z].fields.some(f => (f.sourceId || f.id) === sourceFieldId)
+        );
+        if (alreadyInAnyExclusive) {
+           toast.error(`${field.name} is already active in a layout zone.`);
+           return; 
+        }
+      }
+
+      // Default rules based on target
       if (overContainer === 'values' && activeContainer !== 'values') {
         updatedField.aggType = 'sum';
       }
@@ -193,20 +272,19 @@ export function PivotBuilder({
         }
       }
 
-      // If dragging from available, we DON'T remove it from available (Cloning behavior).
-      // However, dnd-kit Sortable expects it to move. So we temporarily remove it here, 
-      // and we will ensure the 'available' list always stays full in our master state or handleDragEnd.
-      // Actually, to avoid UI flicker, let's just let it be removed during drag, and we'll restore it in handleDragEnd.
-      newZones[activeContainer] = {
-        ...zones[activeContainer],
-        fields: activeFields.filter(f => f.id !== rawActiveId)
-      };
+      // If moving from a layout zone (not available), remove from source
+      if (!isCloning) {
+        newZones[activeContainer] = {
+          ...zones[activeContainer],
+          fields: activeFields.filter(f => f.id !== rawActiveId)
+        };
+      }
 
-      const rawOverId = overId.includes('-') ? overId.split('-')[1] : overId;
+      // Insert into target container
       const overIndex = overFields.findIndex((f) => f.id === rawOverId);
       const newIndex = overIndex >= 0 ? overIndex : overFields.length;
-
-      const newOverFields = [...overFields];
+      
+      const newOverFields = [...(newZones[overContainer]?.fields || overFields)];
       newOverFields.splice(newIndex, 0, updatedField);
 
       newZones[overContainer] = {
@@ -218,147 +296,19 @@ export function PivotBuilder({
     }
   }, [zones, findContainer, setZones, data]);
 
-  const handleDragEnd = useCallback((event: DragEndEvent) => {
-    const { active, over } = event;
-    
-    // Restore the full available list from data columns so it never depletes
-    const masterAvailableFields = Object.keys(data[0] || {}).map(c => {
-      const isDate = c.toLowerCase().includes('date') || c.toLowerCase().includes('time') || c.toLowerCase().endsWith('_at');
-      const isNumeric = data.some(r => typeof r[c] === 'number');
-      return {
-        id: c,
-        sourceId: c,
-        name: c,
-        type: isDate ? 'date' : isNumeric ? 'number' : 'string',
-        dateGrouping: isDate ? 'daily' : undefined
-      } as DraggableField;
-    });
-
-    let newZones = { ...zones };
-
-    if (over) {
-      const activeId = active.id as string;
-      const overId = over.id as string;
-
-      const activeContainer = findContainer(activeId);
-      const overContainer = findContainer(overId);
-
-      if (activeContainer && activeContainer === overContainer) {
-        // Reordering within the same container
-        const rawActiveId = activeId.includes('-') ? activeId.split('-')[1] : activeId;
-        const rawOverId = overId.includes('-') ? overId.split('-')[1] : overId;
-        
-        const fields = newZones[activeContainer].fields;
-        const oldIndex = fields.findIndex((f) => f.id === rawActiveId);
-        const newIndex = fields.findIndex((f) => f.id === rawOverId);
-
-        newZones[activeContainer] = {
-          ...newZones[activeContainer],
-          fields: arrayMove(fields, oldIndex, newIndex)
-        };
-      } else if (activeContainer && overContainer) {
-        // Just finished a cross-container move (handled visually by DragOver)
-        // Now we assign a permanent unique ID to the dropped item so it can be duplicated later
-        const rawActiveId = activeId.includes('-') ? activeId.split('-')[1] : activeId;
-        
-        const fieldIndex = newZones[overContainer].fields.findIndex(f => f.id === rawActiveId);
-        if (fieldIndex !== -1) {
-          const field = { ...newZones[overContainer].fields[fieldIndex] };
-          
-          // Generate unique ID for Values zone to allow duplicates
-          if (overContainer === 'values') {
-            field.id = `val_${field.sourceId || field.id}_${Math.random().toString(36).substr(2, 9)}`;
-          }
-
-          // EXCLUSIVITY RULE: Rows, Columns, Filters can only have ONE instance of a sourceId
-          if (overContainer !== 'values' && overContainer !== 'available') {
-            const sourceId = field.sourceId || field.id;
-            ['rows', 'columns', 'filters'].forEach(zoneKey => {
-              if (zoneKey !== overContainer) {
-                newZones[zoneKey] = {
-                  ...newZones[zoneKey],
-                  fields: newZones[zoneKey].fields.filter(f => (f.sourceId || f.id) !== sourceId)
-                };
-              }
-            });
-          }
-
-          newZones[overContainer].fields[fieldIndex] = field;
-        }
-      }
-    } else {
-      // Dropped outside any valid container -> DELETE it (unless it was already in available)
-      const activeId = active.id as string;
-      const activeContainer = findContainer(activeId);
-      if (activeContainer && activeContainer !== 'available') {
-        const rawActiveId = activeId.includes('-') ? activeId.split('-')[1] : activeId;
-        newZones[activeContainer] = {
-          ...newZones[activeContainer],
-          fields: newZones[activeContainer].fields.filter(f => f.id !== rawActiveId)
-        };
-      }
-    }
-
-    // Always reset available fields to the master list to ensure it's persistent
-    newZones.available = {
-      ...newZones.available,
-      fields: masterAvailableFields
-    };
-
-    setZones(newZones);
-    setActiveId(null);
-  }, [zones, findContainer, setZones, data]);
-
   const activeField = useMemo(() => {
     if (!activeId) return null;
     const rawId = activeId.includes('-') ? activeId.split('-')[1] : activeId;
-    // When dragging from available, it might be in the master list
-    const masterAvailableFields = Object.keys(data[0] || {}).map(c => ({ id: c, sourceId: c, name: c, type: 'string' }));
-    
     for (const zone of Object.values(zones)) {
       const field = zone.fields.find(f => f.id === rawId);
       if (field) return field;
     }
-    
-    return masterAvailableFields.find(f => f.id === rawId) as DraggableField || null;
-  }, [activeId, zones, data]);
-
-  const activeSourceIds = useMemo(() => {
-    const ids = new Set<string>();
-    ['rows', 'columns', 'values', 'filters'].forEach(z => {
-      if (zones[z]) {
-        zones[z].fields.forEach(f => ids.add(f.sourceId || f.id));
-      }
-    });
-    return ids;
-  }, [zones]);
-
-  const handleRemoveField = useCallback((fieldId: string) => {
-    const newZones = { ...zones };
-    for (const zoneKey of ['rows', 'columns', 'values', 'filters']) {
-      if (newZones[zoneKey]) {
-        newZones[zoneKey] = {
-          ...newZones[zoneKey],
-          fields: newZones[zoneKey].fields.filter(f => f.id !== fieldId)
-        };
-      }
-    }
-    setZones(newZones);
-  }, [zones, setZones]);
+    return null;
+  }, [activeId, zones]);
 
   return (
     <div className="h-full p-4">
-      <div 
-        className={cn(
-          "h-full flex flex-col bg-background border border-border rounded-md overflow-hidden relative shadow-sm transition-colors duration-300",
-          "dark:bg-slate-950/40 dark:border-border"
-        )}
-        style={{
-          backgroundImage: `radial-gradient(circle at 1px 1px, hsl(var(--border) / 0.4) 1px, transparent 0)`,
-          backgroundSize: '16px 16px'
-        }}
-      >
-        <TooltipProvider delayDuration={400}>
+        <div className="h-full flex flex-col bg-background border border-border rounded-md overflow-hidden relative shadow-sm transition-colors duration-300">
           {/* 1. COMPACT HEADER */}
           <div className="px-5 py-4 border-b border-border bg-muted/30 dark:bg-slate-900/40 backdrop-blur-sm z-10 flex items-center justify-between">
             <h2 className="text-[12px] font-black uppercase tracking-widest flex items-center gap-2 text-foreground/80">
@@ -366,15 +316,38 @@ export function PivotBuilder({
               PIVOT LAYOUT
             </h2>
             <div className="flex items-center gap-1">
-              {activeLayoutId && onDeleteLayout && (
-                <button 
-                  onClick={() => onDeleteLayout(activeLayoutId)}
-                  className="p-1.5 hover:bg-destructive/10 text-destructive transition-all active:scale-90 rounded"
-                  title="Delete current layout"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              )}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="p-1.5 hover:bg-muted text-muted-foreground rounded transition-all active:scale-90" title="Pivot Settings">
+                    <Settings2 className="w-3.5 h-3.5" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 rounded-xl border-border shadow-premium p-2">
+                  <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest px-2 py-1.5">Table Options</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <div className="space-y-3 p-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <Label htmlFor="show-grand-totals" className="text-[10px] font-bold uppercase tracking-tight flex-1">Grand Totals</Label>
+                      <Switch 
+                        id="show-grand-totals" 
+                        checked={showGrandTotals} 
+                        onCheckedChange={onToggleGrandTotals}
+                        className="scale-75"
+                      />
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <Label htmlFor="show-subtotals" className="text-[10px] font-bold uppercase tracking-tight flex-1">Subtotals</Label>
+                      <Switch 
+                        id="show-subtotals" 
+                        checked={showSubtotals} 
+                        onCheckedChange={onToggleSubtotals}
+                        className="scale-75"
+                      />
+                    </div>
+                  </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
               {onSaveLayout && (
                 <button 
                   onClick={onSaveLayout}
@@ -484,9 +457,9 @@ export function PivotBuilder({
                 <DroppableZone 
                   id="available" 
                   fields={filteredAvailableFields} 
-                  activeSourceIds={activeSourceIds}
                   placeholder={searchQuery ? "NO MATCHING FIELDS" : "NO FIELDS AVAILABLE"}
                   className="bg-transparent border-none min-h-0 p-0"
+                  isActiveInLayout={isActiveInLayout}
                   data={data}
                 />
               </div>
@@ -503,7 +476,7 @@ export function PivotBuilder({
                       placeholder="DROP ROWS" 
                       isCompact 
                       onDateGroupingChange={onDateGroupingChange}
-                      onRemove={handleRemoveField}
+                      onRemoveField={handleRemoveField}
                       className={zoneStyles.rows}
                       data={data}
                     />
@@ -517,14 +490,18 @@ export function PivotBuilder({
                       placeholder="DROP COLUMNS" 
                       isCompact 
                       onDateGroupingChange={onDateGroupingChange}
-                      onRemove={handleRemoveField}
+                      onRemoveField={handleRemoveField}
                       className={zoneStyles.columns}
                       data={data}
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <ZoneHeader title="Values" icon={<Calculator className="w-3 h-3" />} count={zones.values.fields.length} />
+                    <ZoneHeader 
+                      title="Values" 
+                      icon={<Calculator className="w-3 h-3" />} 
+                      count={zones.values.fields.length} 
+                    />
                     <DroppableZone 
                       id="values" 
                       fields={zones.values.fields} 
@@ -532,7 +509,7 @@ export function PivotBuilder({
                       onAggChange={onValueAggChange}
                       placeholder="DROP VALUES" 
                       isCompact
-                      onRemove={handleRemoveField}
+                      onRemoveField={handleRemoveField}
                       className={zoneStyles.values}
                       data={data}
                     />
@@ -546,7 +523,7 @@ export function PivotBuilder({
                       placeholder="DROP FILTERS" 
                       isCompact
                       onFilterChange={onFilterChange}
-                      onRemove={handleRemoveField}
+                      onRemoveField={handleRemoveField}
                       className={zoneStyles.filters}
                       data={data}
                     />
@@ -570,25 +547,28 @@ export function PivotBuilder({
             ) : null}
           </DragOverlay>
         </DndContext>
-      </TooltipProvider>
+      </div>
     </div>
-  </div>
-);
+  );
 }
 
-function ZoneHeader({ title, icon, count }: { title: string; icon: React.ReactNode; count: number }) {
+function ZoneHeader({ title, icon, count, action }: { title: string; icon: React.ReactNode; count: number; action?: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between px-1">
-      <label className="text-[8px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-1.5">
-        <span className="text-primary opacity-60">{icon}</span>
-        {title}
-      </label>
+      <div className="flex items-center gap-2">
+        <label className="text-[8px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-1.5">
+          <span className="text-primary opacity-60">{icon}</span>
+          {title}
+        </label>
+        {action}
+      </div>
       <span className="text-[9px] font-bold font-mono text-muted-foreground/40 tabular-nums">
         {count.toString().padStart(2, '0')}
       </span>
     </div>
   );
 }
+
 
 interface DroppableZoneProps {
   id: string;
@@ -597,15 +577,15 @@ interface DroppableZoneProps {
   onAggChange?: (fieldId: string, agg: AggregationType) => void;
   onDateGroupingChange?: (zoneId: string, fieldId: string, grouping: DateGrouping) => void;
   onFilterChange?: (fieldId: string, operator: FilterOperator, value: string) => void;
-  onRemove?: (fieldId: string) => void;
-  activeSourceIds?: Set<string>;
+  onRemoveField?: (zoneId: string, fieldId: string) => void;
+  isActiveInLayout?: (sourceId: string) => boolean;
   placeholder?: string;
   isCompact?: boolean;
   className?: string;
   data: Record<string, unknown>[];
 }
 
-function DroppableZone({ id, fields, isValues, onAggChange, onDateGroupingChange, onFilterChange, onRemove, activeSourceIds, placeholder, isCompact, className, data }: DroppableZoneProps) {
+function DroppableZone({ id, fields, isValues, onAggChange, onDateGroupingChange, onFilterChange, onRemoveField, isActiveInLayout, placeholder, isCompact, className, data }: DroppableZoneProps) {
   const { setNodeRef, isOver } = useSortable({ id });
   const sortableItems = useMemo(() => fields.map(f => `${id}-${f.id}`), [id, fields]);
 
@@ -637,8 +617,8 @@ function DroppableZone({ id, fields, isValues, onAggChange, onDateGroupingChange
               onAggChange={onAggChange}
               onDateGroupingChange={onDateGroupingChange}
               onFilterChange={onFilterChange}
-              onRemove={onRemove}
-              isActiveInLayout={id === 'available' && activeSourceIds?.has(field.sourceId || field.id)}
+              onRemoveField={onRemoveField}
+              isActiveInLayout={isActiveInLayout}
               isCompact={isCompact}
               data={data}
             />
@@ -649,7 +629,7 @@ function DroppableZone({ id, fields, isValues, onAggChange, onDateGroupingChange
   );
 }
 
-function SortableItem({ id, zoneId, field, isValues, onAggChange, onDateGroupingChange, onFilterChange, onRemove, isActiveInLayout, isCompact, data }: { 
+const SortableItem = React.memo(({ id, zoneId, field, isValues, onAggChange, onDateGroupingChange, onFilterChange, onRemoveField, isActiveInLayout, isCompact, data }: { 
   id: string; 
   zoneId: string;
   field: DraggableField; 
@@ -657,11 +637,11 @@ function SortableItem({ id, zoneId, field, isValues, onAggChange, onDateGrouping
   onAggChange?: (fieldId: string, agg: AggregationType) => void;
   onDateGroupingChange?: (zoneId: string, fieldId: string, grouping: DateGrouping) => void;
   onFilterChange?: (fieldId: string, operator: FilterOperator, value: string) => void;
-  onRemove?: (fieldId: string) => void;
-  isActiveInLayout?: boolean;
+  onRemoveField?: (zoneId: string, fieldId: string) => void;
+  isActiveInLayout?: (sourceId: string) => boolean;
   isCompact?: boolean;
   data: Record<string, unknown>[];
-}) {
+}) => {
   const {
     attributes,
     listeners,
@@ -678,6 +658,8 @@ function SortableItem({ id, zoneId, field, isValues, onAggChange, onDateGrouping
 
   const formattedName = formatHeader(field.name);
   const isLongLabel = formattedName.length > 15;
+  const isAvailableZone = zoneId === 'available';
+  const isActive = isAvailableZone && isActiveInLayout ? isActiveInLayout(field.sourceId || field.id) : false;
 
   const itemZoneStyles = {
     rows: "border-blue-500/30 bg-blue-500/5 dark:bg-blue-500/10",
@@ -687,63 +669,52 @@ function SortableItem({ id, zoneId, field, isValues, onAggChange, onDateGrouping
     available: "border-border/60 bg-background"
   };
 
-  return (
+  const Content = (
     <div
       ref={setNodeRef}
-      {...attributes}
-      {...listeners}
-      onContextMenu={(e) => {
-        if (zoneId !== 'available' && onRemove) {
-          e.preventDefault();
-          onRemove(field.id);
-        }
-      }}
       style={style}
       className={cn(
         "group flex flex-col gap-1 px-2 py-1.5 rounded-lg border shadow-sm transition-all duration-200",
-        "cursor-grab active:cursor-grabbing",
         itemZoneStyles[zoneId as keyof typeof itemZoneStyles] || itemZoneStyles.available,
-        "hover:border-primary/60 hover:shadow-md active:scale-[0.98]",
+        "hover:border-primary/60 hover:shadow-md",
         isDragging && "opacity-20 scale-95",
-        isCompact && "px-1.5 py-1"
+        isCompact && "px-1.5 py-1",
+        isActive && "border-primary/50 bg-primary/5 ring-1 ring-primary/20"
       )}
     >
       <div className="flex items-center gap-2">
-        <div className="text-muted-foreground/30 group-hover:text-primary transition-colors">
-          <GripVertical className="w-3 h-3" />
+        <div 
+          {...attributes}
+          {...listeners}
+          className="text-muted-foreground/30 group-hover:text-primary transition-colors cursor-grab active:cursor-grabbing p-0.5 rounded hover:bg-muted/50"
+        >
+          {isActive ? <Check className="w-3 h-3 text-primary" /> : <GripVertical className="w-3 h-3" />}
         </div>
         
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span className="flex-1 text-[10px] font-black uppercase tracking-tight truncate select-none text-foreground/70 group-hover:text-foreground">
-              {formattedName}
-            </span>
-          </TooltipTrigger>
-          {isLongLabel && (
-            <TooltipContent side="right" className="bg-slate-900 text-slate-50 border-none font-black text-[9px] tracking-widest uppercase">
+        {isLongLabel ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className={cn(
+                "flex-1 text-[10px] font-black uppercase tracking-tight truncate select-none transition-colors",
+                isActive ? "text-primary" : "text-foreground/70 group-hover:text-foreground"
+              )}>
+                {formattedName}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="bg-slate-900 text-slate-50 border-none font-black text-[9px] tracking-widest uppercase z-[700]">
               {formattedName}
             </TooltipContent>
-          )}
-        </Tooltip>
+          </Tooltip>
+        ) : (
+          <span className={cn(
+            "flex-1 text-[10px] font-black uppercase tracking-tight truncate select-none transition-colors",
+            isActive ? "text-primary" : "text-foreground/70 group-hover:text-foreground"
+          )}>
+            {formattedName}
+          </span>
+        )}
         
-        {/* Active Indicator for Available Zone */}
-        {zoneId === 'available' && isActiveInLayout && (
-          <CheckCircle2 className="w-3.5 h-3.5 text-primary" />
-        )}
 
-        {/* Remove Button for Layout Zones */}
-        {zoneId !== 'available' && onRemove && (
-          <button 
-            onClick={(e) => {
-              e.stopPropagation();
-              onRemove(field.id);
-            }}
-            className="p-1 rounded-md opacity-0 group-hover:opacity-100 hover:bg-destructive/10 text-destructive/70 hover:text-destructive transition-all"
-            title="Remove field"
-          >
-            <X className="w-3 h-3" />
-          </button>
-        )}
 
         {/* Aggregation Selector (for Values) */}
         {isValues && onAggChange && (
@@ -828,7 +799,29 @@ function SortableItem({ id, zoneId, field, isValues, onAggChange, onDateGrouping
       )}
     </div>
   );
-}
+
+  if (isAvailableZone) {
+    return Content;
+  }
+
+  return (
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        {Content}
+      </ContextMenuTrigger>
+      <ContextMenuContent className="w-48 z-[600]">
+        <ContextMenuItem 
+          onClick={() => onRemoveField?.(zoneId, field.id)}
+          className="text-destructive focus:text-destructive focus:bg-destructive/10 gap-2 font-black text-[10px] uppercase tracking-widest cursor-pointer"
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+          Remove Field
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
+  );
+});
+SortableItem.displayName = "SortableItem";
 
 // --- NEW COMPONENT: EXCEL-STYLE FILTER PICKER ---
 function FilterValuePicker({ field, data, onChange }: { field: DraggableField; data: Record<string, unknown>[]; onChange: (val: string) => void }) {

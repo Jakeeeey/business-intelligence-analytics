@@ -1,5 +1,6 @@
 "use client";
 
+// Stabilization Refactor - V2 - Fixes Infinite Loop and Syntax Error
 import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { 
   DynamicTable, 
@@ -10,7 +11,7 @@ import {
 import { PivotBuilder } from "./components/PivotBuilder";
 import { DynamicReportService, ReportLayout } from "./services/DynamicReportService";
 import { filterData } from "./utils/filter-utils";
-import { RegisteredReport, ReportData, PivotConfig, ColumnFilter, PivotZone, DraggableField, AggregationType, DateGrouping, FilterOperator } from "./types";
+import { RegisteredReport, ReportData, PivotConfig, ColumnFilter, DraggableField, AggregationType } from "./types";
 
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -18,6 +19,8 @@ import { Label } from "@/components/ui/label";
 import { Loader2, Database, Download, LayoutGrid, Layers, RefreshCw, Filter, Settings2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { usePivotState } from "./hooks/usePivotState";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 import {
   Select,
@@ -45,8 +48,6 @@ interface ApiResponse {
   data: ReportData[];
 }
 
-
-
 export default function DynamicReportsModule() {
   const [reports, setReports] = useState<RegisteredReport[]>([]);
   const [selectedReport, setSelectedReport] = useState<RegisteredReport | null>(null);
@@ -70,13 +71,23 @@ export default function DynamicReportsModule() {
   const [isBuilderOpen, setIsBuilderOpen] = useState(true);
   const pivotTableRef = useRef<{ exportToExcel: (filename: string) => void } | null>(null);
   const rawTableRef = useRef<{ exportToExcel: (filename: string) => void } | null>(null);
-  const [zones, setZones] = useState<Record<string, PivotZone>>({
-    available: { id: 'available', fields: [] },
-    rows: { id: 'rows', fields: [] },
-    columns: { id: 'columns', fields: [] },
-    values: { id: 'values', fields: [] },
-    filters: { id: 'filters', fields: [] },
-  });
+  
+  // Refactored Pivot State
+  const {
+    zones,
+    showGrandTotals,
+    showSubtotals,
+    setZones,
+    initializeZones,
+    resetInitialZones,
+    updateFieldAgg,
+    updateFieldDateGrouping,
+    updateFieldFilter,
+    toggleGrandTotals,
+    toggleSubtotals,
+    resetPivotState
+  } = usePivotState();
+
   const [savedLayouts, setSavedLayouts] = useState<ReportLayout[]>([]);
   const [activeLayout, setActiveLayout] = useState<ReportLayout | null>(null);
   const [layoutName, setLayoutName] = useState("");
@@ -87,21 +98,25 @@ export default function DynamicReportsModule() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [layoutToDelete, setLayoutToDelete] = useState<string | number | null>(null);
 
+  // Memoized Config for Table - Depend on specific zone lengths for stability
   const pivotConfig: PivotConfig = useMemo(() => ({
     rowFields: zones.rows.fields,
     columnFields: zones.columns.fields,
     valueFields: zones.values.fields.map(f => ({
-      key: f.id,
-      sourceId: f.sourceId || f.id,
+      id: f.id,
+      key: f.sourceId || f.id,
+      name: f.name,
       aggType: (f as unknown as ValueFieldWithAgg).aggType || 'sum'
     })),
-    filterFields: (zones.filters?.fields || []).map(f => ({
+    filterFields: zones.filters.fields.map(f => ({
       id: f.id,
-      sourceId: f.sourceId || f.id,
+      column: f.id,
       operator: f.filterOperator || 'equals',
       value: f.filterValue || ''
-    }))
-  }), [zones]);
+    })),
+    showGrandTotals,
+    showSubtotals,
+  }), [zones.rows.fields, zones.columns.fields, zones.values.fields, zones.filters.fields, showGrandTotals, showSubtotals]);
 
   // Filter States
   const [searchTerm, setSearchTerm] = useState("");
@@ -124,7 +139,7 @@ export default function DynamicReportsModule() {
     }
   }, []);
 
-  const fetchReportData = async (report: RegisteredReport) => {
+  const fetchReportData = useCallback(async (report: RegisteredReport) => {
     if (!report) return;
     
     // Set loading state first to block other interactions
@@ -190,7 +205,6 @@ export default function DynamicReportsModule() {
 
           return {
             id: c,
-            sourceId: c,
             name: c,
             type: isDate ? 'date' : isNumeric ? 'number' : 'string',
             dateGrouping: isDate ? 'daily' : undefined
@@ -198,19 +212,33 @@ export default function DynamicReportsModule() {
         });
         
         setRawFields(availableFields);
-        // Always reset to initial zones for fresh load
-        setInitialZones(availableFields);
+        // Reset pivot state for fresh load
+        resetPivotState();
+        initializeZones(availableFields);
       }
       
       toast.success(`Loaded ${normalizedData.length} records`);
     } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : "Unknown error";
-      toast.error(msg);
+      const msg = (error instanceof Error ? error.message : "Unknown error").toLowerCase();
+      
+      if (msg.includes("401") || msg.includes("unauthorized")) {
+        toast.error("Session Expired: Please log in again to access the API.");
+      } else if (msg.includes("403") || msg.includes("forbidden")) {
+        toast.error("Access Denied: You do not have permission to view this report.");
+      } else if (msg.includes("404")) {
+        toast.error("Not Found: The report endpoint does not exist. Please check your settings.");
+      } else if (msg.includes("502") || msg.includes("503") || msg.includes("failed to fetch") || msg.includes("network")) {
+        toast.error("Connection Refused: The Spring Boot server is unreachable or down.");
+      } else if (msg.includes("500")) {
+        toast.error("Internal Server Error: The Spring Boot API encountered an error processing your request.");
+      } else {
+        toast.error(`Load Failed: ${msg}`);
+      }
       setData([]);
     } finally {
       setIsFetchingData(false);
     }
-  };
+  }, [startDate, endDate, resetPivotState, initializeZones]);
 
   const loadLayouts = useCallback(async (reportId: string) => {
     try {
@@ -227,14 +255,11 @@ export default function DynamicReportsModule() {
       const config = layout.config as PivotConfig;
       if (config && config.zones) {
         // 1. Restore zones
+        // 1. Restore zones and filters atomically
         setZones(config.zones);
         
-        // 2. Restore active filters (ensuring it's an array)
-        if (Array.isArray(config.activeFilters)) {
-          setActiveFilters([...config.activeFilters]);
-        } else {
-          setActiveFilters([]);
-        }
+        // 2. Restore active filters
+        setActiveFilters(Array.isArray(config.activeFilters) ? [...config.activeFilters] : []);
 
         // Restore row-level filters and sort
         setRowSort(config.rowSort || null);
@@ -324,7 +349,7 @@ export default function DynamicReportsModule() {
         setLayoutName("");
         // Reset to initial state
         if (rawFields.length > 0) {
-          setInitialZones(rawFields);
+          resetInitialZones(rawFields);
         }
         setActiveFilters([]);
         setRowSort(null);
@@ -342,57 +367,7 @@ export default function DynamicReportsModule() {
     }
   };
 
-  const handleValueAggChange = (fieldId: string, agg: AggregationType) => {
-    setZones(prev => {
-      const newValues = prev.values.fields.map(f => 
-        f.id === fieldId ? { ...f, aggType: agg } : f
-      );
-      return {
-        ...prev,
-        values: { ...prev.values, fields: newValues }
-      };
-    });
-  };
 
-
-
-  const handleDateGroupingChange = (zoneId: string, fieldId: string, grouping: DateGrouping) => {
-    setZones(prev => {
-      const zoneKey = zoneId as keyof typeof prev;
-      const newFields = prev[zoneKey].fields.map(f => 
-        f.id === fieldId ? { ...f, dateGrouping: grouping } : f
-      );
-      return {
-        ...prev,
-        [zoneKey]: { ...prev[zoneKey], fields: newFields }
-      };
-    });
-  };
-
-  const handleFilterChange = (fieldId: string, operator: FilterOperator, value: string) => {
-    setZones(prev => {
-      const newFields = prev.filters.fields.map(f => 
-        f.id === fieldId ? { ...f, filterOperator: operator, filterValue: value } : f
-      );
-      return {
-        ...prev,
-        filters: { ...prev.filters, fields: newFields }
-      };
-    });
-  };
-
-  const setInitialZones = (fields: DraggableField[]) => {
-    setZones({
-      available: { id: 'available', fields: [...fields] },
-      rows: { id: 'rows', fields: [] },
-      columns: { id: 'columns', fields: [] },
-      values: { 
-        id: 'values', 
-        fields: [] 
-      },
-      filters: { id: 'filters', fields: [] },
-    });
-  };
 
   const columns = useMemo(() => (data.length > 0 ? Object.keys(data[0]) : []), [data]);
 
@@ -406,7 +381,7 @@ export default function DynamicReportsModule() {
         const operator = field.filterOperator || 'equals';
         
         result = result.filter(row => {
-          const rawValue = row[field.id];
+          const rawValue = row[field.sourceId || field.id];
           if (rawValue === undefined || rawValue === null) return false;
           
           // Handle Text Fields (Excel-style Multi-select Checklist)
@@ -442,7 +417,12 @@ export default function DynamicReportsModule() {
     return result;
   }, [data, searchTerm, activeFilters, zones.filters, isPivotMode]);
 
-  const handleExport = (rows?: Record<string, unknown>[], cols?: Record<string, unknown>[]) => {
+  // DEFER expensive table updates during active drag-and-drop or state transitions
+  // Move these here (Top Level) after all dependencies (filteredData, pivotConfig) are defined
+  const deferredPivotConfig = React.useDeferredValue(pivotConfig);
+  const deferredFilteredData = React.useDeferredValue(filteredData);
+
+  const handleExport = useCallback((rows?: Record<string, unknown>[], cols?: Record<string, unknown>[]) => {
     const reportName = selectedReport?.name || "report";
     toast.info("Exporting... please wait.");
     
@@ -465,7 +445,7 @@ export default function DynamicReportsModule() {
     } else {
       rawTableRef.current?.exportToExcel(`${reportName}_raw.xlsx`);
     }
-  };
+  }, [selectedReport, isPivotMode]);
 
   useEffect(() => {
     loadReports();
@@ -481,300 +461,333 @@ export default function DynamicReportsModule() {
     }
   }, [selectedReport, loadLayouts]);
 
-  return (
-    <div className="flex flex-col h-full bg-background overflow-hidden">
-      <FilterBar 
-        searchTerm={searchTerm}
-        onSearchChange={setSearchTerm}
-        actionStrip={
-          <div className="flex items-center gap-2 h-10">
-            {/* 1. SELECT ENDPOINT SECTION */}
-            <div className="h-full flex items-center border border-border bg-background dark:bg-slate-900 rounded-md shadow-sm overflow-hidden">
-              <Select 
-                onValueChange={(val) => {
-                  const r = reports.find(r => r.id.toString() === val);
-                  if (r) {
-                    setSelectedReport(r);
-                  }
-                }}
-                value={selectedReport?.id?.toString() || undefined}
-              >
-                <SelectTrigger className="w-44 h-full border-none bg-transparent font-bold tracking-tight text-[10px] focus:ring-0 px-3">
-                  <SelectValue placeholder={isLoadingReports ? "LOADING..." : "SELECT ENDPOINT"} />
-                </SelectTrigger>
-                <SelectContent className="rounded-md border-none shadow-premium z-[600] p-1">
-                  <div className="max-h-[300px] overflow-y-auto">
-                    {reports.map(r => (
-                      <SelectItem key={r.id} value={r.id.toString()} className="rounded-md py-2.5 text-[11px] font-bold focus:bg-primary/5">
-                        {r.name}
-                      </SelectItem>
-                    ))}
-                  </div>
-                </SelectContent>
-              </Select>
+  const actionStrip = useMemo(() => (
+    <div className="flex items-center gap-2 h-10">
+      {/* 1. SELECT ENDPOINT SECTION */}
+      <div className="h-full flex items-center border border-border bg-background dark:bg-slate-900 rounded-md shadow-sm overflow-hidden">
+        <Select 
+          onValueChange={(val) => {
+            const r = reports.find(r => r.id.toString() === val);
+            if (r) {
+              setSelectedReport(r);
+            }
+          }}
+          value={selectedReport?.id?.toString() || undefined}
+        >
+          <SelectTrigger className="w-44 h-full border-none bg-transparent font-bold tracking-tight text-[10px] focus:ring-0 px-3">
+            <SelectValue placeholder={isLoadingReports ? "LOADING..." : "SELECT ENDPOINT"} />
+          </SelectTrigger>
+          <SelectContent className="rounded-md border-none shadow-premium z-[600] p-1">
+            <div className="max-h-[300px] overflow-y-auto">
+              {reports.map(r => (
+                <SelectItem key={r.id} value={r.id.toString()} className="rounded-md py-2.5 text-[11px] font-bold focus:bg-primary/5">
+                  {r.name}
+                </SelectItem>
+              ))}
             </div>
+          </SelectContent>
+        </Select>
+      </div>
 
-            {/* 3. DATE FILTERS SECTION */}
-            <div className="h-full flex items-center gap-2 px-2 border border-border bg-background dark:bg-slate-900 rounded-md shadow-sm">
-              <div className="flex items-center gap-1.5">
-                <span className="text-[8px] font-black text-muted-foreground uppercase opacity-50">From</span>
-                <input 
-                  type="date" 
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="bg-transparent text-[10px] font-bold outline-none border-none p-0 w-24 dark:invert-[0.1]"
-                />
-              </div>
-              <div className="w-[1px] h-3 bg-border" />
-              <div className="flex items-center gap-1.5">
-                <span className="text-[8px] font-black text-muted-foreground uppercase opacity-50">To</span>
-                <input 
-                  type="date" 
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="bg-transparent text-[10px] font-bold outline-none border-none p-0 w-24 dark:invert-[0.1]"
-                />
-              </div>
-            </div>
-
-            {/* 3. LOAD ACTION */}
-            <Button 
-              disabled={!selectedReport || isFetchingData}
-              onClick={() => selectedReport && fetchReportData(selectedReport)}
-              className={cn(
-                "h-full px-4 rounded-md font-black text-[10px] tracking-widest flex items-center gap-2 transition-all active:scale-95",
-                isFetchingData ? "bg-muted text-muted-foreground" : "bg-primary text-primary-foreground hover:shadow-lg"
-              )}
-            >
-              {isFetchingData ? (
-                <RefreshCw className="w-3 h-3 animate-spin" />
-              ) : (
-                <Filter className="w-3.5 h-3.5" />
-              )}
-              {isFetchingData ? "FETCHING..." : "LOAD DATA"}
-            </Button>
-
-            {/* 4. PIVOT SECTION */}
-            {selectedReport && (
-              <div className="h-full flex items-center gap-1 px-1 bg-muted/20 border border-border rounded-md shadow-sm">
-                <div className="flex items-center gap-2 px-2">
-                  <Switch 
-                    id="pivot-mode" 
-                    checked={isPivotMode} 
-                    onCheckedChange={setIsPivotMode}
-                    className="scale-[0.65]"
-                  />
-                  <Label htmlFor="pivot-mode" className="text-[9px] font-black tracking-tighter cursor-pointer flex items-center gap-1 whitespace-nowrap">
-                    <LayoutGrid className="w-2.5 h-2.5 text-primary" />
-                    PIVOT MODE
-                  </Label>
-                </div>
-                {isPivotMode && (
-                  <>
-                    <div className="w-[1px] h-4 bg-border mx-1" />
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setIsBuilderOpen(!isBuilderOpen)}
-                      className={cn(
-                        "h-7 px-2 text-[9px] font-black gap-1.5 transition-all",
-                        isBuilderOpen ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted"
-                      )}
-                    >
-                      <Settings2 className={cn("w-3 h-3", isBuilderOpen && "animate-spin-slow")} />
-                      {isBuilderOpen ? "HIDE LAYOUT" : "SHOW LAYOUT"}
-                    </Button>
-                  </>
-                )}
-              </div>
+      {/* 3. DATE FILTERS SECTION */}
+      <div className={cn(
+        "h-full flex items-center gap-2 px-2 border border-border bg-background dark:bg-slate-900 rounded-md shadow-sm transition-opacity",
+        !selectedReport && "opacity-40 cursor-not-allowed"
+      )}>
+        <div className="flex items-center gap-1.5">
+          <span className="text-[8px] font-black text-muted-foreground uppercase opacity-50">From</span>
+          <input 
+            type="date" 
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            disabled={!selectedReport}
+            className={cn(
+              "bg-transparent text-[10px] font-bold outline-none border-none p-0 w-24 dark:invert-[0.1]",
+              !selectedReport ? "cursor-not-allowed" : "cursor-pointer"
             )}
+          />
+        </div>
+        <div className="w-[1px] h-3 bg-border" />
+        <div className="flex items-center gap-1.5">
+          <span className="text-[8px] font-black text-muted-foreground uppercase opacity-50">To</span>
+          <input 
+            type="date" 
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            disabled={!selectedReport}
+            className={cn(
+              "bg-transparent text-[10px] font-bold outline-none border-none p-0 w-24 dark:invert-[0.1]",
+              !selectedReport ? "cursor-not-allowed" : "cursor-pointer"
+            )}
+          />
+        </div>
+      </div>
 
-            {/* 5. MANAGE SECTION */}
-            <ManageReportsModal 
-              reports={reports} 
-              onRefresh={loadReports} 
-              trigger={
-                <button 
-                  className="h-full px-4 flex items-center border border-border bg-background hover:bg-muted transition-all active:scale-95 rounded-md shadow-sm"
-                >
-                  <Layers className="w-3 h-3 mr-2 text-foreground" />
-                  <span className="text-[9px] font-black uppercase tracking-[0.1em] text-foreground">
-                    MANAGE
-                  </span>
-                </button>
-              }
+      {/* 3. LOAD ACTION */}
+      <Button 
+        disabled={!selectedReport || isFetchingData}
+        onClick={() => selectedReport && fetchReportData(selectedReport)}
+        className={cn(
+          "h-full px-4 rounded-md font-black text-[10px] tracking-widest flex items-center gap-2 transition-all active:scale-95",
+          isFetchingData ? "bg-muted text-muted-foreground" : "bg-primary text-primary-foreground hover:shadow-lg"
+        )}
+      >
+        {isFetchingData ? (
+          <RefreshCw className="w-3 h-3 animate-spin" />
+        ) : (
+          <Filter className="w-3.5 h-3.5" />
+        )}
+        {isFetchingData ? "FETCHING..." : "LOAD DATA"}
+      </Button>
+
+      {/* 4. PIVOT SECTION */}
+      {selectedReport && (
+        <div className="h-full flex items-center gap-1 px-1 bg-muted/20 border border-border rounded-md shadow-sm">
+          <div className={cn(
+            "flex items-center gap-2 px-2 transition-opacity",
+            (data.length === 0 || isFetchingData) && "opacity-50 cursor-not-allowed"
+          )}>
+            <Switch 
+              id="pivot-mode" 
+              checked={isPivotMode} 
+              onCheckedChange={setIsPivotMode}
+              disabled={data.length === 0 || isFetchingData}
+              className="scale-[0.65]"
             />
-
-            {/* 6. EXPORT SECTION */}
-            <button 
-              onClick={() => handleExport()} 
-              className="h-full px-4 flex items-center border border-border bg-background hover:bg-muted transition-all active:scale-95 rounded-md shadow-sm"
+            <Label 
+              htmlFor="pivot-mode" 
+              className={cn(
+                "text-[9px] font-black tracking-tighter flex items-center gap-1 whitespace-nowrap",
+                (data.length === 0 || isFetchingData) ? "cursor-not-allowed" : "cursor-pointer"
+              )}
             >
-              <Download className="w-3 h-3 mr-2 text-foreground" />
-              <span className="text-[9px] font-black uppercase tracking-[0.1em] text-foreground">
-                EXPORT
-              </span>
-            </button>
+              <LayoutGrid className="w-2.5 h-2.5 text-primary" />
+              {data.length === 0 ? "LOAD DATA FIRST" : "PIVOT MODE"}
+            </Label>
           </div>
+          {isPivotMode && (
+            <>
+              <div className="w-[1px] h-4 bg-border mx-1" />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsBuilderOpen(!isBuilderOpen)}
+                className={cn(
+                  "h-7 px-2 text-[9px] font-black gap-1.5 transition-all",
+                  isBuilderOpen ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted"
+                )}
+              >
+                <Settings2 className={cn("w-3 h-3", isBuilderOpen && "animate-spin-slow")} />
+                {isBuilderOpen ? "HIDE LAYOUT" : "SHOW LAYOUT"}
+              </Button>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* 5. MANAGE SECTION */}
+      <ManageReportsModal 
+        reports={reports} 
+        onRefresh={loadReports} 
+        trigger={
+          <button 
+            className="h-full px-4 flex items-center border border-border bg-background hover:bg-muted transition-all active:scale-95 rounded-md shadow-sm"
+          >
+            <Layers className="w-3 h-3 mr-2 text-foreground" />
+            <span className="text-[9px] font-black uppercase tracking-[0.1em] text-foreground">
+              MANAGE
+            </span>
+          </button>
         }
       />
 
-      <div className="flex-1 min-h-0 overflow-hidden flex flex-col" style={{ overflow: 'hidden' }}>
-        {isFetchingData ? (
-          <div className="h-full flex flex-col items-center justify-center p-24 space-y-4 bg-muted/5">
-            <Loader2 className="w-12 h-12 animate-spin text-primary" />
-            <p className="font-mono text-xs font-bold uppercase tracking-widest text-muted-foreground opacity-50">Synchronizing Analytics Engine...</p>
-          </div>
-        ) : !selectedReport ? (
-          <div className="flex-1 flex flex-col min-h-0 bg-background border border-border shadow-sm rounded-md mx-4 mb-4 select-none items-center justify-center">
-            <div className="flex flex-col items-center justify-center opacity-40">
-              <Database className="w-16 h-16 mb-4 text-muted-foreground" />
-              <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground italic font-mono text-center">Select an analytics endpoint to begin</p>
+      {/* 6. EXPORT SECTION */}
+      <button 
+        onClick={() => handleExport()} 
+        className="h-full px-4 flex items-center border border-border bg-background hover:bg-muted transition-all active:scale-95 rounded-md shadow-sm"
+      >
+        <Download className="w-3 h-3 mr-2 text-foreground" />
+        <span className="text-[9px] font-black uppercase tracking-[0.1em] text-foreground">
+          EXPORT
+        </span>
+      </button>
+    </div>
+  ), [reports, selectedReport, isLoadingReports, startDate, endDate, isFetchingData, isPivotMode, isBuilderOpen, fetchReportData, handleExport, loadReports, data.length]);
+
+  return (
+    <TooltipProvider delayDuration={400}>
+      <div className="flex flex-col h-full bg-background overflow-hidden">
+        <FilterBar 
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          actionStrip={actionStrip}
+        />
+
+        <div className="flex-1 min-h-0 overflow-hidden flex flex-col" style={{ overflow: 'hidden' }}>
+          {isFetchingData ? (
+            <div className="h-full flex flex-col items-center justify-center p-24 space-y-4 bg-muted/5">
+              <Loader2 className="w-12 h-12 animate-spin text-primary" />
+              <p className="font-mono text-xs font-bold uppercase tracking-widest text-muted-foreground opacity-50">Synchronizing Analytics Engine...</p>
             </div>
-          </div>
-        ) : isPivotMode ? (
-          <div className="flex-1 flex min-h-0" style={{ overflow: 'hidden' }}>
-            {isBuilderOpen && (
-              <div className="h-full flex-col shrink-0 animate-in slide-in-from-left-4 duration-300">
-                <PivotBuilder 
-                  zones={zones} 
-                  setZones={setZones} 
-                  data={data} // Pass raw data for filter value extraction
-                  onValueAggChange={handleValueAggChange}
-                  onDateGroupingChange={handleDateGroupingChange}
-                  onFilterChange={handleFilterChange}
-                  onSaveLayout={handleSaveClick}
-                  savedLayouts={savedLayouts}
-                  onApplyLayout={handleApplyLayout}
-                  onDeleteLayout={(id) => {
-                    setLayoutToDelete(id);
-                    setShowDeleteConfirm(true);
+          ) : !selectedReport ? (
+            <div className="flex-1 flex flex-col min-h-0 bg-background border border-border shadow-sm rounded-md mx-4 mb-4 select-none items-center justify-center">
+              <div className="flex flex-col items-center justify-center opacity-40">
+                <Database className="w-16 h-16 mb-4 text-muted-foreground" />
+                <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground italic font-mono text-center">Select an analytics endpoint to begin</p>
+              </div>
+            </div>
+          ) : isPivotMode ? (
+            <div className="flex-1 flex min-h-0" style={{ overflow: 'hidden' }}>
+              {isBuilderOpen && (
+                <div className="h-full flex-col shrink-0 animate-in slide-in-from-left-4 duration-300">
+                  <PivotBuilder 
+                    zones={zones} 
+                    setZones={setZones} 
+                    data={data} // Pass raw data for filter value extraction
+                    onValueAggChange={updateFieldAgg}
+                    onDateGroupingChange={updateFieldDateGrouping}
+                    onFilterChange={updateFieldFilter}
+                    onSaveLayout={handleSaveClick}
+                    savedLayouts={savedLayouts}
+                    onApplyLayout={handleApplyLayout}
+                    onNewLayout={() => {
+                      setActiveLayout(null);
+                      setLayoutName("");
+                      // Reset zones to initial (all fields in available)
+                      if (rawFields.length > 0) {
+                        resetInitialZones(rawFields);
+                      }
+                      // Reset other local view states
+                      setActiveFilters([]);
+                      setRowSort(null);
+                      setRowFilters(null);
+                      toast.info("Switched to Create New Layout mode. All zones have been cleared.");
+                    }}
+                    layoutName={layoutName}
+                    onLayoutNameChange={setLayoutName}
+                    activeLayoutId={activeLayout?.id}
+                    showGrandTotals={showGrandTotals}
+                    showSubtotals={showSubtotals}
+                    onToggleGrandTotals={toggleGrandTotals}
+                    onToggleSubtotals={toggleSubtotals}
+                  />
+                </div>
+              )}
+              <div className={cn(
+                "flex-1 min-h-0 h-full p-4 transition-all duration-300 overflow-hidden",
+                isBuilderOpen ? "pl-0" : "pl-4"
+              )}>
+                <PivotTableView 
+                  ref={pivotTableRef}
+                  data={deferredFilteredData} 
+                  config={deferredPivotConfig} 
+                  activeFilters={activeFilters}
+                  onAddFilter={(f) => setActiveFilters([...activeFilters, f])}
+                  onRemoveFilter={(id) => setActiveFilters(activeFilters.filter(f => f.id !== id))}
+                  onClearAll={() => {
+                    setActiveFilters([]);
+                    setSearchTerm("");
                   }}
-                  onNewLayout={() => {
-                    setActiveLayout(null);
-                    setLayoutName("");
-                    toast.info("Switched to Create New Layout mode. Enter a name and click Save.");
+                  rowSort={rowSort}
+                  onRowSortChange={setRowSort}
+                  rowFilters={rowFilters}
+                  onRowFiltersChange={setRowFilters}
+                  visibleColumns={visibleColumns}
+                  onToggleColumn={(col) => {
+                    setVisibleColumns(prev => 
+                      prev.includes(col) 
+                        ? (prev.length > 1 ? prev.filter(c => c !== col) : prev) 
+                        : [...prev, col]
+                    );
                   }}
-                  layoutName={layoutName}
-                  onLayoutNameChange={setLayoutName}
-                  activeLayoutId={activeLayout?.id}
+                  onExport={(rows, cols) => handleExport(rows, cols)}
                 />
               </div>
-            )}
-            <div className={cn(
-              "flex-1 min-h-0 h-full p-4 transition-all duration-300 overflow-hidden",
-              isBuilderOpen ? "pl-0" : "pl-4"
-            )}>
-              <PivotTableView 
-                ref={pivotTableRef}
-                data={filteredData} 
-                config={pivotConfig} 
-                activeFilters={activeFilters}
-                onAddFilter={(f) => setActiveFilters([...activeFilters, f])}
-                onRemoveFilter={(id) => setActiveFilters(activeFilters.filter(f => f.id !== id))}
-                onClearAll={() => {
-                  setActiveFilters([]);
-                  setSearchTerm("");
-                }}
-                rowSort={rowSort}
-                onRowSortChange={setRowSort}
-                rowFilters={rowFilters}
-                onRowFiltersChange={setRowFilters}
-                visibleColumns={visibleColumns}
-                onToggleColumn={(col) => {
-                  setVisibleColumns(prev => 
-                    prev.includes(col) 
-                      ? (prev.length > 1 ? prev.filter(c => c !== col) : prev) 
-                      : [...prev, col]
-                  );
-                }}
-                onExport={(rows, cols) => handleExport(rows, cols)}
-              />
             </div>
-          </div>
-        ) : (
-          <DynamicTable 
-            ref={rawTableRef}
-            data={filteredData} 
-            columns={columns}
-            activeFilters={activeFilters}
-            onAddFilter={(f) => setActiveFilters([...activeFilters, f])}
-            onRemoveFilter={(id) => setActiveFilters(activeFilters.filter(f => f.id !== id))}
-            onClearAll={() => {
-              setActiveFilters([]);
-              setSearchTerm("");
-            }}
-            visibleColumns={visibleColumns}
-            onToggleColumn={(col) => {
-              setVisibleColumns(prev => 
-                prev.includes(col) 
-                  ? (prev.length > 1 ? prev.filter(c => c !== col) : prev) 
-                  : [...prev, col]
-              );
-            }}
-          />
-        )}
+          ) : (
+            <DynamicTable 
+              ref={rawTableRef}
+              data={deferredFilteredData} 
+              columns={columns}
+              activeFilters={activeFilters}
+              onAddFilter={(f) => setActiveFilters([...activeFilters, f])}
+              onRemoveFilter={(id) => setActiveFilters(activeFilters.filter(f => f.id !== id))}
+              onClearAll={() => {
+                setActiveFilters([]);
+                setSearchTerm("");
+              }}
+              visibleColumns={visibleColumns}
+              onToggleColumn={(col) => {
+                setVisibleColumns(prev => 
+                  prev.includes(col) 
+                    ? (prev.length > 1 ? prev.filter(c => c !== col) : prev) 
+                    : [...prev, col]
+                );
+              }}
+            />
+          )}
+        </div>
+        {/* CONFIRMATION DIALOGS */}
+        <AlertDialog open={showSaveConfirm} onOpenChange={setShowSaveConfirm}>
+          <AlertDialogContent className="rounded-2xl border-border shadow-premium">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-sm font-black uppercase tracking-widest">Save New Layout</AlertDialogTitle>
+              <AlertDialogDescription className="text-xs font-medium">
+                Do you want to save this as a new layout named <span className="font-bold text-primary italic">&quot;{layoutName}&quot;</span>?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="rounded-xl text-[10px] font-bold uppercase tracking-widest">Cancel</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={() => executeSave(false)}
+                className="rounded-xl text-[10px] font-bold uppercase tracking-widest bg-primary hover:bg-primary/90"
+              >
+                Confirm Save
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <AlertDialog open={showUpdateConfirm} onOpenChange={setShowUpdateConfirm}>
+          <AlertDialogContent className="rounded-2xl border-border shadow-premium">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-sm font-black uppercase tracking-widest">Update Existing Layout</AlertDialogTitle>
+              <AlertDialogDescription className="text-xs font-medium">
+                Do you want to update <span className="font-bold text-primary italic">&quot;{activeLayout?.name}&quot;</span> with your current settings and filters?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="rounded-xl text-[10px] font-bold uppercase tracking-widest">Cancel</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={() => executeSave(true)}
+                className="rounded-xl text-[10px] font-bold uppercase tracking-widest bg-primary hover:bg-primary/90"
+              >
+                Update Layout
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+          <AlertDialogContent className="rounded-2xl border-border shadow-premium">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-sm font-black uppercase tracking-widest text-destructive">Delete Layout</AlertDialogTitle>
+              <AlertDialogDescription className="text-xs font-medium">
+                Are you sure you want to delete <span className="font-bold text-destructive italic">&quot;{savedLayouts.find(l => l.id === (layoutToDelete || activeLayout?.id))?.name}&quot;</span>? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="rounded-xl text-[10px] font-bold uppercase tracking-widest">Cancel</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={executeDelete}
+                className="rounded-xl text-[10px] font-bold uppercase tracking-widest bg-destructive hover:bg-destructive/90 text-white"
+              >
+                Confirm Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
-      {/* CONFIRMATION DIALOGS */}
-      <AlertDialog open={showSaveConfirm} onOpenChange={setShowSaveConfirm}>
-        <AlertDialogContent className="rounded-2xl border-border shadow-premium">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-sm font-black uppercase tracking-widest">Save New Layout</AlertDialogTitle>
-            <AlertDialogDescription className="text-xs font-medium">
-              Do you want to save this as a new layout named <span className="font-bold text-primary italic">&quot;{layoutName}&quot;</span>?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-xl text-[10px] font-bold uppercase tracking-widest">Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={() => executeSave(false)}
-              className="rounded-xl text-[10px] font-bold uppercase tracking-widest bg-primary hover:bg-primary/90"
-            >
-              Confirm Save
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog open={showUpdateConfirm} onOpenChange={setShowUpdateConfirm}>
-        <AlertDialogContent className="rounded-2xl border-border shadow-premium">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-sm font-black uppercase tracking-widest">Update Existing Layout</AlertDialogTitle>
-            <AlertDialogDescription className="text-xs font-medium">
-              Do you want to update <span className="font-bold text-primary italic">&quot;{activeLayout?.name}&quot;</span> with your current settings and filters?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-xl text-[10px] font-bold uppercase tracking-widest">Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={() => executeSave(true)}
-              className="rounded-xl text-[10px] font-bold uppercase tracking-widest bg-primary hover:bg-primary/90"
-            >
-              Update Layout
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-        <AlertDialogContent className="rounded-2xl border-border shadow-premium">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-sm font-black uppercase tracking-widest text-destructive">Delete Layout</AlertDialogTitle>
-            <AlertDialogDescription className="text-xs font-medium">
-              Are you sure you want to delete <span className="font-bold text-destructive italic">&quot;{savedLayouts.find(l => l.id === (layoutToDelete || activeLayout?.id))?.name}&quot;</span>? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-xl text-[10px] font-bold uppercase tracking-widest">Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={executeDelete}
-              className="rounded-xl text-[10px] font-bold uppercase tracking-widest bg-destructive hover:bg-destructive/90 text-white"
-            >
-              Confirm Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+    </TooltipProvider>
   );
 }

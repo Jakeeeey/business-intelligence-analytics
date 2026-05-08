@@ -35,8 +35,7 @@ export function RowLabelFilter({ data, config, onSortChange, onFilterChange, sel
     if (!primaryField || !data.length) return [];
     const values = new Set<string>();
     data.forEach(row => {
-      const sourceKey = primaryField.sourceId || primaryField.id;
-      const val = row[sourceKey as keyof ReportData];
+      const val = row[(primaryField.sourceId || primaryField.id) as keyof ReportData];
       if (val !== undefined && val !== null) {
         if (primaryField.type === 'date') {
           values.add(formatDateValue(val, primaryField.dateGrouping));

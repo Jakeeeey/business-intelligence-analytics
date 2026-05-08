@@ -10,12 +10,9 @@ import { ChevronsUpDown, ChevronsDownUp } from "lucide-react";
 const formatHeader = (key: string) => {
   if (!key) return "";
   return key
-    .replace(/([A-Z])/g, ' $1')
-    .replace(/[_-]/g, ' ')
-    .split(' ')
-    .filter(Boolean)
-    .map(word => word.toUpperCase())
-    .join(' ')
+    .replace(/_/g, ' ')
+    .replace(/([a-z])([A-Z])/g, '$1 $2') // camelCase to space
+    .replace(/([A-Z])([A-Z][a-z])/g, '$1 $2') // Handle acronyms followed by words
     .trim()
     .toUpperCase();
 };
@@ -80,18 +77,6 @@ export function createPivotColumns(
 ): ColumnDef<ReportData, unknown>[] {
   const columnHelper = createColumnHelper<ReportData>();
 
-  // Helper to estimate width based on content
-  const getEstimatedWidth = (header: string, accessor: string) => {
-    const charWidth = 7.5;
-    const padding = 64; 
-    let maxChars = header.length;
-    data.forEach(row => {
-      const val = String(row[accessor as keyof ReportData] || "");
-      if (val.length > maxChars) maxChars = val.length;
-    });
-    return Math.min(Math.max(maxChars * charWidth + padding, 120), 600);
-  };
-
   // ═══════════════════════════════════════════════════════════════════
   // 1. CONSOLIDATED ROW COLUMN (Excel Compact Form Standard)
   // ═══════════════════════════════════════════════════════════════════
@@ -140,15 +125,14 @@ export function createPivotColumns(
   // 1b. HIDDEN DATA COLUMNS (Required for Grouping to work)
   const hiddenRowColumns = config.rowFields.map(field => 
     columnHelper.accessor((row) => {
-      const sourceKey = field.sourceId || field.id;
-      const val = row[sourceKey as keyof ReportData];
+      const val = row[(field.sourceId || field.id) as keyof ReportData];
       if (field.type === 'date') {
         return formatDateValue(val, field.dateGrouping);
       }
       return val;
     }, {
       id: field.id,
-      header: formatHeader(field.id),
+      header: formatHeader(field.name || field.id),
       enableGrouping: true,
     })
   );
@@ -164,8 +148,7 @@ export function createPivotColumns(
     
     // Extract unique values with date grouping support
     const uniqueColValues = Array.from(new Set(data.map(d => {
-      const sourceKey = colField.sourceId || colField.id;
-      const val = d[sourceKey as keyof ReportData];
+      const val = d[(colField.sourceId || colField.id) as keyof ReportData];
       return colField.type === 'date' ? formatDateValue(val, colField.dateGrouping) : String(val ?? 'N/A');
     }))).sort();
 
@@ -180,26 +163,27 @@ export function createPivotColumns(
         columns: config.valueFields.map(vField => 
           columnHelper.accessor(
             (row: ReportData) => {
-              const colSourceKey = colField.sourceId || colField.id;
-              const rawVal = row[colSourceKey as keyof ReportData];
+              const rawVal = row[(colField.sourceId || colField.id) as keyof ReportData];
               const formattedColVal = colField.type === 'date' 
                 ? formatDateValue(rawVal, colField.dateGrouping) 
                 : String(rawVal ?? 'N/A');
 
               if (formattedColVal === val) {
-                const valSourceKey = vField.sourceId || vField.key;
-                const numVal = Number(row[valSourceKey as keyof ReportData]);
+                const numVal = Number(row[vField.key as keyof ReportData]);
                 return isNaN(numVal) ? undefined : numVal;
               }
               return undefined;
             }, 
             {
-              id: `${val}_${vField.key}_${vField.aggType}`,
+              id: `${val}_${vField.id}_${vField.aggType}`,
               header: () => (
                 <span className="text-[9px] opacity-60 font-bold whitespace-nowrap block text-right">
-                  {formatHeader(vField.key)} ({vField.aggType.toUpperCase()})
+                  {formatHeader(vField.name)} ({vField.aggType.toUpperCase()})
                 </span>
               ),
+              meta: {
+                displayName: formatHeader(`${vField.name} (${vField.aggType})`)
+              },
               size: VALUE_COL_SIZE,
               minSize: VALUE_COL_MIN,
               cell: (info) => (
@@ -207,13 +191,17 @@ export function createPivotColumns(
                   {formatNumber(info.getValue())}
                 </span>
               ),
-              aggregatedCell: (info) => (
-                <span className="font-bold text-slate-900 dark:text-slate-100 block text-right w-full tabular-nums">
-                  {formatNumber(info.getValue())}
-                </span>
-              ),
+              aggregatedCell: (info) => {
+                if (config.showSubtotals === false) return null;
+                return (
+                  <span className="font-bold text-slate-900 dark:text-slate-100 block text-right w-full tabular-nums">
+                    {formatNumber(info.getValue())}
+                  </span>
+                );
+              },
               aggregationFn: vField.aggType as unknown as AggregationFn<ReportData>,
               footer: (info) => {
+                if (config.showGrandTotals === false) return null;
                 const rows = info.table.getFilteredRowModel().rows;
                 const values = rows.map(r => r.getValue(info.column.id) as number).filter(v => typeof v === 'number');
                 const total = values.reduce((acc, v) => acc + v, 0);
@@ -232,66 +220,77 @@ export function createPivotColumns(
     // ═══════════════════════════════════════════════════════════════════
     // HORIZONTAL GRAND TOTAL
     // ═══════════════════════════════════════════════════════════════════
-    const grandTotalGroup = columnHelper.group({
-      id: "horizontal_grand_total",
-      header: () => (
-        <div className="text-center font-black uppercase tracking-tight text-[10px] bg-slate-900 text-slate-100 py-1 px-2 rounded mx-1 whitespace-nowrap">
-          GRAND TOTAL
-        </div>
-      ),
-      columns: config.valueFields.map(vField => 
-        columnHelper.accessor((row) => row[ (vField.sourceId || vField.key) as keyof ReportData ], {
-          id: `gt_${vField.key}_${vField.aggType}`,
-          header: () => (
-            <span className="text-[9px] opacity-60 font-bold whitespace-nowrap block text-right">
-              {formatHeader(vField.key)} ({vField.aggType.toUpperCase()})
-            </span>
-          ),
-          size: VALUE_COL_SIZE,
-          minSize: VALUE_COL_MIN,
-          aggregationFn: vField.aggType as unknown as AggregationFn<ReportData>,
-          cell: (info) => (
-            <span className="block text-right w-full tabular-nums opacity-30">
-              {formatNumber(info.getValue())}
-            </span>
-          ),
-          aggregatedCell: (info) => (
-            <span className="font-black text-emerald-700 dark:text-emerald-400 block text-right w-full tabular-nums">
-              {formatNumber(info.getValue())}
-            </span>
-          ),
-          footer: (info) => {
-            const table = info.table;
-            const { rows } = table.getGroupedRowModel();
-            const values = rows.map(r => r.getValue(info.column.id) as number).filter(v => typeof v === 'number');
-            const total = values.reduce((acc, v) => acc + v, 0);
-            return (
-              <span className="font-black text-emerald-400 block text-right w-full tabular-nums">
-                {formatNumber(total)}
+    if (config.showGrandTotals !== false) {
+      const grandTotalGroup = columnHelper.group({
+        id: "horizontal_grand_total",
+        header: () => (
+          <div className="text-center font-black uppercase tracking-tight text-[10px] bg-slate-900 text-slate-100 py-1 px-2 rounded mx-1 whitespace-nowrap">
+            GRAND TOTAL
+          </div>
+        ),
+        columns: config.valueFields.map(vField => 
+          columnHelper.accessor(vField.key as keyof ReportData, {
+            id: `gt_${vField.id}_${vField.aggType}`,
+            header: () => (
+              <span className="text-[9px] opacity-60 font-bold whitespace-nowrap block text-right">
+                {formatHeader(vField.name)} ({vField.aggType.toUpperCase()})
               </span>
-            );
-          },
-        })
-      )
-    });
-
-    matrixColumns.push(grandTotalGroup);
+            ),
+            meta: {
+              displayName: formatHeader(`${vField.name} (${vField.aggType})`)
+            },
+            size: VALUE_COL_SIZE,
+            minSize: VALUE_COL_MIN,
+            aggregationFn: vField.aggType as unknown as AggregationFn<ReportData>,
+            cell: (info) => (
+              <span className="block text-right w-full tabular-nums opacity-30">
+                {formatNumber(info.getValue())}
+              </span>
+            ),
+            aggregatedCell: (info) => {
+              if (config.showSubtotals === false) return null;
+              return (
+                <span className="font-black text-emerald-700 dark:text-emerald-400 block text-right w-full tabular-nums">
+                  {formatNumber(info.getValue())}
+                </span>
+              );
+            },
+            footer: (info) => {
+              const table = info.table;
+              const { rows } = table.getGroupedRowModel();
+              const values = rows.map(r => r.getValue(info.column.id) as number).filter(v => typeof v === 'number');
+              const total = values.reduce((acc, v) => acc + v, 0);
+              return (
+                <span className="font-black text-emerald-400 block text-right w-full tabular-nums">
+                  {formatNumber(total)}
+                </span>
+              );
+            },
+          })
+        )
+      });
+      matrixColumns.push(grandTotalGroup);
+    }
   } else {
     // ═══════════════════════════════════════════════════════════════════
     // NO COLUMN FIELDS — Show metrics directly
     // ═══════════════════════════════════════════════════════════════════
     matrixColumns = config.valueFields.map(vField => 
-      columnHelper.accessor((row) => row[ (vField.sourceId || vField.key) as keyof ReportData ], {
-        id: `${vField.key}_${vField.aggType}`,
+      columnHelper.accessor(vField.key as keyof ReportData, {
+        id: vField.id,
         header: () => (
           <span className="font-bold uppercase tracking-tight text-[10px] whitespace-nowrap block text-right">
-            {formatHeader(vField.key)} ({vField.aggType.toUpperCase()})
+            {formatHeader(`${vField.aggType || 'SUM'} OF ${vField.name}`)}
           </span>
         ),
-        size: getEstimatedWidth(`${formatHeader(vField.key)} (${vField.aggType})`, vField.sourceId || vField.key),
+        meta: {
+          displayName: formatHeader(`${vField.aggType || 'SUM'} OF ${vField.name}`)
+        },
+        size: VALUE_COL_SIZE,
         minSize: VALUE_COL_MIN,
         aggregationFn: vField.aggType as unknown as AggregationFn<ReportData>,
         footer: (info) => {
+          if (config.showGrandTotals === false) return null;
           const table = info.table;
           const { rows } = table.getGroupedRowModel();
           const values = rows.map(r => r.getValue(info.column.id) as number).filter(v => typeof v === 'number');
@@ -307,11 +306,14 @@ export function createPivotColumns(
             {formatNumber(info.getValue())}
           </span>
         ),
-        aggregatedCell: (info) => (
-          <span className="font-bold text-slate-900 dark:text-slate-100 block w-full text-right tabular-nums">
-            {formatNumber(info.getValue())}
-          </span>
-        )
+        aggregatedCell: (info) => {
+          if (config.showSubtotals === false) return null;
+          return (
+            <span className="font-bold text-slate-900 dark:text-slate-100 block w-full text-right tabular-nums">
+              {formatNumber(info.getValue())}
+            </span>
+          );
+        }
       })
     ) as unknown as ColumnDef<ReportData, unknown>[];
   }

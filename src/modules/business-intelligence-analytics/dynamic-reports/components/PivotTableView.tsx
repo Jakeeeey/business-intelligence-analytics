@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState, useEffect, useImperativeHandle, forwardRef } from "react";
+import React, { useMemo, useState, useEffect, useImperativeHandle, forwardRef, useRef } from "react";
 import {
   useReactTable,
   getCoreRowModel,
@@ -59,10 +59,15 @@ export const PivotTableView = forwardRef<PivotTableViewRef, PivotTableViewProps>
     setRowFilters(initialRowFilters);
   }, [initialRowFilters]);
 
-  // Sync with external config changes
+  // Sync with external config changes - ONLY when row fields actually change to prevent loops
+  const lastRowFieldsRef = useRef<string>("");
   useEffect(() => {
-    setGrouping(config.rowFields.map(f => f.id));
-    setExpanded(true); // Always expand all when layout/grouping changes
+    const currentFieldsKey = config.rowFields.map(f => f.id).join(",");
+    if (currentFieldsKey !== lastRowFieldsRef.current) {
+      lastRowFieldsRef.current = currentFieldsKey;
+      setGrouping(config.rowFields.map(f => f.id));
+      setExpanded(true); // Only reset expansion when the grouping structure changes
+    }
   }, [config.rowFields]);
 
   // Apply row-level filtering and sorting
@@ -72,9 +77,8 @@ export const PivotTableView = forwardRef<PivotTableViewRef, PivotTableViewProps>
     // Filter
     if (rowFilters && config.rowFields.length > 0) {
       const primaryField = config.rowFields[0];
-      const sourceKey = primaryField.sourceId || primaryField.id;
       result = result.filter(row => {
-        const rawVal = row[sourceKey as keyof ReportData];
+        const rawVal = row[(primaryField.sourceId || primaryField.id) as keyof ReportData];
         const formattedVal = primaryField.type === 'date' 
           ? formatDateValue(rawVal, primaryField.dateGrouping)
           : String(rawVal ?? "");
@@ -85,44 +89,13 @@ export const PivotTableView = forwardRef<PivotTableViewRef, PivotTableViewProps>
     // Sort
     if (rowSort && config.rowFields.length > 0) {
       const primaryField = config.rowFields[0];
-      const sourceKey = primaryField.sourceId || primaryField.id;
+      const sortKey = (primaryField.sourceId || primaryField.id) as keyof ReportData;
       result.sort((a, b) => {
-        const valA = String(a[sourceKey] ?? "");
-        const valB = String(b[sourceKey] ?? "");
+        const valA = String(a[sortKey] ?? "");
+        const valB = String(b[sortKey] ?? "");
         return rowSort === 'asc' 
           ? valA.localeCompare(valB, undefined, { numeric: true })
           : valB.localeCompare(valA, undefined, { numeric: true });
-      });
-    }
-
-    // Global Filters (from the "Filters" zone)
-    if (config.filterFields && config.filterFields.length > 0) {
-      config.filterFields.forEach(filter => {
-        const sourceKey = filter.sourceId || filter.id;
-        const val = filter.value;
-        if (!val && filter.operator === 'equals') return; // Skip empty equals
-
-        result = result.filter(row => {
-          const rowVal = row[sourceKey as keyof ReportData];
-          if (rowVal === undefined || rowVal === null) return false;
-          
-          const sRowVal = String(rowVal).toLowerCase();
-          const sFilterVal = String(val).toLowerCase();
-
-          switch (filter.operator) {
-            case 'contains': return sRowVal.includes(sFilterVal);
-            case 'not_equals': return sRowVal !== sFilterVal;
-            case 'gt': return Number(rowVal) > Number(val);
-            case 'lt': return Number(rowVal) < Number(val);
-            case 'equals':
-            default:
-              if (val.includes(',')) {
-                const allowed = val.split(',').map(v => v.trim().toLowerCase());
-                return allowed.includes(sRowVal);
-              }
-              return sRowVal === sFilterVal;
-          }
-        });
       });
     }
     
@@ -145,11 +118,24 @@ export const PivotTableView = forwardRef<PivotTableViewRef, PivotTableViewProps>
 
   // CRITICAL: Ensure grouping/visibility only refers to columns that actually exist in the current definition
   // This prevents the "Column with id 'X' does not exist" crash during schema transitions.
+  const lastValidatedGroupingRef = useRef<GroupingState>([]);
   const validatedGrouping = useMemo(() => {
     const existingIds = new Set(columns.map(c => c.id));
-    return grouping.filter(id => existingIds.has(id));
+    const filtered = grouping.filter(id => existingIds.has(id));
+    
+    // Deep check to maintain reference stability
+    if (
+      filtered.length === lastValidatedGroupingRef.current.length && 
+      filtered.every((id, idx) => id === lastValidatedGroupingRef.current[idx])
+    ) {
+      return lastValidatedGroupingRef.current;
+    }
+    
+    lastValidatedGroupingRef.current = filtered;
+    return filtered;
   }, [grouping, columns]);
 
+  const lastValidatedVisibilityRef = useRef<Record<string, boolean>>({});
   const validatedVisibility = useMemo(() => {
     const existingIds = new Set(columns.map(c => c.id));
     const visibility: Record<string, boolean> = {};
@@ -158,6 +144,18 @@ export const PivotTableView = forwardRef<PivotTableViewRef, PivotTableViewProps>
         visibility[f.id] = false;
       }
     });
+
+    // Deep check to maintain reference stability
+    const currentKeys = Object.keys(visibility);
+    const lastKeys = Object.keys(lastValidatedVisibilityRef.current);
+    if (
+      currentKeys.length === lastKeys.length &&
+      currentKeys.every(k => visibility[k] === lastValidatedVisibilityRef.current[k])
+    ) {
+      return lastValidatedVisibilityRef.current;
+    }
+
+    lastValidatedVisibilityRef.current = visibility;
     return visibility;
   }, [config.rowFields, columns]);
 
@@ -191,7 +189,7 @@ export const PivotTableView = forwardRef<PivotTableViewRef, PivotTableViewProps>
     // ═══════════════════════════════════════════════════════════════════
     useImperativeHandle(ref, () => {
       const calculateFooterRow = () => {
-        const leafCols = table.getAllLeafColumns().filter(col => {
+        const leafCols = table.getVisibleLeafColumns().filter(col => {
           const isRowField = config.rowFields.some(f => f.id === col.id);
           const isRowLabels = col.id === "rowLabels";
           return isRowLabels || !isRowField;
@@ -209,9 +207,12 @@ export const PivotTableView = forwardRef<PivotTableViewRef, PivotTableViewProps>
       };
 
       return {
-        getFooterRow: calculateFooterRow,
+        getFooterRow: () => {
+          if (config.showGrandTotals === false) return null;
+          return calculateFooterRow();
+        },
         exportToExcel: (fileName: string) => {
-          const leafColumns = table.getAllLeafColumns().filter(col => {
+          const leafColumns = table.getVisibleLeafColumns().filter(col => {
             const isRowField = config.rowFields.some(f => f.id === col.id);
             const isRowLabels = col.id === "rowLabels";
             return isRowLabels || !isRowField;
@@ -227,19 +228,26 @@ export const PivotTableView = forwardRef<PivotTableViewRef, PivotTableViewProps>
                 const isRowLabels = colId === "rowLabels";
                 return isRowLabels || !isRowField;
               })
-              .map(header => ({
-                id: header.column.id,
-                header: typeof header.column.columnDef.header === 'string' 
-                  ? header.column.columnDef.header 
-                  : (header.column.id === 'rowLabels' ? 'ROW LABELS' : header.column.id),
-                colSpan: header.colSpan,
-                isPlaceholder: header.isPlaceholder
-              }));
+              .map(header => {
+                const colDef = header.column.columnDef;
+                const meta = colDef.meta as { displayName?: string } | undefined;
+                
+                return {
+                  id: header.column.id,
+                  header: meta?.displayName || (typeof colDef.header === 'string' 
+                    ? colDef.header 
+                    : (header.column.id === 'rowLabels' ? 'ROW LABELS' : header.column.id)),
+                  colSpan: header.colSpan,
+                  isPlaceholder: header.isPlaceholder
+                };
+              });
           });
 
           const exportCols = leafColumns.map(col => {
-            const header = col.columnDef.header;
-            let headerTitle = typeof header === 'string' ? header : col.id;
+            const colDef = col.columnDef;
+            const meta = colDef.meta as { displayName?: string } | undefined;
+            
+            let headerTitle = meta?.displayName || (typeof colDef.header === 'string' ? colDef.header : col.id);
             if (col.id === 'rowLabels') headerTitle = 'ROW LABELS';
             
             return {
@@ -274,9 +282,10 @@ export const PivotTableView = forwardRef<PivotTableViewRef, PivotTableViewProps>
           };
 
           const allRows = getAllRowsRecursively(table.getGroupedRowModel().rows);
+          const footerData = config.showGrandTotals !== false ? calculateFooterRow() : null;
 
           import("../utils/export-styled-utils").then(mod => {
-            mod.exportStyledPivotToExcel(allRows, exportCols, fileName, calculateFooterRow(), multiLevelHeaders);
+            mod.exportStyledPivotToExcel(allRows, exportCols, fileName, footerData ?? undefined, multiLevelHeaders);
           });
         }
       };
@@ -440,33 +449,35 @@ export const PivotTableView = forwardRef<PivotTableViewRef, PivotTableViewProps>
           </div>
 
           {/* FOOTER ROW (GRAND TOTAL) - STICKY BOTTOM */}
-          <div 
-            className="sticky bottom-0 z-40 flex shrink-0 bg-background dark:bg-slate-950 border-t-2 border-border h-14"
-            style={{ minWidth: 'max-content' }}
-          >
-            {footerGroups[0].headers.map((header, idx) => (
-              <div 
-                key={header.id}
-                style={{ 
-                  width: header.getSize(),
-                  flex: `0 0 ${header.getSize()}px`
-                }}
-                className={cn(
-                  "px-5 flex items-center border-r border-border last:border-r-0 h-full bg-muted dark:bg-slate-950",
-                  idx === 0 
-                    ? "text-muted-foreground font-black uppercase tracking-widest text-[9px] justify-start" 
-                    : "text-slate-900 dark:text-slate-50 font-black text-base font-mono tabular-nums justify-end text-right"
-                )}
-              >
-                {idx === 0 ? (
-                  <div className="flex flex-col">
-                    <span className="text-[8px] opacity-40 leading-none mb-1">SUMMARY</span>
-                    <span>Grand Total</span>
-                  </div>
-                ) : flexRender(header.column.columnDef.footer, header.getContext())}
-              </div>
-            ))}
-          </div>
+          {config.showGrandTotals !== false && (
+            <div 
+              className="sticky bottom-0 z-40 flex shrink-0 bg-background dark:bg-slate-950 border-t-2 border-border h-14"
+              style={{ minWidth: 'max-content' }}
+            >
+              {footerGroups[0].headers.map((header, idx) => (
+                <div 
+                  key={header.id}
+                  style={{ 
+                    width: header.getSize(),
+                    flex: `0 0 ${header.getSize()}px`
+                  }}
+                  className={cn(
+                    "px-5 flex items-center border-r border-border last:border-r-0 h-full bg-muted dark:bg-slate-950",
+                    idx === 0 
+                      ? "text-muted-foreground font-black uppercase tracking-widest text-[9px] justify-start" 
+                      : "text-slate-900 dark:text-slate-50 font-black text-base font-mono tabular-nums justify-end text-right"
+                  )}
+                >
+                  {idx === 0 ? (
+                    <div className="flex flex-col">
+                      <span className="text-[8px] opacity-40 leading-none mb-1">SUMMARY</span>
+                      <span>Grand Total</span>
+                    </div>
+                  ) : flexRender(header.column.columnDef.footer, header.getContext())}
+                </div>
+              ))}
+            </div>
+          )}
 
         </div>
       </div>
