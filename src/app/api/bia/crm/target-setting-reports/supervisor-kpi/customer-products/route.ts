@@ -112,7 +112,6 @@ export async function GET(req: NextRequest) {
     const highestSalesMap = new Map<number, number>();
     if (hRes.ok) {
         let hData: VSalesPerformanceDataDto[] = await hRes.json();
-        // Area filtering if needed
         if (viewType === "area") {
             const parts = (identifier || "").split("::");
             const provinceSearch = (parts[0] || "").toLowerCase().trim();
@@ -120,7 +119,13 @@ export async function GET(req: NextRequest) {
             hData = hData.filter((item) => {
                 const itemProv = (item.province || item.provinceName || "").toLowerCase().trim();
                 const itemCity = (item.city || item.cityName || "").toLowerCase().trim();
-                return provinceSearch && citySearch ? (itemProv.includes(provinceSearch) && itemCity.includes(citySearch)) : (itemProv.includes(provinceSearch) || itemCity.includes(citySearch));
+                
+                if (!provinceSearch && !citySearch) return false;
+                
+                const matchProv = provinceSearch ? (itemProv.includes(provinceSearch) || provinceSearch.includes(itemProv)) : true;
+                const matchCity = citySearch ? (itemCity.includes(citySearch) || citySearch.includes(itemCity)) : true;
+                
+                return matchProv && matchCity;
             });
         }
 
