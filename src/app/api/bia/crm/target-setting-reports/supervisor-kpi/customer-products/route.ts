@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ProductSalesDetail, VSalesPerformanceDataDto } from "@/modules/business-intelligence-analytics/crm/target-setting-reports/supervisor-kpi/types";
+import { ProductSalesDetail } from "@/modules/business-intelligence-analytics/crm/target-setting-reports/supervisor-kpi/types";
 
 const SPRING_BASE = (process.env.SPRING_API_BASE_URL || "http://100.81.225.79:8086").replace(/\/+$/, "");
 
@@ -62,7 +62,7 @@ export async function GET(req: NextRequest) {
       cache: "no-store",
     });
 
-    let currentData: any[] = [];
+    let currentData: Record<string, unknown>[] = [];
     if (res.ok) {
         currentData = await res.json();
     }
@@ -95,10 +95,10 @@ export async function GET(req: NextRequest) {
     });
 
     const highestSalesMap = new Map<number, number>();
-    let historicalMetadata = new Map<number, any>();
+    const historicalMetadata = new Map<number, Record<string, unknown>>();
     
     if (hRes.ok) {
-        let hData: any[] = await hRes.json();
+        let hData: Record<string, unknown>[] = await hRes.json();
         
         // Manual filter by salesmanIds if the backend returned more than requested 
         // (though it shouldn't if it supports comma, or if we are filtering in memory)
@@ -113,8 +113,8 @@ export async function GET(req: NextRequest) {
             const pSearch = (parts[0] || "").toLowerCase().trim();
             const cSearch = (parts[1] || "").toLowerCase().trim();
             hData = hData.filter(item => {
-                const prov = (item.province || item.provinceName || "").toLowerCase().trim();
-                const city = (item.city || item.cityName || "").toLowerCase().trim();
+                const prov = (String(item.province || item.provinceName || "")).toLowerCase().trim();
+                const city = (String(item.city || item.cityName || "")).toLowerCase().trim();
                 return pSearch && cSearch ? (prov.includes(pSearch) && city.includes(cSearch)) : (prov.includes(pSearch) || city.includes(cSearch));
             });
         }
@@ -129,7 +129,8 @@ export async function GET(req: NextRequest) {
                 historicalMetadata.set(pId, item);
             }
 
-            const monthKey = `${pId}-${(item.transactionDate || "").substring(0, 7)}`;
+            const transactionDate = String(item.transactionDate || "");
+            const monthKey = `${pId}-${transactionDate.substring(0, 7)}`;
             productMonthSum.set(monthKey, (productMonthSum.get(monthKey) || 0) + Number(item.netAmount || 0));
         });
 
@@ -147,37 +148,37 @@ export async function GET(req: NextRequest) {
     // 3.1 Start with history to ensure all products are present
     historicalMetadata.forEach((item, pId) => {
         aggregatedMap.set(pId, {
-            ...item,
+            ...(item as unknown as ProductSalesDetail),
             totalQuantity: 0,
             quantityInBox: 0,
             quantityInPiece: 0,
             netAmount: 0,
             highestMonthlySales: highestSalesMap.get(pId) || 0
-        });
+        } as ProductSalesDetail);
     });
 
     // 3.2 Add current sales (will override metadata if current month has more details)
     if (Array.isArray(currentData)) {
         currentData.forEach(item => {
-            const pId = Number(item.productId);
+            const pId = Number(item.productId as string);
             if (!pId) return;
 
             if (!aggregatedMap.has(pId)) {
                 aggregatedMap.set(pId, {
-                    ...item,
+                    ...(item as unknown as ProductSalesDetail),
                     totalQuantity: 0,
                     quantityInBox: 0,
                     quantityInPiece: 0,
                     netAmount: 0,
                     highestMonthlySales: highestSalesMap.get(pId) || 0
-                });
+                } as ProductSalesDetail);
             }
 
             const agg = aggregatedMap.get(pId)!;
-            agg.totalQuantity += Number(item.totalQuantity || 0);
-            agg.quantityInBox += Number(item.quantityInBox || 0);
-            agg.quantityInPiece += Number(item.quantityInPiece || 0);
-            agg.netAmount += Number(item.netAmount || 0);
+            agg.totalQuantity += Number(item.totalQuantity as number || 0);
+            agg.quantityInBox += Number(item.quantityInBox as number || 0);
+            agg.quantityInPiece += Number(item.quantityInPiece as number || 0);
+            agg.netAmount += Number(item.netAmount as number || 0);
         });
     }
 

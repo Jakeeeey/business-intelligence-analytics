@@ -103,7 +103,6 @@ function SupervisorKPIContent() {
             const amount = item.netAmount || 0;
             const cId = item.storeName;
             const sPly = (item.supplierName || "Other").trim().toUpperCase();
-            const originalSPly = item.supplierName || "Other";
 
             supplierSet.add(sPly);
             supTotals.set(sPly, (supTotals.get(sPly) || 0) + amount);

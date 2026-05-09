@@ -40,7 +40,7 @@ function ManagerialSupplierContent() {
         }
         if (fromParam && fromParam !== fromMonth) setFromMonth(fromParam);
         if (toParam && toParam !== toMonth) setToMonth(toParam);
-    }, [searchParams]);
+    }, [searchParams, fromMonth, selectedDivision, toMonth]);
 
     // Drill-down State
     const [selectedSupplier, setSelectedSupplier] = useState<string | null>(null);
@@ -101,7 +101,9 @@ function ManagerialSupplierContent() {
 
         const salesMap = new Map<string, number>();
         filtered.forEach(item => {
-            salesMap.set(item.supplierName, (salesMap.get(item.supplierName) || 0) + (item.netAmount || 0));
+            if (item.supplierName) {
+                salesMap.set(item.supplierName, (salesMap.get(item.supplierName) || 0) + (item.netAmount || 0));
+            }
         });
 
         // Map Dynamic Targets
@@ -152,10 +154,10 @@ function ManagerialSupplierContent() {
 
         filtered.forEach(item => {
             const name = item.salesmanName || "Unknown Salesman";
-            const current = salesmanMap.get(name) || { sales: 0, salesmanId: item.salesmanId };
+            const current = salesmanMap.get(name) || { sales: 0, salesmanId: item.salesmanId || 0 };
             salesmanMap.set(name, {
                 sales: current.sales + (item.netAmount || 0),
-                salesmanId: item.salesmanId
+                salesmanId: item.salesmanId || 0
             });
         });
 

@@ -59,12 +59,14 @@ export function CustomerBreakdownModal({
     const [loadingPeaks, setLoadingPeaks] = useState(false);
     const [loadingTargets, setLoadingTargets] = useState(false);
 
+    const idsKey = ids.join(',');
+
     // Reset drill-down level when salesman or supplier changes
     useEffect(() => {
         setSelectedStoreType(null);
         setSelectedArea(null);
         setSearchTerm("");
-    }, [ids.join(','), supplierName]);
+    }, [idsKey, supplierName]);
 
     // Initial grouping of customers or areas from current period data
     const baseCustomerMetrics = useMemo(() => {

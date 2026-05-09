@@ -38,7 +38,7 @@ interface CustomerProductsModalProps {
     startDate: string;
     endDate: string;
     viewType?: 'customer' | 'area';
-    currentSalesData?: any[]; // The raw data filtered for this customer
+    currentSalesData?: VSalesPerformanceDataDto[]; // The raw data filtered for this customer
 }
 
 export const CustomerProductsModal: React.FC<CustomerProductsModalProps> = ({
@@ -71,7 +71,7 @@ export const CustomerProductsModal: React.FC<CustomerProductsModalProps> = ({
         } finally {
             setLoading(false);
         }
-    }, [customerCode, salesmanIds, supplierId, startDate, endDate, viewType, currentSalesData]);
+    }, [customerCode, salesmanIds, supplierId, startDate, endDate, viewType]);
 
     useEffect(() => {
         if (isOpen && customerName) {
