@@ -213,6 +213,8 @@ export function CustomerBreakdownModal({
             peak: number;
             target: number;
             storeTypeLabel?: string;
+            province?: string;
+            city?: string;
         }>();
 
         // 1. Process current metrics
@@ -642,10 +644,6 @@ export function CustomerBreakdownModal({
                 startDate={startDate}
                 endDate={endDate}
                 viewType={viewType}
-                currentSalesData={data.filter(d => 
-                    (d.customerCode || "").trim().toUpperCase() === (selectedProdCust?.code || "").trim().toUpperCase() ||
-                    (d.storeName || "").trim().toUpperCase() === (selectedProdCust?.name || "").trim().toUpperCase()
-                )}
             />
         </>
     );
