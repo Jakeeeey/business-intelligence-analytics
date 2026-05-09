@@ -73,7 +73,10 @@ export function AllocationHierarchyLog({
                         });
                     } else {
                         supervisors.forEach(srv => {
-                            const salesmen = salesmanAllocations.filter(s => s.ts_supervisor_id === srv.id);
+                            const salesmen = salesmanAllocations.filter(s => 
+                                s.ts_supervisor_id === srv.id && 
+                                (s.supplier_id === undefined || s.supplier_id === null || s.supplier_id === sup.supplier_id)
+                            );
                             const srvStartIdx = grid.length;
 
                             if (salesmen.length === 0) {
@@ -108,7 +111,15 @@ export function AllocationHierarchyLog({
                 .filter(srv => suppliers.some(sup => sup.id === srv.tss_id))
                 .reduce((s, srv) => s + srv.target_amount, 0);
             const saleSum = salesmanAllocations
-                .filter(sale => supervisorAllocations.some(srv => srv.id === sale.ts_supervisor_id && suppliers.some(sup => sup.id === srv.tss_id)))
+                .filter(sale => 
+                    supervisorAllocations.some(srv => 
+                        srv.id === sale.ts_supervisor_id && 
+                        suppliers.some(sup => 
+                            sup.id === srv.tss_id && 
+                            (sale.supplier_id === undefined || sale.supplier_id === null || sale.supplier_id === sup.supplier_id)
+                        )
+                    )
+                )
                 .reduce((s, sale) => s + sale.target_amount, 0);
 
             divSpans[div.id] = grid.length - divStartIdx;
