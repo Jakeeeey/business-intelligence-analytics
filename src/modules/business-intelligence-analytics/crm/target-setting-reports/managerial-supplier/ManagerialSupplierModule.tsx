@@ -35,11 +35,16 @@ function ManagerialSupplierContent() {
         const fromParam = searchParams.get("from");
         const toParam = searchParams.get("to");
 
-        if (divParam && divParam.toUpperCase() !== selectedDivision.toUpperCase()) {
-            setSelectedDivision(divParam.toUpperCase());
-        }
-        if (fromParam && fromParam !== fromMonth) setFromMonth(fromParam);
-        if (toParam && toParam !== toMonth) setToMonth(toParam);
+        // Use setTimeout to avoid synchronous cascading renders warning
+        const timer = setTimeout(() => {
+            if (divParam && divParam.toUpperCase() !== selectedDivision.toUpperCase()) {
+                setSelectedDivision(divParam.toUpperCase());
+            }
+            if (fromParam && fromParam !== fromMonth) setFromMonth(fromParam);
+            if (toParam && toParam !== toMonth) setToMonth(toParam);
+        }, 0);
+
+        return () => clearTimeout(timer);
     }, [searchParams, fromMonth, selectedDivision, toMonth]);
 
     // Drill-down State
