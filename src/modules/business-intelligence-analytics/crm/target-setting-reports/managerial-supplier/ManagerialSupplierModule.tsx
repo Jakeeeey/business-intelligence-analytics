@@ -27,7 +27,20 @@ function ManagerialSupplierContent() {
 
     const [fromMonth, setFromMonth] = useState(searchParams.get("from") || `${currentYear}-01`);
     const [toMonth, setToMonth] = useState(searchParams.get("to") || format(new Date(), "yyyy-MM"));
-    const [selectedDivision, setSelectedDivision] = useState<string>(searchParams.get("division") || "Dry Goods");
+    const [selectedDivision, setSelectedDivision] = useState<string>((searchParams.get("division") || "DRY GOODS").toUpperCase());
+
+    // Sync state with URL params
+    useEffect(() => {
+        const divParam = searchParams.get("division");
+        const fromParam = searchParams.get("from");
+        const toParam = searchParams.get("to");
+
+        if (divParam && divParam.toUpperCase() !== selectedDivision.toUpperCase()) {
+            setSelectedDivision(divParam.toUpperCase());
+        }
+        if (fromParam && fromParam !== fromMonth) setFromMonth(fromParam);
+        if (toParam && toParam !== toMonth) setToMonth(toParam);
+    }, [searchParams]);
 
     // Drill-down State
     const [selectedSupplier, setSelectedSupplier] = useState<string | null>(null);
@@ -43,9 +56,9 @@ function ManagerialSupplierContent() {
     const salesmanDetailData = useMemo(() => {
         if (!selectedSalesmanForModal || !selectedSupplier) return [];
         return rawData.filter(d =>
-            d.salesmanName === selectedSalesmanForModal &&
-            d.supplierName === selectedSupplier &&
-            d.divisionName === selectedDivision
+            (d.salesmanName || "").toUpperCase() === (selectedSalesmanForModal || "").toUpperCase() &&
+            (d.supplierName || "").toUpperCase() === (selectedSupplier || "").toUpperCase() &&
+            (d.divisionName || "").toUpperCase() === (selectedDivision || "").toUpperCase()
         );
     }, [rawData, selectedSalesmanForModal, selectedSupplier, selectedDivision]);
 
@@ -65,7 +78,7 @@ function ManagerialSupplierContent() {
                 setRawData(data);
 
                 // Scope targets to selected division
-                const divItem = data.find(d => d.divisionName === selectedDivision);
+                const divItem = data.find(d => (d.divisionName || "").toUpperCase() === (selectedDivision || "").toUpperCase());
                 const targetData = await fetchDynamicTargets(start, end, divItem?.divisionId);
                 setTargets({
                     supplierTargets: (targetData.supplierTargets as TargetItem[]) || [], 
@@ -76,7 +89,7 @@ function ManagerialSupplierContent() {
         load();
     }, [fromMonth, toMonth, selectedDivision]);
 
-    const divisions = useMemo(() => Array.from(new Set(rawData.map(d => d.divisionName))).sort(), [rawData]);
+    const divisions = useMemo(() => Array.from(new Set(rawData.map(d => (d.divisionName || "").toUpperCase()))).sort(), [rawData]);
 
     // 2. Data Processing for Suppliers (Level 1)
     const { supplierPerformance, divisionSummary } = useMemo(() => {
@@ -84,7 +97,7 @@ function ManagerialSupplierContent() {
         const end = parseISO(toMonth + "-01");
 
         // Filter by Division
-        const filtered = rawData.filter(d => d.divisionName === selectedDivision);
+        const filtered = rawData.filter(d => (d.divisionName || "").toUpperCase() === (selectedDivision || "").toUpperCase());
 
         const salesMap = new Map<string, number>();
         filtered.forEach(item => {
@@ -129,8 +142,8 @@ function ManagerialSupplierContent() {
         const end = parseISO(toMonth + "-01");
 
         const filtered = rawData.filter(d =>
-            d.supplierName === selectedSupplier &&
-            d.divisionName === selectedDivision
+            (d.supplierName || "").toUpperCase() === (selectedSupplier || "").toUpperCase() &&
+            (d.divisionName || "").toUpperCase() === (selectedDivision || "").toUpperCase()
         );
 
         const supplierId = filtered[0]?.supplierId;

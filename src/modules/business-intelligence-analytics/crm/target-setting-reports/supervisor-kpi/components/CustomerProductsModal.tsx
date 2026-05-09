@@ -32,12 +32,13 @@ interface CustomerProductsModalProps {
     onClose: () => void;
     customerName: string;
     customerCode: string;
-    salesmanId: number;
+    salesmanIds: number[];
     supplierId: number;
     supplierName: string;
     startDate: string;
     endDate: string;
     viewType?: 'customer' | 'area';
+    currentSalesData?: any[]; // The raw data filtered for this customer
 }
 
 export const CustomerProductsModal: React.FC<CustomerProductsModalProps> = ({
@@ -45,16 +46,17 @@ export const CustomerProductsModal: React.FC<CustomerProductsModalProps> = ({
     onClose,
     customerName,
     customerCode,
-    salesmanId,
+    salesmanIds,
     supplierId,
     supplierName,
     startDate,
     endDate,
     viewType = 'customer',
+    currentSalesData = [],
 }) => {
     const [products, setProducts] = useState<ProductSalesDetail[]>([]);
     const [loading, setLoading] = useState(false);
-    const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>({ key: 'netAmount', direction: 'desc' });
+    const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>({ key: 'highestMonthlySales', direction: 'desc' });
     const [selectedSupplier, setSelectedSupplier] = useState<string>("all");
     const [selectedCategory, setSelectedCategory] = useState<string>("all");
     const [searchTerm, setSearchTerm] = useState<string>("");
@@ -62,14 +64,14 @@ export const CustomerProductsModal: React.FC<CustomerProductsModalProps> = ({
     const loadProducts = useCallback(async () => {
         setLoading(true);
         try {
-            const data = await fetchCustomerProducts(customerCode, salesmanId, supplierId, startDate, endDate, viewType);
+            const data = await fetchCustomerProducts(customerCode, salesmanIds.join(','), supplierId, startDate, endDate, viewType);
             setProducts(data);
         } catch (error) {
             console.error("Error loading products:", error);
         } finally {
             setLoading(false);
         }
-    }, [customerCode, salesmanId, supplierId, startDate, endDate, viewType]);
+    }, [customerCode, salesmanIds, supplierId, startDate, endDate, viewType, currentSalesData]);
 
     useEffect(() => {
         if (isOpen && customerName) {

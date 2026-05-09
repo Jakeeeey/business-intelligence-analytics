@@ -102,7 +102,8 @@ function SupervisorKPIContent() {
 
             const amount = item.netAmount || 0;
             const cId = item.storeName;
-            const sPly = item.supplierName || "Other";
+            const sPly = (item.supplierName || "Other").trim().toUpperCase();
+            const originalSPly = item.supplierName || "Other";
 
             supplierSet.add(sPly);
             supTotals.set(sPly, (supTotals.get(sPly) || 0) + amount);
@@ -151,7 +152,7 @@ function SupervisorKPIContent() {
             }
 
             const sData = rawData.find(d => Number(d.supplierId) === Number(t.supplier_id));
-            const sPly = sData?.supplierName || "Other";
+            const sPly = (sData?.supplierName || "Other").trim().toUpperCase();
 
             const pTot = pTotals.get(pKey)!;
             pTot.target += (t.target_amount || 0);
@@ -239,7 +240,7 @@ function SupervisorKPIContent() {
             // Show customer level breakdown
             const filtered = rawData.filter(d =>
                 ids.has(Number(d.salesmanId)) &&
-                (d.supplierName || "Other") === supplier
+                (d.supplierName || "Other").trim().toUpperCase() === supplier.trim().toUpperCase()
             );
 
             setCustomerModalData({

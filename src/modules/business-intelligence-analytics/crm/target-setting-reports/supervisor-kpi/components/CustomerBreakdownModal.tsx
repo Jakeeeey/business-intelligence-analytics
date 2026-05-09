@@ -52,11 +52,19 @@ export function CustomerBreakdownModal({
     const [searchTerm, setSearchTerm] = useState("");
     const [viewType, setViewType] = useState<"customer" | "area">("customer");
     const [selectedStoreType, setSelectedStoreType] = useState<string | null>(null);
+    const [selectedArea, setSelectedArea] = useState<string | null>(null);
     const [peakSales, setPeakSales] = useState<Record<string, { total: number; peak: number; metadata?: Record<string, unknown> }>>({});
     const [customerTargets, setCustomerTargets] = useState<Record<string, number>>({});
     const [selectedProdCust, setSelectedProdCust] = useState<{ name: string; code: string; sId: number; supId: number } | null>(null);
     const [loadingPeaks, setLoadingPeaks] = useState(false);
     const [loadingTargets, setLoadingTargets] = useState(false);
+
+    // Reset drill-down level when salesman or supplier changes
+    useEffect(() => {
+        setSelectedStoreType(null);
+        setSelectedArea(null);
+        setSearchTerm("");
+    }, [ids.join(','), supplierName]);
 
     // Initial grouping of customers or areas from current period data
     const baseCustomerMetrics = useMemo(() => {
@@ -69,8 +77,20 @@ export function CustomerBreakdownModal({
             let rawCode = "";
 
             if (viewType === "area") {
-                name = `${(itemObj.province as string || "").trim()}, ${(itemObj.city as string || "").trim()}`.replace(/^, |, $/g, "") || "Unknown Area";
-                rawCode = `${(itemObj.province as string || "").trim()}::${(itemObj.city as string || "").trim()}`;
+                if (selectedArea === null) {
+                    // Level 1: Show Areas
+                    name = `${(itemObj.province as string || "").trim()}, ${(itemObj.city as string || "").trim()}`.replace(/^, |, $/g, "") || "Unknown Area";
+                    rawCode = `${(itemObj.province as string || "").trim()}::${(itemObj.city as string || "").trim()}`;
+                } else {
+                    // Level 2: Show Customers for selected Area
+                    const areaKey = `${(itemObj.province as string || "").trim()}, ${(itemObj.city as string || "").trim()}`.replace(/^, |, $/g, "") || "Unknown Area";
+                    if (areaKey !== selectedArea) return;
+                    
+                    name = (item.storeName || "Unknown Customer").trim();
+                    rawCode = (itemObj.province && (itemObj.province as string).includes('-')) ? itemObj.province as string :
+                              (itemObj.customerCode && (itemObj.customerCode as string).includes('-')) ? itemObj.customerCode as string :
+                              itemObj.customerCode as string || itemObj.storeCode as string || itemObj.customerId as string || name;
+                }
             } else {
                 // Channel/Customer View
                 if (selectedStoreType === null) {
@@ -79,7 +99,7 @@ export function CustomerBreakdownModal({
                     rawCode = name; // For Store Type, use name as code for lookup
                 } else {
                     // Level 2: Show Customers for selected Store Type
-                    if (item.storeTypeLabel !== selectedStoreType) return;
+                    if ((item.storeTypeLabel || "").trim().toUpperCase() !== (selectedStoreType || "").trim().toUpperCase()) return;
                     name = (item.storeName || "Unknown Customer").trim();
                     rawCode = (itemObj.province && (itemObj.province as string).includes('-')) ? itemObj.province as string :
                               (itemObj.customerCode && (itemObj.customerCode as string).includes('-')) ? itemObj.customerCode as string :
@@ -92,7 +112,9 @@ export function CustomerBreakdownModal({
                 count: 0, 
                 customerCode: rawCode, 
                 sId: Number(item.salesmanId), 
-                supId: Number(item.supplierId) 
+                supId: Number(item.supplierId),
+                province: itemObj.province as string,
+                city: itemObj.city as string
             };
             
             current.sales += Number(item.netAmount || itemObj.amount as number || 0);
@@ -105,8 +127,8 @@ export function CustomerBreakdownModal({
             map.set(name, current);
         });
 
-        return Array.from(map.entries()).map(([name, metrics]) => ({ name, ...metrics }));
-    }, [data, viewType, selectedStoreType]);
+        return Array.from(map.entries()).map(([name, metrics]) => ({ name, ...metrics as { sales: number; count: number; customerCode: string; sId: number; supId: number; province: string; city: string } }));
+    }, [data, viewType, selectedStoreType, selectedArea]);
 
     // Fetch historical peaks when modal opens or raw data changes
     useEffect(() => {
@@ -123,7 +145,7 @@ export function CustomerBreakdownModal({
                 // Determine effective viewType for API
                 const effectiveViewType: 'customer' | 'area' | 'storeType' = viewType === "customer" 
                     ? (selectedStoreType === null ? "storeType" : "customer")
-                    : "area";
+                    : (selectedArea === null ? "area" : "customer");
 
                 const [peaks, mainTargetsMap, allCustomerTargets] = await Promise.all([
                     fetchCustomerPeaks([], ids, effectiveViewType, selectedStoreType || undefined),
@@ -155,9 +177,10 @@ export function CustomerBreakdownModal({
 
                     // If a Store Type target is missing or 0, use the aggregated sum from its customers
                     names.forEach(type => {
-                        if (!finalTargets[type] || finalTargets[type] === 0) {
-                            if (rollup[type]) {
-                                finalTargets[type] = rollup[type];
+                        const typeKey = type.trim().toUpperCase();
+                        if (!finalTargets[typeKey] || finalTargets[typeKey] === 0) {
+                            if (rollup[typeKey]) {
+                                finalTargets[typeKey] = rollup[typeKey];
                             }
                         }
                     });
@@ -174,7 +197,7 @@ export function CustomerBreakdownModal({
         };
 
         loadPeaks();
-    }, [isOpen, baseCustomerMetrics, ids, startDate, endDate, viewType, selectedStoreType, data]);
+    }, [isOpen, baseCustomerMetrics, ids, startDate, endDate, viewType, selectedStoreType, selectedArea, data]);
 
     const { customerMetrics, totalSales, uniqueCustomers } = useMemo(() => {
         // Map to group everything by unique code (customerCode or area key)
@@ -208,6 +231,8 @@ export function CustomerBreakdownModal({
             const existing = groupedMap.get(key)!;
             existing.sales += c.sales;
             existing.count += c.count;
+            existing.province = c.province;
+            existing.city = c.city;
             // Store type label from current data if available
             const item = data.find(d => (d.customerCode || d.storeName) === key || d.storeName === c.name);
             if (item) existing.storeTypeLabel = item.storeTypeLabel;
@@ -239,6 +264,12 @@ export function CustomerBreakdownModal({
             if (pData.metadata?.storeTypeLabel) {
                 existing.storeTypeLabel = pData.metadata.storeTypeLabel as string;
             }
+            if (pData.metadata?.province) {
+                existing.province = pData.metadata.province as string;
+            }
+            if (pData.metadata?.city) {
+                existing.city = pData.metadata.city as string;
+            }
         });
 
         // 3. Merge targets
@@ -247,7 +278,7 @@ export function CustomerBreakdownModal({
             // We try to find the group that matches this name
             let found = false;
             for (const group of groupedMap.values()) {
-                if (group.name === tName) {
+                if (group.name.trim().toUpperCase() === tName.trim().toUpperCase()) {
                     group.target = targetAmt;
                     found = true;
                     break;
@@ -279,9 +310,13 @@ export function CustomerBreakdownModal({
                     // because we already filtered the API by storeType on the server.
                     return currentType === targetType || !currentType;
                 }
+                if (viewType === "area" && selectedArea !== null) {
+                    const currentArea = `${(c.province as string || "").trim()}, ${(c.city as string || "").trim()}`.replace(/^, |, $/g, "") || "Unknown Area";
+                    return currentArea === selectedArea;
+                }
                 return true;
             })
-            .sort((a, b) => b.sales - a.sales)
+            .sort((a, b) => b.peak - a.peak)
             .filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
         return {
@@ -289,14 +324,14 @@ export function CustomerBreakdownModal({
             totalSales: filtered.reduce((sum, c) => sum + (c.sales > 0 ? c.sales : 0), 0),
             uniqueCustomers: filtered.length
         };
-    }, [baseCustomerMetrics, peakSales, customerTargets, searchTerm, ids, viewType, selectedStoreType, data]);
+    }, [baseCustomerMetrics, peakSales, customerTargets, searchTerm, ids, viewType, selectedStoreType, selectedArea, data]);
 
     const formatPHP = (val: number) => {
         if (!val || isNaN(val)) return "₱0";
         return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(val);
     }
 
-    const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
+    const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>({ key: 'peak', direction: 'desc' });
 
     const handleSort = (key: string) => {
         let direction: 'asc' | 'desc' = 'asc';
@@ -352,7 +387,8 @@ export function CustomerBreakdownModal({
                                 <Tabs defaultValue="customer" value={viewType} onValueChange={(v) => {
                                     setViewType(v as "customer" | "area");
                                     setSelectedStoreType(null); // Reset drill-down on tab change
-                                    setSortConfig(null);
+                                    setSelectedArea(null);
+                                    setSortConfig({ key: 'peak', direction: 'desc' });
                                 }} className="w-[300px]">
                                     <TabsList className="grid w-full grid-cols-2 bg-muted/20 border border-border/40 p-1 rounded-xl">
                                         <TabsTrigger value="customer" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-black text-[10px] uppercase tracking-widest rounded-lg">
@@ -396,7 +432,7 @@ export function CustomerBreakdownModal({
                                         <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
                                             {viewType === "customer" 
                                                 ? (selectedStoreType ? "Customers" : "Store Types") 
-                                                : "Active Areas"}
+                                                : (selectedArea ? "Customers" : "Active Areas")}
                                         </p>
                                     </div>
                                 </CardContent>
@@ -413,10 +449,19 @@ export function CustomerBreakdownModal({
                                     <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Back to Channels</span>
                                 </button>
                             )}
+                            {viewType === "area" && selectedArea && (
+                                <button 
+                                    onClick={() => setSelectedArea(null)}
+                                    className="p-2 hover:bg-muted/20 rounded-lg border border-border/40 transition-colors group flex items-center gap-2"
+                                >
+                                    <ArrowLeft className="h-4 w-4 text-primary group-hover:-translate-x-1 transition-transform" />
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Back to Areas</span>
+                                </button>
+                            )}
                             <div className="flex-1 flex items-center gap-2 bg-muted/10 p-1 rounded-lg border border-border/40">
                                 <Search className="h-4 w-4 text-muted-foreground ml-2" />
                                 <Input
-                                    placeholder={`FILTER BY ${viewType === "customer" ? (selectedStoreType ? "CUSTOMER" : "CHANNEL") : "AREA"} NAME...`}
+                                    placeholder={`FILTER BY ${viewType === "customer" ? (selectedStoreType ? "CUSTOMER" : "CHANNEL") : (selectedArea ? "CUSTOMER" : "AREA")} NAME...`}
                                     className="border-none bg-transparent h-8 text-xs font-bold uppercase placeholder:text-muted-foreground/50 focus-visible:ring-0"
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
@@ -434,7 +479,7 @@ export function CustomerBreakdownModal({
                                             onClick={() => handleSort('name')}
                                         >
                                             <div className="flex items-center">
-                                                {viewType === "customer" ? (selectedStoreType ? "Customer Name" : "Channel Name") : "Area Name"} {getSortIcon('name')}
+                                                {viewType === "customer" ? (selectedStoreType ? "Customer Name" : "Channel Name") : (selectedArea ? "Customer Name" : "Area Name")} {getSortIcon('name')}
                                             </div>
                                         </TableHead>
                                         <TableHead 
@@ -490,6 +535,9 @@ export function CustomerBreakdownModal({
                                                 onClick={() => {
                                                     if (viewType === "customer" && !selectedStoreType) {
                                                         setSelectedStoreType(customer.name);
+                                                        setSearchTerm("");
+                                                    } else if (viewType === "area" && !selectedArea) {
+                                                        setSelectedArea(customer.name);
                                                         setSearchTerm("");
                                                     } else {
                                                         setSelectedProdCust({
@@ -586,12 +634,16 @@ export function CustomerBreakdownModal({
                 onClose={() => setSelectedProdCust(null)}
                 customerName={selectedProdCust?.name || ""}
                 customerCode={selectedProdCust?.code || ""}
-                salesmanId={selectedProdCust?.sId || 0}
+                salesmanIds={ids}
                 supplierId={selectedProdCust?.supId || 0}
                 supplierName={supplierName}
                 startDate={startDate}
                 endDate={endDate}
                 viewType={viewType}
+                currentSalesData={data.filter(d => 
+                    (d.customerCode || "").trim().toUpperCase() === (selectedProdCust?.code || "").trim().toUpperCase() ||
+                    (d.storeName || "").trim().toUpperCase() === (selectedProdCust?.name || "").trim().toUpperCase()
+                )}
             />
         </>
     );
