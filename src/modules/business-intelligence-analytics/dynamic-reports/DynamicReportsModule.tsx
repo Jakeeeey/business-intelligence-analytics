@@ -90,6 +90,7 @@ export default function DynamicReportsModule() {
   const [savedLayouts, setSavedLayouts] = useState<ReportLayout[]>([]);
   const [activeLayout, setActiveLayout] = useState<ReportLayout | null>(null);
   const [layoutName, setLayoutName] = useState("");
+  const [freezeRowLabels, setFreezeRowLabels] = useState(true);
 
   // Dialog States
   const [showSaveConfirm, setShowSaveConfirm] = useState(false);
@@ -567,6 +568,18 @@ export default function DynamicReportsModule() {
           {isPivotMode && (
             <>
               <div className="w-[1px] h-4 bg-border mx-1" />
+              <div className="flex items-center gap-2 px-2">
+                <Switch 
+                  id="freeze-column" 
+                  checked={freezeRowLabels} 
+                  onCheckedChange={setFreezeRowLabels}
+                  className="scale-[0.65]"
+                />
+                <Label htmlFor="freeze-column" className="text-[9px] font-black tracking-tighter cursor-pointer flex items-center gap-1 whitespace-nowrap">
+                  FREEZE LABELS
+                </Label>
+              </div>
+              <div className="w-[1px] h-4 bg-border mx-1" />
               <Button
                 variant="ghost"
                 size="sm"
@@ -611,7 +624,7 @@ export default function DynamicReportsModule() {
         </span>
       </button>
     </div>
-  ), [reports, selectedReport, isLoadingReports, startDate, endDate, isFetchingData, isPivotMode, isBuilderOpen, fetchReportData, handleExport, loadReports, data.length]);
+  ), [reports, selectedReport, isLoadingReports, startDate, endDate, isFetchingData, isPivotMode, isBuilderOpen, fetchReportData, handleExport, loadReports, data.length, freezeRowLabels]);
 
   return (
     <div className="flex flex-col h-full bg-background overflow-hidden">
@@ -699,6 +712,7 @@ export default function DynamicReportsModule() {
                   );
                 }}
                 onExport={(rows, cols) => handleExport(rows, cols)}
+                freezeRowLabels={freezeRowLabels}
               />
             </div>
           </div>
