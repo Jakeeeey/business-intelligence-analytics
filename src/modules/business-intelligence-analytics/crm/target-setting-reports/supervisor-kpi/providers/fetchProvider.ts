@@ -83,7 +83,7 @@ export const fetchCustomerTargets = async (salesmanIds: number[], startDate: str
 
 export const fetchCustomerProducts = async (
     customerCode: string,
-    salesmanId: number,
+    salesmanId: string,
     supplierId: number,
     startDate: string,
     endDate: string,
