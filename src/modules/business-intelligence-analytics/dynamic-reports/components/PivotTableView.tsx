@@ -31,6 +31,7 @@ interface PivotTableViewProps {
   onRowSortChange?: (sort: 'asc' | 'desc' | null) => void;
   rowFilters?: string[] | null;
   onRowFiltersChange?: (filters: string[] | null) => void;
+  freezeRowLabels?: boolean;
 }
 
 export interface PivotTableViewRef {
@@ -43,7 +44,8 @@ export const PivotTableView = forwardRef<PivotTableViewRef, PivotTableViewProps>
   rowSort: initialRowSort = null,
   onRowSortChange,
   rowFilters: initialRowFilters = null,
-  onRowFiltersChange
+  onRowFiltersChange,
+  freezeRowLabels = true
 }, ref) => {
   const [grouping, setGrouping] = useState<GroupingState>(config.rowFields.map(f => f.id));
   const [expanded, setExpanded] = useState<ExpandedState>(true);
@@ -327,9 +329,16 @@ export const PivotTableView = forwardRef<PivotTableViewRef, PivotTableViewProps>
                     style={{ 
                       width: header.getSize(),
                       flex: `0 0 ${header.getSize()}px`,
-                      position: 'relative'
+                      position: freezeRowLabels && header.column.id === 'rowLabels' ? 'sticky' : 'relative',
+                      left: freezeRowLabels && header.column.id === 'rowLabels' ? 0 : undefined,
+                      zIndex: freezeRowLabels && header.column.id === 'rowLabels' ? 50 : undefined,
                     }}
-                    className="px-5 flex items-center text-foreground font-black uppercase tracking-tight border-r border-border last:border-r-0 bg-muted/50 dark:bg-slate-950"
+                    className={cn(
+                      "px-5 flex items-center text-foreground font-black uppercase tracking-tight border-r border-border last:border-r-0 transition-colors",
+                      freezeRowLabels && header.column.id === 'rowLabels' 
+                        ? "bg-slate-50 dark:bg-slate-900 border-r-2 border-primary/40 shadow-[6px_0_15px_-3px_rgba(0,0,0,0.15)]" 
+                        : "bg-muted/50 dark:bg-slate-950"
+                    )}
                   >
                     <div className="truncate flex-1">
                       {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
@@ -394,13 +403,19 @@ export const PivotTableView = forwardRef<PivotTableViewRef, PivotTableViewProps>
                         style={{ 
                           width: cell.column.getSize(),
                           flex: `0 0 ${cell.column.getSize()}px`,
-                          paddingLeft: isRowLabelColumn ? `${(row.depth * 20) + 16}px` : undefined
+                          paddingLeft: isRowLabelColumn ? `${(row.depth * 20) + 16}px` : undefined,
+                          position: freezeRowLabels && isRowLabelColumn ? 'sticky' : 'relative',
+                          left: freezeRowLabels && isRowLabelColumn ? 0 : undefined,
+                          zIndex: freezeRowLabels && isRowLabelColumn ? 20 : undefined,
                         }}
                         className={cn(
-                          "px-5 flex items-center border-r border-border h-full truncate transition-colors",
+                          "px-5 flex items-center border-r border-border h-full truncate transition-all duration-200",
+                          freezeRowLabels && isRowLabelColumn 
+                            ? "bg-white dark:bg-slate-950 border-r-2 border-primary/20 shadow-[6px_0_15px_-3px_rgba(0,0,0,0.1)]" 
+                            : "bg-background dark:bg-slate-950",
                           isRowLabelColumn 
                             ? cn(
-                                "tracking-tight bg-muted/5 dark:bg-slate-900/20 justify-start",
+                                "tracking-tight justify-start",
                                 row.depth === 0 ? "font-bold text-slate-900 dark:text-slate-50" : 
                                 row.depth === 1 ? "font-semibold text-slate-800 dark:text-slate-100" : 
                                 "font-medium text-slate-700 dark:text-slate-300"
@@ -459,13 +474,16 @@ export const PivotTableView = forwardRef<PivotTableViewRef, PivotTableViewProps>
                   key={header.id}
                   style={{ 
                     width: header.getSize(),
-                    flex: `0 0 ${header.getSize()}px`
+                    flex: `0 0 ${header.getSize()}px`,
+                    position: freezeRowLabels && idx === 0 ? 'sticky' : 'relative',
+                    left: freezeRowLabels && idx === 0 ? 0 : undefined,
+                    zIndex: freezeRowLabels && idx === 0 ? 50 : undefined,
                   }}
                   className={cn(
-                    "px-5 flex items-center border-r border-border last:border-r-0 h-full bg-muted dark:bg-slate-950",
+                    "px-5 flex items-center border-r border-border last:border-r-0 h-full transition-colors",
                     idx === 0 
-                      ? "text-muted-foreground font-black uppercase tracking-widest text-[9px] justify-start" 
-                      : "text-slate-900 dark:text-slate-50 font-black text-base font-mono tabular-nums justify-end text-right"
+                      ? "text-muted-foreground font-black uppercase tracking-widest text-[9px] justify-start bg-slate-100 dark:bg-slate-900 border-r-2 border-primary/40 shadow-[6px_0_15px_-3px_rgba(0,0,0,0.15)]" 
+                      : "text-slate-900 dark:text-slate-50 font-black text-base font-mono tabular-nums justify-end text-right bg-muted/50 dark:bg-slate-950"
                   )}
                 >
                   {idx === 0 ? (
