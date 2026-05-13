@@ -318,20 +318,29 @@ export function BreakdownAnalysisModal({
         setSortConfig({ key, direction });
     };
 
+    type MetricItem = {
+        name: string;
+        sales: number;
+        count: number;
+        customerCode: string;
+        peak: number;
+        target: number;
+    };
+
     const sortedMetrics = useMemo(() => {
         const metrics = customerMetrics;
         if (!sortConfig) return metrics;
 
         return [...metrics].sort((a, b) => {
-            const aVal = (a as any)[sortConfig.key];
-            const bVal = (b as any)[sortConfig.key];
+            const key = sortConfig.key as keyof MetricItem;
+            const aVal = a[key];
+            const bVal = b[key];
 
             if (aVal === undefined || bVal === undefined) return 0;
             if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
             if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
             return 0;
         });
-
     }, [customerMetrics, sortConfig]);
 
     const getSortIcon = (key: string) => {
