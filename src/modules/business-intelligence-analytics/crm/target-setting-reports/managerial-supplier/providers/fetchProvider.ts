@@ -1,4 +1,4 @@
-import { VSalesPerformanceDataDto } from "../types";
+import { VSalesPerformanceDataDto, ProductSalesDetail, AreaTarget } from "../types";
 
 /**
  * Fetches managerial supplier data.
@@ -85,4 +85,83 @@ export const fetchDynamicTargets = async (startDate: string, endDate: string, di
         console.error("Fetch Targets Error:", error instanceof Error ? error.message : "Unknown error");
         return { supplierTargets: [], salesmanTargets: [] };
     }
+};
+
+export const fetchCustomerPeaks = async (names: string[] = [], salesmanIds: number[], viewType: 'customer' | 'area' | 'storeType' = 'customer', storeType?: string): Promise<Record<string, { total: number; peak: number; metadata?: Record<string, unknown> }>> => {
+    let url = `/api/bia/crm/target-setting-reports/managerial-supplier/customer-peak?ids=${salesmanIds.join(",")}${names.length > 0 ? `&names=${encodeURIComponent(names.join("|"))}` : ""}&viewType=${viewType}`;
+    if (storeType) url += `&storeType=${encodeURIComponent(storeType)}`;
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) return {};
+    return await res.json();
+};
+
+export const fetchCustomerTargets = async (salesmanIds: number[], startDate: string, endDate: string, viewType: 'customer' | 'area' | 'storeType' = 'customer', names: string[] = []): Promise<Record<string, number>> => {
+    try {
+        const url = `/api/bia/crm/target-setting-reports/managerial-supplier/customer-targets?salesmanIds=${salesmanIds.join(",")}&startDate=${startDate}&endDate=${endDate}&viewType=${viewType}${names.length > 0 ? `&names=${encodeURIComponent(names.join("|"))}` : ""}`;
+        const res = await fetch(url, { cache: "no-store" });
+        if (!res.ok) return {};
+        
+        const data = await res.json();
+
+        if (viewType === "area" && Array.isArray(data)) {
+            const result: Record<string, number> = {};
+            
+            const smartNormalize = (s: string) => (s || "").toLowerCase()
+                .replace(/city of /g, "").replace(/ city/g, "")
+                .replace(/province of /g, "").replace(/ province/g, "")
+                .replace(/\(capital\)/g, "").replace(/\s+/g, "")
+                .replace(/[^a-z0-9]/g, "").trim();
+
+            const normalizedInputMap: Record<string, string> = {};
+            (names || []).forEach(n => { normalizedInputMap[smartNormalize(n)] = n; });
+
+            data.forEach((item: AreaTarget) => {
+                const prov = (item.province || "").trim();
+                const city = (item.city || "").trim();
+                const dbAreaName = `${prov}, ${city}`.replace(/^, |, $/g, "");
+                
+                const normalizedDb = smartNormalize(dbAreaName);
+                const originalName = normalizedInputMap[normalizedDb] || dbAreaName;
+                const amt = Number(item.target_amount || 0);
+
+                const uniqueKeys = new Set([
+                    originalName,
+                    originalName.toUpperCase(),
+                    normalizedDb
+                ]);
+
+                uniqueKeys.forEach(k => {
+                    if (k) result[k] = (result[k] || 0) + amt;
+                });
+            });
+            return result;
+        }
+
+        return data; 
+    } catch (error) {
+        console.error("fetchCustomerTargets error:", error);
+        return {};
+    }
+};
+
+export const fetchCustomerProducts = async (
+    customerCode: string,
+    salesmanId: string,
+    supplierId: number,
+    startDate: string,
+    endDate: string,
+    viewType: 'customer' | 'area' | 'storeType' = 'customer'
+): Promise<ProductSalesDetail[]> => {
+    const params = new URLSearchParams({
+        customerCode,
+        salesmanId: salesmanId.toString(),
+        supplierId: supplierId.toString(),
+        startDate,
+        endDate,
+        viewType
+    });
+    const url = `/api/bia/crm/target-setting-reports/managerial-supplier/customer-products?${params.toString()}`;
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) return [];
+    return await res.json();
 };

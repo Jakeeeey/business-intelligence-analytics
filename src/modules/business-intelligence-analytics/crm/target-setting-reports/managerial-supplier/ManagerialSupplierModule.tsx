@@ -18,8 +18,8 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 import { fetchManagerialData, fetchDynamicTargets } from "./providers/fetchProvider";
-import { VSalesPerformanceDataDto } from "../executive-health/types";
-import { SalesmanDetailModal } from "./components/SalesmanDetailModal";
+import { VSalesPerformanceDataDto } from "./types";
+import { BreakdownAnalysisModal } from "./components/BreakdownAnalysisModal";
 
 function ManagerialSupplierContent() {
     const searchParams = useSearchParams();
@@ -500,12 +500,18 @@ function ManagerialSupplierContent() {
                 </Card>
             </div>
 
-            <SalesmanDetailModal
+            <BreakdownAnalysisModal
                 isOpen={isDetailModalOpen}
                 onClose={() => setIsDetailModalOpen(false)}
                 data={salesmanDetailData}
+                ids={salesmanDetailData[0]?.salesmanId ? [Number(salesmanDetailData[0].salesmanId)] : []}
                 salesmanName={selectedSalesmanForModal || ""}
+                supplierName={selectedSupplier || ""}
+                periodLabel={`${fromMonth} to ${toMonth}`}
+                startDate={format(startOfMonth(parseISO(fromMonth + "-01")), "yyyy-MM-dd")}
+                endDate={format(endOfMonth(parseISO(toMonth + "-01")), "yyyy-MM-dd")}
             />
+
         </div>
     );
 }

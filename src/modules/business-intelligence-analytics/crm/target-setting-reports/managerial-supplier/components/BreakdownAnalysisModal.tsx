@@ -1,0 +1,624 @@
+import React, { useMemo, useState, useEffect } from "react";
+
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+} from "@/components/ui/dialog";
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Search, Store, Users, TrendingUp, Loader2, MapPin, ArrowUpDown, ChevronUp, ChevronDown, ArrowLeft } from "lucide-react";
+
+import { VSalesPerformanceDataDto } from "../types";
+import { fetchCustomerPeaks, fetchCustomerTargets } from "../providers/fetchProvider";
+import { CustomerProductsModal } from "./CustomerProductsModal";
+
+interface BreakdownAnalysisModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    data: VSalesPerformanceDataDto[];
+    ids: number[];
+    salesmanName: string;
+    supplierName: string;
+    periodLabel: string;
+    startDate: string;
+    endDate: string;
+}
+
+export function BreakdownAnalysisModal({
+                                            isOpen,
+                                            onClose,
+                                            data,
+                                            ids,
+                                            salesmanName,
+                                            supplierName,
+                                            periodLabel,
+                                            startDate,
+                                            endDate
+                                        }: BreakdownAnalysisModalProps) {
+    const [searchTerm, setSearchTerm] = useState("");
+    const [viewType, setViewType] = useState<"customer" | "area">("customer");
+    const [selectedStoreType, setSelectedStoreType] = useState<string | null>(null);
+    const [selectedArea, setSelectedArea] = useState<string | null>(null);
+    const [peakSales, setPeakSales] = useState<Record<string, { total: number; peak: number; metadata?: Record<string, unknown> }>>({});
+    const [customerTargets, setCustomerTargets] = useState<Record<string, number>>({});
+    const [selectedProdCust, setSelectedProdCust] = useState<{ name: string; code: string; sId: number; supId: number } | null>(null);
+    const [loadingPeaks, setLoadingPeaks] = useState(false);
+    const [loadingTargets, setLoadingTargets] = useState(false);
+
+    const idsKey = ids.join(',');
+
+    useEffect(() => {
+        setSelectedStoreType(null);
+        setSelectedArea(null);
+        setSearchTerm("");
+    }, [idsKey, supplierName]);
+
+    const baseCustomerMetrics = useMemo(() => {
+        const map = new Map<string, { sales: number; count: number; customerCode: string; sId: number; supId: number }>();
+
+        data.forEach((item) => {
+            let name = "";
+            let rawCode = "";
+
+            if (viewType === "area") {
+                if (selectedArea === null) {
+                    name = `${(item.province || "").trim()}, ${(item.city || "").trim()}`.replace(/^, |, $/g, "") || "Unknown Area";
+                    rawCode = `${(item.province || "").trim()}::${(item.city || "").trim()}`;
+                } else {
+                    const areaKey = `${(item.province || "").trim()}, ${(item.city || "").trim()}`.replace(/^, |, $/g, "") || "Unknown Area";
+                    if (areaKey !== selectedArea) return;
+                    
+                    name = (item.storeName || "Unknown Customer").trim();
+                    rawCode = (item.province && item.province.includes('-')) ? item.province :
+                              (item.customerCode && item.customerCode.includes('-')) ? item.customerCode :
+                              item.customerCode || item.storeName || name;
+                }
+            } else {
+
+                if (selectedStoreType === null) {
+                    name = (item.storeTypeLabel || "OTHERS").trim();
+                    rawCode = name;
+                } else {
+                    if ((item.storeTypeLabel || "").trim().toUpperCase() !== (selectedStoreType || "").trim().toUpperCase()) return;
+                    name = (item.storeName || "Unknown Customer").trim();
+                    rawCode = (item.province && item.province.includes('-')) ? item.province :
+                              (item.customerCode && item.customerCode.includes('-')) ? item.customerCode :
+                              item.customerCode || item.storeName || name;
+                }
+            }
+            
+            const current = map.get(name) || { 
+                sales: 0, 
+                count: 0, 
+                customerCode: rawCode, 
+                sId: Number(item.salesmanId), 
+                supId: Number(item.supplierId),
+                province: item.province,
+                city: item.city
+            };
+            
+            current.sales += Number(item.netAmount || 0);
+
+            current.count += 1;
+            
+            if (!current.customerCode && rawCode) {
+                current.customerCode = rawCode;
+            }
+            
+            map.set(name, current);
+        });
+
+        return Array.from(map.entries()).map(([name, metrics]) => ({ name, ...metrics as { sales: number; count: number; customerCode: string; sId: number; supId: number; province: string; city: string } }));
+    }, [data, viewType, selectedStoreType, selectedArea]);
+
+    useEffect(() => {
+        const loadPeaks = async () => {
+            if (!isOpen) return;
+            
+            setLoadingPeaks(true);
+            setLoadingTargets(true);
+            setPeakSales({});
+            setCustomerTargets({});
+            try {
+                const names = baseCustomerMetrics.map(c => c.name);
+                
+                const effectiveViewType: 'customer' | 'area' | 'storeType' = viewType === "customer" 
+                    ? (selectedStoreType === null ? "storeType" : "customer")
+                    : (selectedArea === null ? "area" : "customer");
+
+                const [peaks, mainTargetsMap, allCustomerTargets] = await Promise.all([
+                    fetchCustomerPeaks([], ids, effectiveViewType, selectedStoreType || undefined),
+                    fetchCustomerTargets(ids, startDate, endDate, effectiveViewType, []),
+                    effectiveViewType === "storeType" ? fetchCustomerTargets(ids, startDate, endDate, "customer") : Promise.resolve<Record<string, number>>({})
+                ]);
+
+                const finalTargets = { ...mainTargetsMap };
+
+                if (effectiveViewType === "storeType") {
+                    const rollup: Record<string, number> = {};
+                    
+                    const customerToType: Record<string, string> = {};
+                    data.forEach(item => {
+                        const type = (item.storeTypeLabel || "OTHERS").trim();
+                        const cust = (item.storeName || "Unknown Customer").trim();
+                        customerToType[cust] = type;
+                    });
+
+                    Object.entries(allCustomerTargets).forEach(([custName, targetAmt]) => {
+                        const type = customerToType[custName];
+                        if (type) {
+                            rollup[type] = (rollup[type] || 0) + targetAmt;
+                        }
+                    });
+
+                    names.forEach(type => {
+                        const typeKey = type.trim().toUpperCase();
+                        if (!finalTargets[typeKey] || finalTargets[typeKey] === 0) {
+                            if (rollup[typeKey]) {
+                                finalTargets[typeKey] = rollup[typeKey];
+                            }
+                        }
+                    });
+                }
+
+                setPeakSales(peaks);
+                setCustomerTargets(finalTargets);
+            } catch (err) {
+                console.error("Failed to fetch customer data:", err);
+            } finally {
+                setLoadingPeaks(false);
+                setLoadingTargets(false);
+            }
+        };
+
+        loadPeaks();
+    }, [isOpen, baseCustomerMetrics, ids, startDate, endDate, viewType, selectedStoreType, selectedArea, data]);
+
+    const { customerMetrics, totalSales, uniqueCustomers } = useMemo(() => {
+        const groupedMap = new Map<string, {
+            name: string;
+            sales: number;
+            count: number;
+            customerCode: string;
+            sId: number;
+            supId: number;
+            peak: number;
+            target: number;
+            storeTypeLabel?: string;
+            province?: string;
+            city?: string;
+        }>();
+
+        baseCustomerMetrics.forEach(c => {
+            const key = c.customerCode || c.name;
+            if (!groupedMap.has(key)) {
+                groupedMap.set(key, {
+                    name: c.name,
+                    sales: 0,
+                    count: 0,
+                    customerCode: c.customerCode,
+                    sId: c.sId,
+                    supId: c.supId,
+                    peak: 0,
+                    target: 0
+                });
+            }
+            const existing = groupedMap.get(key)!;
+            existing.sales += c.sales;
+            existing.count += c.count;
+            existing.province = c.province;
+            existing.city = c.city;
+            const item = data.find(d => (d.customerCode || d.storeName) === key || d.storeName === c.name);
+            if (item) existing.storeTypeLabel = item.storeTypeLabel;
+        });
+
+        Object.entries(peakSales).forEach(([pName, pData]) => {
+            const key = (pData.metadata?.customerCode as string) || pName;
+            if (!groupedMap.has(key)) {
+                groupedMap.set(key, {
+                    name: pName,
+                    sales: 0,
+                    count: 0,
+                    customerCode: key,
+                    sId: Number(pData.metadata?.sId) || ids[0],
+                    supId: Number(pData.metadata?.supId) || 0,
+                    peak: 0,
+                    target: 0,
+                    storeTypeLabel: pData.metadata?.storeTypeLabel as string
+                });
+            }
+            const existing = groupedMap.get(key)!;
+            existing.peak = pData.peak;
+            if (pData.metadata?.name) {
+                existing.name = pData.metadata.name as string;
+            }
+            if (pData.metadata?.storeTypeLabel) {
+                existing.storeTypeLabel = pData.metadata.storeTypeLabel as string;
+            }
+            if (pData.metadata?.province) {
+                existing.province = pData.metadata.province as string;
+            }
+            if (pData.metadata?.city) {
+                existing.city = pData.metadata.city as string;
+            }
+        });
+
+        Object.entries(customerTargets).forEach(([tName, targetAmt]) => {
+            let found = false;
+            for (const group of groupedMap.values()) {
+                if (group.name.trim().toUpperCase() === tName.trim().toUpperCase()) {
+                    group.target = targetAmt;
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                groupedMap.set(tName, {
+                    name: tName,
+                    sales: 0,
+                    count: 0,
+                    customerCode: tName,
+                    sId: ids[0],
+                    supId: 0,
+                    peak: 0,
+                    target: targetAmt
+                });
+            }
+        });
+
+        const filtered = Array.from(groupedMap.values())
+            .filter(c => {
+                if (viewType === "customer" && selectedStoreType !== null) {
+                    const currentType = (c.storeTypeLabel || "").trim().toLowerCase();
+                    const targetType = selectedStoreType.trim().toLowerCase();
+                    return currentType === targetType || !currentType;
+                }
+                if (viewType === "area" && selectedArea !== null) {
+                    const currentArea = `${(c.province as string || "").trim()}, ${(c.city as string || "").trim()}`.replace(/^, |, $/g, "") || "Unknown Area";
+                    return currentArea === selectedArea;
+                }
+                return true;
+            })
+            .sort((a, b) => b.peak - a.peak)
+            .filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
+
+        return {
+            customerMetrics: filtered,
+            totalSales: filtered.reduce((sum, c) => sum + (c.sales > 0 ? c.sales : 0), 0),
+            uniqueCustomers: filtered.length
+        };
+    }, [baseCustomerMetrics, peakSales, customerTargets, searchTerm, ids, viewType, selectedStoreType, selectedArea, data]);
+
+    const formatPHP = (val: number) => {
+        if (!val || isNaN(val)) return "₱0";
+        return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(val);
+    }
+
+    const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>({ key: 'peak', direction: 'desc' });
+
+    const handleSort = (key: string) => {
+        let direction: 'asc' | 'desc' = 'asc';
+        if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+            direction = 'desc';
+        }
+        setSortConfig({ key, direction });
+    };
+
+    const sortedMetrics = useMemo(() => {
+        const metrics = customerMetrics;
+        if (!sortConfig) return metrics;
+
+        return [...metrics].sort((a, b) => {
+            const aVal = (a as any)[sortConfig.key];
+            const bVal = (b as any)[sortConfig.key];
+
+            if (aVal === undefined || bVal === undefined) return 0;
+            if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+            if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+            return 0;
+        });
+
+    }, [customerMetrics, sortConfig]);
+
+    const getSortIcon = (key: string) => {
+        if (!sortConfig || sortConfig.key !== key) return <ArrowUpDown className="ml-1 h-2.5 w-2.5 opacity-30 px-0 translate-y-[1px]" />;
+        return sortConfig.direction === 'asc' 
+            ? <ChevronUp className="ml-1 h-3 w-3 text-primary" /> 
+            : <ChevronDown className="ml-1 h-3 w-3 text-primary" />;
+    };
+
+    return (
+        <>
+            <Dialog open={isOpen} onOpenChange={onClose}>
+                <DialogContent className="sm:max-w-[95vw] w-full h-[94vh] flex flex-col overflow-hidden bg-background/95 backdrop-blur-xl border-border/40 shadow-2xl p-6 pt-12">
+                    <DialogHeader className="border-b border-border/40 pb-4 flex-shrink-0">
+                        <div className="flex justify-between items-start pr-8">
+                            <div>
+                                <div className="flex items-center gap-2 text-muted-foreground text-xs uppercase tracking-[0.2em] font-bold mb-1">
+                                    <Store className="h-3 w-3" /> Breakdown Analysis
+                                </div>
+                                <DialogTitle className="text-2xl font-black tracking-tight uppercase flex flex-col sm:flex-row sm:items-baseline gap-2">
+                                    <span className="text-primary italic">{salesmanName}</span>
+                                    <span className="text-muted-foreground text-sm font-bold tracking-widest">SUPPLYING</span>
+                                    <span className="text-emerald-500">{supplierName}</span>
+                                </DialogTitle>
+                                <DialogDescription className="text-xs font-medium uppercase tracking-wider mt-1">
+                                    Period: {periodLabel}
+                                </DialogDescription>
+                            </div>
+                            
+                            <div className="flex items-center gap-6">
+                                <Tabs defaultValue="customer" value={viewType} onValueChange={(v) => {
+                                    setViewType(v as "customer" | "area");
+                                    setSelectedStoreType(null);
+                                    setSelectedArea(null);
+                                    setSortConfig({ key: 'peak', direction: 'desc' });
+                                }} className="w-[300px]">
+                                    <TabsList className="grid w-full grid-cols-2 bg-muted/20 border border-border/40 p-1 rounded-xl">
+                                        <TabsTrigger value="customer" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-black text-[10px] uppercase tracking-widest rounded-lg">
+                                            <Users className="h-3 w-3 mr-2" /> Channel
+                                        </TabsTrigger>
+                                        <TabsTrigger value="area" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-black text-[10px] uppercase tracking-widest rounded-lg">
+                                            <MapPin className="h-3 w-3 mr-2" /> Area
+                                        </TabsTrigger>
+                                    </TabsList>
+                                </Tabs>
+
+                                <div className="flex flex-col items-end gap-1">
+                                    <Badge variant="outline" className="text-xs font-mono uppercase bg-muted/20">
+                                        {data.length} Trans
+                                    </Badge>
+                                </div>
+                            </div>
+                        </div>
+                    </DialogHeader>
+
+                    <div className="flex-1 mt-6 overflow-hidden flex flex-col min-h-0">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 flex-shrink-0">
+                            <Card className="bg-muted/10 border-border/40 shadow-sm overflow-hidden group hover:border-primary/40 transition-all duration-300">
+                                <CardHeader className="py-3 px-4 flex flex-row items-center justify-between space-y-0">
+                                    <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground group-hover:text-primary transition-colors">Total Sales (Current Period)</CardTitle>
+                                    <TrendingUp className="h-3 w-3 text-primary opacity-50" />
+                                </CardHeader>
+                                <CardContent className="px-4 pb-3 text-primary italic">
+                                    <div className="text-3xl font-black tracking-tighter">{formatPHP(totalSales)}</div>
+                                </CardContent>
+                            </Card>
+                            
+                            <Card className="bg-muted/10 border-border/40 shadow-sm overflow-hidden group hover:border-primary/40 transition-all duration-300">
+                                <CardHeader className="py-3 px-4 flex flex-row items-center justify-between space-y-0">
+                                    <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground group-hover:text-primary transition-colors italic uppercase">Market Reach</CardTitle>
+                                    <Users className="h-3 w-3 text-primary opacity-50" />
+                                </CardHeader>
+                                <CardContent className="px-4 pb-3">
+                                    <div className="flex items-baseline gap-2">
+                                        <div className="text-3xl font-black tracking-tighter text-foreground">{uniqueCustomers}</div>
+                                        <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
+                                            {viewType === "customer" 
+                                                ? (selectedStoreType ? "Customers" : "Store Types") 
+                                                : (selectedArea ? "Customers" : "Active Areas")}
+                                        </p>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
+
+                        <div className="flex items-center gap-2 mb-4 flex-shrink-0">
+                            {viewType === "customer" && selectedStoreType && (
+                                <button 
+                                    onClick={() => setSelectedStoreType(null)}
+                                    className="p-2 hover:bg-muted/20 rounded-lg border border-border/40 transition-colors group flex items-center gap-2"
+                                >
+                                    <ArrowLeft className="h-4 w-4 text-primary group-hover:-translate-x-1 transition-transform" />
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Back to Channels</span>
+                                </button>
+                            )}
+                            {viewType === "area" && selectedArea && (
+                                <button 
+                                    onClick={() => setSelectedArea(null)}
+                                    className="p-2 hover:bg-muted/20 rounded-lg border border-border/40 transition-colors group flex items-center gap-2"
+                                >
+                                    <ArrowLeft className="h-4 w-4 text-primary group-hover:-translate-x-1 transition-transform" />
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Back to Areas</span>
+                                </button>
+                            )}
+                            <div className="flex-1 flex items-center gap-2 bg-muted/10 p-1 rounded-lg border border-border/40">
+                                <Search className="h-4 w-4 text-muted-foreground ml-2" />
+                                <Input
+                                    placeholder={`FILTER BY ${viewType === "customer" ? (selectedStoreType ? "CUSTOMER" : "CHANNEL") : (selectedArea ? "CUSTOMER" : "AREA")} NAME...`}
+                                    className="border-none bg-transparent h-8 text-xs font-bold uppercase placeholder:text-muted-foreground/50 focus-visible:ring-0"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                />
+                            </div>
+                        </div>
+
+                        <ScrollArea className="flex-1 min-h-0 h-full border border-border/40 rounded-xl bg-card/10">
+                            <Table>
+                                <TableHeader className="bg-muted/30 sticky top-0 z-10 backdrop-blur-sm">
+                                    <TableRow className="hover:bg-transparent border-b border-border/40">
+                                        <TableHead className="w-[50px] text-[9px] uppercase font-black tracking-wider text-muted-foreground">#</TableHead>
+                                        <TableHead 
+                                            className="text-[9px] uppercase font-black tracking-wider text-muted-foreground cursor-pointer hover:text-primary transition-colors"
+                                            onClick={() => handleSort('name')}
+                                        >
+                                            <div className="flex items-center">
+                                                {viewType === "customer" ? (selectedStoreType ? "Customer Name" : "Channel Name") : (selectedArea ? "Customer Name" : "Area Name")} {getSortIcon('name')}
+                                            </div>
+                                        </TableHead>
+                                        <TableHead 
+                                            className="text-right text-[9px] uppercase font-black tracking-wider text-muted-foreground cursor-pointer hover:text-primary transition-colors"
+                                            onClick={() => handleSort('peak')}
+                                        >
+                                            <div className="flex items-center justify-end">
+                                                Highest Monthly Sales {getSortIcon('peak')}
+                                            </div>
+                                        </TableHead>
+                                        <TableHead 
+                                            className="text-right text-[9px] uppercase font-black tracking-wider text-muted-foreground cursor-pointer hover:text-primary transition-colors"
+                                            onClick={() => handleSort('target')}
+                                        >
+                                            <div className="flex items-center justify-end">
+                                                Target Sales {getSortIcon('target')}
+                                            </div>
+                                        </TableHead>
+                                        <TableHead 
+                                            className="text-right text-[9px] uppercase font-black tracking-wider text-muted-foreground cursor-pointer hover:text-primary transition-colors"
+                                            onClick={() => handleSort('count')}
+                                        >
+                                            <div className="flex items-center justify-end">
+                                                Freq {getSortIcon('count')}
+                                            </div>
+                                        </TableHead>
+                                        <TableHead 
+                                            className="text-right text-[9px] uppercase font-black tracking-wider text-muted-foreground cursor-pointer hover:text-primary transition-colors"
+                                            onClick={() => handleSort('sales')}
+                                        >
+                                            <div className="flex items-center justify-end">
+                                                Current Value {getSortIcon('sales')}
+                                            </div>
+                                        </TableHead>
+                                        <TableHead className="text-right text-[9px] uppercase font-black tracking-wider text-muted-foreground min-w-[120px]">Contribution</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {(loadingPeaks || loadingTargets) ? (
+                                        <TableRow>
+                                            <TableCell colSpan={7} className="h-64 text-center">
+                                                <div className="flex flex-col items-center justify-center gap-3">
+                                                    <Loader2 className="h-8 w-8 text-primary animate-spin" />
+                                                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground animate-pulse">Calculating Performance Metrics...</p>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    ) : sortedMetrics.length > 0 ? (
+                                        sortedMetrics.map((customer, idx) => (
+                                            <TableRow 
+                                                key={idx} 
+                                                className="hover:bg-primary/5 transition-colors border-border/40 group cursor-pointer"
+                                                onClick={() => {
+                                                    if (viewType === "customer" && !selectedStoreType) {
+                                                        setSelectedStoreType(customer.name);
+                                                        setSearchTerm("");
+                                                    } else if (viewType === "area" && !selectedArea) {
+                                                        setSelectedArea(customer.name);
+                                                        setSearchTerm("");
+                                                    } else {
+                                                        setSelectedProdCust({
+                                                            name: customer.name,
+                                                            code: customer.customerCode,
+                                                            sId: customer.sId,
+                                                            supId: customer.supId
+                                                        });
+                                                    }
+                                                }}
+                                            >
+                                                <TableCell className="font-mono text-xs text-muted-foreground/50 font-bold text-center">
+                                                    {idx + 1}
+                                                </TableCell>
+                                                <TableCell className="font-bold text-xs uppercase tracking-tight text-foreground/80 group-hover:text-primary transition-colors">
+                                                    {customer.name}
+                                                </TableCell>
+                                                <TableCell className="text-right font-mono text-xs text-orange-500 font-bold">
+                                                    {loadingPeaks ? (
+                                                        <span className="animate-pulse opacity-50">...</span>
+                                                    ) : (
+                                                        formatPHP(customer.peak)
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <div className="flex flex-col items-end gap-1.5">
+                                                        <div className="font-mono text-xs text-blue-500 font-black">
+                                                            {loadingTargets ? (
+                                                                <span className="animate-pulse opacity-50">...</span>
+                                                            ) : customer.target > 0 ? (
+                                                                formatPHP(customer.target)
+                                                            ) : (
+                                                                "-"
+                                                            )}
+                                                        </div>
+                                                        
+                                                        {customer.target > 0 && !loadingTargets && (
+                                                            <div className="w-full max-w-[80px] pt-1">
+                                                                 <div className="w-full h-1 bg-muted/30 rounded-full overflow-hidden border border-border/10">
+                                                                    <div
+                                                                        className={`h-full transition-all duration-500 ${
+                                                                            customer.sales <= 0 ? "bg-red-500" :
+                                                                            (customer.sales / customer.target) >= 0.67 ? "bg-emerald-500" :
+                                                                            (customer.sales / customer.target) >= 0.34 ? "bg-orange-500" : "bg-red-500"
+                                                                        }`}
+                                                                        style={{ width: `${customer.sales > 0 ? Math.min((customer.sales / customer.target) * 100, 100) : 0}%` }}
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="text-right font-mono text-xs text-muted-foreground">{customer.count}</TableCell>
+                                                <TableCell className="text-right font-mono font-bold text-emerald-500/90 group-hover:text-emerald-400">
+                                                    {formatPHP(customer.sales)}
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <div className="flex flex-col items-end gap-1">
+                                                        <span className="text-[9px] font-mono text-muted-foreground">
+                                                            {customer.sales > 0 && totalSales > 0 ? ((customer.sales / totalSales) * 100).toFixed(0) : "0"}%
+                                                        </span>
+                                                        <div className="w-full h-1 bg-muted/20 rounded-full overflow-hidden">
+                                                            <div
+                                                                className="h-full bg-emerald-500/80"
+                                                                style={{ width: `${customer.sales > 0 && totalSales > 0 ? Math.min((customer.sales / totalSales) * 100, 100) : 0}%` }}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    ) : (
+                                        <TableRow>
+                                            <TableCell colSpan={7} className="h-64 text-center">
+                                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground opacity-30 italic">No breakdown data available for this selection</p>
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </ScrollArea>
+                    </div>
+
+                    <div className="mt-4 flex justify-between items-center text-[10px] uppercase font-bold text-muted-foreground flex-shrink-0">
+                        <span>Generated via BIA Dashboard</span>
+                        <span>Showing {customerMetrics.length} records</span>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Nested Products Modal */}
+            <CustomerProductsModal 
+                isOpen={!!selectedProdCust}
+                onClose={() => setSelectedProdCust(null)}
+                customerName={selectedProdCust?.name || ""}
+                customerCode={selectedProdCust?.code || ""}
+                salesmanIds={ids}
+                supplierId={selectedProdCust?.supId || 0}
+                supplierName={supplierName}
+                startDate={startDate}
+                endDate={endDate}
+                viewType={viewType}
+            />
+        </>
+    );
+}
