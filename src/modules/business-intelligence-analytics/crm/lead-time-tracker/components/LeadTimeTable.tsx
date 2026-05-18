@@ -10,6 +10,7 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import {
   Tooltip,
   TooltipTrigger,
@@ -59,6 +60,9 @@ export function LeadTimeTable({ rows, loading, loadedOnce = false }: Props) {
     null,
   );
   const [sortDir, setSortDir] = React.useState<"asc" | "desc">("asc");
+  // pagination: show pagination if more than 15 rows
+  const [page, setPage] = React.useState(1);
+  const PER_PAGE = 15;
 
   const filtered = React.useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -117,6 +121,11 @@ export function LeadTimeTable({ rows, loading, loadedOnce = false }: Props) {
     });
     return arr;
   }, [filtered, sortBy, sortDir]);
+
+  // reset page when the data or filtering/sorting changes
+  React.useEffect(() => {
+    setPage(1);
+  }, [search, sortBy, sortDir, rows.length]);
 
   const onSort = (col: "poNo" | "poDate" | "soNo") => {
     if (sortBy === col) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -264,7 +273,11 @@ export function LeadTimeTable({ rows, loading, loadedOnce = false }: Props) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sorted.map((row) => (
+            {// paginate when there are more than PER_PAGE rows
+            (sorted.length > PER_PAGE
+              ? sorted.slice((page - 1) * PER_PAGE, page * PER_PAGE)
+              : sorted
+            ).map((row) => (
               <TableRow key={`${row.poNo}::${row.soNo}::${row.poDate}`}>
                 <TableCell>{row.poNo}</TableCell>
                 <TableCell>{row.soNo ?? "-"}</TableCell>
@@ -309,6 +322,58 @@ export function LeadTimeTable({ rows, loading, loadedOnce = false }: Props) {
             ))}
           </TableBody>
         </Table>
+        {sorted.length > PER_PAGE ? (
+          <div className="mt-4 flex items-center justify-between">
+            <div className="text-sm text-muted-foreground">
+              {`Showing ${Math.min((page - 1) * PER_PAGE + 1, sorted.length)} - ${Math.min(
+                page * PER_PAGE,
+                sorted.length,
+              )} of ${sorted.length}`}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage(1)}
+                disabled={page === 1}
+              >
+                First
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+              >
+                Prev
+              </Button>
+              <div className="text-sm">
+                Page {page} of{" "}
+                {Math.max(1, Math.ceil(sorted.length / PER_PAGE))}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setPage((p) =>
+                    Math.min(Math.ceil(sorted.length / PER_PAGE), p + 1),
+                  )
+                }
+                disabled={page === Math.ceil(sorted.length / PER_PAGE)}
+              >
+                Next
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage(Math.ceil(sorted.length / PER_PAGE))}
+                disabled={page === Math.ceil(sorted.length / PER_PAGE)}
+              >
+                Last
+              </Button>
+            </div>
+          </div>
+        ) : null}
       </div>
     </Card>
   );

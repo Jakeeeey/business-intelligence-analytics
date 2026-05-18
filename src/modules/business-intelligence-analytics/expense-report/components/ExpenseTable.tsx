@@ -566,28 +566,18 @@ export default function ExpenseTable({ data }: ExpenseTableProps) {
         {/* Table */}
         <div className="rounded-md border">
           <div className="overflow-x-auto">
-            <Table className="table-fixed px-2 py-4 w-full">
-              <TableHeader className="  w-full">
-                <TableRow>
-                  <TableHead className="w-10"></TableHead>
-                  <TableHead className="w-30">{/* Doc No */}</TableHead>
-                  <TableHead className="w-30" title="Disbursement Date Created">
-                    {/* Expense Date */}
-                  </TableHead>
-                  <TableHead className="w-60">{/* Payee */}</TableHead>
-                  <TableHead className="w-50">{/* Division */}</TableHead>
-                  <TableHead className="text-right w-30">
-                    {/* Amount */}
-                  </TableHead>
-                  <TableHead className="text-right w-30">
-                    {/* Paid */}
-                  </TableHead>
-                  <TableHead className="text-right w-30">
-                    {/* Balance */}
-                  </TableHead>
-                  <TableHead className="w-60">{/* Remark */}</TableHead>
-                </TableRow>
-              </TableHeader>
+            <Table className="table-fixed px-2 w-full">
+              <colgroup>
+                <col className="w-10" />
+                <col className="w-30" />
+                <col className="w-30" />
+                <col className="w-60" />
+                <col className="w-50" />
+                <col className="w-30" />
+                <col className="w-30" />
+                <col className="w-30" />
+                <col className="w-60" />
+              </colgroup>
               <TableBody>
                 {processedData.length === 0 ? (
                   <TableRow>
@@ -656,7 +646,7 @@ export default function ExpenseTable({ data }: ExpenseTableProps) {
                       return (
                         <React.Fragment key={group.coaTitle}>
                           {/* Group Header */}
-                          <TableRow className="font-medium sticky top-10.25 z-100 ">
+                          <TableRow className="font-medium sticky top-0 z-10 bg-background">
                             <TableCell colSpan={1}>
                               <Button
                                 variant="ghost"
