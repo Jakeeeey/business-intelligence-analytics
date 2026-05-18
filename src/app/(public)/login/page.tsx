@@ -191,7 +191,6 @@ function LoginForm() {
     const onSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!validate()) return
-
         setLoading(true)
         try {
             // Request location silently in the background.
