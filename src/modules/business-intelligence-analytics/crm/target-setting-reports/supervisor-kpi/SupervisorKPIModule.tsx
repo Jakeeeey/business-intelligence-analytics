@@ -102,7 +102,7 @@ function SupervisorKPIContent() {
 
             const amount = item.netAmount || 0;
             const cId = item.storeName;
-            const sPly = item.supplierName || "Other";
+            const sPly = (item.supplierName || "Other").trim().toUpperCase();
 
             supplierSet.add(sPly);
             supTotals.set(sPly, (supTotals.get(sPly) || 0) + amount);
@@ -151,7 +151,7 @@ function SupervisorKPIContent() {
             }
 
             const sData = rawData.find(d => Number(d.supplierId) === Number(t.supplier_id));
-            const sPly = sData?.supplierName || "Other";
+            const sPly = (sData?.supplierName || "Other").trim().toUpperCase();
 
             const pTot = pTotals.get(pKey)!;
             pTot.target += (t.target_amount || 0);
@@ -183,10 +183,10 @@ function SupervisorKPIContent() {
         };
     }, [rawData, targets, mappings, searchTerm, fromMonth, toMonth, selectedSupervisor]);
 
-    const formatPHP = (val: number) => new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 0 }).format(val);
+    const formatPHP = (val: number) => new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(val);
     const formatShort = (val: number) => {
         const absVal = Math.abs(val);
-        if (absVal >= 1000000) return `${(val / 1000000).toFixed(1)}M`;
+        if (absVal >= 1000000) return `${(val / 1000000).toFixed(0)}M`;
         if (absVal >= 1000) return `${(val / 1000).toFixed(0)}k`;
         return val.toFixed(0);
     };
@@ -239,7 +239,7 @@ function SupervisorKPIContent() {
             // Show customer level breakdown
             const filtered = rawData.filter(d =>
                 ids.has(Number(d.salesmanId)) &&
-                (d.supplierName || "Other") === supplier
+                (d.supplierName || "Other").trim().toUpperCase() === supplier.trim().toUpperCase()
             );
 
             setCustomerModalData({
@@ -435,7 +435,7 @@ function SupervisorKPIContent() {
                                                                         <div className="space-y-1">
                                                                             <div className="flex justify-between text-[10px] font-bold">
                                                                                 <span>ACHIEVEMENT</span>
-                                                                                <span>{target > 0 ? ((amount / target) * 100).toFixed(1) : 0}%</span>
+                                                                                <span>{target > 0 ? ((amount / target) * 100).toFixed(0) : 0}%</span>
                                                                             </div>
                                                                             <Progress value={Math.min(target > 0 ? (amount / target) * 100 : 0, 100)} className="h-1" />
                                                                         </div>

@@ -11,6 +11,11 @@ export interface VSalesPerformanceDataDto {
     storeType?: string;
     storeTypeLabel?: string;
     customerCode?: string;
+    province?: string;
+    city?: string;
+    provinceName?: string;
+    cityName?: string;
+    productId?: number;
 }
 
 export interface ProductSalesDetail {
@@ -31,6 +36,7 @@ export interface ProductSalesDetail {
     unitPrice: number;
     discountAmount: number;
     netAmount: number;
+    highestMonthlySales?: number;
 }
 
 export interface TargetSettingSalesman {
