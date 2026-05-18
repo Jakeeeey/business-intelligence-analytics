@@ -52,11 +52,11 @@ export function DivisionAllocationCard({
     return allocations.find(a => a.division_id === parseInt(selectedDivision));
   }, [selectedDivision, allocations]);
 
-  // Update amount when a division is selected or allocations change
-  const [prevAllocation, setPrevAllocation] = useState<TargetSettingDivision | null>(existingAllocation || null);
+  const currentId = existingAllocation?.id ?? null;
+  const [lastSyncedAllocationId, setLastSyncedAllocationId] = useState<number | null>(currentId);
 
-  if (existingAllocation !== prevAllocation) {
-    setPrevAllocation(existingAllocation || null);
+  if (currentId !== lastSyncedAllocationId) {
+    setLastSyncedAllocationId(currentId);
     setAmount(existingAllocation ? formatNumber(existingAllocation.target_amount.toString()) : "");
   }
 

@@ -190,8 +190,9 @@ export async function getDivisions(): Promise<Division[]> {
   return (json?.data ?? []) as Division[];
 }
 
-export async function getSuppliers(): Promise<Record<string, unknown>[]> {
-  const res = await fetch("/api/bia/crm/target-setting/metadata/suppliers", {
+export async function getSuppliers(all = false): Promise<Record<string, unknown>[]> {
+  const url = all ? "/api/bia/crm/target-setting/metadata/suppliers?all=true" : "/api/bia/crm/target-setting/metadata/suppliers";
+  const res = await fetch(url, {
     headers: { "Content-Type": "application/json" },
   });
   if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);

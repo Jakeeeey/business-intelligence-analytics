@@ -87,12 +87,12 @@ async function proxy(req: NextRequest, path: string, method: string, body?: unkn
 /* ---------- resolve ts_supervisor_id (relation id) ---------- */
 const SUPERVISOR_USER_FIELD = "supervisor_user_id"; // change if needed
 
-async function resolveTsSupervisorId(params: { userId: string; fiscalPeriod: string }) {
+async function resolveTsSupervisorId(params: { userId: string; tssId: number }) {
   const url = new URL(`${UPSTREAM}/items/target_setting_supervisor`);
   url.searchParams.set("limit", "-1");
-  url.searchParams.set("fields", `id,${SUPERVISOR_USER_FIELD},fiscal_period`);
+  url.searchParams.set("fields", `id,${SUPERVISOR_USER_FIELD},tss_id`);
   url.searchParams.set(`filter[${SUPERVISOR_USER_FIELD}][_eq]`, params.userId);
-  url.searchParams.set("filter[fiscal_period][_eq]", params.fiscalPeriod);
+  url.searchParams.set("filter[tss_id][_eq]", String(params.tssId));
   url.searchParams.set("sort", "-id");
 
   const r = await upstreamJson(url.toString());
@@ -113,8 +113,8 @@ async function resolveTsSupervisorId(params: { userId: string; fiscalPeriod: str
       error: {
         error: "Missing supervisor target",
         message:
-          "No matching target_setting_supervisor record found for this user and fiscal period. Create the supervisor target first.",
-        details: { user_id: params.userId, fiscal_period: params.fiscalPeriod },
+          "No matching target_setting_supervisor record found for this user and supplier allocation. Create the supervisor target first.",
+        details: { user_id: params.userId, tss_id: params.tssId },
       },
     };
   }
@@ -140,7 +140,12 @@ async function getSupplierTargetAmount(params: { fiscalPeriod: string; supplierI
   if (!r.ok) return { ok: false as const, status: r.status, error: r };
   const dataList = (r.json?.data ?? []) as Record<string, unknown>[];
   const hit = dataList[0];
-  return { ok: true as const, amount: toNum(hit?.target_amount ?? 0), status: String(hit?.status ?? "DRAFT") };
+  return { 
+    ok: true as const, 
+    id: hit?.id ? Number(hit.id) : null,
+    amount: toNum(hit?.target_amount ?? 0), 
+    status: String(hit?.status ?? "DRAFT") 
+  };
 }
 
 async function getExistingAllocations(params: { fiscalPeriod: string; supplierId: number }) {
@@ -371,15 +376,17 @@ export async function POST(req: NextRequest) {
   });
   if (guard) return guard;
 
-  // Check if supplier target is DRAFT
   const targetRes = await getSupplierTargetAmount({ fiscalPeriod: String(body.fiscal_period), supplierId: Number(body.supplier_id) });
-  if (targetRes.ok) {
-    if (targetRes.status !== "DRAFT") {
-      return NextResponse.json({ error: "Cannot create allocation because the Supplier Target is already approved or rejected." }, { status: 403 });
-    }
+  if (!targetRes.ok) return NextResponse.json(targetRes.error, { status: targetRes.status });
+  
+  if (targetRes.status !== "DRAFT") {
+    return NextResponse.json({ error: "Cannot create allocation because the Supplier Target is already approved or rejected." }, { status: 403 });
+  }
+  if (!targetRes.id) {
+    return NextResponse.json({ error: "Supplier target record not found." }, { status: 400 });
   }
 
-  const resolved = await resolveTsSupervisorId({ userId: sub, fiscalPeriod: String(body.fiscal_period) });
+  const resolved = await resolveTsSupervisorId({ userId: sub, tssId: targetRes.id });
   if (!resolved.ok) return NextResponse.json(resolved.error, { status: resolved.status });
 
   const payload = { ...body, ts_supervisor_id: resolved.id };
@@ -409,6 +416,13 @@ export async function PATCH(req: NextRequest) {
   });
   if (guard) return guard;
 
+  const targetRes = await getSupplierTargetAmount({ fiscalPeriod: String(body.fiscal_period), supplierId: Number(body.supplier_id) });
+  if (!targetRes.ok) return NextResponse.json(targetRes.error, { status: targetRes.status });
+
+  if (!targetRes.id) {
+    return NextResponse.json({ error: "Supplier target record not found." }, { status: 400 });
+  }
+
   const allocRes = await getExistingAllocations({ fiscalPeriod: String(body.fiscal_period), supplierId: Number(body.supplier_id) });
   if (allocRes.ok) {
     const existing = (allocRes.rows as Record<string, unknown>[]).find((r) => Number(r.id) === Number(id));
@@ -417,7 +431,7 @@ export async function PATCH(req: NextRequest) {
     }
   }
 
-  const resolved = await resolveTsSupervisorId({ userId: sub, fiscalPeriod: String(body.fiscal_period) });
+  const resolved = await resolveTsSupervisorId({ userId: sub, tssId: targetRes.id });
   if (!resolved.ok) return NextResponse.json(resolved.error, { status: resolved.status });
 
   const payload = { ...body, ts_supervisor_id: resolved.id };

@@ -39,10 +39,11 @@ export function CompanyTargetCard({
 
   const unformatNumber = (val: string) => val.replace(/,/g, "");
 
-  const [prevTarget, setPrevTarget] = useState<TargetSettingExecutive | null>(currentTarget);
+  const currentId = currentTarget?.id ?? null;
+  const [lastSyncedTargetId, setLastSyncedTargetId] = useState<number | null>(currentId);
 
-  if (currentTarget !== prevTarget) {
-    setPrevTarget(currentTarget);
+  if (currentId !== lastSyncedTargetId) {
+    setLastSyncedTargetId(currentId);
     setTargetAmount(currentTarget ? formatNumber(currentTarget.target_amount.toString()) : "");
   }
 
