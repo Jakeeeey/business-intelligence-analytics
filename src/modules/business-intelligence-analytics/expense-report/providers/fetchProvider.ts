@@ -369,8 +369,8 @@ export function getDisbursementSummariesGroupedByCoA(
           0,
         );
 
-        // Display totals: use line totals (source of truth) for per-doc rows
-        const totalAmount = coaLineTotal;
+        // Display totals: use header-level totals for per-doc rows
+        const totalAmount = headerTotal;
         const paidAmount = headerPaid;
         const balance = totalAmount - paidAmount;
 
@@ -381,7 +381,7 @@ export function getDisbursementSummariesGroupedByCoA(
         );
         const entryType = isTaxOrAdj
           ? "ADJUSTMENT"
-          : totalAmount < 0
+          : coaLineTotal < 0
             ? "REVERSAL"
             : "GROSS";
 

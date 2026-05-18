@@ -74,6 +74,22 @@ const getRecordLineTotal = (record: DisbursementSummary): number => {
   return typeof record.totalAmount === "number" ? record.totalAmount : 0;
 };
 
+// Helper for header-level total (per-doc display)
+const getRecordHeaderTotal = (record: DisbursementSummary): number => {
+  if (typeof record.totalAmountHeader === "number")
+    return record.totalAmountHeader;
+  if (typeof record.totalAmount === "number") return record.totalAmount;
+  return 0;
+};
+
+// Helper for header-level paid amount (per-doc display)
+const getRecordPaidAmount = (record: DisbursementSummary): number => {
+  if (typeof record.paidAmountHeader === "number")
+    return record.paidAmountHeader;
+  if (typeof record.paidAmount === "number") return record.paidAmount;
+  return 0;
+};
+
 const getTotalAmount = (records: DisbursementSummary[]): number => {
   // Deduplicate before summing total amounts to avoid double counting across lines
   const uniqueDocs = new Map<number, DisbursementSummary>();
@@ -89,13 +105,9 @@ const getTotalAmount = (records: DisbursementSummary[]): number => {
 };
 
 const getRecordBalance = (record: DisbursementSummary): number => {
-  const headerTotal =
-    typeof record.totalAmountHeader === "number"
-      ? record.totalAmountHeader
-      : record.totalAmount;
-  return typeof record.balance === "number"
-    ? record.balance
-    : (headerTotal || 0) - (record.paidAmount || 0);
+  const headerTotal = getRecordHeaderTotal(record);
+  const paidAmount = getRecordPaidAmount(record);
+  return headerTotal - paidAmount;
 };
 
 export default function ExpenseTable({ data }: ExpenseTableProps) {
@@ -252,8 +264,8 @@ export default function ExpenseTable({ data }: ExpenseTableProps) {
         const bVal = b[usedSortKey];
 
         if (usedSortKey === "totalAmount") {
-          const aNum = getRecordLineTotal(a);
-          const bNum = getRecordLineTotal(b);
+          const aNum = getRecordHeaderTotal(a);
+          const bNum = getRecordHeaderTotal(b);
           return usedSortDir === "asc" ? aNum - bNum : bNum - aNum;
         }
 
@@ -332,8 +344,8 @@ export default function ExpenseTable({ data }: ExpenseTableProps) {
         return sum + Math.max(0, bal);
       }
 
-      // Otherwise show total line amounts across unique documents
-      return sum + getRecordLineTotal(record);
+      // Otherwise show header-level totals across unique documents
+      return sum + getRecordHeaderTotal(record);
     },
     0,
   );
@@ -1325,28 +1337,30 @@ export default function ExpenseTable({ data }: ExpenseTableProps) {
                                                                             </TableCell>
                                                                             <TableCell
                                                                               title={formatCurrency(
-                                                                                getRecordLineTotal(
+                                                                                getRecordHeaderTotal(
                                                                                   record,
                                                                                 ),
                                                                               )}
                                                                               className="w-30 text-right px-4 py-2"
                                                                             >
                                                                               {formatCurrency(
-                                                                                getRecordLineTotal(
+                                                                                getRecordHeaderTotal(
                                                                                   record,
                                                                                 ),
                                                                               )}
                                                                             </TableCell>
                                                                             <TableCell
                                                                               title={formatCurrency(
-                                                                                record.paidAmount ||
-                                                                                  0,
+                                                                                getRecordPaidAmount(
+                                                                                  record,
+                                                                                ),
                                                                               )}
                                                                               className="w-30 text-right px-4 py-2"
                                                                             >
                                                                               {formatCurrency(
-                                                                                record.paidAmount ||
-                                                                                  0,
+                                                                                getRecordPaidAmount(
+                                                                                  record,
+                                                                                ),
                                                                               )}
                                                                             </TableCell>
                                                                             <TableCell
@@ -1765,15 +1779,16 @@ export default function ExpenseTable({ data }: ExpenseTableProps) {
                                                       </TableCell>
                                                       <TableCell className="text-right px-4 py-2">
                                                         {formatCurrency(
-                                                          getRecordLineTotal(
+                                                          getRecordHeaderTotal(
                                                             record,
                                                           ),
                                                         )}
                                                       </TableCell>
                                                       <TableCell className="text-right px-4 py-2">
                                                         {formatCurrency(
-                                                          record.paidAmount ||
-                                                            0,
+                                                          getRecordPaidAmount(
+                                                            record,
+                                                          ),
                                                         )}
                                                       </TableCell>
                                                       <TableCell className="text-right px-4 py-2">
