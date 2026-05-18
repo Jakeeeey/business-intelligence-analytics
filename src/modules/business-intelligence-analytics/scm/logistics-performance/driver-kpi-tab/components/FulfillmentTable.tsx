@@ -31,20 +31,31 @@ import type { VisitRecord } from "../types";
 // ---------------------------------------------------------------------------
 // Status helpers
 // ---------------------------------------------------------------------------
-type FulfillmentStatus = "fulfilled" | "fulfilled_with_returns" | "unfulfilled";
+type FulfillmentStatus =
+  | "fulfilled"
+  | "fulfilled_with_returns"
+  | "fulfilled_with_concerns"
+  | "unfulfilled";
 
 function normalizeFulfillmentStatus(raw: unknown): FulfillmentStatus {
   const s = String(raw ?? "")
     .toLowerCase()
     .trim();
   if (s === "fulfilled with returns") return "fulfilled_with_returns";
+  if (s === "fulfilled with concerns" || s === "fulfilled_with_concerns") {
+    return "fulfilled_with_concerns";
+  }
   if (s === "fulfilled") return "fulfilled";
   return "unfulfilled";
 }
 
-/** Returns true for statuses that count toward fulfillment (fulfilled + fulfilled_with_returns) */
+/** Returns true for statuses that count toward fulfillment (fulfilled + returns + concerns) */
 function isFulfilled(status: FulfillmentStatus) {
-  return status === "fulfilled" || status === "fulfilled_with_returns";
+  return (
+    status === "fulfilled" ||
+    status === "fulfilled_with_returns" ||
+    status === "fulfilled_with_concerns"
+  );
 }
 
 type FulfillmentTableProps = {
@@ -380,7 +391,7 @@ export default function FulfillmentTable(props: FulfillmentTableProps) {
   }
 
   // ---------------------------------------------------------------------------
-  // Group-level row background: any unfulfilled customer → red; any fulfilled_with_returns → orange; else default
+  // Group-level row background: any unfulfilled customer → red; any returns/concerns → orange; else default
   // ---------------------------------------------------------------------------
   function groupRowClass(g: ReturnType<typeof groupByDispatch>[number]) {
     const customers = g.customers || [];
@@ -391,7 +402,8 @@ export default function FulfillmentTable(props: FulfillmentTableProps) {
       (s: FulfillmentStatus) => s === "unfulfilled",
     );
     const hasReturns = statuses.some(
-      (s: FulfillmentStatus) => s === "fulfilled_with_returns",
+      (s: FulfillmentStatus) =>
+        s === "fulfilled_with_returns" || s === "fulfilled_with_concerns",
     );
     if (hasUnfulfilled) return "bg-rose-50 dark:bg-rose-900/20";
     if (hasReturns) return "";
@@ -399,7 +411,7 @@ export default function FulfillmentTable(props: FulfillmentTableProps) {
   }
 
   // ---------------------------------------------------------------------------
-  // Recalculate fulfilled/unfulfilled counts and percent treating FWR as fulfilled
+  // Recalculate fulfilled/unfulfilled counts and percent treating returns/concerns as fulfilled
   // ---------------------------------------------------------------------------
   function groupMetrics(g: ReturnType<typeof groupByDispatch>[number]) {
     const customers = g.customers || [];
@@ -484,591 +496,626 @@ export default function FulfillmentTable(props: FulfillmentTableProps) {
           </div>
         </div>
 
-        <div className="bg-background rounded-md border border-border/50 overflow-hidden">
-          <div className="">
-            <Table>
-              <TableHeader className="sticky top-0 z-10 bg-background/50 border-b">
-                <TableRow className="bg-muted/40">
-                  <TableHead className="w-10" />
-                  <TableHead className="w-25">
-                    <button
-                      type="button"
-                      className="inline-flex items-center gap-1"
-                      onClick={() => toggleSort("dp")}
-                    >
-                      DP No.
-                      {sortKey === "dp" &&
-                        (sortDir === "asc" ? (
-                          <ChevronUpIcon className="size-4" />
-                        ) : (
-                          <ChevronDownIcon className="size-4" />
-                        ))}
-                    </button>
-                  </TableHead>
-                  <TableHead className="w-45">
-                    <button
-                      type="button"
-                      className="inline-flex items-center gap-1"
-                      onClick={() => toggleSort("dispatch")}
-                    >
-                      Dispatch
-                      {sortKey === "dispatch" &&
-                        (sortDir === "asc" ? (
-                          <ChevronUpIcon className="size-4" />
-                        ) : (
-                          <ChevronDownIcon className="size-4" />
-                        ))}
-                    </button>
-                  </TableHead>
-                  <TableHead className="w-45">
-                    <button
-                      type="button"
-                      className="inline-flex items-center gap-1"
-                      onClick={() => toggleSort("arrival")}
-                    >
-                      Arrival
-                      {sortKey === "arrival" &&
-                        (sortDir === "asc" ? (
-                          <ChevronUpIcon className="size-4" />
-                        ) : (
-                          <ChevronDownIcon className="size-4" />
-                        ))}
-                    </button>
-                  </TableHead>
-                  <TableHead className="w-30">
-                    <button
-                      type="button"
-                      className="inline-flex items-center gap-1"
-                      onClick={() => toggleSort("customers")}
-                    >
-                      Customers
-                      {sortKey === "customers" &&
-                        (sortDir === "asc" ? (
-                          <ChevronUpIcon className="size-4" />
-                        ) : (
-                          <ChevronDownIcon className="size-4" />
-                        ))}
-                    </button>
-                  </TableHead>
-                  <TableHead className="w-30">
-                    <button
-                      type="button"
-                      className="inline-flex items-center gap-1"
-                      onClick={() => toggleSort("fulfilled")}
-                    >
-                      Fulfilled
-                      {sortKey === "fulfilled" &&
-                        (sortDir === "asc" ? (
-                          <ChevronUpIcon className="size-4" />
-                        ) : (
-                          <ChevronDownIcon className="size-4" />
-                        ))}
-                    </button>
-                  </TableHead>
-                  <TableHead className="w-30">
-                    <button
-                      type="button"
-                      className="inline-flex items-center gap-1"
-                      onClick={() => toggleSort("unfulfilled")}
-                    >
-                      Unfulfilled
-                      {sortKey === "unfulfilled" &&
-                        (sortDir === "asc" ? (
-                          <ChevronUpIcon className="size-4" />
-                        ) : (
-                          <ChevronDownIcon className="size-4" />
-                        ))}
-                    </button>
-                  </TableHead>
-                  <TableHead className="w-40">
-                    <button
-                      type="button"
-                      className="inline-flex items-center gap-1"
-                      onClick={() => toggleSort("performance")}
-                    >
-                      Performance Rate
-                      {sortKey === "performance" &&
-                        (sortDir === "asc" ? (
-                          <ChevronUpIcon className="size-4" />
-                        ) : (
-                          <ChevronDownIcon className="size-4" />
-                        ))}
-                    </button>
-                  </TableHead>
-                  <TableHead className="w-45">
-                    <button
-                      type="button"
-                      className="inline-flex items-center gap-1"
-                      onClick={() => toggleSort("fulfilledAmount")}
-                    >
-                      Fulfilled Amount
-                      {sortKey === "fulfilledAmount" &&
-                        (sortDir === "asc" ? (
-                          <ChevronUpIcon className="size-4" />
-                        ) : (
-                          <ChevronDownIcon className="size-4" />
-                        ))}
-                    </button>
-                  </TableHead>
-                  <TableHead className="w-45">
-                    <button
-                      type="button"
-                      className="inline-flex items-center gap-1"
-                      onClick={() => toggleSort("unfulfilledAmount")}
-                    >
-                      Unfulfilled Amount
-                      {sortKey === "unfulfilledAmount" &&
-                        (sortDir === "asc" ? (
-                          <ChevronUpIcon className="size-4" />
-                        ) : (
-                          <ChevronDownIcon className="size-4" />
-                        ))}
-                    </button>
-                  </TableHead>
-                  <TableHead className="w-30">
-                    <button
-                      type="button"
-                      className="inline-flex items-center gap-1"
-                      onClick={() => toggleSort("truck")}
-                    >
-                      Truck
-                      {sortKey === "truck" &&
-                        (sortDir === "asc" ? (
-                          <ChevronUpIcon className="size-4" />
-                        ) : (
-                          <ChevronDownIcon className="size-4" />
-                        ))}
-                    </button>
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {pageGroups.map((g) => {
-                  const metrics = groupMetrics(g);
-                  const rowCls = groupRowClass(g);
+        {filteredGroups.length === 0 ? (
+          <div className="rounded-md border p-6 text-center">
+            <div className="text-lg font-semibold mb-2">No data to display</div>
+            <div className="text-sm text-muted-foreground">
+              Please select other driver or date range
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="bg-background rounded-md border border-border/50 overflow-hidden">
+              <div className="">
+                <Table>
+                  <TableHeader className="sticky top-0 z-10 bg-background/50 border-b">
+                    <TableRow className="bg-muted/40">
+                      <TableHead className="w-10" />
+                      <TableHead className="w-25">
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-1"
+                          onClick={() => toggleSort("dp")}
+                        >
+                          DP No.
+                          {sortKey === "dp" &&
+                            (sortDir === "asc" ? (
+                              <ChevronUpIcon className="size-4" />
+                            ) : (
+                              <ChevronDownIcon className="size-4" />
+                            ))}
+                        </button>
+                      </TableHead>
+                      <TableHead className="w-45">
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-1"
+                          onClick={() => toggleSort("dispatch")}
+                        >
+                          Dispatch
+                          {sortKey === "dispatch" &&
+                            (sortDir === "asc" ? (
+                              <ChevronUpIcon className="size-4" />
+                            ) : (
+                              <ChevronDownIcon className="size-4" />
+                            ))}
+                        </button>
+                      </TableHead>
+                      <TableHead className="w-45">
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-1"
+                          onClick={() => toggleSort("arrival")}
+                        >
+                          Arrival
+                          {sortKey === "arrival" &&
+                            (sortDir === "asc" ? (
+                              <ChevronUpIcon className="size-4" />
+                            ) : (
+                              <ChevronDownIcon className="size-4" />
+                            ))}
+                        </button>
+                      </TableHead>
+                      <TableHead className="w-30">
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-1"
+                          onClick={() => toggleSort("customers")}
+                        >
+                          Customers
+                          {sortKey === "customers" &&
+                            (sortDir === "asc" ? (
+                              <ChevronUpIcon className="size-4" />
+                            ) : (
+                              <ChevronDownIcon className="size-4" />
+                            ))}
+                        </button>
+                      </TableHead>
+                      <TableHead className="w-30">
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-1"
+                          onClick={() => toggleSort("fulfilled")}
+                        >
+                          Fulfilled
+                          {sortKey === "fulfilled" &&
+                            (sortDir === "asc" ? (
+                              <ChevronUpIcon className="size-4" />
+                            ) : (
+                              <ChevronDownIcon className="size-4" />
+                            ))}
+                        </button>
+                      </TableHead>
+                      <TableHead className="w-30">
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-1"
+                          onClick={() => toggleSort("unfulfilled")}
+                        >
+                          Unfulfilled
+                          {sortKey === "unfulfilled" &&
+                            (sortDir === "asc" ? (
+                              <ChevronUpIcon className="size-4" />
+                            ) : (
+                              <ChevronDownIcon className="size-4" />
+                            ))}
+                        </button>
+                      </TableHead>
+                      <TableHead className="w-40">
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-1"
+                          onClick={() => toggleSort("performance")}
+                        >
+                          Performance Rate
+                          {sortKey === "performance" &&
+                            (sortDir === "asc" ? (
+                              <ChevronUpIcon className="size-4" />
+                            ) : (
+                              <ChevronDownIcon className="size-4" />
+                            ))}
+                        </button>
+                      </TableHead>
+                      <TableHead className="w-45">
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-1"
+                          onClick={() => toggleSort("fulfilledAmount")}
+                        >
+                          Fulfilled Amount
+                          {sortKey === "fulfilledAmount" &&
+                            (sortDir === "asc" ? (
+                              <ChevronUpIcon className="size-4" />
+                            ) : (
+                              <ChevronDownIcon className="size-4" />
+                            ))}
+                        </button>
+                      </TableHead>
+                      <TableHead className="w-45">
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-1"
+                          onClick={() => toggleSort("unfulfilledAmount")}
+                        >
+                          Unfulfilled Amount
+                          {sortKey === "unfulfilledAmount" &&
+                            (sortDir === "asc" ? (
+                              <ChevronUpIcon className="size-4" />
+                            ) : (
+                              <ChevronDownIcon className="size-4" />
+                            ))}
+                        </button>
+                      </TableHead>
+                      <TableHead className="w-30">
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-1"
+                          onClick={() => toggleSort("truck")}
+                        >
+                          Truck
+                          {sortKey === "truck" &&
+                            (sortDir === "asc" ? (
+                              <ChevronUpIcon className="size-4" />
+                            ) : (
+                              <ChevronDownIcon className="size-4" />
+                            ))}
+                        </button>
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {pageGroups.map((g) => {
+                      const metrics = groupMetrics(g);
+                      const rowCls = groupRowClass(g);
 
-                  return (
-                    <React.Fragment key={g.dispatchDocumentNo}>
-                      <TableRow
-                        className={`border-t hover:bg-muted/50 cursor-pointer ${rowCls}`}
-                        onClick={() =>
-                          handleToggleExpanded(g.dispatchDocumentNo)
-                        }
-                      >
-                        <TableCell className="w-8 px-2 py-3">
-                          <button
-                            type="button"
-                            aria-label={
-                              (props.expanded ?? localExpanded)[
-                                g.dispatchDocumentNo
-                              ]
-                                ? "Collapse row"
-                                : "Expand row"
+                      return (
+                        <React.Fragment key={g.dispatchDocumentNo}>
+                          <TableRow
+                            className={`border-t hover:bg-muted/50 cursor-pointer ${rowCls}`}
+                            onClick={() =>
+                              handleToggleExpanded(g.dispatchDocumentNo)
                             }
-                            aria-expanded={
-                              !!(props.expanded ?? localExpanded)[
-                                g.dispatchDocumentNo
-                              ]
-                            }
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleToggleExpanded(g.dispatchDocumentNo);
-                            }}
-                            className="inline-flex items-center justify-center p-1 rounded hover:bg-muted/5"
                           >
-                            <ChevronRight
-                              className={`h-4 w-4 transition-transform ${(props.expanded ?? localExpanded)[g.dispatchDocumentNo] ? "rotate-90" : "rotate-0"}`}
-                            />
-                          </button>
-                        </TableCell>
-                        <TableCell className="font-mono text-xs py-3">
-                          {g.dispatchDocumentNo}
-                        </TableCell>
-                        <TableCell className="py-3">
-                          {formatDateTime(g.dispatchTime)}
-                        </TableCell>
-                        <TableCell className="py-3">
-                          {formatDateTime(g.arrivalTime)}
-                        </TableCell>
-                        <TableCell className="py-3">
-                          {metrics.totalCustomers}
-                        </TableCell>
-                        <TableCell className="py-3">
-                          {metrics.fulfilledCount}
-                        </TableCell>
-                        <TableCell className="py-3">
-                          {metrics.unfulfilledCount}
-                        </TableCell>
-                        <TableCell className="py-3">
-                          {metrics.fulfillmentPercent}%
-                        </TableCell>
-                        <TableCell className="py-3">
-                          {formatCurrency(metrics.fulfilledAmount)}
-                        </TableCell>
-                        <TableCell className="py-3">
-                          {formatCurrency(metrics.unfulfilledAmount)}
-                        </TableCell>
-                        <TableCell className="py-3">{g.truck}</TableCell>
-                      </TableRow>
+                            <TableCell className="w-8 px-2 py-3">
+                              <button
+                                type="button"
+                                aria-label={
+                                  (props.expanded ?? localExpanded)[
+                                    g.dispatchDocumentNo
+                                  ]
+                                    ? "Collapse row"
+                                    : "Expand row"
+                                }
+                                aria-expanded={
+                                  !!(props.expanded ?? localExpanded)[
+                                    g.dispatchDocumentNo
+                                  ]
+                                }
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleToggleExpanded(g.dispatchDocumentNo);
+                                }}
+                                className="inline-flex items-center justify-center p-1 rounded hover:bg-muted/5"
+                              >
+                                <ChevronRight
+                                  className={`h-4 w-4 transition-transform ${(props.expanded ?? localExpanded)[g.dispatchDocumentNo] ? "rotate-90" : "rotate-0"}`}
+                                />
+                              </button>
+                            </TableCell>
+                            <TableCell className="font-mono text-xs py-3">
+                              {g.dispatchDocumentNo}
+                            </TableCell>
+                            <TableCell className="py-3">
+                              {formatDateTime(g.dispatchTime)}
+                            </TableCell>
+                            <TableCell className="py-3">
+                              {formatDateTime(g.arrivalTime)}
+                            </TableCell>
+                            <TableCell className="py-3">
+                              {metrics.totalCustomers}
+                            </TableCell>
+                            <TableCell className="py-3">
+                              {metrics.fulfilledCount}
+                            </TableCell>
+                            <TableCell className="py-3">
+                              {metrics.unfulfilledCount}
+                            </TableCell>
+                            <TableCell className="py-3">
+                              {metrics.fulfillmentPercent}%
+                            </TableCell>
+                            <TableCell className="py-3">
+                              {formatCurrency(metrics.fulfilledAmount)}
+                            </TableCell>
+                            <TableCell className="py-3">
+                              {formatCurrency(metrics.unfulfilledAmount)}
+                            </TableCell>
+                            <TableCell className="py-3">{g.truck}</TableCell>
+                          </TableRow>
 
-                      {(props.expanded ?? localExpanded)[
-                        g.dispatchDocumentNo
-                      ] && (
-                        <TableRow>
-                          <TableCell colSpan={11} className="bg-muted/30">
-                            <div className="p-2">
-                              <div className="bg-background rounded-md border border-border/50 overflow-hidden">
-                                {(() => {
-                                  const dp = String(g.dispatchDocumentNo ?? "");
-                                  const sorted =
-                                    groupCustomersSorted.get(dp) ?? [];
-                                  const total = sorted.length;
-                                  const expLimit =
-                                    expandedLimits[dp] ??
-                                    DEFAULT_EXPANDED_LIMIT;
-                                  const usePagination =
-                                    total > DEFAULT_EXPANDED_LIMIT;
-                                  const effectiveLimit = usePagination
-                                    ? expLimit
-                                    : Math.max(total, 1);
-                                  const totalPages = Math.max(
-                                    1,
-                                    Math.ceil(total / effectiveLimit),
-                                  );
-                                  const expPageRaw = expandedPages[dp] ?? 1;
-                                  const expPage = usePagination
-                                    ? Math.min(
-                                        Math.max(1, expPageRaw),
-                                        totalPages,
-                                      )
-                                    : 1;
-                                  const startIdx =
-                                    (expPage - 1) * effectiveLimit;
-                                  const endIdx = Math.min(
-                                    startIdx + effectiveLimit,
-                                    total,
-                                  );
-                                  const pageCustomers = sorted.slice(
-                                    startIdx,
-                                    endIdx,
-                                  );
+                          {(props.expanded ?? localExpanded)[
+                            g.dispatchDocumentNo
+                          ] && (
+                            <TableRow>
+                              <TableCell colSpan={11} className="bg-muted/30">
+                                <div className="p-2">
+                                  <div className="bg-background rounded-md border border-border/50 overflow-hidden">
+                                    {(() => {
+                                      const dp = String(
+                                        g.dispatchDocumentNo ?? "",
+                                      );
+                                      const sorted =
+                                        groupCustomersSorted.get(dp) ?? [];
+                                      const total = sorted.length;
+                                      const expLimit =
+                                        expandedLimits[dp] ??
+                                        DEFAULT_EXPANDED_LIMIT;
+                                      const usePagination =
+                                        total > DEFAULT_EXPANDED_LIMIT;
+                                      const effectiveLimit = usePagination
+                                        ? expLimit
+                                        : Math.max(total, 1);
+                                      const totalPages = Math.max(
+                                        1,
+                                        Math.ceil(total / effectiveLimit),
+                                      );
+                                      const expPageRaw = expandedPages[dp] ?? 1;
+                                      const expPage = usePagination
+                                        ? Math.min(
+                                            Math.max(1, expPageRaw),
+                                            totalPages,
+                                          )
+                                        : 1;
+                                      const startIdx =
+                                        (expPage - 1) * effectiveLimit;
+                                      const endIdx = Math.min(
+                                        startIdx + effectiveLimit,
+                                        total,
+                                      );
+                                      const pageCustomers = sorted.slice(
+                                        startIdx,
+                                        endIdx,
+                                      );
 
-                                  if (!readyMap[dp]) {
-                                    return (
-                                      <>
-                                        <Table>
-                                          <TableHeader>
-                                            <TableRow className="bg-muted/40 border-b">
-                                              <TableHead>No.</TableHead>
-                                              <TableHead>Customer</TableHead>
-                                              <TableHead>Address</TableHead>
-                                              <TableHead>Status</TableHead>
-                                              <TableHead>Amount</TableHead>
-                                            </TableRow>
-                                          </TableHeader>
-                                        </Table>
-                                        <div className="py-6 flex items-center justify-center">
-                                          <Spinner />
-                                        </div>
-                                      </>
-                                    );
-                                  }
+                                      if (!readyMap[dp]) {
+                                        return (
+                                          <>
+                                            <Table>
+                                              <TableHeader>
+                                                <TableRow className="bg-muted/40 border-b">
+                                                  <TableHead>No.</TableHead>
+                                                  <TableHead>
+                                                    Customer
+                                                  </TableHead>
+                                                  <TableHead>Address</TableHead>
+                                                  <TableHead>Status</TableHead>
+                                                  <TableHead>Amount</TableHead>
+                                                </TableRow>
+                                              </TableHeader>
+                                            </Table>
+                                            <div className="py-6 flex items-center justify-center">
+                                              <Spinner />
+                                            </div>
+                                          </>
+                                        );
+                                      }
 
-                                  return (
-                                    <>
-                                      <Table>
-                                        <TableHeader>
-                                          <TableRow className="bg-muted/40 border-b">
-                                            <TableHead>No.</TableHead>
-                                            <TableHead>Customer</TableHead>
-                                            <TableHead>Address</TableHead>
-                                            <TableHead>Status</TableHead>
-                                            <TableHead>Amount</TableHead>
-                                          </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                          {pageCustomers.map((c, i) => {
-                                            const status =
-                                              normalizeFulfillmentStatus(
-                                                c.fulfillmentStatus,
-                                              );
-                                            const customerRowCls =
-                                              status === "unfulfilled"
-                                                ? "bg-rose-50 dark:bg-rose-900/20"
-                                                : status ===
-                                                    "fulfilled_with_returns"
-                                                  ? "bg-orange-50 dark:bg-orange-900/20"
-                                                  : "bg-emerald-50/40 dark:bg-emerald-900/10";
-
-                                            const badgeCls =
-                                              status === "fulfilled"
-                                                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-100"
-                                                : status ===
-                                                    "fulfilled_with_returns"
-                                                  ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-100"
-                                                  : "bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-100 uppercase";
-
-                                            return (
-                                              <TableRow
-                                                key={`${dp}-${startIdx + i}`}
-                                                className={`border-t ${customerRowCls}`}
-                                              >
-                                                <TableCell className="py-2">
-                                                  {c.visitSequence}
-                                                </TableCell>
-                                                <TableCell className="py-2">
-                                                  {c.customerName}
-                                                </TableCell>
-                                                <TableCell className="py-2">
-                                                  {[c.brgy, c.city, c.province]
-                                                    .filter(Boolean)
-                                                    .join(", ")}
-                                                </TableCell>
-                                                <TableCell className="py-2">
-                                                  <span
-                                                    className={`px-2 py-1 rounded-full text-xs font-semibold ${badgeCls}`}
-                                                  >
-                                                    {c.fulfillmentStatus}
-                                                  </span>
-                                                </TableCell>
-                                                <TableCell className="py-2">
-                                                  {formatCurrency(
-                                                    c.totalAmount,
-                                                  )}
-                                                </TableCell>
+                                      return (
+                                        <>
+                                          <Table>
+                                            <TableHeader>
+                                              <TableRow className="bg-muted/40 border-b">
+                                                <TableHead>No.</TableHead>
+                                                <TableHead>Customer</TableHead>
+                                                <TableHead>Address</TableHead>
+                                                <TableHead>Status</TableHead>
+                                                <TableHead>Amount</TableHead>
                                               </TableRow>
-                                            );
-                                          })}
-                                        </TableBody>
-                                      </Table>
+                                            </TableHeader>
+                                            <TableBody>
+                                              {pageCustomers.map((c, i) => {
+                                                const status =
+                                                  normalizeFulfillmentStatus(
+                                                    c.fulfillmentStatus,
+                                                  );
+                                                const customerRowCls =
+                                                  status === "unfulfilled"
+                                                    ? "bg-rose-50 dark:bg-rose-900/20"
+                                                    : status ===
+                                                          "fulfilled_with_returns" ||
+                                                        status ===
+                                                          "fulfilled_with_concerns"
+                                                      ? "bg-orange-50 dark:bg-orange-900/20"
+                                                      : "bg-emerald-50/40 dark:bg-emerald-900/10";
 
-                                      {usePagination && (
-                                        <div className="border-t px-3 py-2">
-                                          <div className="flex flex-wrap items-center justify-between gap-2">
-                                            <div className="flex items-center gap-2">
-                                              <span className="text-sm text-muted-foreground">
-                                                Items per page
-                                              </span>
-                                              <Select
-                                                value={String(expLimit)}
-                                                onValueChange={(v) =>
-                                                  changeExpandedLimit(
-                                                    dp,
-                                                    Number(v),
-                                                  )
-                                                }
-                                              >
-                                                <SelectTrigger className="w-20 h-8">
-                                                  <SelectValue />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                  <SelectGroup>
-                                                    {[5, 10, 20].map((n) => (
-                                                      <SelectItem
-                                                        key={n}
-                                                        value={String(n)}
-                                                      >
-                                                        {n}
-                                                      </SelectItem>
-                                                    ))}
-                                                  </SelectGroup>
-                                                </SelectContent>
-                                              </Select>
-                                            </div>
+                                                const badgeCls =
+                                                  status === "fulfilled"
+                                                    ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-100"
+                                                    : status ===
+                                                          "fulfilled_with_returns" ||
+                                                        status ===
+                                                          "fulfilled_with_concerns"
+                                                      ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-100"
+                                                      : "bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-100 uppercase";
 
-                                            <div className="text-sm text-muted-foreground">
-                                              Showing{" "}
-                                              {total === 0 ? 0 : startIdx + 1} -{" "}
-                                              {endIdx} of {total}
-                                            </div>
-
-                                            <div className="flex items-center gap-1">
-                                              <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() =>
-                                                  changeExpandedPage(
-                                                    dp,
-                                                    Math.max(1, expPage - 1),
-                                                  )
-                                                }
-                                                disabled={expPage <= 1}
-                                              >
-                                                Previous
-                                              </Button>
-                                              {getPaginationPages(
-                                                expPage,
-                                                totalPages,
-                                              ).map((p, idx) =>
-                                                p === "..." ? (
-                                                  <span
-                                                    key={`ellipsis-${idx}`}
-                                                    className="px-1 text-sm text-muted-foreground"
+                                                return (
+                                                  <TableRow
+                                                    key={`${dp}-${startIdx + i}`}
+                                                    className={`border-t ${customerRowCls}`}
                                                   >
-                                                    …
+                                                    <TableCell className="py-2">
+                                                      {c.visitSequence}
+                                                    </TableCell>
+                                                    <TableCell className="py-2">
+                                                      {c.customerName}
+                                                    </TableCell>
+                                                    <TableCell className="py-2">
+                                                      {[
+                                                        c.brgy,
+                                                        c.city,
+                                                        c.province,
+                                                      ]
+                                                        .filter(Boolean)
+                                                        .join(", ")}
+                                                    </TableCell>
+                                                    <TableCell className="py-2">
+                                                      <span
+                                                        className={`px-2 py-1 rounded-full text-xs font-semibold ${badgeCls}`}
+                                                      >
+                                                        {c.fulfillmentStatus}
+                                                      </span>
+                                                    </TableCell>
+                                                    <TableCell className="py-2">
+                                                      {formatCurrency(
+                                                        c.totalAmount,
+                                                      )}
+                                                    </TableCell>
+                                                  </TableRow>
+                                                );
+                                              })}
+                                            </TableBody>
+                                          </Table>
+
+                                          {usePagination && (
+                                            <div className="border-t px-3 py-2">
+                                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                                <div className="flex items-center gap-2">
+                                                  <span className="text-sm text-muted-foreground">
+                                                    Items per page
                                                   </span>
-                                                ) : (
-                                                  <Button
-                                                    key={p}
-                                                    variant={
-                                                      expPage === p
-                                                        ? "default"
-                                                        : "outline"
+                                                  <Select
+                                                    value={String(expLimit)}
+                                                    onValueChange={(v) =>
+                                                      changeExpandedLimit(
+                                                        dp,
+                                                        Number(v),
+                                                      )
                                                     }
+                                                  >
+                                                    <SelectTrigger className="w-20 h-8">
+                                                      <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                      <SelectGroup>
+                                                        {[5, 10, 20].map(
+                                                          (n) => (
+                                                            <SelectItem
+                                                              key={n}
+                                                              value={String(n)}
+                                                            >
+                                                              {n}
+                                                            </SelectItem>
+                                                          ),
+                                                        )}
+                                                      </SelectGroup>
+                                                    </SelectContent>
+                                                  </Select>
+                                                </div>
+
+                                                <div className="text-sm text-muted-foreground">
+                                                  Showing{" "}
+                                                  {total === 0
+                                                    ? 0
+                                                    : startIdx + 1}{" "}
+                                                  - {endIdx} of {total}
+                                                </div>
+
+                                                <div className="flex items-center gap-1">
+                                                  <Button
+                                                    variant="outline"
                                                     size="sm"
                                                     onClick={() =>
                                                       changeExpandedPage(
                                                         dp,
-                                                        p as number,
+                                                        Math.max(
+                                                          1,
+                                                          expPage - 1,
+                                                        ),
                                                       )
                                                     }
+                                                    disabled={expPage <= 1}
                                                   >
-                                                    {p}
+                                                    Previous
                                                   </Button>
-                                                ),
-                                              )}
-                                              <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() =>
-                                                  changeExpandedPage(
-                                                    dp,
-                                                    Math.min(
-                                                      totalPages,
-                                                      expPage + 1,
+                                                  {getPaginationPages(
+                                                    expPage,
+                                                    totalPages,
+                                                  ).map((p, idx) =>
+                                                    p === "..." ? (
+                                                      <span
+                                                        key={`ellipsis-${idx}`}
+                                                        className="px-1 text-sm text-muted-foreground"
+                                                      >
+                                                        …
+                                                      </span>
+                                                    ) : (
+                                                      <Button
+                                                        key={p}
+                                                        variant={
+                                                          expPage === p
+                                                            ? "default"
+                                                            : "outline"
+                                                        }
+                                                        size="sm"
+                                                        onClick={() =>
+                                                          changeExpandedPage(
+                                                            dp,
+                                                            p as number,
+                                                          )
+                                                        }
+                                                      >
+                                                        {p}
+                                                      </Button>
                                                     ),
-                                                  )
-                                                }
-                                                disabled={expPage >= totalPages}
-                                              >
-                                                Next
-                                              </Button>
+                                                  )}
+                                                  <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() =>
+                                                      changeExpandedPage(
+                                                        dp,
+                                                        Math.min(
+                                                          totalPages,
+                                                          expPage + 1,
+                                                        ),
+                                                      )
+                                                    }
+                                                    disabled={
+                                                      expPage >= totalPages
+                                                    }
+                                                  >
+                                                    Next
+                                                  </Button>
+                                                </div>
+                                              </div>
                                             </div>
-                                          </div>
-                                        </div>
-                                      )}
-                                    </>
-                                  );
-                                })()}
-                              </div>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </React.Fragment>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
-        </div>
+                                          )}
+                                        </>
+                                      );
+                                    })()}
+                                  </div>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
 
-        {/* Outer pagination */}
-        <div className="mt-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">
-              Items per page
-            </span>
-            <Select
-              value={String(limit)}
-              onValueChange={(v) => {
-                const n = Number(v);
-                changeLimit(n);
-              }}
-            >
-              <SelectTrigger className="w-20 h-8">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {[5, 10, 20, 30, 40, 50].map((n) => (
-                    <SelectItem key={n} value={String(n)}>
-                      {n}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="text-sm text-muted-foreground">
-            {(() => {
-              const localTotal = filteredGroups.length;
-              const sl = limit > 0 ? limit : 20;
-              const si = (page - 1) * sl;
-              const ei = Math.min(si + sl, localTotal);
-              return (
-                <span>
-                  Showing {localTotal === 0 ? 0 : si + 1} - {ei} of {localTotal}
+            {/* Outer pagination */}
+            <div className="mt-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">
+                  Items per page
                 </span>
-              );
-            })()}
-          </div>
-
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => changePage(Math.max(1, page - 1))}
-                disabled={page <= 1}
-              >
-                Previous
-              </Button>
-
-              {(() => {
-                const localTotal = filteredGroups.length;
-                const sl = limit > 0 ? limit : 20;
-                const totalPages = Math.max(1, Math.ceil(localTotal / sl));
-                return getPaginationPages(page, totalPages).map((p, idx) =>
-                  p === "..." ? (
-                    <span
-                      key={`ellipsis-${idx}`}
-                      className="px-1 text-sm text-muted-foreground"
-                    >
-                      …
+                <Select
+                  value={String(limit)}
+                  onValueChange={(v) => {
+                    const n = Number(v);
+                    changeLimit(n);
+                  }}
+                >
+                  <SelectTrigger className="w-20 h-8">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {[5, 10, 20, 30, 40, 50].map((n) => (
+                        <SelectItem key={n} value={String(n)}>
+                          {n}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="text-sm text-muted-foreground">
+                {(() => {
+                  const localTotal = filteredGroups.length;
+                  const sl = limit > 0 ? limit : 20;
+                  const si = (page - 1) * sl;
+                  const ei = Math.min(si + sl, localTotal);
+                  return (
+                    <span>
+                      Showing {localTotal === 0 ? 0 : si + 1} - {ei} of{" "}
+                      {localTotal}
                     </span>
-                  ) : (
-                    <Button
-                      key={p}
-                      variant={page === p ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => changePage(p as number)}
-                    >
-                      {p}
-                    </Button>
-                  ),
-                );
-              })()}
+                  );
+                })()}
+              </div>
 
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  changePage(
-                    Math.min(
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => changePage(Math.max(1, page - 1))}
+                    disabled={page <= 1}
+                  >
+                    Previous
+                  </Button>
+
+                  {(() => {
+                    const localTotal = filteredGroups.length;
+                    const sl = limit > 0 ? limit : 20;
+                    const totalPages = Math.max(1, Math.ceil(localTotal / sl));
+                    return getPaginationPages(page, totalPages).map((p, idx) =>
+                      p === "..." ? (
+                        <span
+                          key={`ellipsis-${idx}`}
+                          className="px-1 text-sm text-muted-foreground"
+                        >
+                          …
+                        </span>
+                      ) : (
+                        <Button
+                          key={p}
+                          variant={page === p ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => changePage(p as number)}
+                        >
+                          {p}
+                        </Button>
+                      ),
+                    );
+                  })()}
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      changePage(
+                        Math.min(
+                          Math.max(
+                            1,
+                            Math.ceil(
+                              filteredGroups.length / (limit > 0 ? limit : 20),
+                            ),
+                          ),
+                          page + 1,
+                        ),
+                      )
+                    }
+                    disabled={
+                      page >=
                       Math.max(
                         1,
                         Math.ceil(
                           filteredGroups.length / (limit > 0 ? limit : 20),
                         ),
-                      ),
-                      page + 1,
-                    ),
-                  )
-                }
-                disabled={
-                  page >=
-                  Math.max(
-                    1,
-                    Math.ceil(filteredGroups.length / (limit > 0 ? limit : 20)),
-                  )
-                }
-              >
-                Next
-              </Button>
+                      )
+                    }
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
+          </>
+        )}
       </CardContent>
     </Card>
   );

@@ -9,19 +9,18 @@ import {
 } from "@/components/ui/tooltip";
 import { CheckCircle, Clock, DollarSign } from "lucide-react";
 import { useDriverKPI } from "../hooks/useDriverKPI";
-import { calculateKPIs } from "../utils/calculations";
+import { calculateKPIs, isFulfilled } from "../utils/calculations";
 import { formatCurrency } from "../utils/formatters";
 import type { VisitRecord } from "../types";
 
 // ---------------------------------------------------------------------------
-// "Fulfilled With Returns" counts as fulfilled for the KPI rate
+// "Fulfilled With Returns" and "Fulfilled With Concerns" count as fulfilled
 // ---------------------------------------------------------------------------
-function computeFulfillmentRate(data: VisitRecord[] | null | undefined): number {
+function computeFulfillmentRate(
+  data: VisitRecord[] | null | undefined,
+): number {
   if (!data || data.length === 0) return 0;
-  const fulfilled = data.filter((r) => {
-    const s = String(r.fulfillmentStatus ?? "").toLowerCase().trim();
-    return s === "fulfilled" || s === "fulfilled with returns";
-  }).length;
+  const fulfilled = data.filter((r) => isFulfilled(r.fulfillmentStatus)).length;
   return Math.round((fulfilled / data.length) * 100);
 }
 
@@ -33,7 +32,7 @@ export default function KPICards() {
     totalFulfilledAmount,
   } = calculateKPIs(data);
 
-  // Override fulfillment rate so FWR is counted as fulfilled
+  // Override fulfillment rate so returns/concerns are counted as fulfilled
   const fulfillmentRate = computeFulfillmentRate(data);
 
   type KPI = {
@@ -68,9 +67,9 @@ export default function KPICards() {
       id: "fulfillmentRate",
       title: "Fulfillment Rate",
       value: `${fulfillmentRate}%`,
-      hint: "% Fulfilled Orders (incl. Fulfilled With Returns)",
+      hint: "% Fulfilled Orders (incl. Returns/Concerns)",
       description:
-        "Measures actual service performance: a missed delivery can cost revenue and credibility. Fulfilled With Returns counts as fulfilled.",
+        "Measures actual service performance: a missed delivery can cost revenue and credibility. Returns/Concerns count as fulfilled.",
       icon: <CheckCircle className="h-5 w-5 text-emerald-500" />,
     },
     {

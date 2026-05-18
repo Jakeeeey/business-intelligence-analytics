@@ -7,6 +7,7 @@ import type { VisitRecord } from "../types";
 export type FulfillmentStatus =
   | "fulfilled"
   | "fulfilled_with_returns"
+  | "fulfilled_with_concerns"
   | "unfulfilled";
 
 export type KPIResult = {
@@ -60,10 +61,10 @@ function round2(value: number): number {
   return Number(value.toFixed(2));
 }
 
-export function normalizeFulfillmentStatus(
-  raw: unknown,
-): FulfillmentStatus {
-  const value = String(raw ?? "").trim().toLowerCase();
+export function normalizeFulfillmentStatus(raw: unknown): FulfillmentStatus {
+  const value = String(raw ?? "")
+    .trim()
+    .toLowerCase();
 
   if (value === "fulfilled") return "fulfilled";
 
@@ -74,6 +75,13 @@ export function normalizeFulfillmentStatus(
     return "fulfilled_with_returns";
   }
 
+  if (
+    value === "fulfilled with concerns" ||
+    value === "fulfilled_with_concerns"
+  ) {
+    return "fulfilled_with_concerns";
+  }
+
   return "unfulfilled";
 }
 
@@ -82,7 +90,8 @@ export function isFulfilled(raw: unknown): boolean {
 
   return (
     status === "fulfilled" ||
-    status === "fulfilled_with_returns"
+    status === "fulfilled_with_returns" ||
+    status === "fulfilled_with_concerns"
   );
 }
 
@@ -90,9 +99,7 @@ export function isFulfilled(raw: unknown): boolean {
 /* KPI Summary                                                                */
 /* -------------------------------------------------------------------------- */
 
-export function calculateKPIs(
-  visits: VisitRecord[],
-): KPIResult {
+export function calculateKPIs(visits: VisitRecord[]): KPIResult {
   let fulfilled = 0;
   let dispatchVarianceTotal = 0;
   let arrivalVarianceTotal = 0;
@@ -103,9 +110,7 @@ export function calculateKPIs(
 
   for (const visit of visits) {
     const amount = toNumber(visit.totalAmount);
-    const fulfilledFlag = isFulfilled(
-      visit.fulfillmentStatus,
-    );
+    const fulfilledFlag = isFulfilled(visit.fulfillmentStatus);
 
     if (fulfilledFlag) {
       fulfilled++;
@@ -114,13 +119,9 @@ export function calculateKPIs(
       revenueAtRisk += amount;
     }
 
-    dispatchVarianceTotal += toNumber(
-      visit.dispatchVarianceHours,
-    );
+    dispatchVarianceTotal += toNumber(visit.dispatchVarianceHours);
 
-    arrivalVarianceTotal += toNumber(
-      visit.arrivalVarianceHours,
-    );
+    arrivalVarianceTotal += toNumber(visit.arrivalVarianceHours);
   }
 
   const unfulfilled = total - fulfilled;
@@ -129,16 +130,11 @@ export function calculateKPIs(
     total,
     fulfilled,
     unfulfilled,
-    fulfillmentRate:
-      total === 0 ? 0 : round2((fulfilled / total) * 100),
+    fulfillmentRate: total === 0 ? 0 : round2((fulfilled / total) * 100),
     avgDispatchVarianceHours:
-      total === 0
-        ? 0
-        : round2(dispatchVarianceTotal / total),
+      total === 0 ? 0 : round2(dispatchVarianceTotal / total),
     avgArrivalVarianceHours:
-      total === 0
-        ? 0
-        : round2(arrivalVarianceTotal / total),
+      total === 0 ? 0 : round2(arrivalVarianceTotal / total),
     totalFulfilledAmount: round2(totalFulfilledAmount),
     revenueAtRisk: round2(revenueAtRisk),
   };
@@ -148,15 +144,11 @@ export function calculateKPIs(
 /* Group By Dispatch                                                          */
 /* -------------------------------------------------------------------------- */
 
-export function groupByDispatch(
-  visits: VisitRecord[],
-): DispatchGroup[] {
+export function groupByDispatch(visits: VisitRecord[]): DispatchGroup[] {
   const map = new Map<string, VisitRecord[]>();
 
   for (const visit of visits) {
-    const key =
-      visit.dispatchDocumentNo ||
-      `DP-${visit.dispatchPlanId}`;
+    const key = visit.dispatchDocumentNo || `DP-${visit.dispatchPlanId}`;
 
     if (!map.has(key)) {
       map.set(key, []);
@@ -184,36 +176,25 @@ export function groupByDispatch(
     }
 
     const totalCustomers = list.length;
-    const unfulfilledCount =
-      totalCustomers - fulfilledCount;
+    const unfulfilledCount = totalCustomers - fulfilledCount;
 
     const first = list[0];
     const last = list[list.length - 1];
 
     result.push({
       dispatchDocumentNo,
-      dispatchPlanId:
-        first?.dispatchPlanId ?? null,
-      dispatchTime:
-        first?.timeOfDispatch ?? null,
-      arrivalTime:
-        last?.returnTimeOfArrival ?? null,
+      dispatchPlanId: first?.dispatchPlanId ?? null,
+      dispatchTime: first?.timeOfDispatch ?? null,
+      arrivalTime: last?.returnTimeOfArrival ?? null,
       totalCustomers,
       fulfilledCount,
       unfulfilledCount,
       fulfillmentPercent:
         totalCustomers === 0
           ? 0
-          : round2(
-              (fulfilledCount / totalCustomers) *
-                100,
-            ),
-      fulfilledAmount: round2(
-        fulfilledAmount,
-      ),
-      unfulfilledAmount: round2(
-        unfulfilledAmount,
-      ),
+          : round2((fulfilledCount / totalCustomers) * 100),
+      fulfilledAmount: round2(fulfilledAmount),
+      unfulfilledAmount: round2(unfulfilledAmount),
       truck: first?.truckPlateNo ?? "",
       customers: list,
     });
@@ -226,15 +207,11 @@ export function groupByDispatch(
 /* Group By Truck                                                             */
 /* -------------------------------------------------------------------------- */
 
-export function groupByTruck(
-  visits: VisitRecord[],
-): TruckGroup[] {
+export function groupByTruck(visits: VisitRecord[]): TruckGroup[] {
   const map = new Map<string, VisitRecord[]>();
 
   for (const visit of visits) {
-    const key =
-      visit.truckPlateNo ||
-      String(visit.truckId ?? "");
+    const key = visit.truckPlateNo || String(visit.truckId ?? "");
 
     if (!map.has(key)) {
       map.set(key, []);
@@ -249,9 +226,7 @@ export function groupByTruck(
     let durationHours = 0;
 
     for (const row of list) {
-      durationHours += toNumber(
-        row.actualTripDurationHours,
-      );
+      durationHours += toNumber(row.actualTripDurationHours);
     }
 
     const first = list[0];
@@ -262,12 +237,9 @@ export function groupByTruck(
       truckName: first?.truckName ?? "",
       plateNo: first?.truckPlateNo ?? "",
       truckType: first?.truckType ?? "",
-      dispatchNo:
-        first?.dispatchDocumentNo ?? "",
-      dispatchTime:
-        first?.timeOfDispatch ?? null,
-      arrivalTime:
-        last?.returnTimeOfArrival ?? null,
+      dispatchNo: first?.dispatchDocumentNo ?? "",
+      dispatchTime: first?.timeOfDispatch ?? null,
+      arrivalTime: last?.returnTimeOfArrival ?? null,
       durationHours: round2(durationHours),
       visits: list,
     });

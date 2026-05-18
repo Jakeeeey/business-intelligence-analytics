@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
@@ -34,7 +33,12 @@ export default function TruckHistoryTable() {
   useEffect(() => {
     const id = window.setTimeout(() => setPage(1), 0);
     return () => window.clearTimeout(id);
-  }, [filters.startDate, filters.endDate, driverNamesKey, filters.searchCustomer]);
+  }, [
+    filters.startDate,
+    filters.endDate,
+    driverNamesKey,
+    filters.searchCustomer,
+  ]);
 
   // Use dispatch-level rows: every dispatch record matters (no dedup by truck)
   const dispatches = groupByDispatch(data || []);
@@ -93,12 +97,26 @@ export default function TruckHistoryTable() {
           vb = b.arrivalTime ?? null;
           break;
         case "duration": {
-          const dispatchTimeA = a.dispatchTime ? new Date(a.dispatchTime) : null;
+          const dispatchTimeA = a.dispatchTime
+            ? new Date(a.dispatchTime)
+            : null;
           const arrivalTimeA = a.arrivalTime ? new Date(a.arrivalTime) : null;
-          const dispatchTimeB = b.dispatchTime ? new Date(b.dispatchTime) : null;
+          const dispatchTimeB = b.dispatchTime
+            ? new Date(b.dispatchTime)
+            : null;
           const arrivalTimeB = b.arrivalTime ? new Date(b.arrivalTime) : null;
-          va = dispatchTimeA && arrivalTimeA ? Math.round((arrivalTimeA.getTime() - dispatchTimeA.getTime()) / 60000) : null;
-          vb = dispatchTimeB && arrivalTimeB ? Math.round((arrivalTimeB.getTime() - dispatchTimeB.getTime()) / 60000) : null;
+          va =
+            dispatchTimeA && arrivalTimeA
+              ? Math.round(
+                  (arrivalTimeA.getTime() - dispatchTimeA.getTime()) / 60000,
+                )
+              : null;
+          vb =
+            dispatchTimeB && arrivalTimeB
+              ? Math.round(
+                  (arrivalTimeB.getTime() - dispatchTimeB.getTime()) / 60000,
+                )
+              : null;
           break;
         }
         default:
@@ -120,8 +138,8 @@ export default function TruckHistoryTable() {
       }
 
       if (sortKey === "duration") {
-        const na = Number(va as number ?? 0);
-        const nb = Number(vb as number ?? 0);
+        const na = Number((va as number) ?? 0);
+        const nb = Number((vb as number) ?? 0);
         return sortDir === "asc" ? na - nb : nb - na;
       }
 
@@ -151,217 +169,335 @@ export default function TruckHistoryTable() {
           </div>
 
           <div className="flex items-center ">
-            {/* <div className="w-80">
-              <input
+            <div className="w-80">
+              {/* <input
                   placeholder="Search DP No, customer, address, truck..."
                   value={localSearch}
                   onChange={(e) => setLocalSearch(e.target.value)}
                   className="h-9 w-full rounded-md border px-3 text-sm"
-                />
-            </div> */}
+                /> */}
+            </div>
             <div className="text-sm text-muted-foreground">
               {/* {total} records */}
             </div>
           </div>
         </div>
-        <div className="overflow-x-auto mt-3">
-          <div className="bg-background rounded-md border border-border/50 overflow-hidden">
-            <Table>
-              <TableHeader className="sticky top-0 z-10 bg-card shadow-sm ring-1 ring-border">
-                <TableRow className="bg-card">
-                  <TableHead className="w-20">No.</TableHead>
-                  <TableHead className="w-35">
-                    <button type="button" className="inline-flex items-center gap-1" onClick={() => toggleSort("truckName")}>Truck Name{sortKey === "truckName" && (sortDir === "asc" ? <ChevronUpIcon className="size-4" /> : <ChevronDownIcon className="size-4" />)}</button>
-                  </TableHead>
-                  <TableHead className="w-35">
-                    <button type="button" className="inline-flex items-center gap-1" onClick={() => toggleSort("plateNo")}>Plate No.{sortKey === "plateNo" && (sortDir === "asc" ? <ChevronUpIcon className="size-4" /> : <ChevronDownIcon className="size-4" />)}</button>
-                  </TableHead>
-                  <TableHead className="w-35">
-                    <button type="button" className="inline-flex items-center gap-1" onClick={() => toggleSort("type")}>Type{sortKey === "type" && (sortDir === "asc" ? <ChevronUpIcon className="size-4" /> : <ChevronDownIcon className="size-4" />)}</button>
-                  </TableHead>
-                  <TableHead className="w-35">
-                    <button type="button" className="inline-flex items-center gap-1" onClick={() => toggleSort("dispatchNo")}>Dispatch No{sortKey === "dispatchNo" && (sortDir === "asc" ? <ChevronUpIcon className="size-4" /> : <ChevronDownIcon className="size-4" />)}</button>
-                  </TableHead>
-                  <TableHead className="w-35">
-                    <button type="button" className="inline-flex items-center gap-1" onClick={() => toggleSort("dispatchTime")}>Dispatch Time{sortKey === "dispatchTime" && (sortDir === "asc" ? <ChevronUpIcon className="size-4" /> : <ChevronDownIcon className="size-4" />)}</button>
-                  </TableHead>
-                  <TableHead className="w-35">
-                    <button type="button" className="inline-flex items-center gap-1" onClick={() => toggleSort("arrivalTime")}>Arrival Time{sortKey === "arrivalTime" && (sortDir === "asc" ? <ChevronUpIcon className="size-4" /> : <ChevronDownIcon className="size-4" />)}</button>
-                  </TableHead>
-                  <TableHead className="w-35">
-                    <button type="button" className="inline-flex items-center gap-1" onClick={() => toggleSort("duration")}>Duration{sortKey === "duration" && (sortDir === "asc" ? <ChevronUpIcon className="size-4" /> : <ChevronDownIcon className="size-4" />)}</button>
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {(() => {
-                  const safeLimit = limit > 0 ? limit : 20;
-                  const startIndex = (page - 1) * safeLimit;
-                  const endIndex = startIndex + safeLimit;
-                  const pageRows = sortedDispatches.slice(startIndex, endIndex);
-
-                  return pageRows.map((d, i) => {
-                    const first = d.customers?.[0];
-                    const dispatchTime = d.dispatchTime
-                      ? new Date(d.dispatchTime)
-                      : null;
-                    const arrivalTime = d.arrivalTime
-                      ? new Date(d.arrivalTime)
-                      : null;
-
-                    let durationMinutes: number | null = null;
-                    if (dispatchTime && arrivalTime) {
-                      const ms = arrivalTime.getTime() - dispatchTime.getTime();
-                      if (ms > 0) durationMinutes = Math.round(ms / 60000);
-                    }
-
-                    const isLong =
-                      durationMinutes !== null &&
-                      durationMinutes / 60 > OUTLIER_HOURS;
-
-                    return (
-                      <TableRow
-                        key={`${d.dispatchDocumentNo}-${startIndex + i}`}
-                        className={`border-t ${isLong ? "bg-amber-50/50 dark:bg-amber-950/20" : ""}`}
-                      >
-                        <TableCell>{startIndex + i + 1}</TableCell>
-                        <TableCell>{first?.truckName ?? "-"}</TableCell>
-                        <TableCell className="font-mono">
-                          {first?.truckPlateNo ?? d.truck ?? "-"}
-                        </TableCell>
-                        <TableCell>{first?.truckType ?? "-"}</TableCell>
-                        <TableCell>{d.dispatchDocumentNo}</TableCell>
-                        <TableCell>
-                          {dispatchTime
-                            ? formatDateTime(dispatchTime.toISOString())
-                            : "-"}
-                        </TableCell>
-                        <TableCell>
-                          {arrivalTime ? (
-                            formatDateTime(arrivalTime.toISOString())
-                          ) : (
-                            <span className="text-muted-foreground">
-                              In Progress
-                            </span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono">
-                              {durationMinutes !== null
-                                ? formatDurationFromMinutes(durationMinutes)
-                                : "-"}
-                            </span>
-                            {isLong && (
-                              <span className="text-xs font-bold px-2 py-0.5 bg-amber-100 text-amber-800 rounded">
-                                Long
-                              </span>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  });
-                })()}
-              </TableBody>
-            </Table>
+        {dispatches.length === 0 ? (
+          <div className="rounded-md border p-6 text-center">
+            <div className="text-lg font-semibold mb-2">
+              No data to display
+            </div>
+            <div className="text-sm text-muted-foreground">
+              Please select other driver or date range
+            </div>
           </div>
-        </div>
+        ) : (
+          <>
+            <div className="overflow-x-auto mt-3">
+              <div className="bg-background rounded-md border border-border/50 overflow-hidden">
+                <Table>
+                  <TableHeader className="sticky top-0 z-10 bg-card shadow-sm ring-1 ring-border">
+                    <TableRow className="bg-card">
+                      <TableHead className="w-20">No.</TableHead>
+                      <TableHead className="w-35">
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-1"
+                          onClick={() => toggleSort("truckName")}
+                        >
+                          Truck Name
+                          {sortKey === "truckName" &&
+                            (sortDir === "asc" ? (
+                              <ChevronUpIcon className="size-4" />
+                            ) : (
+                              <ChevronDownIcon className="size-4" />
+                            ))}
+                        </button>
+                      </TableHead>
+                      <TableHead className="w-35">
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-1"
+                          onClick={() => toggleSort("plateNo")}
+                        >
+                          Plate No.
+                          {sortKey === "plateNo" &&
+                            (sortDir === "asc" ? (
+                              <ChevronUpIcon className="size-4" />
+                            ) : (
+                              <ChevronDownIcon className="size-4" />
+                            ))}
+                        </button>
+                      </TableHead>
+                      <TableHead className="w-35">
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-1"
+                          onClick={() => toggleSort("type")}
+                        >
+                          Type
+                          {sortKey === "type" &&
+                            (sortDir === "asc" ? (
+                              <ChevronUpIcon className="size-4" />
+                            ) : (
+                              <ChevronDownIcon className="size-4" />
+                            ))}
+                        </button>
+                      </TableHead>
+                      <TableHead className="w-35">
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-1"
+                          onClick={() => toggleSort("dispatchNo")}
+                        >
+                          Dispatch No
+                          {sortKey === "dispatchNo" &&
+                            (sortDir === "asc" ? (
+                              <ChevronUpIcon className="size-4" />
+                            ) : (
+                              <ChevronDownIcon className="size-4" />
+                            ))}
+                        </button>
+                      </TableHead>
+                      <TableHead className="w-35">
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-1"
+                          onClick={() => toggleSort("dispatchTime")}
+                        >
+                          Dispatch Time
+                          {sortKey === "dispatchTime" &&
+                            (sortDir === "asc" ? (
+                              <ChevronUpIcon className="size-4" />
+                            ) : (
+                              <ChevronDownIcon className="size-4" />
+                            ))}
+                        </button>
+                      </TableHead>
+                      <TableHead className="w-35">
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-1"
+                          onClick={() => toggleSort("arrivalTime")}
+                        >
+                          Arrival Time
+                          {sortKey === "arrivalTime" &&
+                            (sortDir === "asc" ? (
+                              <ChevronUpIcon className="size-4" />
+                            ) : (
+                              <ChevronDownIcon className="size-4" />
+                            ))}
+                        </button>
+                      </TableHead>
+                      <TableHead className="w-35">
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-1"
+                          onClick={() => toggleSort("duration")}
+                        >
+                          Duration
+                          {sortKey === "duration" &&
+                            (sortDir === "asc" ? (
+                              <ChevronUpIcon className="size-4" />
+                            ) : (
+                              <ChevronDownIcon className="size-4" />
+                            ))}
+                        </button>
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {(() => {
+                      const safeLimit = limit > 0 ? limit : 20;
+                      const startIndex = (page - 1) * safeLimit;
+                      const endIndex = startIndex + safeLimit;
+                      const pageRows = sortedDispatches.slice(
+                        startIndex,
+                        endIndex,
+                      );
+
+                      return pageRows.map((d, i) => {
+                        const first = d.customers?.[0];
+                        const dispatchTime = d.dispatchTime
+                          ? new Date(d.dispatchTime)
+                          : null;
+                        const arrivalTime = d.arrivalTime
+                          ? new Date(d.arrivalTime)
+                          : null;
+
+                        let durationMinutes: number | null = null;
+                        if (dispatchTime && arrivalTime) {
+                          const ms =
+                            arrivalTime.getTime() - dispatchTime.getTime();
+                          if (ms > 0) durationMinutes = Math.round(ms / 60000);
+                        }
+
+                        const isLong =
+                          durationMinutes !== null &&
+                          durationMinutes / 60 > OUTLIER_HOURS;
+
+                        return (
+                          <TableRow
+                            key={`${d.dispatchDocumentNo}-${startIndex + i}`}
+                            className={`border-t ${isLong ? "bg-amber-50/50 dark:bg-amber-950/20" : ""}`}
+                          >
+                            <TableCell>{startIndex + i + 1}</TableCell>
+                            <TableCell>{first?.truckName ?? "-"}</TableCell>
+                            <TableCell className="font-mono">
+                              {first?.truckPlateNo ?? d.truck ?? "-"}
+                            </TableCell>
+                            <TableCell>{first?.truckType ?? "-"}</TableCell>
+                            <TableCell>{d.dispatchDocumentNo}</TableCell>
+                            <TableCell>
+                              {dispatchTime
+                                ? formatDateTime(dispatchTime.toISOString())
+                                : "-"}
+                            </TableCell>
+                            <TableCell>
+                              {arrivalTime ? (
+                                formatDateTime(arrivalTime.toISOString())
+                              ) : (
+                                <span className="text-muted-foreground">
+                                  In Progress
+                                </span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono">
+                                  {durationMinutes !== null
+                                    ? formatDurationFromMinutes(durationMinutes)
+                                    : "-"}
+                                </span>
+                                {isLong && (
+                                  <span className="text-xs font-bold px-2 py-0.5 bg-amber-100 text-amber-800 rounded">
+                                    Long
+                                  </span>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      });
+                    })()}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          </>
+        )}
       </CardContent>
-      {/* pagination */}
-      <div className="p-4 pt-0 flex items-center justify-between">
-        {(() => {
-          const sorted = dispatches.slice().sort((a, b) => {
-            const ta = a.dispatchTime ? new Date(a.dispatchTime).getTime() : 0;
-            const tb = b.dispatchTime ? new Date(b.dispatchTime).getTime() : 0;
-            return tb - ta;
-          });
-          const localTotal = sorted.length;
-          const safeLimit = limit > 0 ? limit : 20;
-          const totalPages = Math.max(1, Math.ceil(localTotal / safeLimit));
-          const startIndex = (page - 1) * safeLimit;
-          const endIndex = Math.min(startIndex + safeLimit, localTotal);
+      {dispatches.length === 0 ? (
+        <div >
+ 
+        </div>
+      ) : (
+        <>
+          {/* pagination */}
+          <div className="p-4 pt-0 flex items-center justify-between">
+            {(() => {
+              const sorted = dispatches.slice().sort((a, b) => {
+                const ta = a.dispatchTime
+                  ? new Date(a.dispatchTime).getTime()
+                  : 0;
+                const tb = b.dispatchTime
+                  ? new Date(b.dispatchTime).getTime()
+                  : 0;
+                return tb - ta;
+              });
+              const localTotal = sorted.length;
+              const safeLimit = limit > 0 ? limit : 20;
+              const totalPages = Math.max(1, Math.ceil(localTotal / safeLimit));
+              const startIndex = (page - 1) * safeLimit;
+              const endIndex = Math.min(startIndex + safeLimit, localTotal);
 
-          return (
-            <>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">
-                  Items per page
-                </span>
-                <Select
-                  value={String(limit)}
-                  onValueChange={(v) => {
-                    const n = Number(v);
-                    setLimit(n);
-                    setPage(1);
-                  }}
-                >
-                  <SelectTrigger className="w-20 h-8">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      {[5, 10, 20, 30, 40, 50].map((n) => (
-                        <SelectItem key={n} value={String(n)}>
-                          {n}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="text-sm text-muted-foreground">
-                Showing {localTotal === 0 ? 0 : startIndex + 1} - {endIndex} of{" "}
-                {localTotal}
-              </div>
+              return (
+                <>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">
+                      Items per page
+                    </span>
+                    <Select
+                      value={String(limit)}
+                      onValueChange={(v) => {
+                        const n = Number(v);
+                        setLimit(n);
+                        setPage(1);
+                      }}
+                    >
+                      <SelectTrigger className="w-20 h-8">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          {[5, 10, 20, 30, 40, 50].map((n) => (
+                            <SelectItem key={n} value={String(n)}>
+                              {n}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Showing {localTotal === 0 ? 0 : startIndex + 1} - {endIndex}{" "}
+                    of {localTotal}
+                  </div>
 
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPage(Math.max(1, page - 1))}
-                    disabled={page <= 1}
-                  >
-                    Previous
-                  </Button>
-
-                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                    let pageNum: number;
-                    if (totalPages <= 5) pageNum = i + 1;
-                    else if (page <= 3) pageNum = i + 1;
-                    else if (page >= totalPages - 2)
-                      pageNum = totalPages - 4 + i;
-                    else pageNum = page - 2 + i;
-
-                    return (
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
                       <Button
-                        key={pageNum}
-                        variant={page === pageNum ? "default" : "outline"}
+                        variant="outline"
                         size="sm"
-                        onClick={() => setPage(pageNum)}
+                        onClick={() => setPage(Math.max(1, page - 1))}
+                        disabled={page <= 1}
                       >
-                        {pageNum}
+                        Previous
                       </Button>
-                    );
-                  })}
 
-                  {totalPages > 5 && <span className="px-1 text-sm">...</span>}
+                      {Array.from(
+                        { length: Math.min(5, totalPages) },
+                        (_, i) => {
+                          let pageNum: number;
+                          if (totalPages <= 5) pageNum = i + 1;
+                          else if (page <= 3) pageNum = i + 1;
+                          else if (page >= totalPages - 2)
+                            pageNum = totalPages - 4 + i;
+                          else pageNum = page - 2 + i;
 
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPage(Math.min(totalPages, page + 1))}
-                    disabled={page >= totalPages}
-                  >
-                    Next
-                  </Button>
-                </div>
-              </div>
-            </>
-          );
-        })()}
-      </div>
+                          return (
+                            <Button
+                              key={pageNum}
+                              variant={page === pageNum ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => setPage(pageNum)}
+                            >
+                              {pageNum}
+                            </Button>
+                          );
+                        },
+                      )}
+
+                      {totalPages > 5 && (
+                        <span className="px-1 text-sm">...</span>
+                      )}
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPage(Math.min(totalPages, page + 1))}
+                        disabled={page >= totalPages}
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        </>
+      )}
     </Card>
   );
 }
