@@ -153,11 +153,11 @@ export default function Charts({
     if (!records || records.length === 0)
       return [] as { name: string; value: number }[];
 
-    // Deduplicate by docNo
-    const uniqueByDoc = new Map<string, DisbursementRecord>();
+    const uniqueByDoc = new Map<number, DisbursementRecord>();
     for (const r of records) {
-      const key = r.docNo || String(r.disbursementId);
-      if (!uniqueByDoc.has(key)) uniqueByDoc.set(key, r);
+      if (!uniqueByDoc.has(r.disbursementId)) {
+        uniqueByDoc.set(r.disbursementId, r);
+      }
     }
     const dedupedRecords = Array.from(uniqueByDoc.values());
 

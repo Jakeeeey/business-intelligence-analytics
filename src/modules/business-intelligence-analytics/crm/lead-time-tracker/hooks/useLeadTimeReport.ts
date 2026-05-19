@@ -51,12 +51,35 @@ export const getDateRangeFromPreset = (
   customFrom: string,
   customTo: string,
 ): { from: string; to: string } => {
+  
   const now = new Date();
+  const DAY_MS = 24 * 60 * 60 * 1000;
+
+  const addDays = (base: Date, days: number) =>
+    new Date(base.getTime() + days * DAY_MS);
+
+  const getWeekBounds = (base: Date) => {
+    const start = new Date(base);
+    start.setDate(base.getDate() - base.getDay());
+    const end = addDays(start, 6);
+    return { start, end };
+  };
+
+  const getQuarterBounds = (year: number, quarterIndex: number) => {
+    const startMonth = quarterIndex * 3;
+    const start = new Date(year, startMonth, 1);
+    const end = new Date(year, startMonth + 3, 0);
+    return { start, end };
+  };
 
   switch (preset) {
+    case "day-before-yesterday": {
+      const d = addDays(now, -2);
+      const dateStr = fmtLocalDate(d);
+      return { from: dateStr, to: dateStr };
+    }
     case "yesterday": {
-      const yesterday = new Date(now);
-      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterday = addDays(now, -1);
       const dateStr = fmtLocalDate(yesterday);
       return { from: dateStr, to: dateStr };
     }
@@ -65,20 +88,80 @@ export const getDateRangeFromPreset = (
       return { from: dateStr, to: dateStr };
     }
     case "this-week": {
-      const weekStart = new Date(now);
-      weekStart.setDate(now.getDate() - now.getDay());
-      const weekEnd = new Date(weekStart);
-      weekEnd.setDate(weekStart.getDate() + 6);
+      const { start: weekStart, end: weekEnd } = getWeekBounds(now);
       return { from: fmtLocalDate(weekStart), to: fmtLocalDate(weekEnd) };
+    }
+    case "last-week": {
+      const { start: thisWeekStart } = getWeekBounds(now);
+      const lastWeekStart = addDays(thisWeekStart, -7);
+      const lastWeekEnd = addDays(lastWeekStart, 6);
+      return {
+        from: fmtLocalDate(lastWeekStart),
+        to: fmtLocalDate(lastWeekEnd),
+      };
+    }
+    case "last-7-days": {
+      const start = addDays(now, -6);
+      return { from: fmtLocalDate(start), to: fmtLocalDate(now) };
+    }
+    case "last-2-weeks": {
+      const start = addDays(now, -13);
+      return { from: fmtLocalDate(start), to: fmtLocalDate(now) };
     }
     case "this-month": {
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
       const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
       return { from: fmtLocalDate(monthStart), to: fmtLocalDate(monthEnd) };
     }
+    case "last-month": {
+      const monthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const monthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+      return { from: fmtLocalDate(monthStart), to: fmtLocalDate(monthEnd) };
+    }
+    case "last-30-days": {
+      const start = addDays(now, -29);
+      return { from: fmtLocalDate(start), to: fmtLocalDate(now) };
+    }
+    case "last-2-months": {
+      const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      return { from: fmtLocalDate(start), to: fmtLocalDate(end) };
+    }
+    case "this-quarter": {
+      const quarterIndex = Math.floor(now.getMonth() / 3);
+      const { start, end } = getQuarterBounds(now.getFullYear(), quarterIndex);
+      return { from: fmtLocalDate(start), to: fmtLocalDate(end) };
+    }
+    case "last-quarter": {
+      const quarterIndex = Math.floor(now.getMonth() / 3);
+      const lastQuarterIndex = quarterIndex - 1;
+      if (lastQuarterIndex >= 0) {
+        const { start, end } = getQuarterBounds(
+          now.getFullYear(),
+          lastQuarterIndex,
+        );
+        return { from: fmtLocalDate(start), to: fmtLocalDate(end) };
+      }
+
+      const { start, end } = getQuarterBounds(now.getFullYear() - 1, 3);
+      return { from: fmtLocalDate(start), to: fmtLocalDate(end) };
+    }
+    case "last-3-months": {
+      const start = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+      return { from: fmtLocalDate(start), to: fmtLocalDate(now) };
+    }
+    case "last-2-quarters": {
+      const start = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+      return { from: fmtLocalDate(start), to: fmtLocalDate(now) };
+    }
     case "this-year": {
       const yearStart = new Date(now.getFullYear(), 0, 1);
       const yearEnd = new Date(now.getFullYear(), 11, 31);
+      return { from: fmtLocalDate(yearStart), to: fmtLocalDate(yearEnd) };
+    }
+    case "last-year": {
+      const yearStart = new Date(now.getFullYear() - 1, 0, 1);
+      const yearEnd = new Date(now.getFullYear() - 1, 11, 31);
       return { from: fmtLocalDate(yearStart), to: fmtLocalDate(yearEnd) };
     }
     case "custom":

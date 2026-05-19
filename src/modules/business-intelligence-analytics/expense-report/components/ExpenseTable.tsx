@@ -65,9 +65,49 @@ const getUniquePaidAmount = (records: DisbursementSummary[]): number => {
   return Array.from(docNoMap.values()).reduce((sum, val) => sum + val, 0);
 };
 
-// Helper function to get total amount sum from records
+// Helper function to get total amount sum from records (line amount source of truth)
+const getRecordLineTotal = (record: DisbursementSummary): number => {
+  if (typeof record.coaLineTotal === "number") return record.coaLineTotal;
+  if (Array.isArray(record.lines)) {
+    return record.lines.reduce((sum, ln) => sum + (ln.lineAmount || 0), 0);
+  }
+  return typeof record.totalAmount === "number" ? record.totalAmount : 0;
+};
+
+// Helper for header-level total (per-doc display)
+const getRecordHeaderTotal = (record: DisbursementSummary): number => {
+  if (typeof record.totalAmountHeader === "number")
+    return record.totalAmountHeader;
+  if (typeof record.totalAmount === "number") return record.totalAmount;
+  return 0;
+};
+
+// Helper for header-level paid amount (per-doc display)
+const getRecordPaidAmount = (record: DisbursementSummary): number => {
+  if (typeof record.paidAmountHeader === "number")
+    return record.paidAmountHeader;
+  if (typeof record.paidAmount === "number") return record.paidAmount;
+  return 0;
+};
+
 const getTotalAmount = (records: DisbursementSummary[]): number => {
-  return records.reduce((sum, r) => sum + r.totalAmount, 0);
+  // Deduplicate before summing total amounts to avoid double counting across lines
+  const uniqueDocs = new Map<number, DisbursementSummary>();
+  records.forEach((record) => {
+    if (!uniqueDocs.has(record.disbursementId)) {
+      uniqueDocs.set(record.disbursementId, record);
+    }
+  });
+  return Array.from(uniqueDocs.values()).reduce(
+    (sum, d) => sum + (d.totalAmountHeader || d.totalAmount || 0),
+    0,
+  );
+};
+
+const getRecordBalance = (record: DisbursementSummary): number => {
+  const headerTotal = getRecordHeaderTotal(record);
+  const paidAmount = getRecordPaidAmount(record);
+  return headerTotal - paidAmount;
 };
 
 export default function ExpenseTable({ data }: ExpenseTableProps) {
@@ -146,7 +186,7 @@ export default function ExpenseTable({ data }: ExpenseTableProps) {
 
         return {
           coaTitle: divisionName,
-          total: getTotalAmount(uniqueDocArray), // Sum only unique documents
+          total: getTotalAmount(records), // Sum all line totals for the division
           recordCount: uniqueDocArray.length, // Store unique document count
           records,
         };
@@ -207,10 +247,7 @@ export default function ExpenseTable({ data }: ExpenseTableProps) {
       // Filter to only show documents with outstanding balance when enabled
       if (showDocsWithBalanceOnly) {
         filtered = filtered.filter((r) => {
-          const balance =
-            typeof r.balance === "number"
-              ? r.balance
-              : r.totalAmount - (r.paidAmount ?? 0);
+          const balance = getRecordBalance(r);
           // Round to 2 decimal places to avoid floating-point precision issues
           const rounded = Math.round(balance * 100) / 100;
           return rounded > 0;
@@ -227,8 +264,8 @@ export default function ExpenseTable({ data }: ExpenseTableProps) {
         const bVal = b[usedSortKey];
 
         if (usedSortKey === "totalAmount") {
-          const aNum = typeof aVal === "number" ? aVal : 0;
-          const bNum = typeof bVal === "number" ? bVal : 0;
+          const aNum = getRecordHeaderTotal(a);
+          const bNum = getRecordHeaderTotal(b);
           return usedSortDir === "asc" ? aNum - bNum : bNum - aNum;
         }
 
@@ -250,11 +287,6 @@ export default function ExpenseTable({ data }: ExpenseTableProps) {
     // for recalculating group totals to avoid double-counting.
     if (showDocsWithBalanceOnly) {
       const seen = new Set<number>();
-
-      const getRecordLineTotal = (r: DisbursementSummary) =>
-        typeof r.coaLineTotal === "number"
-          ? r.coaLineTotal
-          : (r.lines || []).reduce((s, ln) => s + (ln.lineAmount || 0), 0);
 
       const deduped = mapped
         .map((g) => {
@@ -308,22 +340,12 @@ export default function ExpenseTable({ data }: ExpenseTableProps) {
     (sum, record) => {
       if (showDocsWithBalanceOnly) {
         // When filtering by balance, show the sum of outstanding balances (header-level)
-        const bal =
-          typeof record.balance === "number"
-            ? record.balance
-            : (record.totalAmount || 0) - (record.paidAmount || 0);
+        const bal = getRecordBalance(record);
         return sum + Math.max(0, bal);
       }
 
-      // Otherwise show total header amounts across unique documents
-      const headerTotal =
-        typeof record.totalAmountHeader === "number"
-          ? record.totalAmountHeader
-          : record.lines?.[0]?.totalAmount;
-      return (
-        sum +
-        (typeof headerTotal === "number" ? headerTotal : record.totalAmount)
-      );
+      // Otherwise show header-level totals across unique documents
+      return sum + getRecordHeaderTotal(record);
     },
     0,
   );
@@ -492,12 +514,10 @@ export default function ExpenseTable({ data }: ExpenseTableProps) {
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center gap-2">
               <Select
-              
                 value={groupBy}
                 onValueChange={(v) => setGroupBy(v as GroupBy)}
               >
                 <SelectTrigger className="border" size="sm">
-              
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -509,7 +529,13 @@ export default function ExpenseTable({ data }: ExpenseTableProps) {
 
             <Toggle
               // variant="outline"
-              className="border bg-background"
+              className={`border bg-background px-3
+              ${
+                showDocsWithBalanceOnly
+                  ? " border  bg-gray-300 shadow-sm"
+                  : "border"
+              }
+                `}
               size="sm"
               pressed={showDocsWithBalanceOnly}
               onPressedChange={(pressed: boolean) => {
@@ -552,28 +578,18 @@ export default function ExpenseTable({ data }: ExpenseTableProps) {
         {/* Table */}
         <div className="rounded-md border">
           <div className="overflow-x-auto">
-            <Table className="table-fixed px-2 py-4 w-full">
-              <TableHeader className="  w-full">
-                <TableRow>
-                  <TableHead className="w-10"></TableHead>
-                  <TableHead className="w-30">{/* Doc No */}</TableHead>
-                  <TableHead className="w-30" title="Disbursement Date Created">
-                    {/* Expense Date */}
-                  </TableHead>
-                  <TableHead className="w-60">{/* Payee */}</TableHead>
-                  <TableHead className="w-50">{/* Division */}</TableHead>
-                  <TableHead className="text-right w-30">
-                    {/* Amount */}
-                  </TableHead>
-                  <TableHead className="text-right w-30">
-                    {/* Paid */}
-                  </TableHead>
-                  <TableHead className="text-right w-30">
-                    {/* Balance */}
-                  </TableHead>
-                  <TableHead className="w-100">{/* Remark */}</TableHead>
-                </TableRow>
-              </TableHeader>
+            <Table className="table-fixed px-2 w-full">
+              <colgroup>
+                <col className="w-10" />
+                <col className="w-30" />
+                <col className="w-30" />
+                <col className="w-60" />
+                <col className="w-50" />
+                <col className="w-30" />
+                <col className="w-30" />
+                <col className="w-30" />
+                <col className="w-60" />
+              </colgroup>
               <TableBody>
                 {processedData.length === 0 ? (
                   <TableRow>
@@ -589,20 +605,12 @@ export default function ExpenseTable({ data }: ExpenseTableProps) {
                       const pagination = getGroupPagination(group.coaTitle);
 
                       // Group subtotal respects the "With Balance" toggle.
-                      // When enabled, compute COA/line-based subtotals (sum of line amounts
-                      // for the group's records) to avoid double-counting header totals across
-                      // COA slices. Otherwise fall back to the precomputed group total.
+                      // When enabled, sum the visible document balances for this group.
+                      // Otherwise fall back to the precomputed group total.
                       const groupSubtotal = (() => {
                         if (showDocsWithBalanceOnly) {
                           return group.records.reduce((sum, r) => {
-                            const lineTotal =
-                              typeof r.coaLineTotal === "number"
-                                ? r.coaLineTotal
-                                : (r.lines || []).reduce(
-                                    (s, ln) => s + (ln.lineAmount || 0),
-                                    0,
-                                  );
-                            return sum + lineTotal;
+                            return sum + Math.max(0, getRecordBalance(r));
                           }, 0);
                         }
 
@@ -650,7 +658,7 @@ export default function ExpenseTable({ data }: ExpenseTableProps) {
                       return (
                         <React.Fragment key={group.coaTitle}>
                           {/* Group Header */}
-                          <TableRow className="font-medium sticky top-10.25 z-100">
+                          <TableRow className="font-medium sticky top-0 z-10 bg-background">
                             <TableCell colSpan={1}>
                               <Button
                                 variant="ghost"
@@ -737,12 +745,12 @@ export default function ExpenseTable({ data }: ExpenseTableProps) {
                                                 </TableHead>
                                                 <TableHead className="w-40"></TableHead>{" "}
                                                 <TableHead className="w-70"></TableHead>{" "}
-                                                <TableHead className="w-80"></TableHead>{" "}
+                                                <TableHead className="w-50"></TableHead>{" "}
                                                 <TableHead className="w-30"></TableHead>{" "}
                                                 <TableHead className="w-30"></TableHead>{" "}
                                                 <TableHead className="w-30"></TableHead>{" "}
                                                 {/* <TableHead title="status" className=""></TableHead>{" "} */}
-                                                <TableHead className="font-medium text-right w-30 px-4 py-2">
+                                                <TableHead className="font-medium text-right w-30 px-4 py-2 ">
                                                   <Button
                                                     variant="ghost"
                                                     size="sm"
@@ -921,12 +929,14 @@ export default function ExpenseTable({ data }: ExpenseTableProps) {
                                                     const bTitle = b[0];
                                                     const aTotal = a[1].reduce(
                                                       (s, r) =>
-                                                        s + r.totalAmount,
+                                                        s +
+                                                        getRecordLineTotal(r),
                                                       0,
                                                     );
                                                     const bTotal = b[1].reduce(
                                                       (s, r) =>
-                                                        s + r.totalAmount,
+                                                        s +
+                                                        getRecordLineTotal(r),
                                                       0,
                                                     );
 
@@ -1032,25 +1042,11 @@ export default function ExpenseTable({ data }: ExpenseTableProps) {
                                                       showDocsWithBalanceOnly
                                                         ? records.reduce(
                                                             (s, r) => {
-                                                              const lineTotal =
-                                                                typeof r.coaLineTotal ===
-                                                                "number"
-                                                                  ? r.coaLineTotal
-                                                                  : (
-                                                                      r.lines ||
-                                                                      []
-                                                                    ).reduce(
-                                                                      (
-                                                                        ss,
-                                                                        ln,
-                                                                      ) =>
-                                                                        ss +
-                                                                        (ln.lineAmount ||
-                                                                          0),
-                                                                      0,
-                                                                    );
                                                               return (
-                                                                s + lineTotal
+                                                                s +
+                                                                getRecordLineTotal(
+                                                                  r,
+                                                                )
                                                               );
                                                             },
                                                             0,
@@ -1341,40 +1337,44 @@ export default function ExpenseTable({ data }: ExpenseTableProps) {
                                                                             </TableCell>
                                                                             <TableCell
                                                                               title={formatCurrency(
-                                                                                record.totalAmount,
+                                                                                getRecordHeaderTotal(
+                                                                                  record,
+                                                                                ),
                                                                               )}
                                                                               className="w-30 text-right px-4 py-2"
                                                                             >
                                                                               {formatCurrency(
-                                                                                record.totalAmount,
+                                                                                getRecordHeaderTotal(
+                                                                                  record,
+                                                                                ),
                                                                               )}
                                                                             </TableCell>
                                                                             <TableCell
                                                                               title={formatCurrency(
-                                                                                record.paidAmount ||
-                                                                                  0,
+                                                                                getRecordPaidAmount(
+                                                                                  record,
+                                                                                ),
                                                                               )}
                                                                               className="w-30 text-right px-4 py-2"
                                                                             >
                                                                               {formatCurrency(
-                                                                                record.paidAmount ||
-                                                                                  0,
+                                                                                getRecordPaidAmount(
+                                                                                  record,
+                                                                                ),
                                                                               )}
                                                                             </TableCell>
                                                                             <TableCell
                                                                               title={formatCurrency(
-                                                                                (record.totalAmount ||
-                                                                                  0) -
-                                                                                  (record.paidAmount ||
-                                                                                    0),
+                                                                                getRecordBalance(
+                                                                                  record,
+                                                                                ),
                                                                               )}
                                                                               className="w-30 text-right px-4 py-2"
                                                                             >
                                                                               {formatCurrency(
-                                                                                (record.totalAmount ||
-                                                                                  0) -
-                                                                                  (record.paidAmount ||
-                                                                                    0),
+                                                                                getRecordBalance(
+                                                                                  record,
+                                                                                ),
                                                                               )}
                                                                             </TableCell>
                                                                             {/* <TableCell
@@ -1779,21 +1779,23 @@ export default function ExpenseTable({ data }: ExpenseTableProps) {
                                                       </TableCell>
                                                       <TableCell className="text-right px-4 py-2">
                                                         {formatCurrency(
-                                                          record.totalAmount,
+                                                          getRecordHeaderTotal(
+                                                            record,
+                                                          ),
                                                         )}
                                                       </TableCell>
                                                       <TableCell className="text-right px-4 py-2">
                                                         {formatCurrency(
-                                                          record.paidAmount ||
-                                                            0,
+                                                          getRecordPaidAmount(
+                                                            record,
+                                                          ),
                                                         )}
                                                       </TableCell>
                                                       <TableCell className="text-right px-4 py-2">
                                                         {formatCurrency(
-                                                          (record.totalAmount ||
-                                                            0) -
-                                                            (record.paidAmount ||
-                                                              0),
+                                                          getRecordBalance(
+                                                            record,
+                                                          ),
                                                         )}
                                                       </TableCell>
                                                       {/* <TableCell
