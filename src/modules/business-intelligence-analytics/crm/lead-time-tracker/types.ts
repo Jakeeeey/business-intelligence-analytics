@@ -43,6 +43,18 @@ export type LeadTimeRecord = {
   poNo: string;
   soNo?: string | null;
   poDate: string; // ISO date string
+  createdAt?: string | null;
+  createdDate?: string | null;
+  creationDate?: string | null;
+  approvedAt?: string | null;
+  approvalDate?: string | null;
+  approved_date?: string | null;
+  dispatchAt?: string | null;
+  dispatchDate?: string | null;
+  dispatch_date?: string | null;
+  deliveredAt?: string | null;
+  deliveredDate?: string | null;
+  deliveryDate?: string | null;
   approval?: number | null;
   dispatch?: number | null;
   delivered?: number | null;

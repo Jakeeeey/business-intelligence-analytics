@@ -108,6 +108,7 @@ export type DisbursementSummary = {
   lineRemarks: string;
   // Optional: include the original line-level records for multi-level views
   lines?: DisbursementRecord[];
+  entryType?: "GROSS" | "ADJUSTMENT" | "REVERSAL";
 };
 
 export type Granularity =
