@@ -2,7 +2,7 @@
 "use client";
 
 import React, { Suspense } from "react";
-import { Loader2, LayoutDashboard, CalendarRange, ArrowUpRight, TrendingUp } from "lucide-react";
+import { Loader2, LayoutDashboard, CalendarRange } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useExecutiveDashboard } from "./hooks/useExecutiveDashboard";

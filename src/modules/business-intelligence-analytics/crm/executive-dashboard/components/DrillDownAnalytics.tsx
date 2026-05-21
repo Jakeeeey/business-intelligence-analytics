@@ -1,7 +1,7 @@
 // src/modules/business-intelligence-analytics/crm/executive-dashboard/components/DrillDownAnalytics.tsx
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   LineChart,
   Line,
@@ -40,6 +40,17 @@ export function DrillDownAnalytics({
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
+
+  // Track previous filter key so we can reset visibleCount during render
+  // without putting setState inside a useEffect (avoids set-state-in-effect lint error)
+  const prevFilterKeyRef = useRef(`${supplierSearch}__${drillDownCategory}`);
+  const currentFilterKey = `${supplierSearch}__${drillDownCategory}`;
+  if (prevFilterKeyRef.current !== currentFilterKey) {
+    prevFilterKeyRef.current = currentFilterKey;
+    if (visibleCount !== PAGE_SIZE) {
+      setVisibleCount(PAGE_SIZE);
+    }
+  }
 
   const formatPHP = (val: number) =>
     new Intl.NumberFormat("en-PH", {
@@ -81,30 +92,26 @@ export function DrillDownAnalytics({
   const visibleRows = filteredBreakdown.slice(0, visibleCount);
   const hasMore = visibleCount < filteredBreakdown.length;
   const remaining = filteredBreakdown.length - visibleCount;
+  const filteredLength = filteredBreakdown.length;
 
-  // Reset pagination whenever search query or category changes
-  useEffect(() => {
-    setVisibleCount(PAGE_SIZE);
-  }, [supplierSearch, drillDownCategory]);
-
-  // Load more handler with a brief simulated delay for UX feedback
-  const loadMore = useCallback(() => {
+  // Load more handler — plain function, no useCallback to avoid memoization conflicts
+  function loadMore() {
     if (isLoadingMore || !hasMore) return;
     setIsLoadingMore(true);
     setTimeout(() => {
-      setVisibleCount((prev) => Math.min(prev + PAGE_SIZE, filteredBreakdown.length));
+      setVisibleCount((prev) => Math.min(prev + PAGE_SIZE, filteredLength));
       setIsLoadingMore(false);
     }, 300);
-  }, [isLoadingMore, hasMore, filteredBreakdown.length]);
+  }
 
-  // IntersectionObserver — fires loadMore when the sentinel div enters the viewport
+  // IntersectionObserver — re-subscribes whenever sentinel mounts/unmounts
   useEffect(() => {
     const sentinel = sentinelRef.current;
     if (!sentinel) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting) {
+        if (entries[0].isIntersecting && !isLoadingMore && hasMore) {
           loadMore();
         }
       },
@@ -113,7 +120,8 @@ export function DrillDownAnalytics({
 
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [loadMore]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasMore, isLoadingMore, filteredLength]);
 
   return (
     <div className="space-y-6">

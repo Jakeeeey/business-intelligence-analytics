@@ -13,7 +13,7 @@ async function checkEndpoint(path) {
     if (!res.ok) return null;
     const data = await res.json();
     return Array.isArray(data) ? data : (data.data || []);
-  } catch (err) {
+  } catch {
     return null;
   }
 }

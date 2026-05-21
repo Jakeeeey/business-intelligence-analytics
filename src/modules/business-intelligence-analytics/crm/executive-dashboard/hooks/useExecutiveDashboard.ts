@@ -4,7 +4,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { toast } from "sonner";
 import {
-  ExecutiveDashboardFilters,
   AccountsPayableRecord,
   DisbursementRecord,
   ArPerSupplierRecord,
@@ -14,8 +13,6 @@ import {
   SupplierTradeRecord,
   SupplierNonTradeRecord,
   DrillDownCategory,
-  MonthlyTrendPoint,
-  SupplierMonthlyBreakdown,
 } from "../types";
 import { fetchDashboardEndpoint } from "../providers/fetchProvider";
 
@@ -31,7 +28,27 @@ function parseDateLocal(dateStr?: string): Date {
   return new Date(dateStr);
 }
 
-function matchInventorySupplier(invRecord: any, allFullSuppliers: Set<string>): string {
+interface InventoryRecord {
+  supplierShortcut?: string;
+  supplierName?: string;
+  productName?: string;
+}
+
+/**
+ * Common shape of all date/division fields across the 6 API record types.
+ * Each concrete record type has a subset of these; all are optional here
+ * so every record type safely extends this interface.
+ */
+interface WithDateFields {
+  transactionDate?: string;
+  lineDate?: string;
+  invoiceDate?: string;
+  returnDate?: string;
+  lastCutoff?: string;
+  divisionName?: string;
+}
+
+function matchInventorySupplier(invRecord: InventoryRecord, allFullSuppliers: Set<string>): string {
   const shortcut = invRecord.supplierShortcut?.toUpperCase().trim();
   const rawName = invRecord.productName || "";
 
@@ -191,19 +208,16 @@ export function useExecutiveDashboard() {
     return ["ALL", ...Array.from(divs).sort()];
   }, [apData, disbursementData, arData, inventoryData, returnData, salesData]);
 
-  // Helper to filter data by division
-  const filterByDivision = <T extends { divisionName?: string }>(records: T[]): T[] => {
-    if (selectedDivision === "ALL") return records;
-    return records.filter((r) => !r.divisionName || r.divisionName === selectedDivision);
-  };
-
   // Filter yearly records down to the selected month for the comparison matrix
   const currentMonthRecords = useMemo(() => {
-    const filterByMonth = <T>(
-      records: T[]
-    ): T[] => {
-      return records.filter((r: any) => {
-        const dateStr = r.transactionDate || r.lineDate || r.invoiceDate || r.returnDate || r.lastCutoff;
+    const filterByMonth = <T extends WithDateFields>(records: T[]): T[] =>
+      records.filter((r) => {
+        const dateStr =
+          r.transactionDate ??
+          r.lineDate ??
+          r.invoiceDate ??
+          r.returnDate ??
+          r.lastCutoff;
         if (!dateStr) return false;
         const parsed = parseDateLocal(dateStr);
         if (isNaN(parsed.getTime())) return false;
@@ -212,15 +226,19 @@ export function useExecutiveDashboard() {
         const yearStr = String(parsed.getFullYear());
         return monthPad === selectedMonth && yearStr === selectedYear;
       });
+
+    const divFilter = <T extends { divisionName?: string }>(records: T[]): T[] => {
+      if (selectedDivision === "ALL") return records;
+      return records.filter((r) => !r.divisionName || r.divisionName === selectedDivision);
     };
 
     return {
-      ap: filterByDivision(filterByMonth(apData)),
-      disb: filterByDivision(filterByMonth(disbursementData)),
-      ar: filterByDivision(filterByMonth(arData)),
-      inv: filterByDivision(filterByMonth(inventoryData)),
-      ret: filterByDivision(filterByMonth(returnData)),
-      sales: filterByDivision(filterByMonth(salesData)),
+      ap: divFilter(filterByMonth(apData)),
+      disb: divFilter(filterByMonth(disbursementData)),
+      ar: divFilter(filterByMonth(arData)),
+      inv: divFilter(filterByMonth(inventoryData)),
+      ret: divFilter(filterByMonth(returnData)),
+      sales: divFilter(filterByMonth(salesData)),
     };
   }, [apData, disbursementData, arData, inventoryData, returnData, salesData, selectedYear, selectedMonth, selectedDivision]);
 
@@ -248,14 +266,14 @@ export function useExecutiveDashboard() {
       }
     });
 
-    currentMonthRecords.ret.forEach((r) => r.supplierName && suppliers.add(normalize(r.supplierName)!));
-    currentMonthRecords.ar.forEach((r) => r.supplierName && suppliers.add(normalize(r.supplierName)!));
-    currentMonthRecords.ap.forEach((r) => r.supplierName && suppliers.add(normalize(r.supplierName)!));
+    currentMonthRecords.ret.forEach((r) => { if (r.supplierName) suppliers.add(normalize(r.supplierName)!); });
+    currentMonthRecords.ar.forEach((r) => { if (r.supplierName) suppliers.add(normalize(r.supplierName)!); });
+    currentMonthRecords.ap.forEach((r) => { if (r.supplierName) suppliers.add(normalize(r.supplierName)!); });
 
     // Also include disbursement payees that are trade
     currentMonthRecords.disb.forEach((r) => {
       if (r.lineType === "PAYABLE" || r.coaTitle?.toUpperCase().includes("PURCHASE")) {
-        r.payeeName && suppliers.add(normalize(r.payeeName)!);
+        if (r.payeeName) suppliers.add(normalize(r.payeeName)!);
       }
     });
 
@@ -274,22 +292,22 @@ export function useExecutiveDashboard() {
         .reduce((sum, r) => sum + r.lineAmount, 0);
 
       // 2. Sales (do not deduct sales returns)
-      let sales = currentMonthRecords.sales
+      const sales = currentMonthRecords.sales
         .filter((r) => norm(r.productSupplier || r.supplierName) === supplier)
         .reduce((sum, r) => sum + (r.productNetAmount || r.productSalesAmount || r.amount || r.totalAmount || 0), 0);
 
       // 3. AR Claims (deductions)
-      let arClaims = currentMonthRecords.ar
+      const arClaims = currentMonthRecords.ar
         .filter((r) => norm(r.supplierName) === supplier)
         .reduce((sum, r) => sum + (r.itemDiscount || 0), 0);
 
       // 4. AR Trade (accounts receivable)
-      let arTrade = currentMonthRecords.ar
+      const arTrade = currentMonthRecords.ar
         .filter((r) => norm(r.supplierName) === supplier)
         .reduce((sum, r) => sum + (r.itemOutstandingBalance || r.itemNetReceivable || r.itemGrossAmount || 0), 0);
 
       // 5. Inventories (Net value)
-      let inventories = currentMonthRecords.inv
+      const inventories = currentMonthRecords.inv
         .filter((r) => {
           const matchedSup = norm(matchInventorySupplier(r, new Set(uniqueSuppliers)));
           return matchedSup === supplier;
@@ -297,12 +315,12 @@ export function useExecutiveDashboard() {
         .reduce((sum, r) => sum + (r.runningInventoryUnit || 0) * 125, 0);
 
       // 6. Sales Return
-      let salesReturn = currentMonthRecords.ret
+      const salesReturn = currentMonthRecords.ret
         .filter((r) => norm(r.supplierName) === supplier)
         .reduce((sum, r) => sum + (r.itemReturnTotal || 0), 0);
 
       // 7. Accounts Payable
-      let accountsPayable = currentMonthRecords.ap
+      const accountsPayable = currentMonthRecords.ap
         .filter((r) => norm(r.supplierName) === supplier && !r.docNo?.startsWith("NT"))
         .reduce((sum, r) => sum + (r.outstandingBalance || r.totalPayable || 0), 0);
 
@@ -334,14 +352,14 @@ export function useExecutiveDashboard() {
     currentMonthRecords.disb.forEach((r) => {
       const coaUpper = r.coaTitle?.toUpperCase() || "";
       if (r.lineType !== "PAYABLE" && !coaUpper.includes("PURCHASE")) {
-        r.payeeName && payees.add(norm(r.payeeName)!);
+        if (r.payeeName) payees.add(norm(r.payeeName)!);
       }
     });
 
     // Accounts payable that are non-trade (identified by NT doc number prefix)
     currentMonthRecords.ap.forEach((r) => {
       if (r.docNo?.startsWith("NT") || !r.supplierName) {
-        r.supplierName && payees.add(norm(r.supplierName)!);
+        if (r.supplierName) payees.add(norm(r.supplierName)!);
       }
     });
 
@@ -416,19 +434,27 @@ export function useExecutiveDashboard() {
 
   // Calculate year-to-date monthly trend lines & grids for the selected category
   const monthlyDataPoints = useMemo(() => {
-    const filterDiv = filterByDivision;
+    const divFilter = <T extends { divisionName?: string }>(records: T[]): T[] => {
+      if (selectedDivision === "ALL") return records;
+      return records.filter((r) => !r.divisionName || r.divisionName === selectedDivision);
+    };
 
     // Helper to bucket a list of items by month
-    const bucketByMonth = (
-      records: any[],
-      getValue: (r: any) => number,
-      getSupplier: (r: any) => string
+    const bucketByMonth = <T extends WithDateFields>(
+      records: T[],
+      getValue: (r: T) => number,
+      getSupplier: (r: T) => string
     ) => {
       const data = MONTHS_LIST.map((m) => ({ month: m, amount: 0 }));
       const supplierBreakdowns: Record<string, Record<string, number>> = {};
 
       records.forEach((r) => {
-        const dateStr = r.transactionDate || r.lineDate || r.invoiceDate || r.returnDate || r.lastCutoff;
+        const dateStr =
+          r.transactionDate ??
+          r.lineDate ??
+          r.invoiceDate ??
+          r.returnDate ??
+          r.lastCutoff;
         if (!dateStr) return;
         const parsed = parseDateLocal(dateStr);
         if (isNaN(parsed.getTime()) || String(parsed.getFullYear()) !== selectedYear) return;
@@ -462,37 +488,37 @@ export function useExecutiveDashboard() {
     switch (drillDownCategory) {
       case "purchases":
         return bucketByMonth(
-          filterDiv(disbursementData).filter(
+          divFilter(disbursementData).filter(
             (r) => r.lineType === "PAYABLE" || r.coaTitle?.toUpperCase().includes("PURCHASE")
           ),
           (r) => r.lineAmount,
-          (r) => r.payeeName
+          (r) => r.payeeName ?? ""
         );
 
       case "sales":
         return bucketByMonth(
-          filterDiv(salesData),
+          divFilter(salesData),
           (r) => r.productNetAmount || r.productSalesAmount || r.amount || r.totalAmount || 0,
           (r) => r.productSupplier || r.supplierName || ""
         );
 
       case "arClaims":
         return bucketByMonth(
-          filterDiv(arData),
+          divFilter(arData),
           (r) => r.itemDiscount || 0,
           (r) => r.supplierName || ""
         );
 
       case "arTrade":
         return bucketByMonth(
-          filterDiv(arData),
+          divFilter(arData),
           (r) => r.itemOutstandingBalance || r.itemNetReceivable || r.itemGrossAmount || 0,
           (r) => r.supplierName || ""
         );
 
       case "inventories":
         return bucketByMonth(
-          filterDiv(inventoryData),
+          divFilter(inventoryData),
           (r) => (r.runningInventoryUnit || 0) * 125,
           (r) => {
             const allS = new Set(uniqueSuppliers);
@@ -502,31 +528,31 @@ export function useExecutiveDashboard() {
 
       case "salesReturn":
         return bucketByMonth(
-          filterDiv(returnData),
+          divFilter(returnData),
           (r) => r.itemReturnTotal || 0,
           (r) => r.supplierName || ""
         );
 
       case "accountsPayable":
         return bucketByMonth(
-          filterDiv(apData).filter((r) => !r.docNo?.startsWith("NT")),
+          divFilter(apData).filter((r) => !r.docNo?.startsWith("NT")),
           (r) => r.outstandingBalance || r.totalPayable || 0,
           (r) => r.supplierName || ""
         );
 
       case "expenses":
         return bucketByMonth(
-          filterDiv(disbursementData).filter((r) => {
+          divFilter(disbursementData).filter((r) => {
             const coaUpper = r.coaTitle?.toUpperCase() || "";
             return r.lineType !== "PAYABLE" && !coaUpper.includes("PURCHASE");
           }),
           (r) => r.lineAmount,
-          (r) => r.payeeName
+          (r) => r.payeeName ?? ""
         );
 
       case "payablesNonTrade":
         return bucketByMonth(
-          filterDiv(apData).filter((r) => r.docNo?.startsWith("NT")),
+          divFilter(apData).filter((r) => r.docNo?.startsWith("NT")),
           (r) => r.outstandingBalance || r.totalPayable || 0,
           (r) => r.supplierName || ""
         );
@@ -534,7 +560,7 @@ export function useExecutiveDashboard() {
       default:
         return { trend: MONTHS_LIST.map((m) => ({ month: m, amount: 0 })), suppliers: [] };
     }
-  }, [drillDownCategory, apData, disbursementData, arData, inventoryData, returnData, salesData, selectedYear, selectedDivision]);
+  }, [drillDownCategory, apData, disbursementData, arData, inventoryData, returnData, salesData, selectedYear, selectedDivision, uniqueSuppliers]);
 
   // Year to Date total for the active drilldown category
   const activeYtdTotal = useMemo(() => {
