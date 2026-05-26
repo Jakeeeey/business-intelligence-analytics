@@ -104,11 +104,11 @@ export function ComparisonGrids({
                   {tradeData.map((s, idx) => (
                     <th
                       key={idx}
-                      className="p-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground text-right"
+                      className="p-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground text-center align-bottom"
                       style={{ minWidth: 130, maxWidth: 160 }}
                       title={s.supplierName}
                     >
-                      <span className="block truncate max-w-[140px]">
+                      <span className="block whitespace-normal break-words">
                         {s.supplierName || `SUPPLIER ${idx + 1}`}
                       </span>
                     </th>
@@ -254,11 +254,11 @@ export function ComparisonGrids({
                   {nonTradeData.map((n, idx) => (
                     <th
                       key={idx}
-                      className="p-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground text-right"
+                      className="p-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground text-center align-bottom"
                       style={{ minWidth: 120, maxWidth: 150 }}
                       title={n.payeeName}
                     >
-                      <span className="block truncate max-w-[130px]">
+                      <span className="block whitespace-normal break-words">
                         {n.payeeName || `PAYEE ${idx + 1}`}
                       </span>
                     </th>
