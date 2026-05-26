@@ -321,7 +321,7 @@ export function DrillDownAnalytics({
                 <thead>
                   <tr className="bg-muted/10">
                     <th
-                      className="p-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground sticky left-0 bg-card/95 backdrop-blur-sm z-30 border-b border-r border-border/30"
+                      className="p-4 text-sm font-black uppercase tracking-widest text-muted-foreground sticky left-0 bg-card/95 backdrop-blur-sm z-30 border-b border-r border-border/30"
                       style={{ minWidth: "200px" }}
                     >
                       Supplier / Payee
@@ -329,12 +329,12 @@ export function DrillDownAnalytics({
                     {MONTHS_LIST.map((m) => (
                       <th
                         key={m}
-                        className="p-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground text-right border-b border-border/30"
+                        className="p-4 text-sm font-black uppercase tracking-widest text-muted-foreground text-right border-b border-border/30"
                       >
                         {m}
                       </th>
                     ))}
-                    <th className="p-4 text-[10px] font-black uppercase tracking-widest text-red-500 text-right sticky right-0 bg-red-50/95 dark:bg-red-950/60 backdrop-blur-sm z-30 border-b border-l border-red-100 dark:border-red-900/50 shadow-[-4px_0_8px_rgba(0,0,0,0.02)]">
+                    <th className="p-4 text-sm font-black uppercase tracking-widest text-red-500 text-right sticky right-0 bg-red-50/95 dark:bg-red-950/60 backdrop-blur-sm z-30 border-b border-l border-red-100 dark:border-red-900/50 shadow-[-4px_0_8px_rgba(0,0,0,0.02)]">
                       Year Total
                     </th>
                   </tr>
@@ -352,7 +352,7 @@ export function DrillDownAnalytics({
                           idx % 2 === 0 ? "bg-card/95" : "bg-[#fcfcfd]/95 dark:bg-card/90"
                         } backdrop-blur-sm group-hover:bg-primary/[0.05]`}
                       >
-                        <span className="text-[11px] font-black uppercase text-foreground/90 tracking-tight block">
+                        <span className="text-sm font-black uppercase text-foreground/90 tracking-tight block">
                           {row.supplierName}
                         </span>
                       </td>
@@ -362,7 +362,7 @@ export function DrillDownAnalytics({
                         return (
                           <td
                             key={m}
-                            className={`p-4 text-[10px] font-bold text-right italic tracking-tight border-b border-border/10 transition-colors group-hover:bg-primary/[0.02] ${
+                            className={`p-4 text-sm font-bold text-right italic tracking-tight border-b border-border/10 transition-colors group-hover:bg-primary/[0.02] ${
                               isZero
                                 ? "text-muted-foreground/20 font-normal"
                                 : val < 0
@@ -375,7 +375,7 @@ export function DrillDownAnalytics({
                         );
                       })}
                       <td
-                        className={`p-4 text-[11px] font-black text-right text-red-600 italic sticky right-0 z-20 border-b border-l border-red-100/50 shadow-[-4px_0_8px_rgba(0,0,0,0.02)] transition-colors backdrop-blur-sm group-hover:bg-red-100/40 dark:group-hover:bg-red-900/30 ${
+                        className={`p-4 text-sm font-black text-right text-red-600 italic sticky right-0 z-20 border-b border-l border-red-100/50 shadow-[-4px_0_8px_rgba(0,0,0,0.02)] transition-colors backdrop-blur-sm group-hover:bg-red-100/40 dark:group-hover:bg-red-900/30 ${
                           idx % 2 === 0
                             ? "bg-red-50/50 dark:bg-red-950/30"
                             : "bg-red-50/80 dark:bg-red-950/50"

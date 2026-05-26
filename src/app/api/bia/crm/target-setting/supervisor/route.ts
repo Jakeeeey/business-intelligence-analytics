@@ -105,18 +105,47 @@ async function resolveTsSupervisorId(params: { userId: string; tssId: number }) 
   }
 
   const dataList = (r.json?.data ?? []) as Record<string, unknown>[];
-  const hit = dataList[0];
+  let hit = dataList[0];
+  
   if (!hit || !hit.id) {
-    return {
-      ok: false as const,
-      status: 400,
-      error: {
-        error: "Missing supervisor target",
-        message:
-          "No matching target_setting_supervisor record found for this user and supplier allocation. Create the supervisor target first.",
-        details: { user_id: params.userId, tss_id: params.tssId },
-      },
+    // Auto-create supervisor target if missing
+    const createUrl = new URL(`${UPSTREAM}/items/target_setting_supervisor`);
+    const createPayload = {
+      tss_id: params.tssId,
+      [SUPERVISOR_USER_FIELD]: params.userId,
+      status: "DRAFT",
     };
+    const createRes = await upstreamJson(createUrl.toString(), {
+      method: "POST",
+      body: JSON.stringify(createPayload),
+      headers: { "Content-Type": "application/json" },
+    });
+
+    if (!createRes.ok) {
+      return {
+        ok: false as const,
+        status: createRes.status,
+        error: {
+          error: "Failed to auto-create supervisor target",
+          message: "Could not create target_setting_supervisor record automatically.",
+          upstream_status: createRes.status,
+          upstream_body: createRes.json,
+        },
+      };
+    }
+    hit = createRes.json?.data as Record<string, unknown>;
+    
+    if (!hit || !hit.id) {
+      return {
+        ok: false as const,
+        status: 400,
+        error: {
+          error: "Missing supervisor target",
+          message: "No matching target_setting_supervisor record found and auto-creation failed.",
+          details: { user_id: params.userId, tss_id: params.tssId },
+        },
+      };
+    }
   }
 
   return { ok: true as const, id: Number(hit.id) };
