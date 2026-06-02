@@ -29,34 +29,7 @@ function getJwtSubFromReq(req: NextRequest): number | null {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const UPSTREAM = (process.env.NEXT_PUBLIC_API_BASE_URL || "").replace(/\/+$/, "");
 const SPRING_BASE = (process.env.SPRING_API_BASE_URL || "").replace(/\/+$/, "");
-const STATIC_TOKEN = process.env.DIRECTUS_STATIC_TOKEN || "";
-
-/* ---------------- Helpers ---------------- */
-function authHeaders() {
-  const h: Record<string, string> = {};
-  if (STATIC_TOKEN) h.Authorization = `Bearer ${STATIC_TOKEN}`;
-  return h;
-}
-
-async function upstreamJson<T>(url: string): Promise<{ ok: boolean, data?: T, error?: unknown }> {
-  try {
-    const res = await fetch(url, {
-      headers: authHeaders(),
-      cache: "no-store",
-    });
-
-    if (!res.ok) {
-      return { ok: false, error: `Upstream error: ${res.status}` };
-    }
-
-    const json = await res.json();
-    return { ok: true, data: json };
-  } catch (e) {
-    return { ok: false, error: e };
-  }
-}
 
 /**
  * Fetch all sales data from Spring Boot
