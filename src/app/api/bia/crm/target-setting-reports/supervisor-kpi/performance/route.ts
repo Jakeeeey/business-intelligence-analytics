@@ -97,53 +97,12 @@ export async function GET(req: NextRequest) {
   const startDate = searchParams.get("startDate") || "";
   const endDate = searchParams.get("endDate") || "";
 
-  // 1. Check Full Access Roles (Executive, Division Head, Approver)
-  const checks = [
-    `items/executive?filter[user_id][_eq]=${sub}&filter[is_deleted][_eq]=0&limit=1`,
-    `items/division_sales_head?filter[user_id][_eq]=${sub}&filter[is_deleted][_eq]=0&limit=1`,
-    `items/target_setting_approver?filter[approver_id][_eq]=${sub}&filter[is_deleted][_eq]=0&limit=1`
-  ];
-
   try {
-    const results = await Promise.all(checks.map(path => upstreamJson<{ data: Record<string, unknown>[] }>(`${UPSTREAM}/${path}`)));
-
-    const hasFullAccess = results.some(r => r.ok && Array.isArray(r.data?.data) && r.data!.data.length > 0);
-
-    if (hasFullAccess) {
-      const token = req.cookies.get("vos_access_token")?.value;
-      const data = await fetchAllSalesData(startDate, endDate, token);
-      return NextResponse.json(data);
-    }
-
-    // 2. Check Supervisor Role (Restricted Access)
-    const spdRes = await upstreamJson<{ data: Record<string, unknown>[] }>(
-      `${UPSTREAM}/items/supervisor_per_division?filter[supervisor_id][_eq]=${sub}&filter[is_deleted][_eq]=0&fields=id`
-    );
-
-    const supervisorRecords = spdRes.data?.data || [];
-
-    if (supervisorRecords.length > 0) {
-      const spdIds = supervisorRecords.map((r: Record<string, unknown>) => r.id);
-      const spsRes = await upstreamJson<{ data: Record<string, unknown>[] }>(
-        `${UPSTREAM}/items/salesman_per_supervisor?filter[supervisor_per_division_id][_in]=${spdIds.join(",")}&filter[is_deleted][_eq]=0&fields=salesman_id`
-      );
-
-      const assignedSalesmanIds = new Set((spsRes.data?.data || []).map((r: Record<string, unknown>) => Number(r.salesman_id)));
-
-      const token = req.cookies.get("vos_access_token")?.value;
-      const allData = await fetchAllSalesData(startDate, endDate, token);
-
-      const filteredData = Array.isArray(allData)
-        ? allData.filter((row: Record<string, unknown>) => assignedSalesmanIds.has(Number(row.salesmanId)))
-        : [];
-
-      return NextResponse.json(filteredData);
-    }
-
-    return NextResponse.json([]);
-
+    const token = req.cookies.get("vos_access_token")?.value;
+    const data = await fetchAllSalesData(startDate, endDate, token);
+    return NextResponse.json(data);
   } catch (error) {
-    console.error("RBAC implementation error:", error);
+    console.error("Fetch implementation error:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
