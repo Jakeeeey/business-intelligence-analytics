@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useMemo, Suspense } from "react";
 import { format, startOfMonth, endOfMonth, parseISO } from "date-fns";
 import { useSearchParams } from "next/navigation";
-import { Loader2, Calendar, ChevronRight, Search, Trophy, Coins, Target as TargetIcon, Hash } from "lucide-react";
+import { Loader2, Calendar, ChevronRight, Search, Trophy, Coins, Target as TargetIcon, Hash, UserX } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -33,10 +33,12 @@ function SalesmanKPIContent() {
 
     const [rawData, setRawData] = useState<VSalesPerformanceDataDto[]>([]);
     const [targets, setTargets] = useState<TargetSettingSalesman[]>([]);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const load = async () => {
             try {
+                setLoading(true);
                 const start = format(startOfMonth(parseISO(fromMonth + "-01")), "yyyy-MM-dd");
                 const end = format(endOfMonth(parseISO(toMonth + "-01")), "yyyy-MM-dd");
 
@@ -53,7 +55,7 @@ function SalesmanKPIContent() {
 
                 setRawData(salesData);
                 setTargets(targetData.salesmanTargets || []);
-            } catch (err) { console.error(err); }
+            } catch (err) { console.error(err); } finally { setLoading(false); }
         };
         load();
     }, [fromMonth, toMonth]);
@@ -241,8 +243,23 @@ function SalesmanKPIContent() {
             </div>
 
             {/* --- THE MATRIX --- */}
-            <Card className="border-muted/40 shadow-2xl bg-card/30 backdrop-blur-md overflow-hidden">
-                <ScrollArea className="w-full">
+            {loading ? (
+                <div className="flex h-[500px] w-full items-center justify-center bg-card/30 backdrop-blur-md rounded-xl border border-muted/40 shadow-2xl">
+                    <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                </div>
+            ) : salesmen.length === 0 ? (
+                <Card className="border-muted/40 shadow-2xl bg-card/30 backdrop-blur-md overflow-hidden flex flex-col items-center justify-center p-12 text-center h-[500px]">
+                    <div className="bg-destructive/10 p-4 rounded-full mb-4">
+                        <UserX className="h-12 w-12 text-destructive" />
+                    </div>
+                    <h3 className="text-2xl font-black uppercase tracking-tight text-foreground mb-2">No Assigned Salesman</h3>
+                    <p className="text-muted-foreground max-w-md">
+                        There is no assigned salesman in this account. Please login as a Supervisor or an Executive to view the KPI matrix.
+                    </p>
+                </Card>
+            ) : (
+                <Card className="border-muted/40 shadow-2xl bg-card/30 backdrop-blur-md overflow-hidden">
+                    <ScrollArea className="w-full">
                     <div className="min-w-max">
                         <table className="w-full border-separate border-spacing-0">
                             <thead>
@@ -387,6 +404,7 @@ function SalesmanKPIContent() {
                     <ScrollBar orientation="horizontal" />
                 </ScrollArea>
             </Card>
+            )}
 
             <CustomerBreakdownModal
                 isOpen={modalData.isOpen}
