@@ -1,13 +1,13 @@
 // src/modules/business-intelligence-analytics/scm/consolidator-audit/hooks/useConsolidatorAudit.ts
 import { useState, useEffect, useCallback, useMemo } from "react";
-import type { ConsolidatorAuditRecord, ConsolidatorAuditFilters, GroupedPdp } from "../types";
+import type { ConsolidatorAuditRecord, ConsolidatorAuditFilters } from "../types";
 import { fetchConsolidatorAuditData } from "../providers/fetchProvider";
 import { toast } from "sonner";
 
 export function useConsolidatorAudit() {
   const [filters, setFilters] = useState<ConsolidatorAuditFilters>({
-    startDate: "2025-09-01",
-    endDate: "2025-10-30",
+    startDate: "",
+    endDate: "",
     pdpNo: "",
     pdpStatus: "",
     consolidatorNo: "",
@@ -31,7 +31,13 @@ export function useConsolidatorAudit() {
     }
 
     try {
-      const records = await fetchConsolidatorAuditData(activeFilters);
+      // Only send date filters to backend to prevent multiple-filter conflicts
+      const fetchFilters = {
+        startDate: activeFilters.startDate || "2026-01-01",
+        endDate: activeFilters.endDate || "2026-12-30",
+      };
+
+      const records = await fetchConsolidatorAuditData(fetchFilters);
       setData(records);
       setLoadedOnce(true);
       if (showToast && toastId) {
@@ -62,8 +68,8 @@ export function useConsolidatorAudit() {
 
   const handleClear = useCallback(() => {
     const defaultFilters = {
-      startDate: "2025-09-01",
-      endDate: "2025-10-30",
+      startDate: "",
+      endDate: "",
       pdpNo: "",
       pdpStatus: "",
       consolidatorNo: "",
@@ -75,63 +81,44 @@ export function useConsolidatorAudit() {
     loadData(defaultFilters, true);
   }, [loadData]);
 
-  // Group data by PDP -> Consolidator -> DP for Relationship View
-  const groupedData = useMemo<GroupedPdp[]>(() => {
-    const pdpMap = new Map<string, GroupedPdp>();
-
-    data.forEach((row) => {
-      // Use pdpNo (or pdpId) as key. If both null, group under "Unknown PDP"
-      const pdpKey = row.pdpNo || `unknown-pdp-${row.pdpId || "null"}`;
-      let pdp = pdpMap.get(pdpKey);
-
-      if (!pdp) {
-        pdp = {
-          pdpId: row.pdpId ?? "unknown",
-          pdpNo: row.pdpNo || "Unknown PDP",
-          pdpStatus: row.pdpStatus || "N/A",
-          pdpCreatedAt: row.pdpCreatedAt || "",
-          consolidators: [],
-        };
-        pdpMap.set(pdpKey, pdp);
+  // Client-side filtering of the fetched data based on status/text search
+  const filteredData = useMemo(() => {
+    return data.filter((row) => {
+      // Check Document No search term
+      if (filters.pdpNo && !row.pdpNo?.toLowerCase().includes(filters.pdpNo.toLowerCase())) {
+        return false;
+      }
+      if (filters.consolidatorNo && !row.consolidatorNo?.toLowerCase().includes(filters.consolidatorNo.toLowerCase())) {
+        return false;
+      }
+      if (filters.dpNo && !row.dpNo?.toLowerCase().includes(filters.dpNo.toLowerCase())) {
+        return false;
       }
 
-      // Check for consolidator
-      if (row.consolidatorNo || row.consolidatorId) {
-        const cKey = row.consolidatorNo || `unknown-c-${row.consolidatorId || "null"}`;
-        let consolidator = pdp.consolidators.find((c) => c.consolidatorNo === cKey || (row.consolidatorNo && c.consolidatorNo === row.consolidatorNo));
-
-        if (!consolidator) {
-          consolidator = {
-            consolidatorId: row.consolidatorId ?? "unknown",
-            consolidatorNo: row.consolidatorNo || "Unknown Consolidator",
-            consolidatorStatus: row.consolidatorStatus || "N/A",
-            consolidatorCreatedAt: row.consolidatorCreatedAt || "",
-            dispatchPlans: [],
-          };
-          pdp.consolidators.push(consolidator);
-        }
-
-        // Check for dispatch plan
-        if (row.dpNo || row.dpId) {
-          const dpKey = row.dpNo || `unknown-dp-${row.dpId || "null"}`;
-          const hasDp = consolidator.dispatchPlans.some((d) => d.dpNo === dpKey || (row.dpNo && d.dpNo === row.dpNo));
-
-          if (!hasDp) {
-            consolidator.dispatchPlans.push({
-              dpId: row.dpId ?? "unknown",
-              dpNo: row.dpNo || "Unknown DP",
-              dpStatus: row.dpStatus || "N/A",
-              dpCreatedAt: row.dpCreatedAt || "",
-            });
-          }
-        }
+      // Check Status select filters
+      if (filters.pdpStatus && row.pdpStatus !== filters.pdpStatus) {
+        return false;
       }
+      if (filters.consolidatorStatus && row.consolidatorStatus !== filters.consolidatorStatus) {
+        return false;
+      }
+      if (filters.dpStatus && row.dpStatus !== filters.dpStatus) {
+        return false;
+      }
+
+      return true;
     });
+  }, [
+    data,
+    filters.pdpNo,
+    filters.consolidatorNo,
+    filters.dpNo,
+    filters.pdpStatus,
+    filters.consolidatorStatus,
+    filters.dpStatus,
+  ]);
 
-    return Array.from(pdpMap.values());
-  }, [data]);
-
-  // Extract unique statuses from dataset to populate drop-downs/auto-suggest
+  // Extract unique statuses from the date-filtered dataset (never shrinks based on selected statuses)
   const uniqueStatuses = useMemo(() => {
     const pdp = new Set<string>();
     const consolidator = new Set<string>();
@@ -153,8 +140,7 @@ export function useConsolidatorAudit() {
   return {
     filters,
     setFilters,
-    data,
-    groupedData,
+    data: filteredData,
     loading,
     loadedOnce,
     error,

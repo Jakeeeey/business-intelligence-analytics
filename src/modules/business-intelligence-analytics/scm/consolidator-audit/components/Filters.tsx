@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Search, RotateCcw } from "lucide-react";
+import { Search, RotateCcw, Loader2, RefreshCw } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -37,54 +37,98 @@ export function Filters({
   onClear,
   loading,
 }: FiltersProps) {
-  return (
-    <Card className="border border-border bg-card shadow-sm">
-      <CardContent className="p-5">
-        <div className="flex flex-col gap-4">
-          <div>
-            <h2 className="text-lg font-semibold tracking-tight text-card-foreground">Consolidator Audit Filters</h2>
-            <p className="text-xs text-muted-foreground">
-              Search and filter across dispatch plans, consolidators, and pre-dispatch plans.
-            </p>
-          </div>
+  const [searchVal, setSearchVal] = React.useState(() => {
+    return filters.pdpNo || filters.consolidatorNo || filters.dpNo || "";
+  });
 
+  // Sync parent clear to local state
+  React.useEffect(() => {
+    if (!filters.pdpNo && !filters.consolidatorNo && !filters.dpNo) {
+      setSearchVal("");
+    }
+  }, [filters.pdpNo, filters.consolidatorNo, filters.dpNo]);
+
+  const handleSearchValChange = (val: string) => {
+    setSearchVal(val);
+    const trimmed = val.trim();
+    onChange((prev) => {
+      const next = { ...prev, pdpNo: "", consolidatorNo: "", dpNo: "" };
+      if (!trimmed) return next;
+      
+      if (/^pdp/i.test(trimmed)) {
+        next.pdpNo = trimmed;
+      } else if (/^cld/i.test(trimmed) || /^consol/i.test(trimmed)) {
+        next.consolidatorNo = trimmed;
+      } else if (/^dp/i.test(trimmed)) {
+        next.dpNo = trimmed;
+      } else {
+        next.pdpNo = trimmed;
+        next.consolidatorNo = trimmed;
+        next.dpNo = trimmed;
+      }
+      return next;
+    });
+  };
+
+  return (
+    <Card className="dark:border-zinc-700">
+      <CardContent className="p-4">
+        <div className="flex flex-col gap-4">
+          
+          {/* Row 1: Searchbar (spans 2 cols) + Start Date + End Date */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
+            {/* Search Bar */}
+            <div className="space-y-1 md:col-span-2">
+              <Label htmlFor="searchVal" className="text-xs font-medium">
+                Search Document No.
+              </Label>
+              <Input
+                id="searchVal"
+                placeholder="Search PDP, Consolidator, or DP No..."
+                value={searchVal}
+                onChange={(e) => handleSearchValChange(e.target.value)}
+                className="h-9 dark:border-zinc-700"
+                disabled={loading}
+              />
+            </div>
+
             {/* Start Date */}
             <div className="space-y-1">
-              <Label htmlFor="startDate" className="text-xs font-medium">Start Date</Label>
+              <Label htmlFor="startDate" className="text-xs font-medium">
+                Start Date
+              </Label>
               <Input
                 id="startDate"
                 type="date"
                 value={filters.startDate}
-                onChange={(e) => onChange((prev) => ({ ...prev, startDate: e.target.value }))}
-                className="h-9"
+                onChange={(e) =>
+                  onChange((prev) => ({ ...prev, startDate: e.target.value }))
+                }
+                className="h-9 dark:border-zinc-700"
+                disabled={loading}
               />
             </div>
 
             {/* End Date */}
             <div className="space-y-1">
-              <Label htmlFor="endDate" className="text-xs font-medium">End Date</Label>
+              <Label htmlFor="endDate" className="text-xs font-medium">
+                End Date
+              </Label>
               <Input
                 id="endDate"
                 type="date"
                 value={filters.endDate}
-                onChange={(e) => onChange((prev) => ({ ...prev, endDate: e.target.value }))}
-                className="h-9"
+                onChange={(e) =>
+                  onChange((prev) => ({ ...prev, endDate: e.target.value }))
+                }
+                className="h-9 dark:border-zinc-700"
+                disabled={loading}
               />
             </div>
+          </div>
 
-            {/* PDP No */}
-            <div className="space-y-1">
-              <Label htmlFor="pdpNo" className="text-xs font-medium">PDP No.</Label>
-              <Input
-                id="pdpNo"
-                placeholder="e.g. PDP-00342"
-                value={filters.pdpNo || ""}
-                onChange={(e) => onChange((prev) => ({ ...prev, pdpNo: e.target.value }))}
-                className="h-9"
-              />
-            </div>
-
+          {/* Row 2: PDP Status + Consolidator Status + DP Status + Actions */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4 items-end">
             {/* PDP Status */}
             <div className="space-y-1">
               <Label className="text-xs font-medium">PDP Status</Label>
@@ -96,8 +140,9 @@ export function Filters({
                     pdpStatus: val === "ALL" ? "" : val,
                   }))
                 }
+                disabled={loading}
               >
-                <SelectTrigger className="h-9">
+                <SelectTrigger className="h-9 dark:border-zinc-700">
                   <SelectValue placeholder="All Statuses" />
                 </SelectTrigger>
                 <SelectContent>
@@ -107,26 +152,11 @@ export function Filters({
                       {status}
                     </SelectItem>
                   ))}
-                  {/* Default fallback statuses if data not loaded yet */}
                   {!uniqueStatuses.pdp.includes("Dispatched") && (
                     <SelectItem value="Dispatched">Dispatched</SelectItem>
                   )}
                 </SelectContent>
               </Select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
-            {/* Consolidator No */}
-            <div className="space-y-1">
-              <Label htmlFor="consolidatorNo" className="text-xs font-medium">Consolidator No.</Label>
-              <Input
-                id="consolidatorNo"
-                placeholder="e.g. CLDTO-00501"
-                value={filters.consolidatorNo || ""}
-                onChange={(e) => onChange((prev) => ({ ...prev, consolidatorNo: e.target.value }))}
-                className="h-9"
-              />
             </div>
 
             {/* Consolidator Status */}
@@ -140,8 +170,9 @@ export function Filters({
                     consolidatorStatus: val === "ALL" ? "" : val,
                   }))
                 }
+                disabled={loading}
               >
-                <SelectTrigger className="h-9">
+                <SelectTrigger className="h-9 dark:border-zinc-700">
                   <SelectValue placeholder="All Statuses" />
                 </SelectTrigger>
                 <SelectContent>
@@ -158,18 +189,6 @@ export function Filters({
               </Select>
             </div>
 
-            {/* DP No */}
-            <div className="space-y-1">
-              <Label htmlFor="dpNo" className="text-xs font-medium">DP No.</Label>
-              <Input
-                id="dpNo"
-                placeholder="e.g. DP-01921"
-                value={filters.dpNo || ""}
-                onChange={(e) => onChange((prev) => ({ ...prev, dpNo: e.target.value }))}
-                className="h-9"
-              />
-            </div>
-
             {/* DP Status */}
             <div className="space-y-1">
               <Label className="text-xs font-medium">DP Status</Label>
@@ -181,8 +200,9 @@ export function Filters({
                     dpStatus: val === "ALL" ? "" : val,
                   }))
                 }
+                disabled={loading}
               >
-                <SelectTrigger className="h-9">
+                <SelectTrigger className="h-9 dark:border-zinc-700">
                   <SelectValue placeholder="All Statuses" />
                 </SelectTrigger>
                 <SelectContent>
@@ -198,31 +218,55 @@ export function Filters({
                 </SelectContent>
               </Select>
             </div>
-          </div>
 
-          <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={onClear}
-              disabled={loading}
-              className="gap-1.5 h-9"
-            >
-              <RotateCcw className="h-3.5 w-3.5 text-muted-foreground" />
-              Reset Filters
-            </Button>
-            <Button
-              type="button"
-              variant="default"
-              size="sm"
-              onClick={onSearch}
-              disabled={loading}
-              className="gap-1.5 h-9"
-            >
-              <Search className="h-3.5 w-3.5" />
-              {loading ? "Searching..." : "Search"}
-            </Button>
+            {/* Actions: Refresh, Clear, Apply */}
+            <div className="flex items-center gap-2 justify-end w-full">
+              {/* Refresh */}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={onSearch}
+                disabled={loading}
+                className="gap-1.5 h-9 dark:border-zinc-700"
+                title="Refresh Data"
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+                <span>Refresh</span>
+              </Button>
+
+              {/* Clear */}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={onClear}
+                disabled={loading}
+                className="gap-1.5 h-9 dark:border-zinc-700"
+                title="Reset Filters"
+              >
+                <RotateCcw className="h-3.5 w-3.5 text-muted-foreground" />
+                <span>Reset</span>
+              </Button>
+
+              {/* Apply */}
+              <Button
+                type="button"
+                variant="default"
+                size="sm"
+                onClick={onSearch}
+                disabled={loading}
+                className="gap-1.5 h-9 min-w-[90px]"
+                title="Apply Filters"
+              >
+                {loading ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Search className="h-3.5 w-3.5" />
+                )}
+                {loading ? "Searching..." : "Search"}
+              </Button>
+            </div>
           </div>
         </div>
       </CardContent>
