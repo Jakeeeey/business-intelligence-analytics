@@ -1,4 +1,3 @@
-import React, { Suspense } from "react";
 import {
     Breadcrumb,
     BreadcrumbItem,
@@ -14,7 +13,7 @@ import { NavUser } from "@/components/shared/app-sidebar/nav-user";
 import { cookies } from "next/headers";
 
 // ✅ Wire the module you asked for
-import { SalesmanKPIModule } from "@/modules/business-intelligence-analytics/crm/target-setting-reports/salesman-kpi";
+import { ExecutiveHealthChannelModule } from "@/modules/business-intelligence-analytics/crm/target-setting-reports/divisional-channel/executive-health-channel";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -105,12 +104,12 @@ export default async function Page() {
                                 </BreadcrumbItem>
                                 <BreadcrumbSeparator className="hidden md:block shrink-0" />
                                 <BreadcrumbItem className="hidden md:block shrink-0">
-                                    <BreadcrumbLink href="#">Sales BIA</BreadcrumbLink>
+                                    <BreadcrumbLink href="#">Divisional Channel</BreadcrumbLink>
                                 </BreadcrumbItem>
                                 <BreadcrumbSeparator className="hidden md:block shrink-0" />
                                 <BreadcrumbItem className="min-w-0 overflow-hidden">
                                     <BreadcrumbPage className="truncate max-w-[56vw] sm:max-w-[60vw] md:max-w-none">
-                                        Salesman KPI (Volume)
+                                        Executive Health Channel
                                     </BreadcrumbPage>
                                 </BreadcrumbItem>
                             </BreadcrumbList>
@@ -125,9 +124,7 @@ export default async function Page() {
 
             {/* ✅ Only content scrolls inside RIGHT column */}
             <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-2 sm:p-4">
-                <Suspense fallback={<div className="p-4 text-sm text-muted-foreground">Loading Salesman KPIs...</div>}>
-                    <SalesmanKPIModule />
-                </Suspense>
+                <ExecutiveHealthChannelModule />
             </main>
         </div>
     );
