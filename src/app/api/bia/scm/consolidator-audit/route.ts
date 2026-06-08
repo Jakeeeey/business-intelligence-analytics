@@ -57,7 +57,7 @@ export async function GET(req: NextRequest) {
     });
 
     const text = await response.text();
-    let data: any = null;
+    let data: unknown = null;
     try {
       data = text ? JSON.parse(text) : null;
     } catch {
@@ -73,11 +73,12 @@ export async function GET(req: NextRequest) {
     }
 
     if (!response.ok) {
+      const errObj = data as Record<string, unknown> | null;
       return NextResponse.json(
         {
           error:
-            data?.message ||
-            data?.error ||
+            errObj?.message ||
+            errObj?.error ||
             "Failed to fetch consolidator audit data",
         },
         { status: response.status },
@@ -88,8 +89,9 @@ export async function GET(req: NextRequest) {
     if (Array.isArray(data)) {
       records = data;
     } else if (data && typeof data === "object") {
-      if (Array.isArray(data.data)) {
-        records = data.data;
+      const dataObj = data as Record<string, unknown>;
+      if (Array.isArray(dataObj.data)) {
+        records = dataObj.data;
       }
     }
 

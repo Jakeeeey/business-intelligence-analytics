@@ -29,20 +29,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
-  Search,
-  Settings2,
 } from "lucide-react";
 import {
   Select,
@@ -52,58 +43,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { EmptyPlaceholder } from "@/components/shared/EmptyPlaceholder";
-
-interface SearchInputProps {
-  placeholder: string;
-  initialValue: string;
-  onSearch: (value: string) => void;
-  isLoading?: boolean;
-}
-
-function SearchInput({
-  placeholder,
-  initialValue,
-  onSearch,
-  isLoading = false,
-}: SearchInputProps) {
-  const [value, setValue] = React.useState(initialValue);
-
-  // Update local state if initialValue changes (e.g. from table reset)
-  React.useEffect(() => {
-    setValue(initialValue);
-  }, [initialValue]);
-
-  const isFirstRender = React.useRef(true);
-
-  // Debounce the actual search trigger
-  React.useEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
-      return;
-    }
-    const timer = setTimeout(() => {
-      onSearch(value);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [value, onSearch]);
-
-  return (
-    <div className="relative flex-1 w-full">
-      <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-      <Input
-        placeholder={placeholder}
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        className="rounded-lg pl-8"
-      />
-      {isLoading && (
-        <div className="absolute right-3 top-1/2 -translate-y-1/2">
-          <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-        </div>
-      )}
-    </div>
-  );
-}
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -127,7 +66,6 @@ interface DataTableProps<TData, TValue> {
   emptyTitle?: string;
   emptyDescription?: string;
   onSelectionChange?: (selectedRows: TData[]) => void;
-  actionComponent?: React.ReactNode;
 }
 
 export function ModuleDataTable<TData, TValue>({
@@ -140,14 +78,11 @@ export function ModuleDataTable<TData, TValue>({
   sorting: externalSorting,
   onSortingChange: onExternalSortingChange,
   manualSorting = false,
-  searchKey,
-  onSearch,
   isLoading = false,
   emptyTitle,
   emptyDescription,
   onSelectionChange,
-  actionComponent,
-}: DataTableProps<TData, TValue>) {
+}: Omit<DataTableProps<TData, TValue>, "searchKey" | "onSearch">) {
   "use no memo"
   const [internalSorting, setInternalSorting] = React.useState<SortingState>(
     [],
@@ -230,17 +165,6 @@ export function ModuleDataTable<TData, TValue>({
       }
     },
   });
-
-  const handleSearchWrapper = React.useCallback(
-    (value: string) => {
-      if (searchKey) {
-        const col = table.getColumn(searchKey);
-        if (col) col.setFilterValue(value);
-      }
-      if (onSearch) onSearch(value);
-    },
-    [table, searchKey, onSearch],
-  );
 
   return (
     <div className="space-y-4">

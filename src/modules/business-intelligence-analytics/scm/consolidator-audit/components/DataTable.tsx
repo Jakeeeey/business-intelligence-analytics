@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useMemo } from "react";
-import { ColumnDef } from "@tanstack/react-table";
+import { ColumnDef, Column } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ArrowUpDown } from "lucide-react";
@@ -71,7 +71,7 @@ const SortableHeader = ({
   column,
   title,
 }: {
-  column: any;
+  column: Column<GroupedConsolidatorRow, unknown>;
   title: string;
 }) => {
   return (
@@ -277,9 +277,8 @@ export function AuditDataTable({
 
   return (
     <DataTable
-      columns={stableColumns as any}
+      columns={stableColumns}
       data={groupedRows}
-      searchKey="consolidatorNo"
       isLoading={loading}
       emptyTitle="No Audit Records"
       emptyDescription="No consolidator audit records found for the current filters."

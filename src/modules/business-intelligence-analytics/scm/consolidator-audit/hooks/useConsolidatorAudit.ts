@@ -60,6 +60,7 @@ export function useConsolidatorAudit() {
   // Fetch on mount or when dates change
   useEffect(() => {
     loadData(filters);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSearch = useCallback(() => {
