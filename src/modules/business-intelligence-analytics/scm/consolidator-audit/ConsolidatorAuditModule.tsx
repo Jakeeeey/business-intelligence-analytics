@@ -73,8 +73,8 @@ export default function ConsolidatorAuditModule() {
 
       {/* Filters Panel */}
       <Filters
-        filters={hook.filters}
-        onChange={hook.setFilters}
+        filters={hook.draftFilters}
+        onChange={hook.setDraftFilters}
         uniqueStatuses={hook.uniqueStatuses}
         onSearch={hook.handleSearch}
         onClear={hook.handleClear}
@@ -274,9 +274,9 @@ export default function ConsolidatorAuditModule() {
       {!hook.loading && hook.loadedOnce && hook.data.length === 0 && (
         <Card className="dark:border-zinc-700">
           <CardContent className="flex flex-col items-center justify-center p-8">
-            <p className="text-lg font-semibold">No audit records found</p>
+            <p className="text-lg font-semibold">No data loaded for this date range</p>
             <p className="text-sm text-muted-foreground">
-              Try adjusting your filters or date range
+              Try adjusting your dates and clicking Search.
             </p>
           </CardContent>
         </Card>

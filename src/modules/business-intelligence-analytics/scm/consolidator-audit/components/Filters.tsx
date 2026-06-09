@@ -70,6 +70,32 @@ export function Filters({
     });
   };
 
+  // Dynamic unique statuses from dataset + defaults + active selection so options never disappear
+  const pdpOptions = React.useMemo(() => {
+    const set = new Set<string>();
+    set.add("Dispatched");
+    uniqueStatuses.pdp.forEach((s) => { if (s) set.add(s); });
+    if (filters.pdpStatus) set.add(filters.pdpStatus);
+    return Array.from(set);
+  }, [uniqueStatuses.pdp, filters.pdpStatus]);
+
+  const consolidatorOptions = React.useMemo(() => {
+    const set = new Set<string>();
+    set.add("Audited");
+    uniqueStatuses.consolidator.forEach((s) => { if (s) set.add(s); });
+    if (filters.consolidatorStatus) set.add(filters.consolidatorStatus);
+    return Array.from(set);
+  }, [uniqueStatuses.consolidator, filters.consolidatorStatus]);
+
+  const dpOptions = React.useMemo(() => {
+    const set = new Set<string>();
+    set.add("Posted");
+    set.add("For Clearance");
+    uniqueStatuses.dp.forEach((s) => { if (s) set.add(s); });
+    if (filters.dpStatus) set.add(filters.dpStatus);
+    return Array.from(set);
+  }, [uniqueStatuses.dp, filters.dpStatus]);
+
   return (
     <Card className="dark:border-zinc-700">
       <CardContent className="p-4">
@@ -147,14 +173,11 @@ export function Filters({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ALL">All Statuses</SelectItem>
-                  {uniqueStatuses.pdp.map((status) => (
+                  {pdpOptions.map((status) => (
                     <SelectItem key={status} value={status}>
                       {status}
                     </SelectItem>
                   ))}
-                  {!uniqueStatuses.pdp.includes("Dispatched") && (
-                    <SelectItem value="Dispatched">Dispatched</SelectItem>
-                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -177,14 +200,11 @@ export function Filters({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ALL">All Statuses</SelectItem>
-                  {uniqueStatuses.consolidator.map((status) => (
+                  {consolidatorOptions.map((status) => (
                     <SelectItem key={status} value={status}>
                       {status}
                     </SelectItem>
                   ))}
-                  {!uniqueStatuses.consolidator.includes("Audited") && (
-                    <SelectItem value="Audited">Audited</SelectItem>
-                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -207,14 +227,11 @@ export function Filters({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ALL">All Statuses</SelectItem>
-                  {uniqueStatuses.dp.map((status) => (
+                  {dpOptions.map((status) => (
                     <SelectItem key={status} value={status}>
                       {status}
                     </SelectItem>
                   ))}
-                  {!uniqueStatuses.dp.includes("Posted") && (
-                    <SelectItem value="Posted">Posted</SelectItem>
-                  )}
                 </SelectContent>
               </Select>
             </div>

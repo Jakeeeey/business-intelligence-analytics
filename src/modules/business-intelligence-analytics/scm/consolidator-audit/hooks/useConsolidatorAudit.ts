@@ -5,7 +5,18 @@ import { fetchConsolidatorAuditData } from "../providers/fetchProvider";
 import { toast } from "sonner";
 
 export function useConsolidatorAudit() {
-  const [filters, setFilters] = useState<ConsolidatorAuditFilters>({
+  const [draftFilters, setDraftFilters] = useState<ConsolidatorAuditFilters>({
+    startDate: "",
+    endDate: "",
+    pdpNo: "",
+    pdpStatus: "",
+    consolidatorNo: "",
+    consolidatorStatus: "",
+    dpNo: "",
+    dpStatus: "",
+  });
+
+  const [activeFilters, setActiveFilters] = useState<ConsolidatorAuditFilters>({
     startDate: "",
     endDate: "",
     pdpNo: "",
@@ -21,7 +32,7 @@ export function useConsolidatorAudit() {
   const [loadedOnce, setLoadedOnce] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadData = useCallback(async (activeFilters: ConsolidatorAuditFilters, showToast = false) => {
+  const loadData = useCallback(async (filtersToUse: ConsolidatorAuditFilters, showToast = false) => {
     setLoading(true);
     setError(null);
     let toastId: string | number | undefined;
@@ -33,8 +44,8 @@ export function useConsolidatorAudit() {
     try {
       // Only send date filters to backend to prevent multiple-filter conflicts
       const fetchFilters = {
-        startDate: activeFilters.startDate || "2026-01-01",
-        endDate: activeFilters.endDate || "2026-12-30",
+        startDate: filtersToUse.startDate || "2026-01-01",
+        endDate: filtersToUse.endDate || "2026-12-30",
       };
 
       const records = await fetchConsolidatorAuditData(fetchFilters);
@@ -57,15 +68,16 @@ export function useConsolidatorAudit() {
     }
   }, []);
 
-  // Fetch on mount or when dates change
+  // Fetch on mount
   useEffect(() => {
-    loadData(filters);
+    loadData(activeFilters);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSearch = useCallback(() => {
-    loadData(filters, true);
-  }, [filters, loadData]);
+    setActiveFilters(draftFilters);
+    loadData(draftFilters, true);
+  }, [draftFilters, loadData]);
 
   const handleClear = useCallback(() => {
     const defaultFilters = {
@@ -78,32 +90,33 @@ export function useConsolidatorAudit() {
       dpNo: "",
       dpStatus: "",
     };
-    setFilters(defaultFilters);
+    setDraftFilters(defaultFilters);
+    setActiveFilters(defaultFilters);
     loadData(defaultFilters, true);
   }, [loadData]);
 
-  // Client-side filtering of the fetched data based on status/text search
+  // Client-side filtering of the fetched data based on status/text search from active filters
   const filteredData = useMemo(() => {
     return data.filter((row) => {
       // Check Document No search term
-      if (filters.pdpNo && !row.pdpNo?.toLowerCase().includes(filters.pdpNo.toLowerCase())) {
+      if (activeFilters.pdpNo && !row.pdpNo?.toLowerCase().includes(activeFilters.pdpNo.toLowerCase())) {
         return false;
       }
-      if (filters.consolidatorNo && !row.consolidatorNo?.toLowerCase().includes(filters.consolidatorNo.toLowerCase())) {
+      if (activeFilters.consolidatorNo && !row.consolidatorNo?.toLowerCase().includes(activeFilters.consolidatorNo.toLowerCase())) {
         return false;
       }
-      if (filters.dpNo && !row.dpNo?.toLowerCase().includes(filters.dpNo.toLowerCase())) {
+      if (activeFilters.dpNo && !row.dpNo?.toLowerCase().includes(activeFilters.dpNo.toLowerCase())) {
         return false;
       }
 
       // Check Status select filters
-      if (filters.pdpStatus && row.pdpStatus !== filters.pdpStatus) {
+      if (activeFilters.pdpStatus && row.pdpStatus !== activeFilters.pdpStatus) {
         return false;
       }
-      if (filters.consolidatorStatus && row.consolidatorStatus !== filters.consolidatorStatus) {
+      if (activeFilters.consolidatorStatus && row.consolidatorStatus !== activeFilters.consolidatorStatus) {
         return false;
       }
-      if (filters.dpStatus && row.dpStatus !== filters.dpStatus) {
+      if (activeFilters.dpStatus && row.dpStatus !== activeFilters.dpStatus) {
         return false;
       }
 
@@ -111,12 +124,12 @@ export function useConsolidatorAudit() {
     });
   }, [
     data,
-    filters.pdpNo,
-    filters.consolidatorNo,
-    filters.dpNo,
-    filters.pdpStatus,
-    filters.consolidatorStatus,
-    filters.dpStatus,
+    activeFilters.pdpNo,
+    activeFilters.consolidatorNo,
+    activeFilters.dpNo,
+    activeFilters.pdpStatus,
+    activeFilters.consolidatorStatus,
+    activeFilters.dpStatus,
   ]);
 
   // Extract unique statuses from the date-filtered dataset (never shrinks based on selected statuses)
@@ -139,8 +152,9 @@ export function useConsolidatorAudit() {
   }, [data]);
 
   return {
-    filters,
-    setFilters,
+    draftFilters,
+    setDraftFilters,
+    activeFilters,
     data: filteredData,
     loading,
     loadedOnce,
