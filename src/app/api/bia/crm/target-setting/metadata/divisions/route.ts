@@ -28,6 +28,7 @@ async function proxy(req: NextRequest) {
   }
 
   const url = buildUpstreamUrl(req, DIRECTUS_COLLECTION);
+  url.searchParams.set("filter[is_bia][_eq]", "1");
 
   try {
     const method = req.method;
