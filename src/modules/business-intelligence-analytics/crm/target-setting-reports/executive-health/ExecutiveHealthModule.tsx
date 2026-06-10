@@ -69,13 +69,18 @@ function ExecutiveHealthContent() {
         const totalTarget = targets.reduce((sum, t) => sum + (t.target_amount || 0), 0);
         
         const divisionMap = new Map<string, {name: string, sales: number}>();
+        const activeDivisionIds = new Set(divisions.map(d => d.division_id));
+        const activeDivisionNames = new Set(divisions.map(d => (d.division_name || "").toUpperCase()));
 
         rawData.forEach(item => {
-            const divName = item.divisionName || "Unknown";
-            totalActual += item.netAmount || 0;
-            const current = divisionMap.get(divName) || { name: divName, sales: 0 };
-            current.sales += item.netAmount || 0;
-            divisionMap.set(divName, current);
+            const isBiaDivision = activeDivisionIds.has(item.divisionId) || activeDivisionNames.has((item.divisionName || "").toUpperCase());
+            if (isBiaDivision) {
+                const divName = item.divisionName || "Unknown";
+                totalActual += item.netAmount || 0;
+                const current = divisionMap.get(divName) || { name: divName, sales: 0 };
+                current.sales += item.netAmount || 0;
+                divisionMap.set(divName, current);
+            }
         });
 
         // Add divisions that have targets but no sales yet
