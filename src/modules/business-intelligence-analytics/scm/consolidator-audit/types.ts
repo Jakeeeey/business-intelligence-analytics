@@ -16,6 +16,7 @@ export interface ConsolidatorAuditRecord {
 }
 
 export interface ConsolidatorAuditFilters {
+  dateRangeType: "today" | "week" | "month" | "year" | "custom";
   startDate: string;
   endDate: string;
   pdpNo?: string;

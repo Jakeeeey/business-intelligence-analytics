@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Search, RotateCcw, Loader2, RefreshCw } from "lucide-react";
+import { Search, RotateCcw, Loader2, RefreshCw, Printer } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { ConsolidatorAuditFilters } from "../types";
+import { getManilaDateRange } from "../hooks/useConsolidatorAudit";
 
 type FiltersProps = {
   filters: ConsolidatorAuditFilters;
@@ -26,6 +27,7 @@ type FiltersProps = {
   };
   onSearch: () => void;
   onClear: () => void;
+  onPrint?: () => void;
   loading: boolean;
 };
 
@@ -35,6 +37,7 @@ export function Filters({
   uniqueStatuses,
   onSearch,
   onClear,
+  onPrint,
   loading,
 }: FiltersProps) {
   const [searchVal, setSearchVal] = React.useState(() => {
@@ -101,7 +104,7 @@ export function Filters({
       <CardContent className="p-4">
         <div className="flex flex-col gap-4">
           
-          {/* Row 1: Searchbar (spans 2 cols) + Start Date + End Date */}
+          {/* Row 1: Searchbar + Time Range selection + Conditional Dates */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
             {/* Search Bar */}
             <div className="space-y-1 md:col-span-2">
@@ -118,39 +121,73 @@ export function Filters({
               />
             </div>
 
-            {/* Start Date */}
-            <div className="space-y-1">
-              <Label htmlFor="startDate" className="text-xs font-medium">
-                Start Date
-              </Label>
-              <Input
-                id="startDate"
-                type="date"
-                value={filters.startDate}
-                onChange={(e) =>
-                  onChange((prev) => ({ ...prev, startDate: e.target.value }))
-                }
-                className="h-9 dark:border-zinc-700"
+            {/* Time Range Choice */}
+            <div className="space-y-1 md:col-span-2">
+              <Label className="text-xs font-medium">Time Range</Label>
+              <Select
+                value={filters.dateRangeType || "month"}
+                onValueChange={(val: "today" | "week" | "month" | "year" | "custom") => {
+                  const dates = getManilaDateRange(val, filters.startDate, filters.endDate);
+                  onChange((prev) => ({
+                    ...prev,
+                    dateRangeType: val,
+                    startDate: dates.startDate,
+                    endDate: dates.endDate,
+                  }));
+                }}
                 disabled={loading}
-              />
+              >
+                <SelectTrigger className="h-9 dark:border-zinc-700">
+                  <SelectValue placeholder="Select Range" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="today">Today</SelectItem>
+                  <SelectItem value="week">This Week</SelectItem>
+                  <SelectItem value="month">This Month</SelectItem>
+                  <SelectItem value="year">This Year</SelectItem>
+                  <SelectItem value="custom">Custom Range</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
-            {/* End Date */}
-            <div className="space-y-1">
-              <Label htmlFor="endDate" className="text-xs font-medium">
-                End Date
-              </Label>
-              <Input
-                id="endDate"
-                type="date"
-                value={filters.endDate}
-                onChange={(e) =>
-                  onChange((prev) => ({ ...prev, endDate: e.target.value }))
-                }
-                className="h-9 dark:border-zinc-700"
-                disabled={loading}
-              />
-            </div>
+            {/* Custom Dates Row */}
+            {filters.dateRangeType === "custom" && (
+              <>
+                {/* Start Date */}
+                <div className="space-y-1 md:col-span-2">
+                  <Label htmlFor="startDate" className="text-xs font-medium">
+                    Start Date
+                  </Label>
+                  <Input
+                    id="startDate"
+                    type="date"
+                    value={filters.startDate}
+                    onChange={(e) =>
+                      onChange((prev) => ({ ...prev, startDate: e.target.value }))
+                    }
+                    className="h-9 dark:border-zinc-700"
+                    disabled={loading}
+                  />
+                </div>
+
+                {/* End Date */}
+                <div className="space-y-1 md:col-span-2">
+                  <Label htmlFor="endDate" className="text-xs font-medium">
+                    End Date
+                  </Label>
+                  <Input
+                    id="endDate"
+                    type="date"
+                    value={filters.endDate}
+                    onChange={(e) =>
+                      onChange((prev) => ({ ...prev, endDate: e.target.value }))
+                    }
+                    className="h-9 dark:border-zinc-700"
+                    disabled={loading}
+                  />
+                </div>
+              </>
+            )}
           </div>
 
           {/* Row 2: PDP Status + Consolidator Status + DP Status + Actions */}
@@ -283,6 +320,22 @@ export function Filters({
                 )}
                 {loading ? "Searching..." : "Search"}
               </Button>
+
+              {/* Print */}
+              {onPrint && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={onPrint}
+                  disabled={loading}
+                  className="gap-1.5 h-9 dark:border-zinc-700 text-blue-600 dark:text-blue-400 font-bold"
+                  title="Print Report"
+                >
+                  <Printer className="h-3.5 w-3.5" />
+                  <span>Print</span>
+                </Button>
+              )}
             </div>
           </div>
         </div>

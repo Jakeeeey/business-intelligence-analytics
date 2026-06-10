@@ -1,4 +1,3 @@
-// src/modules/business-intelligence-analytics/scm/consolidator-audit/ConsolidatorAuditModule.tsx
 "use client";
 
 import React from "react";
@@ -8,6 +7,7 @@ import {
   Package,
   FileSpreadsheet,
   AlertCircle,
+  X,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -21,8 +21,215 @@ import { Filters } from "./components/Filters";
 import { AuditDataTable } from "./components/DataTable";
 import { StatusDistributionCharts } from "./components/StatusDistributionCharts";
 
-export default function ConsolidatorAuditModule() {
+import { PdfEngine } from "@/components/pdf-layout-design/PdfEngine";
+import { renderElement } from "@/components/pdf-layout-design/PdfGenerator";
+import { PAPER_SIZES } from "@/components/pdf-layout-design/constants";
+import { CompanyData } from "@/components/pdf-layout-design/types";
+import { PdfTemplate, pdfTemplateService } from "@/components/pdf-layout-design/services/pdf-template";
+import autoTable from "jspdf-autotable";
+import { toast } from "sonner";
+
+function getCookie(name: string): string | null {
+  if (typeof document === "undefined") return null;
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop()?.split(";").shift() ?? null;
+  return null;
+}
+
+function getLoggedInUser(): { firstName: string; lastName: string } {
+  if (typeof window === "undefined") return { firstName: "", lastName: "" };
+  let token = getCookie("vos_access_token") || window.localStorage.getItem("access_token");
+  if (!token) return { firstName: "System", lastName: "User" };
+
+  try {
+    const parts = token.split(".");
+    if (parts.length < 2) return { firstName: "System", lastName: "User" };
+    const p = parts[1];
+    const b64 = p.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = b64 + "=".repeat((4 - (b64.length % 4)) % 4);
+    const json = decodeURIComponent(
+      window.atob(padded)
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join("")
+    );
+    const payload = JSON.parse(json);
+    const firstName = payload.Firstname || payload.FirstName || payload.firstName || "";
+    const lastName = payload.LastName || payload.Lastname || payload.lastName || "";
+    return { firstName, lastName };
+  } catch (e) {
+    console.error("Failed to decode token", e);
+    return { firstName: "System", lastName: "User" };
+  }
+}
+
+interface ConsolidatorAuditModuleProps {
+  userName?: string;
+}
+
+export default function ConsolidatorAuditModule({ userName = "System User" }: ConsolidatorAuditModuleProps) {
   const hook = useConsolidatorAudit();
+
+  // Printing dependencies
+  const [templates, setTemplates] = React.useState<PdfTemplate[]>([]);
+  const [companyData, setCompanyData] = React.useState<CompanyData | null>(null);
+  const [isGenerating, setIsGenerating] = React.useState(false);
+
+  React.useEffect(() => {
+    const init = async () => {
+      try {
+        const cached = localStorage.getItem("pdf_company_data");
+        if (cached) setCompanyData(JSON.parse(cached));
+
+        const [compRes, tpls] = await Promise.all([
+          fetch("/api/pdf/company"),
+          pdfTemplateService.fetchTemplates(),
+        ]);
+
+        if (compRes.ok) {
+          const result = await compRes.json();
+          const company = result.data?.[0] || (Array.isArray(result.data) ? null : result.data);
+          setCompanyData(company);
+          if (company) {
+            localStorage.setItem("pdf_company_data", JSON.stringify(company));
+          }
+        }
+        setTemplates(tpls);
+      } catch (error) {
+        console.error("Error loading PDF engine dependencies:", error);
+      }
+    };
+    init();
+  }, []);
+
+  const handlePrint = async () => {
+    if (templates.length === 0) {
+      toast.error("No PDF templates found in database.");
+      return;
+    }
+    if (!companyData) {
+      toast.warning("Company data not loaded yet. Please wait.");
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      const templateName = templates[0].name;
+
+      const doc = await PdfEngine.generateWithFrame(templateName, companyData, (doc, startY, config) => {
+        const margins = config.margins || { top: 10, bottom: 10, left: 10, right: 10 };
+        
+        const baseSize = config.paperSize === "Custom" ? config.customSize : (PAPER_SIZES[config.paperSize] || PAPER_SIZES.A4);
+        const paperHeight = config.orientation === "landscape" ? baseSize.width : baseSize.height;
+        const bottomMargin = config.bodyEnd ? (paperHeight - config.bodyEnd) : margins.bottom;
+
+        // Header Title
+        doc.setFontSize(14);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(24, 24, 27); // zinc-900
+        doc.text("CONSOLIDATOR AUDIT REPORT", margins.left, startY, { baseline: "top" });
+
+        // Date formatter helper inside printable
+        const formatDate = (dateStr: string | null): string => {
+          if (!dateStr) return "—";
+          try {
+            const date = new Date(dateStr.replace(" ", "T"));
+            if (isNaN(date.getTime())) return dateStr;
+            return date.toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+              timeZone: "Asia/Manila",
+            });
+          } catch {
+            return dateStr;
+          }
+        };
+
+        const activeFilters = hook.activeFilters;
+        
+        // Two column data structure: Col 1 aligned left, Col 2 aligned right
+        const filtersData = [
+          [
+            `Date Range: ${activeFilters.startDate} to ${activeFilters.endDate}`,
+            `Created By: ${userName}`
+          ],
+          [
+            `PDP Status: ${activeFilters.pdpStatus || "ALL"}`,
+            `Created At: ${formatDate(new Date().toISOString())}`
+          ],
+          [
+            `Consolidator Status: ${activeFilters.consolidatorStatus || "ALL"}`,
+            ""
+          ],
+          [
+            `DP Status: ${activeFilters.dpStatus || "ALL"}`,
+            ""
+          ]
+        ];
+
+        // Draw Filters section as a clean, borderless table
+        autoTable(doc, {
+          startY: startY + 8,
+          margin: { left: margins.left, right: margins.right },
+          body: filtersData,
+          theme: "plain",
+          styles: { fontSize: 8, cellPadding: 1.5, textColor: [113, 113, 122] }, // zinc-500
+          columnStyles: {
+            0: { halign: "left" },
+            1: { halign: "right" }
+          }
+        });
+
+        // The data table should start below the filters table
+        const currentY = (doc as any).lastAutoTable.finalY + 6;
+
+        const head = [["Pre Dispatch Plan", "Consolidation", "Dispatch Plan"]];
+        const body = hook.data.map((row) => {
+          const pdpText = `${row.pdpNo || "Unknown PDP"} (${row.pdpStatus || "N/A"})\n${formatDate(row.pdpCreatedAt)}`;
+          const consolText = `${row.consolidatorNo || "Unknown Consolidator"} (${row.consolidatorStatus || "N/A"})\n${formatDate(row.consolidatorCreatedAt)}`;
+          
+          let dpText = "";
+          if (row.dpNo) {
+            dpText = `${row.dpNo} (${row.dpStatus || "N/A"})\n${formatDate(row.dpCreatedAt)}`;
+          } else {
+            dpText = "Unknown Dispatch Plan (N/A)";
+          }
+
+          return [pdpText, consolText, dpText];
+        });
+
+        autoTable(doc, {
+          startY: currentY,
+          margin: { top: startY, bottom: bottomMargin, left: margins.left, right: margins.right },
+          head,
+          body,
+          theme: "grid",
+          headStyles: { fillColor: [24, 24, 27], textColor: 255, fontStyle: "bold", fontSize: 9, halign: "center" },
+          styles: { fontSize: 8, cellPadding: 4, valign: "middle", halign: "center" },
+          didDrawPage: (data) => {
+            if (data.pageNumber > 1 && config && config.elements) {
+              Object.values(config.elements).forEach((el) => {
+                renderElement(doc, el, companyData);
+              });
+            }
+          },
+        });
+      });
+
+      const blob = doc.output("blob");
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank");
+    } catch (error) {
+      console.error("Failed to generate report PDF:", error);
+      toast.error("Failed to generate PDF printable report.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   // First-load full-page spinner
   if (hook.loading && !hook.loadedOnce) {
@@ -78,7 +285,8 @@ export default function ConsolidatorAuditModule() {
         uniqueStatuses={hook.uniqueStatuses}
         onSearch={hook.handleSearch}
         onClear={hook.handleClear}
-        loading={hook.loading}
+        onPrint={handlePrint}
+        loading={hook.loading || isGenerating}
       />
 
       {/* Error Banner */}
