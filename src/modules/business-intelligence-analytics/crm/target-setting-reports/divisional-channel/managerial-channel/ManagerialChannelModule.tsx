@@ -17,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
-import { fetchManagerialData, fetchDynamicTargets } from "./providers/fetchProvider";
+import { fetchManagerialData, fetchDynamicTargets, fetchCustomerTargets } from "./providers/fetchProvider";
 import { VSalesPerformanceDataDto } from "./types";
 import { BreakdownAnalysisModal } from "./components/BreakdownAnalysisModal";
 
@@ -54,69 +54,57 @@ function ManagerialSupplierContent() {
     type TargetItem = { fiscal_period: string; supplier_id?: number; salesman_id?: number; target_amount?: number; };
     const [targets, setTargets] = useState<{ supplierTargets: TargetItem[], salesmanTargets: TargetItem[] }>({ supplierTargets: [], salesmanTargets: [] });
 
-    // Salesman Detail Modal State
+    // Store Type Detail Modal State
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-    const [selectedSalesmanForModal, setSelectedSalesmanForModal] = useState<string | null>(null);
-
-    const [salesmenMap, setSalesmenMap] = useState<Map<number, string>>(new Map());
-
-    // Load salesmen metadata
-    useEffect(() => {
-        const loadSalesmen = async () => {
-            try {
-                const res = await fetch("/api/bia/crm/target-setting/metadata/salesmen");
-                if (res.ok) {
-                    const json = await res.json();
-                    const list = json?.data || [];
-                    const map = new Map<number, string>();
-                    list.forEach((s: { id?: number | string; salesman_code?: string }) => {
-                        if (s.id && s.salesman_code) {
-                            map.set(Number(s.id), s.salesman_code);
-                        }
-                    });
-                    setSalesmenMap(map);
-                }
-            } catch (err) {
-                console.error("Failed to load salesmen metadata", err);
-            }
-        };
-        loadSalesmen();
-    }, []);
-
-    const latestSalesmanNameMap = useMemo(() => {
-        const nameMap = new Map<number, { name: string; date: string }>();
-        rawData.forEach(item => {
-            if (item.salesmanId && item.salesmanName) {
-                const current = nameMap.get(item.salesmanId);
-                const itemDate = item.transactionDate || "";
-                if (!current || itemDate > current.date) {
-                    nameMap.set(item.salesmanId, { name: item.salesmanName, date: itemDate });
-                }
-            }
-        });
-        const finalMap = new Map<number, string>();
-        nameMap.forEach((val, key) => {
-            finalMap.set(key, val.name);
-        });
-        return finalMap;
-    }, [rawData]);
+    const [selectedStoreTypeForModal, setSelectedStoreTypeForModal] = useState<string | null>(null);
 
     const salesmanDetailData = useMemo(() => {
-        if (!selectedSalesmanForModal || !selectedSupplier) return [];
-        return rawData.filter(d => {
-            const code = salesmenMap.get(Number(d.salesmanId)) || d.salesmanName || "";
-            return (
-                code.toUpperCase() === (selectedSalesmanForModal || "").toUpperCase() &&
-                (d.supplierName || "").toUpperCase() === (selectedSupplier || "").toUpperCase() &&
-                (d.divisionName || "").toUpperCase() === (selectedDivision || "").toUpperCase()
-            );
-        });
-    }, [rawData, selectedSalesmanForModal, selectedSupplier, selectedDivision, salesmenMap]);
+        if (!selectedStoreTypeForModal || !selectedSupplier) return [];
+        return rawData.filter(d =>
+            (d.storeTypeLabel || "Unknown Store Type").toUpperCase() === (selectedStoreTypeForModal || "").toUpperCase() &&
+            (d.supplierName || "").toUpperCase() === (selectedSupplier || "").toUpperCase() &&
+            (d.divisionName || "").toUpperCase() === (selectedDivision || "").toUpperCase()
+        );
+    }, [rawData, selectedStoreTypeForModal, selectedSupplier, selectedDivision]);
 
-    const handleSalesmanClick = (name: string) => {
-        setSelectedSalesmanForModal(name);
+    const handleStoreTypeClick = (name: string) => {
+        setSelectedStoreTypeForModal(name);
         setIsDetailModalOpen(true);
     };
+
+    const [storeTypeTargets, setStoreTypeTargets] = useState<Record<string, number>>({});
+
+    // Fetch Store Type targets when supplier changes
+    useEffect(() => {
+        const loadTargets = async () => {
+            if (!selectedSupplier) {
+                setStoreTypeTargets({});
+                return;
+            }
+            const start = format(startOfMonth(parseISO(fromMonth + "-01")), "yyyy-MM-dd");
+            const end = format(endOfMonth(parseISO(toMonth + "-01")), "yyyy-MM-dd");
+            
+            const filtered = rawData.filter(d => 
+                (d.supplierName || "").toUpperCase() === selectedSupplier.toUpperCase() &&
+                (d.divisionName || "").toUpperCase() === selectedDivision.toUpperCase()
+            );
+            const salesmanIds = Array.from(new Set(filtered.map(d => d.salesmanId).filter(Boolean))) as number[];
+            if (salesmanIds.length === 0) {
+                setStoreTypeTargets({});
+                return;
+            }
+
+            const uniqueStoreTypes = Array.from(new Set(filtered.map(d => d.storeTypeLabel || "Unknown Store Type"))) as string[];
+
+            try {
+                const res = await fetchCustomerTargets(salesmanIds, start, end, 'storeType', uniqueStoreTypes);
+                setStoreTypeTargets(res || {});
+            } catch (e) {
+                console.error(e);
+            }
+        };
+        loadTargets();
+    }, [selectedSupplier, rawData, fromMonth, toMonth, selectedDivision]);
 
     // 1. Fetch Data
     useEffect(() => {
@@ -187,47 +175,32 @@ function ManagerialSupplierContent() {
         };
     }, [rawData, selectedDivision, fromMonth, toMonth, targets]);
 
-    // 3. Data Processing for Salesman (Level 2 - Drill Down)
-    const salesmanBreakdown = useMemo(() => {
+    // 3. Data Processing for Store Type (Level 2 - Drill Down)
+    const storeTypeBreakdown = useMemo(() => {
         if (!selectedSupplier) return [];
-
-        const start = parseISO(fromMonth + "-01");
-        const end = parseISO(toMonth + "-01");
 
         const filtered = rawData.filter(d =>
             (d.supplierName || "").toUpperCase() === (selectedSupplier || "").toUpperCase() &&
             (d.divisionName || "").toUpperCase() === (selectedDivision || "").toUpperCase()
         );
 
-        const supplierId = filtered[0]?.supplierId;
-
-        const salesmanMap = new Map<string, { sales: number, salesmanId: number }>();
+        const storeTypeMap = new Map<string, { sales: number }>();
 
         filtered.forEach(item => {
-            const code = salesmenMap.get(Number(item.salesmanId)) || item.salesmanName || "Unknown Salesman";
-            const current = salesmanMap.get(code) || { sales: 0, salesmanId: item.salesmanId || 0 };
-            salesmanMap.set(code, {
-                sales: current.sales + (item.netAmount || 0),
-                salesmanId: item.salesmanId || 0
+            const name = item.storeTypeLabel || "Unknown Store Type";
+            const current = storeTypeMap.get(name) || { sales: 0 };
+            storeTypeMap.set(name, {
+                sales: current.sales + (item.netAmount || 0)
             });
         });
 
-        return Array.from(salesmanMap.entries())
-            .map(([code, data]) => {
-                const relevantSalesmanTargets = targets.salesmanTargets?.filter((t: TargetItem) => {
-                    const targetDate = parseISO(t.fiscal_period);
-                    return (
-                        t.salesman_id === data.salesmanId &&
-                        t.supplier_id === supplierId &&
-                        targetDate >= start &&
-                        targetDate <= end
-                    );
-                });
-
-                const target = relevantSalesmanTargets?.reduce((sum: number, t: TargetItem) => sum + (t.target_amount || 0), 0) || 0;
+        return Array.from(storeTypeMap.entries())
+            .map(([name, data]) => {
+                const targetKey = Object.keys(storeTypeTargets).find(k => k.toUpperCase() === name.toUpperCase());
+                const target = targetKey ? storeTypeTargets[targetKey] : 0;
 
                 return {
-                    name: code.toUpperCase(),
+                    name: name.toUpperCase(),
                     sales: data.sales,
                     target,
                     achievement: target > 0 ? (data.sales / target) * 100 : 0,
@@ -235,7 +208,7 @@ function ManagerialSupplierContent() {
                 };
             })
             .sort((a, b) => b.sales - a.sales);
-    }, [rawData, selectedSupplier, targets, selectedDivision, fromMonth, toMonth, salesmenMap]);
+    }, [rawData, selectedSupplier, storeTypeTargets, selectedDivision]);
 
     const formatPHP = (val: number) => new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 0 }).format(val);
     const formatShort = (val: number) => {
@@ -356,7 +329,7 @@ function ManagerialSupplierContent() {
                                 <Badge variant="secondary" className="text-[9px] font-black tracking-widest uppercase py-0 px-2 h-4">Visual Analytics</Badge>
                             </div>
                             <CardDescription className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">
-                                {selectedSupplier ? "Breakdown of sales by personnel" : "Comparative supplier hitting matrix"}
+                                {selectedSupplier ? "Breakdown of sales by store type" : "Comparative supplier hitting matrix"}
                             </CardDescription>
                         </div>
                         <div className="flex items-center gap-2">
@@ -373,14 +346,14 @@ function ManagerialSupplierContent() {
                     <CardContent className="h-[520px] pt-8 px-2">
                         <ResponsiveContainer width="100%" height="100%">
                             <ComposedChart 
-                                data={(selectedSupplier ? salesmanBreakdown : supplierPerformance).slice(0, 10)} 
+                                data={(selectedSupplier ? storeTypeBreakdown : supplierPerformance).slice(0, 10)} 
                                 layout="vertical" 
                                 margin={{ left: 20, right: 100, bottom: 20 }}
                                 onClick={(data) => {
                                     if (!selectedSupplier && data && data.activePayload) {
                                         setSelectedSupplier(data.activePayload[0].payload.name);
                                     } else if (selectedSupplier && data && data.activePayload) {
-                                        handleSalesmanClick(data.activePayload[0].payload.name);
+                                        handleStoreTypeClick(data.activePayload[0].payload.name);
                                     }
                                 }}
                                 style={{ cursor: 'pointer' }}
@@ -424,7 +397,7 @@ function ManagerialSupplierContent() {
                                     }}
                                 />
                                 <Bar dataKey="sales" name="Actual" barSize={28} radius={[0, 8, 8, 0]} minPointSize={2}>
-                                    {(selectedSupplier ? salesmanBreakdown : supplierPerformance).slice(0, 10).map((e, i) => (
+                                    {(selectedSupplier ? storeTypeBreakdown : supplierPerformance).slice(0, 10).map((e, i) => (
                                         <Cell key={i} fill={selectedSupplier ? 'hsl(var(--primary))' : (e.sales >= e.target ? '#10b981' : '#f59e0b')} fillOpacity={0.8} />
                                     ))}
                                     <LabelList 
@@ -474,24 +447,24 @@ function ManagerialSupplierContent() {
                     <CardHeader className="border-b border-border/40 bg-muted/10">
                         <div className="flex items-center justify-between">
                             <CardTitle className="text-lg font-black uppercase tracking-tight italic">
-                                {selectedSupplier ? <><span className="text-primary">Personnel</span> Rank</> : <><span className="text-primary">Supplier</span> Health</>}
+                                {selectedSupplier ? <><span className="text-primary">Store Type</span> Rank</> : <><span className="text-primary">Supplier</span> Health</>}
                             </CardTitle>
                             <div className="p-2 bg-background rounded-xl border border-border/40 shadow-sm">
                                 <Trophy className="h-4 w-4 text-amber-500" />
                             </div>
                         </div>
                         <CardDescription className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">
-                            {selectedSupplier ? "Individual Sales Performance" : "Supplier-wise target scorecard"}
+                            {selectedSupplier ? "Store Type Sales Performance" : "Supplier-wise target scorecard"}
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="flex-1 overflow-hidden p-0">
                         <ScrollArea className="h-[520px] w-full px-4 pt-6">
                             <div className="space-y-4 pb-6">
-                                {(selectedSupplier ? salesmanBreakdown : supplierPerformance).map((item, i) => (
+                                {(selectedSupplier ? storeTypeBreakdown : supplierPerformance).map((item, i) => (
                                     <div 
                                         key={i} 
                                         className="group relative p-4 rounded-2xl border border-border/40 bg-muted/5 hover:bg-primary/5 hover:border-primary/20 transition-all duration-300 cursor-pointer overflow-hidden"
-                                        onClick={() => !selectedSupplier ? setSelectedSupplier(item.name) : handleSalesmanClick(item.name)}
+                                        onClick={() => !selectedSupplier ? setSelectedSupplier(item.name) : handleStoreTypeClick(item.name)}
                                     >
                                         {/* Background Decoration */}
                                         <div className="absolute -right-4 -bottom-4 opacity-[0.03] group-hover:opacity-[0.08] transition-opacity">
@@ -505,7 +478,7 @@ function ManagerialSupplierContent() {
                                                     {item.sales < item.target && <AlertCircle className="h-3 w-3 text-destructive animate-pulse" />}
                                                 </div>
                                                 <p className="text-[9px] font-bold text-muted-foreground/60 uppercase tracking-widest italic">
-                                                    {selectedSupplier ? "Salesman Performance" : "Supplier Health Index"}
+                                                    {selectedSupplier ? "Store Type Performance" : "Supplier Health Index"}
                                                 </p>
                                             </div>
                                             <div className="flex flex-col items-end">
@@ -550,12 +523,8 @@ function ManagerialSupplierContent() {
                 isOpen={isDetailModalOpen}
                 onClose={() => setIsDetailModalOpen(false)}
                 data={salesmanDetailData}
-                ids={salesmanDetailData[0]?.salesmanId ? [Number(salesmanDetailData[0].salesmanId)] : []}
-                salesmanName={
-                    selectedSalesmanForModal && salesmanDetailData[0]
-                        ? `${selectedSalesmanForModal} (${latestSalesmanNameMap.get(Number(salesmanDetailData[0].salesmanId)) || salesmanDetailData[0].salesmanName})`
-                        : (selectedSalesmanForModal || "")
-                }
+                ids={Array.from(new Set(salesmanDetailData.map(d => Number(d.salesmanId)).filter(Boolean)))}
+                channelName={selectedStoreTypeForModal || ""}
                 supplierName={selectedSupplier || ""}
                 periodLabel={`${fromMonth} to ${toMonth}`}
                 startDate={format(startOfMonth(parseISO(fromMonth + "-01")), "yyyy-MM-dd")}
@@ -566,7 +535,7 @@ function ManagerialSupplierContent() {
     );
 }
 
-export default function ManagerialSupplierModule() {
+export default function ManagerialChannelModule() {
     return (
         <Suspense fallback={<div className="flex h-screen w-full items-center justify-center bg-background"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>}>
             <ManagerialSupplierContent />

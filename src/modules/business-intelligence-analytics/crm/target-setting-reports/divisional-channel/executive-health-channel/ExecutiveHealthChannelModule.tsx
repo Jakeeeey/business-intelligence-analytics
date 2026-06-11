@@ -18,7 +18,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 
 import { fetchExecutiveHealthData, fetchCompanyTargets, fetchDivisionTargets } from "./providers/fetchProvider";
 import { VSalesPerformanceDataDto, TargetSettingExecutive, TargetSettingDivision } from "./types";
-import { getDivisions } from "../../target-setting/executive/providers/fetchProvider";
+import { getDivisions } from "../../../target-setting/executive/providers/fetchProvider";
 
 function ExecutiveHealthContent() {
     const router = useRouter();
@@ -69,18 +69,13 @@ function ExecutiveHealthContent() {
         const totalTarget = targets.reduce((sum, t) => sum + (t.target_amount || 0), 0);
         
         const divisionMap = new Map<string, {name: string, sales: number}>();
-        const activeDivisionIds = new Set(divisions.map(d => d.division_id));
-        const activeDivisionNames = new Set(divisions.map(d => (d.division_name || "").toUpperCase()));
 
         rawData.forEach(item => {
-            const isBiaDivision = activeDivisionIds.has(item.divisionId) || activeDivisionNames.has((item.divisionName || "").toUpperCase());
-            if (isBiaDivision) {
-                const divName = item.divisionName || "Unknown";
-                totalActual += item.netAmount || 0;
-                const current = divisionMap.get(divName) || { name: divName, sales: 0 };
-                current.sales += item.netAmount || 0;
-                divisionMap.set(divName, current);
-            }
+            const divName = item.divisionName || "Unknown";
+            totalActual += item.netAmount || 0;
+            const current = divisionMap.get(divName) || { name: divName, sales: 0 };
+            current.sales += item.netAmount || 0;
+            divisionMap.set(divName, current);
         });
 
         // Add divisions that have targets but no sales yet
@@ -128,7 +123,7 @@ function ExecutiveHealthContent() {
 
     const handleDivisionClick = (divisionName: string) => {
         const params = new URLSearchParams({ from: fromMonth, to: toMonth, division: divisionName });
-        router.push(`/bia/crm/target-setting-reports/managerial-supplier?${params.toString()}`);
+        router.push(`/bia/crm/target-setting-reports/divisional-channel/managerial-channel?${params.toString()}`);
     };
 
     return (
@@ -398,10 +393,11 @@ function ExecutiveHealthContent() {
     );
 }
 
-export default function ExecutiveHealthModule() {
+export default function ExecutiveHealthChannelModule() {
     return (
         <Suspense fallback={<div className="flex h-screen w-full items-center justify-center bg-background"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>}>
             <ExecutiveHealthContent />
         </Suspense>
     );
 }
+
