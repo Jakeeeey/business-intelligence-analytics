@@ -68,6 +68,8 @@ export function useConsolidatorAudit() {
     consolidatorStatus: "",
     dpNo: "",
     dpStatus: "",
+    showUnlinkedConsolidator: false,
+    showUnlinkedDp: false,
   });
 
   const [activeFilters, setActiveFilters] = useState<ConsolidatorAuditFilters>({
@@ -80,6 +82,8 @@ export function useConsolidatorAudit() {
     consolidatorStatus: "",
     dpNo: "",
     dpStatus: "",
+    showUnlinkedConsolidator: false,
+    showUnlinkedDp: false,
   });
 
   const [data, setData] = useState<ConsolidatorAuditRecord[]>([]);
@@ -177,6 +181,8 @@ export function useConsolidatorAudit() {
       consolidatorStatus: "",
       dpNo: "",
       dpStatus: "",
+      showUnlinkedConsolidator: false,
+      showUnlinkedDp: false,
     };
     setDraftFilters(defaultFilters);
     setActiveFilters(defaultFilters);
@@ -207,6 +213,15 @@ export function useConsolidatorAudit() {
         return false;
       }
 
+      // No CLDTO / No DP checkbox filters (OR logic when both checked)
+      if (activeFilters.showUnlinkedConsolidator || activeFilters.showUnlinkedDp) {
+        const noConsolidator = !row.consolidatorNo && !row.consolidatorId;
+        const noDp = !row.dpNo && !row.dpId;
+        const consolidatorMatch = activeFilters.showUnlinkedConsolidator && noConsolidator;
+        const dpMatch = activeFilters.showUnlinkedDp && noDp;
+        if (!consolidatorMatch && !dpMatch) return false;
+      }
+
       return true;
     });
   }, [
@@ -217,6 +232,8 @@ export function useConsolidatorAudit() {
     activeFilters.pdpStatus,
     activeFilters.consolidatorStatus,
     activeFilters.dpStatus,
+    activeFilters.showUnlinkedConsolidator,
+    activeFilters.showUnlinkedDp,
   ]);
 
   // Extract unique statuses from the date-filtered dataset (never shrinks based on selected statuses)

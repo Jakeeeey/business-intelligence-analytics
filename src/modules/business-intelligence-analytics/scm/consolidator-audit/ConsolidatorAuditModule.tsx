@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Spinner } from "@/components/ui/spinner";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   ClipboardList,
   Package,
@@ -62,6 +62,66 @@ function getLoggedInUser(): { firstName: string; lastName: string } {
     console.error("Failed to decode token", e);
     return { firstName: "System", lastName: "User" };
   }
+}
+
+function ConsolidatorAuditSkeleton() {
+  return (
+    <div className="space-y-6 animate-pulse">
+      {/* Header Skeleton */}
+      <div className="space-y-2">
+        <Skeleton className="h-9 w-64 bg-zinc-200 dark:bg-zinc-800" />
+        <Skeleton className="h-4 w-96 bg-zinc-200 dark:bg-zinc-800" />
+      </div>
+
+      {/* Filters Card Skeleton */}
+      <div className="border rounded-xl p-4 space-y-4 dark:border-zinc-800 bg-card">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+          <Skeleton className="h-9 w-full bg-zinc-200 dark:bg-zinc-800 md:col-span-2" />
+          <Skeleton className="h-9 w-full bg-zinc-200 dark:bg-zinc-800 md:col-span-2" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end">
+          <Skeleton className="h-9 w-full bg-zinc-200 dark:bg-zinc-800" />
+          <Skeleton className="h-9 w-full bg-zinc-200 dark:bg-zinc-800" />
+          <Skeleton className="h-9 w-full bg-zinc-200 dark:bg-zinc-800" />
+          <div className="flex justify-end gap-2 w-full">
+            <Skeleton className="h-9 w-20 bg-zinc-200 dark:bg-zinc-800" />
+            <Skeleton className="h-9 w-20 bg-zinc-200 dark:bg-zinc-800" />
+            <Skeleton className="h-9 w-24 bg-zinc-200 dark:bg-zinc-800" />
+          </div>
+        </div>
+      </div>
+
+      {/* KPI Cards Skeleton */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <Skeleton className="h-32 w-full bg-zinc-200 dark:bg-zinc-800" />
+        <Skeleton className="h-32 w-full bg-zinc-200 dark:bg-zinc-800" />
+        <Skeleton className="h-32 w-full bg-zinc-200 dark:bg-zinc-800" />
+      </div>
+
+      {/* Charts Skeleton */}
+      <Skeleton className="h-64 w-full bg-zinc-200 dark:bg-zinc-800" />
+
+      {/* Table Skeleton */}
+      <div className="border rounded-xl overflow-hidden dark:border-zinc-800 bg-card">
+        <div className="bg-muted/10 p-4 border-b dark:border-zinc-800">
+          <div className="grid grid-cols-3 gap-4">
+            <Skeleton className="h-5 w-full bg-zinc-200 dark:bg-zinc-800" />
+            <Skeleton className="h-5 w-full bg-zinc-200 dark:bg-zinc-800" />
+            <Skeleton className="h-5 w-full bg-zinc-200 dark:bg-zinc-800" />
+          </div>
+        </div>
+        <div className="p-4 space-y-4">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="grid grid-cols-3 gap-4">
+              <Skeleton className="h-16 w-full bg-zinc-200 dark:bg-zinc-800" />
+              <Skeleton className="h-16 w-full bg-zinc-200 dark:bg-zinc-800" />
+              <Skeleton className="h-16 w-full bg-zinc-200 dark:bg-zinc-800" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 interface ConsolidatorAuditModuleProps {
@@ -231,14 +291,9 @@ export default function ConsolidatorAuditModule({ userName = "System User" }: Co
     }
   };
 
-  // First-load full-page spinner
+  // First-load page skeleton loader
   if (hook.loading && !hook.loadedOnce) {
-    return (
-      <div className="flex flex-col items-center justify-center py-32 gap-4 text-muted-foreground">
-        <Spinner className="h-8 w-8 text-primary" />
-        <p className="text-sm">Loading consolidator audit logs…</p>
-      </div>
-    );
+    return <ConsolidatorAuditSkeleton />;
   }
 
   // Calculate quick summary metrics
@@ -302,7 +357,7 @@ export default function ConsolidatorAuditModule({ userName = "System User" }: Co
           {/* Refresh Loader */}
           {hook.loading && (
             <div className="flex items-center gap-2 text-xs text-muted-foreground px-1 animate-pulse">
-              <Spinner className="h-3.5 w-3.5" />
+              <div className="h-2 w-2 rounded-full bg-zinc-400 dark:bg-zinc-500 animate-ping" />
               Updating audit records…
             </div>
           )}
