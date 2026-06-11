@@ -193,7 +193,11 @@ const columns: ColumnDef<GroupedConsolidatorRow>[] = [
     cell: ({ row }) => {
       const dps = row.original.dispatchPlans;
       if (!dps || dps.length === 0) {
-        return <BlockCell no={null} status={null} date={null} />;
+        return (
+          <div className="flex flex-col h-full w-full justify-stretch items-stretch">
+            <BlockCell no="Unknown Dispatch Plan" status="N/A" date={null} />
+          </div>
+        );
       }
       return (
         <div className="flex flex-col h-full w-full justify-stretch items-stretch">
@@ -270,7 +274,44 @@ export function AuditDataTable({
       }
     });
 
-    return Array.from(map.values());
+    const result = Array.from(map.values());
+
+    // Sort pdps inside each group descending by pdpCreatedAt
+    result.forEach((group) => {
+      group.pdps.sort((a, b) => {
+        if (!a.pdpCreatedAt) return 1;
+        if (!b.pdpCreatedAt) return -1;
+        return new Date(b.pdpCreatedAt).getTime() - new Date(a.pdpCreatedAt).getTime();
+      });
+    });
+
+    // Sort groups descending by pdpCreatedAt (latest first) with fallback to other created dates
+    result.sort((a, b) => {
+      const getSortingTime = (g: GroupedConsolidatorRow) => {
+        let maxTime = 0;
+        g.pdps.forEach((p) => {
+          if (p.pdpCreatedAt) {
+            maxTime = Math.max(maxTime, new Date(p.pdpCreatedAt).getTime());
+          }
+        });
+        if (maxTime > 0) return maxTime;
+
+        // Fallbacks if no PDP
+        if (g.consolidatorCreatedAt) {
+          maxTime = Math.max(maxTime, new Date(g.consolidatorCreatedAt).getTime());
+        }
+        g.dispatchPlans.forEach((d) => {
+          if (d.dpCreatedAt) {
+            maxTime = Math.max(maxTime, new Date(d.dpCreatedAt).getTime());
+          }
+        });
+        return maxTime;
+      };
+
+      return getSortingTime(b) - getSortingTime(a);
+    });
+
+    return result;
   }, [data]);
 
   const stableColumns = useMemo(() => columns, []);
