@@ -7,7 +7,6 @@ import {
   Package,
   FileSpreadsheet,
   AlertCircle,
-  X,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -37,32 +36,6 @@ function getCookie(name: string): string | null {
   return null;
 }
 
-function getLoggedInUser(): { firstName: string; lastName: string } {
-  if (typeof window === "undefined") return { firstName: "", lastName: "" };
-  let token = getCookie("vos_access_token") || window.localStorage.getItem("access_token");
-  if (!token) return { firstName: "System", lastName: "User" };
-
-  try {
-    const parts = token.split(".");
-    if (parts.length < 2) return { firstName: "System", lastName: "User" };
-    const p = parts[1];
-    const b64 = p.replace(/-/g, "+").replace(/_/g, "/");
-    const padded = b64 + "=".repeat((4 - (b64.length % 4)) % 4);
-    const json = decodeURIComponent(
-      window.atob(padded)
-        .split("")
-        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
-        .join("")
-    );
-    const payload = JSON.parse(json);
-    const firstName = payload.Firstname || payload.FirstName || payload.firstName || "";
-    const lastName = payload.LastName || payload.Lastname || payload.lastName || "";
-    return { firstName, lastName };
-  } catch (e) {
-    console.error("Failed to decode token", e);
-    return { firstName: "System", lastName: "User" };
-  }
-}
 
 function ConsolidatorAuditSkeleton() {
   return (
@@ -245,7 +218,7 @@ export default function ConsolidatorAuditModule({ userName = "System User" }: Co
         });
 
         // The data table should start below the filters table
-        const currentY = (doc as any).lastAutoTable.finalY + 6;
+        const currentY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 6;
 
         const head = [["Pre Dispatch Plan", "Consolidation", "Dispatch Plan"]];
         const body = hook.data.map((row) => {
