@@ -28,13 +28,6 @@ import { PdfTemplate, pdfTemplateService } from "@/components/pdf-layout-design/
 import autoTable from "jspdf-autotable";
 import { toast } from "sonner";
 
-function getCookie(name: string): string | null {
-  if (typeof document === "undefined") return null;
-  const value = `; ${document.cookie}`;
-  const parts = value.split(`; ${name}=`);
-  if (parts.length === 2) return parts.pop()?.split(";").shift() ?? null;
-  return null;
-}
 
 
 function ConsolidatorAuditSkeleton() {
