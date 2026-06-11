@@ -112,7 +112,7 @@ export function Filters({
       <CardContent className="p-4">
         <div className="flex flex-col gap-4">
           
-          {/* Row 1: Searchbar + Time Range selection + Conditional Dates */}
+          {/* Row 1: Searchbar + Time Range selection & Date Range Group */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
             {/* Search Bar */}
             <div className="space-y-1 md:col-span-2">
@@ -129,88 +129,89 @@ export function Filters({
               />
             </div>
 
-            {/* Time Range Choice */}
-            <div className="space-y-1">
-              <Label className="text-xs font-medium">Time Range</Label>
-              <Select
-                value={filters.dateRangeType || "month"}
-                onValueChange={(val: "today" | "week" | "month" | "year" | "custom") => {
-                  const dates = getManilaDateRange(val, filters.startDate, filters.endDate);
-                  onChange((prev) => ({
-                    ...prev,
-                    dateRangeType: val,
-                    startDate: dates.startDate,
-                    endDate: dates.endDate,
-                  }));
-                }}
-                disabled={loading}
-              >
-                <SelectTrigger className="h-9 dark:border-zinc-700">
-                  <SelectValue placeholder="Select Range" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="today">Today</SelectItem>
-                  <SelectItem value="week">This Week</SelectItem>
-                  <SelectItem value="month">This Month</SelectItem>
-                  <SelectItem value="year">This Year</SelectItem>
-                  <SelectItem value="custom">Custom Range</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Time & Date Range Flex Group */}
+            <div className="flex items-end gap-2 md:col-span-2 w-full">
+              <div className="flex-1 max-w-[160px] space-y-1">
+                <Label className="text-xs font-medium">Time Range</Label>
+                <Select
+                  value={filters.dateRangeType || "month"}
+                  onValueChange={(val: "today" | "week" | "month" | "year" | "custom") => {
+                    const dates = getManilaDateRange(val, filters.startDate, filters.endDate);
+                    onChange((prev) => ({
+                      ...prev,
+                      dateRangeType: val,
+                      startDate: dates.startDate,
+                      endDate: dates.endDate,
+                    }));
+                  }}
+                  disabled={loading}
+                >
+                  <SelectTrigger className="h-9 dark:border-zinc-700">
+                    <SelectValue placeholder="Select Range" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="today">Today</SelectItem>
+                    <SelectItem value="week">This Week</SelectItem>
+                    <SelectItem value="month">This Month</SelectItem>
+                    <SelectItem value="year">This Year</SelectItem>
+                    <SelectItem value="custom">Custom Range</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-            {/* Date Display / Custom Inputs */}
-            <div className="space-y-1">
-              {filters.dateRangeType === "custom" ? (
-                /* Custom: editable start + end date inputs */
-                <>
-                  <Label className="text-xs font-medium">Date Range</Label>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      id="startDate"
-                      type="date"
-                      value={filters.startDate}
-                      onChange={(e) =>
-                        onChange((prev) => ({ ...prev, startDate: e.target.value }))
-                      }
-                      className="h-9 dark:border-zinc-700"
-                      disabled={loading}
-                    />
-                    <span className="text-muted-foreground text-xs shrink-0">—</span>
-                    <Input
-                      id="endDate"
-                      type="date"
-                      value={filters.endDate}
-                      onChange={(e) =>
-                        onChange((prev) => ({ ...prev, endDate: e.target.value }))
-                      }
-                      className="h-9 dark:border-zinc-700"
-                      disabled={loading}
-                    />
-                  </div>
-                </>
-              ) : filters.dateRangeType === "today" ? (
-                /* Today: single date */
-                <>
-                  <Label className="text-xs font-medium">Date</Label>
-                  <div className="flex h-9 items-center rounded-md border border-zinc-200 dark:border-zinc-700 bg-muted/40 px-3">
-                    <span className="text-sm text-muted-foreground">
-                      {formatDisplayDate(filters.startDate)}
-                    </span>
-                  </div>
-                </>
-              ) : (
-                /* Week / Month / Year: start — end range */
-                <>
-                  <Label className="text-xs font-medium">Date Range</Label>
-                  <div className="flex h-9 items-center rounded-md border border-zinc-200 dark:border-zinc-700 bg-muted/40 px-3">
-                    <span className="text-sm text-muted-foreground">
-                      {formatDisplayDate(filters.startDate)}
-                      {" — "}
-                      {formatDisplayDate(filters.endDate)}
-                    </span>
-                  </div>
-                </>
-              )}
+              <div className="flex-1 space-y-1">
+                {filters.dateRangeType === "custom" ? (
+                  /* Custom: editable start + end date inputs */
+                  <>
+                    <Label className="text-xs font-medium">Date Range</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        id="startDate"
+                        type="date"
+                        value={filters.startDate}
+                        onChange={(e) =>
+                          onChange((prev) => ({ ...prev, startDate: e.target.value }))
+                        }
+                        className="h-9 dark:border-zinc-700 text-xs px-2"
+                        disabled={loading}
+                      />
+                      <span className="text-muted-foreground text-xs shrink-0">—</span>
+                      <Input
+                        id="endDate"
+                        type="date"
+                        value={filters.endDate}
+                        onChange={(e) =>
+                          onChange((prev) => ({ ...prev, endDate: e.target.value }))
+                        }
+                        className="h-9 dark:border-zinc-700 text-xs px-2"
+                        disabled={loading}
+                      />
+                    </div>
+                  </>
+                ) : filters.dateRangeType === "today" ? (
+                  /* Today: single date */
+                  <>
+                    <Label className="text-xs font-medium">Date</Label>
+                    <div className="flex h-9 items-center rounded-md border border-zinc-200 dark:border-zinc-700 bg-muted/40 px-3">
+                      <span className="text-sm text-muted-foreground">
+                        {formatDisplayDate(filters.startDate)}
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  /* Week / Month / Year: start — end range */
+                  <>
+                    <Label className="text-xs font-medium">Date Range</Label>
+                    <div className="flex h-9 items-center rounded-md border border-zinc-200 dark:border-zinc-700 bg-muted/40 px-3">
+                      <span className="text-sm text-muted-foreground">
+                        {formatDisplayDate(filters.startDate)}
+                        {" — "}
+                        {formatDisplayDate(filters.endDate)}
+                      </span>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           </div>
 
@@ -274,7 +275,11 @@ export function Filters({
                     id="noCldto"
                     checked={!!filters.showUnlinkedConsolidator}
                     onCheckedChange={(checked) =>
-                      onChange((prev) => ({ ...prev, showUnlinkedConsolidator: !!checked }))
+                      onChange((prev) => ({
+                        ...prev,
+                        showUnlinkedConsolidator: !!checked,
+                        consolidatorStatus: checked ? "" : prev.consolidatorStatus,
+                      }))
                     }
                     disabled={loading}
                     className="h-3.5 w-3.5"
@@ -315,7 +320,11 @@ export function Filters({
                     id="noDp"
                     checked={!!filters.showUnlinkedDp}
                     onCheckedChange={(checked) =>
-                      onChange((prev) => ({ ...prev, showUnlinkedDp: !!checked }))
+                      onChange((prev) => ({
+                        ...prev,
+                        showUnlinkedDp: !!checked,
+                        dpStatus: checked ? "" : prev.dpStatus,
+                      }))
                     }
                     disabled={loading}
                     className="h-3.5 w-3.5"
