@@ -65,7 +65,7 @@ export function Filters({
     onChange((prev) => {
       const next = { ...prev, pdpNo: "", consolidatorNo: "", dpNo: "" };
       if (!trimmed) return next;
-      
+
       if (/^pdp/i.test(trimmed)) {
         next.pdpNo = trimmed;
       } else if (/^cld/i.test(trimmed) || /^consol/i.test(trimmed)) {
@@ -111,7 +111,7 @@ export function Filters({
     <Card className="dark:border-zinc-700">
       <CardContent className="p-4">
         <div className="flex flex-col gap-4">
-          
+
           {/* Row 1: Searchbar + Time Range selection & Date Range Group */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
             {/* Search Bar */}
