@@ -31,9 +31,8 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const baseUrl = SPRING_API_BASE_URL.replace(/\/+$/, "");
 
-    // Use the view-table naming convention (view-*) that Spring Boot
-    // security whitelists for JWT Bearer auth
-    const targetUrl = new URL(`${baseUrl}/api/view-post-dispatch-drill-down/filter`);
+    // Use the EXACT URL provided by the user
+    const targetUrl = new URL(`${baseUrl}/api/post-dispatch-drill-down`);
 
     searchParams.forEach((value, key) => {
         targetUrl.searchParams.append(key, value);
@@ -47,31 +46,14 @@ export async function GET(req: NextRequest) {
     console.log("[PDAR-API] Calling:", targetUrl.toString());
 
     try {
-        let springRes = await fetch(targetUrl.toString(), {
+        const springRes = await fetch(targetUrl.toString(), {
             method: "GET",
             headers,
             cache: "no-store",
         });
 
-        let text = await springRes.text().catch(() => "");
+        const text = await springRes.text().catch(() => "");
         console.log("[PDAR-API] Response status:", springRes.status, "body:", text.slice(0, 200));
-
-        // Fallback: try /all suffix if /filter doesn't work
-        if (!springRes.ok) {
-            const fallbackUrl = new URL(`${baseUrl}/api/view-post-dispatch-drill-down/all`);
-            searchParams.forEach((value, key) => {
-                fallbackUrl.searchParams.append(key, value);
-            });
-            console.log("[PDAR-API] Trying fallback:", fallbackUrl.toString());
-
-            springRes = await fetch(fallbackUrl.toString(), {
-                method: "GET",
-                headers,
-                cache: "no-store",
-            });
-            text = await springRes.text().catch(() => "");
-            console.log("[PDAR-API] Fallback status:", springRes.status, "body:", text.slice(0, 200));
-        }
 
         if (!springRes.ok) {
             console.error(`[PDAR-API] Upstream error ${springRes.status}:`, text.slice(0, 300));
