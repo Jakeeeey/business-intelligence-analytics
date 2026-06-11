@@ -1,5 +1,3 @@
-// src/app/(business-intelligence-analytics)/bia/scm/consolidator-audit/page.tsx
-import React, { Suspense } from "react";
 import {
     Breadcrumb,
     BreadcrumbItem,
@@ -11,9 +9,9 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { NavUser } from "@/components/shared/app-sidebar/nav-user";
-
 import { cookies } from "next/headers";
-import ConsolidatorAuditModule from "@/modules/business-intelligence-analytics/scm/consolidator-audit";
+import { AnnualReportFilterProvider } from "@/modules/business-intelligence-analytics/crm/target-setting-reports/divisional/annual-report/providers/AnnualReportFilterProvider";
+import { AnnualReportPage } from "@/modules/business-intelligence-analytics/crm/target-setting-reports/divisional/annual-report";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -48,18 +46,10 @@ function buildHeaderUserFromToken(token: string | null | undefined) {
     const payload = token ? decodeJwtPayload(token) : null;
 
     const first = pickString(payload, [
-        "Firstname",
-        "FirstName",
-        "firstName",
-        "firstname",
-        "first_name",
+        "Firstname", "FirstName", "firstName", "firstname", "first_name",
     ]);
     const last = pickString(payload, [
-        "LastName",
-        "Lastname",
-        "lastName",
-        "lastname",
-        "last_name",
+        "LastName", "Lastname", "lastName", "lastname", "last_name",
     ]);
     const email = pickString(payload, ["email", "Email"]);
 
@@ -93,16 +83,26 @@ export default async function Page() {
                         <Breadcrumb>
                             <BreadcrumbList className="min-w-0 overflow-hidden">
                                 <BreadcrumbItem className="hidden md:block shrink-0">
-                                    <BreadcrumbLink>BIA</BreadcrumbLink>
+                                    <BreadcrumbLink href="#">BIA</BreadcrumbLink>
                                 </BreadcrumbItem>
                                 <BreadcrumbSeparator className="hidden md:block shrink-0" />
                                 <BreadcrumbItem className="hidden md:block shrink-0">
-                                    <BreadcrumbLink>SCM</BreadcrumbLink>
+                                    <BreadcrumbLink>CRM</BreadcrumbLink>
+                                </BreadcrumbItem>
+                                <BreadcrumbSeparator className="hidden md:block shrink-0" />
+                                <BreadcrumbItem className="hidden md:block shrink-0">
+                                    <BreadcrumbLink href="#">
+                                        Target Setting Reports
+                                    </BreadcrumbLink>
+                                </BreadcrumbItem>
+                                <BreadcrumbSeparator className="hidden md:block shrink-0" />
+                                <BreadcrumbItem className="hidden md:block shrink-0">
+                                    <BreadcrumbLink>Divisional</BreadcrumbLink>
                                 </BreadcrumbItem>
                                 <BreadcrumbSeparator className="hidden md:block shrink-0" />
                                 <BreadcrumbItem className="min-w-0 overflow-hidden">
                                     <BreadcrumbPage className="truncate max-w-[56vw] sm:max-w-[60vw] md:max-w-none">
-                                        Consolidator Audit
+                                        Annual Report
                                     </BreadcrumbPage>
                                 </BreadcrumbItem>
                             </BreadcrumbList>
@@ -115,10 +115,10 @@ export default async function Page() {
                 </div>
             </header>
 
-            <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6">
-                <Suspense fallback={<div className="p-4 text-sm text-muted-foreground">Loading Consolidator Audit...</div>}>
-                    <ConsolidatorAuditModule userName={headerUser.name} />
-                </Suspense>
+            <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
+                <AnnualReportFilterProvider>
+                    <AnnualReportPage />
+                </AnnualReportFilterProvider>
             </main>
         </div>
     );

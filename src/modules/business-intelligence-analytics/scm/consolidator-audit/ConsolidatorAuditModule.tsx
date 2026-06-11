@@ -1,8 +1,7 @@
-// src/modules/business-intelligence-analytics/scm/consolidator-audit/ConsolidatorAuditModule.tsx
 "use client";
 
 import React from "react";
-import { Spinner } from "@/components/ui/spinner";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   ClipboardList,
   Package,
@@ -21,17 +20,246 @@ import { Filters } from "./components/Filters";
 import { AuditDataTable } from "./components/DataTable";
 import { StatusDistributionCharts } from "./components/StatusDistributionCharts";
 
-export default function ConsolidatorAuditModule() {
+import { PdfEngine } from "@/components/pdf-layout-design/PdfEngine";
+import { renderElement } from "@/components/pdf-layout-design/PdfGenerator";
+import { PAPER_SIZES } from "@/components/pdf-layout-design/constants";
+import { CompanyData } from "@/components/pdf-layout-design/types";
+import { PdfTemplate, pdfTemplateService } from "@/components/pdf-layout-design/services/pdf-template";
+import autoTable from "jspdf-autotable";
+import { toast } from "sonner";
+
+
+
+function ConsolidatorAuditSkeleton() {
+  return (
+    <div className="space-y-6 animate-pulse">
+      {/* Header Skeleton */}
+      <div className="space-y-2">
+        <Skeleton className="h-9 w-64 bg-zinc-200 dark:bg-zinc-800" />
+        <Skeleton className="h-4 w-96 bg-zinc-200 dark:bg-zinc-800" />
+      </div>
+
+      {/* Filters Card Skeleton */}
+      <div className="border rounded-xl p-4 space-y-4 dark:border-zinc-800 bg-card">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+          <Skeleton className="h-9 w-full bg-zinc-200 dark:bg-zinc-800 md:col-span-2" />
+          <Skeleton className="h-9 w-full bg-zinc-200 dark:bg-zinc-800 md:col-span-2" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end">
+          <Skeleton className="h-9 w-full bg-zinc-200 dark:bg-zinc-800" />
+          <Skeleton className="h-9 w-full bg-zinc-200 dark:bg-zinc-800" />
+          <Skeleton className="h-9 w-full bg-zinc-200 dark:bg-zinc-800" />
+          <div className="flex justify-end gap-2 w-full">
+            <Skeleton className="h-9 w-20 bg-zinc-200 dark:bg-zinc-800" />
+            <Skeleton className="h-9 w-20 bg-zinc-200 dark:bg-zinc-800" />
+            <Skeleton className="h-9 w-24 bg-zinc-200 dark:bg-zinc-800" />
+          </div>
+        </div>
+      </div>
+
+      {/* KPI Cards Skeleton */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <Skeleton className="h-32 w-full bg-zinc-200 dark:bg-zinc-800" />
+        <Skeleton className="h-32 w-full bg-zinc-200 dark:bg-zinc-800" />
+        <Skeleton className="h-32 w-full bg-zinc-200 dark:bg-zinc-800" />
+      </div>
+
+      {/* Charts Skeleton */}
+      <Skeleton className="h-64 w-full bg-zinc-200 dark:bg-zinc-800" />
+
+      {/* Table Skeleton */}
+      <div className="border rounded-xl overflow-hidden dark:border-zinc-800 bg-card">
+        <div className="bg-muted/10 p-4 border-b dark:border-zinc-800">
+          <div className="grid grid-cols-3 gap-4">
+            <Skeleton className="h-5 w-full bg-zinc-200 dark:bg-zinc-800" />
+            <Skeleton className="h-5 w-full bg-zinc-200 dark:bg-zinc-800" />
+            <Skeleton className="h-5 w-full bg-zinc-200 dark:bg-zinc-800" />
+          </div>
+        </div>
+        <div className="p-4 space-y-4">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="grid grid-cols-3 gap-4">
+              <Skeleton className="h-16 w-full bg-zinc-200 dark:bg-zinc-800" />
+              <Skeleton className="h-16 w-full bg-zinc-200 dark:bg-zinc-800" />
+              <Skeleton className="h-16 w-full bg-zinc-200 dark:bg-zinc-800" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface ConsolidatorAuditModuleProps {
+  userName?: string;
+}
+
+export default function ConsolidatorAuditModule({ userName = "System User" }: ConsolidatorAuditModuleProps) {
   const hook = useConsolidatorAudit();
 
-  // First-load full-page spinner
+  // Printing dependencies
+  const [templates, setTemplates] = React.useState<PdfTemplate[]>([]);
+  const [companyData, setCompanyData] = React.useState<CompanyData | null>(null);
+  const [isGenerating, setIsGenerating] = React.useState(false);
+
+  React.useEffect(() => {
+    const init = async () => {
+      try {
+        const cached = localStorage.getItem("pdf_company_data");
+        if (cached) setCompanyData(JSON.parse(cached));
+
+        const [compRes, tpls] = await Promise.all([
+          fetch("/api/pdf/company"),
+          pdfTemplateService.fetchTemplates(),
+        ]);
+
+        if (compRes.ok) {
+          const result = await compRes.json();
+          const company = result.data?.[0] || (Array.isArray(result.data) ? null : result.data);
+          setCompanyData(company);
+          if (company) {
+            localStorage.setItem("pdf_company_data", JSON.stringify(company));
+          }
+        }
+        setTemplates(tpls);
+      } catch (error) {
+        console.error("Error loading PDF engine dependencies:", error);
+      }
+    };
+    init();
+  }, []);
+
+  const handlePrint = async () => {
+    if (templates.length === 0) {
+      toast.error("No PDF templates found in database.");
+      return;
+    }
+    if (!companyData) {
+      toast.warning("Company data not loaded yet. Please wait.");
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      const templateName = templates[0].name;
+
+      const doc = await PdfEngine.generateWithFrame(templateName, companyData, (doc, startY, config) => {
+        const margins = config.margins || { top: 10, bottom: 10, left: 10, right: 10 };
+        
+        const baseSize = config.paperSize === "Custom" ? config.customSize : (PAPER_SIZES[config.paperSize] || PAPER_SIZES.A4);
+        const paperHeight = config.orientation === "landscape" ? baseSize.width : baseSize.height;
+        const bottomMargin = config.bodyEnd ? (paperHeight - config.bodyEnd) : margins.bottom;
+
+        // Header Title
+        doc.setFontSize(14);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(24, 24, 27); // zinc-900
+        doc.text("CONSOLIDATOR AUDIT REPORT", margins.left, startY, { baseline: "top" });
+
+        // Date formatter helper inside printable
+        const formatDate = (dateStr: string | null): string => {
+          if (!dateStr) return "—";
+          try {
+            const date = new Date(dateStr.replace(" ", "T"));
+            if (isNaN(date.getTime())) return dateStr;
+            return date.toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+              timeZone: "Asia/Manila",
+            });
+          } catch {
+            return dateStr;
+          }
+        };
+
+        const activeFilters = hook.activeFilters;
+        
+        // Two column data structure: Col 1 aligned left, Col 2 aligned right
+        const filtersData = [
+          [
+            `Date Range: ${activeFilters.startDate} to ${activeFilters.endDate}`,
+            `Created By: ${userName}`
+          ],
+          [
+            `PDP Status: ${activeFilters.pdpStatus || "ALL"}`,
+            `Created At: ${formatDate(new Date().toISOString())}`
+          ],
+          [
+            `Consolidator Status: ${activeFilters.consolidatorStatus || "ALL"}`,
+            ""
+          ],
+          [
+            `DP Status: ${activeFilters.dpStatus || "ALL"}`,
+            ""
+          ]
+        ];
+
+        // Draw Filters section as a clean, borderless table
+        autoTable(doc, {
+          startY: startY + 8,
+          margin: { left: margins.left, right: margins.right },
+          body: filtersData,
+          theme: "plain",
+          styles: { fontSize: 8, cellPadding: 1.5, textColor: [113, 113, 122] }, // zinc-500
+          columnStyles: {
+            0: { halign: "left" },
+            1: { halign: "right" }
+          }
+        });
+
+        // The data table should start below the filters table
+        const currentY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 6;
+
+        const head = [["Pre Dispatch Plan", "Consolidation", "Dispatch Plan"]];
+        const body = hook.data.map((row) => {
+          const pdpText = `${row.pdpNo || "Unknown PDP"} (${row.pdpStatus || "N/A"})\n${formatDate(row.pdpCreatedAt)}`;
+          const consolText = `${row.consolidatorNo || "Unknown Consolidator"} (${row.consolidatorStatus || "N/A"})\n${formatDate(row.consolidatorCreatedAt)}`;
+          
+          let dpText = "";
+          if (row.dpNo) {
+            dpText = `${row.dpNo} (${row.dpStatus || "N/A"})\n${formatDate(row.dpCreatedAt)}`;
+          } else {
+            dpText = "Unknown Dispatch Plan (N/A)";
+          }
+
+          return [pdpText, consolText, dpText];
+        });
+
+        autoTable(doc, {
+          startY: currentY,
+          margin: { top: startY, bottom: bottomMargin, left: margins.left, right: margins.right },
+          head,
+          body,
+          theme: "grid",
+          headStyles: { fillColor: [24, 24, 27], textColor: 255, fontStyle: "bold", fontSize: 9, halign: "center" },
+          styles: { fontSize: 8, cellPadding: 4, valign: "middle", halign: "center" },
+          didDrawPage: (data) => {
+            if (data.pageNumber > 1 && config && config.elements) {
+              Object.values(config.elements).forEach((el) => {
+                renderElement(doc, el, companyData);
+              });
+            }
+          },
+        });
+      });
+
+      const blob = doc.output("blob");
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank");
+    } catch (error) {
+      console.error("Failed to generate report PDF:", error);
+      toast.error("Failed to generate PDF printable report.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  // First-load page skeleton loader
   if (hook.loading && !hook.loadedOnce) {
-    return (
-      <div className="flex flex-col items-center justify-center py-32 gap-4 text-muted-foreground">
-        <Spinner className="h-8 w-8 text-primary" />
-        <p className="text-sm">Loading consolidator audit logs…</p>
-      </div>
-    );
+    return <ConsolidatorAuditSkeleton />;
   }
 
   // Calculate quick summary metrics
@@ -78,7 +306,8 @@ export default function ConsolidatorAuditModule() {
         uniqueStatuses={hook.uniqueStatuses}
         onSearch={hook.handleSearch}
         onClear={hook.handleClear}
-        loading={hook.loading}
+        onPrint={handlePrint}
+        loading={hook.loading || isGenerating}
       />
 
       {/* Error Banner */}
@@ -94,7 +323,7 @@ export default function ConsolidatorAuditModule() {
           {/* Refresh Loader */}
           {hook.loading && (
             <div className="flex items-center gap-2 text-xs text-muted-foreground px-1 animate-pulse">
-              <Spinner className="h-3.5 w-3.5" />
+              <div className="h-2 w-2 rounded-full bg-zinc-400 dark:bg-zinc-500 animate-ping" />
               Updating audit records…
             </div>
           )}
