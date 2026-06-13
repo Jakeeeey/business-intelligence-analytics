@@ -83,6 +83,21 @@ interface BasketCountTarget {
   goalStatus?: string;
 }
 
+interface TacticalSkuTarget {
+  salesmanId?: number;
+  targetMonth?: number;
+  targetYear?: number;
+  productId?: number;
+  targetQuantity?: number;
+  actualQuantity?: number;
+  quantityAchievementPercentage?: number;
+  quantityGoalStatus?: string;
+  targetValue?: number;
+  actualValue?: number;
+  valueAchievementPercentage?: number;
+  valueGoalStatus?: string;
+}
+
 interface ReachFilterItem {
   salesmanId?: number;
   salesmanCode?: string;
@@ -183,7 +198,7 @@ export async function GET(req: NextRequest) {
 
   // Determine target salesmen
   let targetSalesmen: Array<{ salesmanId: number; salesmanCode: string; salesmanName: string }> = [];
-
+  
   if (salesmanIdParam && salesmanIdParam !== "all") {
     const targetId = Number(salesmanIdParam);
     const matched = allSalesData.find((x) => Number(x.salesmanId) === targetId);
@@ -230,20 +245,21 @@ export async function GET(req: NextRequest) {
       const productiveOutletUrl = `${API_BASE}/api/salesman-productive-outlet-target?salesmanId=${id}&targetMonth=${targetMonth}&targetYear=${targetYear}`;
       const lineSalesUrl = `${API_BASE}/api/salesman-line-sales-target-setting?salesmanId=${id}&targetMonth=${targetMonth}&targetYear=${targetYear}`;
       const basketCountUrl = `${API_BASE}/api/salesman-basket-count-target-set?salesmanId=${id}&targetMonth=${targetMonth}&targetYear=${targetYear}`;
+      const tacticalSkuUrl = `${API_BASE}/api/salesman-tactical-sku-target-setting?salesmanId=${id}&targetMonth=${targetMonth}&targetYear=${targetYear}`;
       const reachUrl = `${API_BASE}/api/view-salesman-reach/filter?salesmanId=${id}&salesmanCode=${code}`;
 
       // Fetch in parallel
-      const [freqData, newAccData, productiveOutlet, lineSales, basketCount, reachData] = await Promise.all([
+      const [freqData, newAccData, productiveOutlet, lineSales, basketCount, tacticalSku, reachData] = await Promise.all([
         safeFetch<FrequencyReportItem[]>(freqUrl, []),
         safeFetch<NewAccountItem[]>(newAccUrl, []),
         safeFetch<ProductiveOutletTarget | null>(productiveOutletUrl, null),
         safeFetch<LineSalesTarget | null>(lineSalesUrl, null),
         safeFetch<BasketCountTarget | null>(basketCountUrl, null),
+        safeFetch<TacticalSkuTarget[]>(tacticalSkuUrl, []),
         safeFetch<ReachFilterItem | null>(reachUrl, null),
       ]);
 
       // Process Metric 1: Sales Performance
-      // Sum netAmount from transactions for this salesman inside the performance data
       const salesPerformance = (allSalesData || [])
         .filter((x) => Number(x.salesmanId) === id)
         .reduce((sum: number, x) => sum + (Number(x.netAmount) || 0), 0);
@@ -280,6 +296,22 @@ export async function GET(req: NextRequest) {
       const basketCountAchievement = basketCount ? Number(basketCount.achievementPercentage ?? 0) : 0;
       const basketCountStatus = basketCount ? String(basketCount.goalStatus ?? "Below Target") : "Below Target";
 
+      // Process Metric 8: Tactical SKU Target (Aggregate array of tactical SKU targets)
+      const tacticalSkuTargetQty = Array.isArray(tacticalSku)
+        ? tacticalSku.reduce((sum, item) => sum + Number(item.targetQuantity ?? 0), 0)
+        : 0;
+      const tacticalSkuActualQty = Array.isArray(tacticalSku)
+        ? tacticalSku.reduce((sum, item) => sum + Number(item.actualQuantity ?? 0), 0)
+        : 0;
+      const tacticalSkuAchievement = tacticalSkuTargetQty > 0
+        ? (tacticalSkuActualQty / tacticalSkuTargetQty) * 100
+        : (Array.isArray(tacticalSku) && tacticalSku.length > 0 ? Number(tacticalSku[0].quantityAchievementPercentage ?? 0) : 0);
+
+      const hasBelowTarget = Array.isArray(tacticalSku) && tacticalSku.some(item => String(item.quantityGoalStatus).toLowerCase().includes("below"));
+      const tacticalSkuStatus = Array.isArray(tacticalSku) && tacticalSku.length > 0
+        ? (hasBelowTarget ? "Below Target" : "Met Target")
+        : "No Target Set";
+
       return {
         salesmanId: id,
         salesmanCode: sm.salesmanCode,
@@ -303,6 +335,11 @@ export async function GET(req: NextRequest) {
         basketCountActualReceipts: isBackendOffline ? Math.floor(Math.random() * 80) : basketCountActualReceipts,
         basketCountAchievement: isBackendOffline ? 80.00 : basketCountAchievement,
         basketCountStatus: isBackendOffline ? "Below Target" : basketCountStatus,
+        // Mock fallback for Metric 8 if offline
+        tacticalSkuTargetQty: isBackendOffline ? 20 : tacticalSkuTargetQty,
+        tacticalSkuActualQty: isBackendOffline ? Math.floor(Math.random() * 20) : tacticalSkuActualQty,
+        tacticalSkuAchievement: isBackendOffline ? 75.00 : tacticalSkuAchievement,
+        tacticalSkuStatus: isBackendOffline ? "Below Target" : tacticalSkuStatus,
       };
     })
   );

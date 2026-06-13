@@ -44,5 +44,9 @@ export interface MetricRow {
   basketCountActualReceipts: number;
   basketCountAchievement: number;
   basketCountStatus: string;
-  // Metric 8: Left blank
+  // Metric 8: Tactical SKU Target
+  tacticalSkuTargetQty: number;
+  tacticalSkuActualQty: number;
+  tacticalSkuAchievement: number;
+  tacticalSkuStatus: string;
 }

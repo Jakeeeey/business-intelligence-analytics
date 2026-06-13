@@ -27,7 +27,8 @@ export function MetricGridTwo({ rows, loading }: MetricGridTwoProps) {
     return "destructive";
   };
 
-  const formatPercentage = (value: number) => {
+  const formatPercentage = (value?: number | null) => {
+    if (value === undefined || value === null || isNaN(value)) return "0.00%";
     return `${value.toFixed(2)}%`;
   };
 
@@ -47,7 +48,7 @@ export function MetricGridTwo({ rows, loading }: MetricGridTwoProps) {
                 <TableHead className="font-semibold text-foreground/80 py-3">Productive Outlets (Metric 5)</TableHead>
                 <TableHead className="font-semibold text-foreground/80 py-3">Line Sales Target (Metric 6)</TableHead>
                 <TableHead className="font-semibold text-foreground/80 py-3">Basket Count Target (Metric 7)</TableHead>
-                <TableHead className="font-semibold text-foreground/80 py-3 pr-6">Metric 8</TableHead>
+                <TableHead className="font-semibold text-foreground/80 py-3 pr-6">Tactical SKU Target (Metric 8)</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -58,7 +59,7 @@ export function MetricGridTwo({ rows, loading }: MetricGridTwoProps) {
                     <TableCell className="py-4"><div className="h-4 w-28 bg-muted rounded" /></TableCell>
                     <TableCell className="py-4"><div className="h-4 w-28 bg-muted rounded" /></TableCell>
                     <TableCell className="py-4"><div className="h-4 w-28 bg-muted rounded" /></TableCell>
-                    <TableCell className="py-4 pr-6"><div className="h-4 w-12 bg-muted rounded" /></TableCell>
+                    <TableCell className="py-4 pr-6"><div className="h-4 w-28 bg-muted rounded" /></TableCell>
                   </TableRow>
                 ))
               ) : rows.length === 0 ? (
@@ -104,8 +105,14 @@ export function MetricGridTwo({ rows, loading }: MetricGridTwoProps) {
                         {row.basketCountStatus}
                       </StatusBadge>
                     </TableCell>
-                    <TableCell className="py-4 pr-6">
-                      {/* Metric 8 Left blank as requested */}
+                    <TableCell className="text-foreground pr-6">
+                      <div className="font-semibold">{row.tacticalSkuActualQty} / {row.tacticalSkuTargetQty} Qty</div>
+                      <div className="text-xs text-muted-foreground mb-1">
+                        Achieved: {formatPercentage(row.tacticalSkuAchievement)}
+                      </div>
+                      <StatusBadge tone={getStatusTone(row.tacticalSkuStatus)}>
+                        {row.tacticalSkuStatus}
+                      </StatusBadge>
                     </TableCell>
                   </TableRow>
                 ))
