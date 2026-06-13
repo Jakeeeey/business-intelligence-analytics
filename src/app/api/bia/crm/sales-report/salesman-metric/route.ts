@@ -3,9 +3,92 @@ import { NextRequest, NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const API_BASE = "http://100.81.225.79:8086";
+const API_BASE = (process.env.SPRING_API_BASE_URL ?? "").replace(/\/+$/, "");
 
-type AnyRec = Record<string, unknown>;
+interface SalesPerformanceItem {
+  divisionId?: number;
+  salesmanId?: number;
+  salesmanCode?: string;
+  supplierId?: number;
+  divisionName?: string;
+  salesmanName?: string;
+  supplierName?: string;
+  transactionDate?: string;
+  fiscalPeriod?: string;
+  customerCode?: string;
+  province?: string;
+  city?: string;
+  storeTypeLabel?: string;
+  storeName?: string;
+  netAmount?: number;
+}
+
+interface FrequencyReportItem {
+  salesmanId?: number;
+  salesmanCode?: string;
+  salesmanName?: string;
+  customerCode?: string;
+  storeName?: string;
+  province?: string;
+  city?: string;
+  fiscalPeriod?: string;
+  transactionDate?: string;
+  invoiceNo?: string;
+  netAmount?: number;
+}
+
+interface NewAccountItem {
+  salesmanId?: number;
+  salesmanCode?: string;
+  salesmanName?: string;
+  customerId?: number;
+  customerCode?: string;
+  customerName?: string;
+  storeName?: string;
+  province?: string;
+  city?: string;
+  dateEntered?: string;
+  fiscalPeriod?: string;
+}
+
+interface ProductiveOutletTarget {
+  salesmanId?: number;
+  targetMonth?: number;
+  targetYear?: number;
+  targetProductiveOutlets?: number;
+  actualProductiveOutlets?: number;
+  achievementPercentage?: number;
+  goalStatus?: string;
+}
+
+interface LineSalesTarget {
+  salesmanId?: number;
+  targetMonth?: number;
+  targetYear?: number;
+  targetProductsPerReceipt?: number;
+  targetReceiptCount?: number;
+  actualQualifiedReceipts?: number;
+  achievementPercentage?: number;
+  goalStatus?: string;
+}
+
+interface BasketCountTarget {
+  salesmanId?: number;
+  targetMonth?: number;
+  targetYear?: number;
+  targetAmountPerReceipt?: number;
+  targetReceiptCount?: number;
+  actualQualifiedReceipts?: number;
+  achievementPercentage?: number;
+  goalStatus?: string;
+}
+
+interface ReachFilterItem {
+  salesmanId?: number;
+  salesmanCode?: string;
+  salesmanName?: string;
+  totalReach?: number;
+}
 
 function json(res: unknown, init?: ResponseInit) {
   return NextResponse.json(res, init);
@@ -20,7 +103,7 @@ const MOCK_SALESMEN = [
   { salesmanId: 102, salesmanCode: "MOCK-SLS01", salesmanName: "John Doe" },
 ];
 
-async function safeFetch(url: string, defaultValue: any) {
+async function safeFetch<T>(url: string, defaultValue: T): Promise<T> {
   try {
     const res = await fetch(url, {
       method: "GET",
@@ -29,7 +112,7 @@ async function safeFetch(url: string, defaultValue: any) {
       next: { revalidate: 0 }
     });
     if (!res.ok) return defaultValue;
-    return await res.json();
+    return await res.json() as T;
   } catch (err) {
     console.error(`Error fetching from ${url}:`, err);
     return defaultValue;
@@ -44,7 +127,7 @@ export async function GET(req: NextRequest) {
   // MODE: LOOKUPS
   // ==========================================
   if (mode === "lookups") {
-    const allSalesData = await safeFetch(`${API_BASE}/api/view-sales-performance/all`, null);
+    const allSalesData = await safeFetch<SalesPerformanceItem[] | null>(`${API_BASE}/api/view-sales-performance/all`, null);
     if (!allSalesData || !Array.isArray(allSalesData)) {
       // Return fallback lookups if server is offline
       return json({ success: true, data: MOCK_SALESMEN });
@@ -85,10 +168,10 @@ export async function GET(req: NextRequest) {
   const targetMonth = dateParts[1] ? Number(dateParts[1]) : 3;
 
   // 1. Fetch sales performance list to identify salesmen we need to report on
-  let allSalesData = await safeFetch(`${API_BASE}/api/view-sales-performance/all`, null);
+  let allSalesData = await safeFetch<SalesPerformanceItem[] | null>(`${API_BASE}/api/view-sales-performance/all`, null);
   const isBackendOffline = !allSalesData;
 
-  if (isBackendOffline) {
+  if (isBackendOffline || !allSalesData) {
     allSalesData = [
       { salesmanId: 75, salesmanCode: "(ILC-DLR)", salesmanName: "Alray Rivera", netAmount: 125000 },
       { salesmanId: 83, salesmanCode: "PANG-KAS", salesmanName: "P.J. Sales KAS", netAmount: 98000 },
@@ -100,10 +183,10 @@ export async function GET(req: NextRequest) {
 
   // Determine target salesmen
   let targetSalesmen: Array<{ salesmanId: number; salesmanCode: string; salesmanName: string }> = [];
-  
+
   if (salesmanIdParam && salesmanIdParam !== "all") {
     const targetId = Number(salesmanIdParam);
-    const matched = allSalesData.find((x: any) => Number(x.salesmanId) === targetId);
+    const matched = allSalesData.find((x) => Number(x.salesmanId) === targetId);
     if (matched) {
       targetSalesmen = [{
         salesmanId: targetId,
@@ -151,19 +234,19 @@ export async function GET(req: NextRequest) {
 
       // Fetch in parallel
       const [freqData, newAccData, productiveOutlet, lineSales, basketCount, reachData] = await Promise.all([
-        safeFetch(freqUrl, []),
-        safeFetch(newAccUrl, []),
-        safeFetch(productiveOutletUrl, null),
-        safeFetch(lineSalesUrl, null),
-        safeFetch(basketCountUrl, null),
-        safeFetch(reachUrl, null),
+        safeFetch<FrequencyReportItem[]>(freqUrl, []),
+        safeFetch<NewAccountItem[]>(newAccUrl, []),
+        safeFetch<ProductiveOutletTarget | null>(productiveOutletUrl, null),
+        safeFetch<LineSalesTarget | null>(lineSalesUrl, null),
+        safeFetch<BasketCountTarget | null>(basketCountUrl, null),
+        safeFetch<ReachFilterItem | null>(reachUrl, null),
       ]);
 
       // Process Metric 1: Sales Performance
       // Sum netAmount from transactions for this salesman inside the performance data
-      const salesPerformance = allSalesData
-        .filter((x: any) => Number(x.salesmanId) === id)
-        .reduce((sum: number, x: any) => sum + (Number(x.netAmount) || 0), 0);
+      const salesPerformance = (allSalesData || [])
+        .filter((x) => Number(x.salesmanId) === id)
+        .reduce((sum: number, x) => sum + (Number(x.netAmount) || 0), 0);
 
       // Process Metric 2: Reach
       const reach = reachData ? Number(reachData.totalReach ?? 0) : (isBackendOffline ? Math.floor(Math.random() * 15) + 3 : 0);
@@ -171,7 +254,7 @@ export async function GET(req: NextRequest) {
       // Process Metric 3: Frequency
       const freqCount = Array.isArray(freqData) ? freqData.length : 0;
       const freqAmount = Array.isArray(freqData)
-        ? freqData.reduce((sum: number, x: any) => sum + (Number(x.netAmount) || 0), 0)
+        ? freqData.reduce((sum: number, x) => sum + (Number(x.netAmount) || 0), 0)
         : 0;
 
       // Process Metric 4: New Accounts
