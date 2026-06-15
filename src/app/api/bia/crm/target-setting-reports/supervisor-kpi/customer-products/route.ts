@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ProductSalesDetail } from "@/modules/business-intelligence-analytics/crm/target-setting-reports/supervisor-kpi/types";
 
-const SPRING_BASE = (process.env.SPRING_API_BASE_URL || "http://100.81.225.79:8086").replace(/\/+$/, "");
+const SPRING_BASE = (process.env.SPRING_API_BASE_URL || "").replace(/\/+$/, "");
 
 /**
  * GET /api/bia/crm/target-setting-reports/supervisor-kpi/customer-products
@@ -35,6 +35,10 @@ export async function GET(req: NextRequest) {
     
     if (viewType === "area" && isAreaKey) {
         urlPath = "/api/sales-kpi-per-area";
+    }
+
+    if (!SPRING_BASE) {
+        return NextResponse.json({ error: "Spring API Base URL not configured" }, { status: 500 });
     }
 
     const url = new URL(`${SPRING_BASE}${urlPath}`);

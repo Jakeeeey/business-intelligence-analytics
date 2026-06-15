@@ -58,14 +58,60 @@ function ManagerialSupplierContent() {
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
     const [selectedSalesmanForModal, setSelectedSalesmanForModal] = useState<string | null>(null);
 
+    const [salesmenMap, setSalesmenMap] = useState<Map<number, string>>(new Map());
+
+    // Load salesmen metadata
+    useEffect(() => {
+        const loadSalesmen = async () => {
+            try {
+                const res = await fetch("/api/bia/crm/target-setting/metadata/salesmen");
+                if (res.ok) {
+                    const json = await res.json();
+                    const list = json?.data || [];
+                    const map = new Map<number, string>();
+                    list.forEach((s: { id?: number | string; salesman_code?: string }) => {
+                        if (s.id && s.salesman_code) {
+                            map.set(Number(s.id), s.salesman_code);
+                        }
+                    });
+                    setSalesmenMap(map);
+                }
+            } catch (err) {
+                console.error("Failed to load salesmen metadata", err);
+            }
+        };
+        loadSalesmen();
+    }, []);
+
+    const latestSalesmanNameMap = useMemo(() => {
+        const nameMap = new Map<number, { name: string; date: string }>();
+        rawData.forEach(item => {
+            if (item.salesmanId && item.salesmanName) {
+                const current = nameMap.get(item.salesmanId);
+                const itemDate = item.transactionDate || "";
+                if (!current || itemDate > current.date) {
+                    nameMap.set(item.salesmanId, { name: item.salesmanName, date: itemDate });
+                }
+            }
+        });
+        const finalMap = new Map<number, string>();
+        nameMap.forEach((val, key) => {
+            finalMap.set(key, val.name);
+        });
+        return finalMap;
+    }, [rawData]);
+
     const salesmanDetailData = useMemo(() => {
         if (!selectedSalesmanForModal || !selectedSupplier) return [];
-        return rawData.filter(d =>
-            (d.salesmanName || "").toUpperCase() === (selectedSalesmanForModal || "").toUpperCase() &&
-            (d.supplierName || "").toUpperCase() === (selectedSupplier || "").toUpperCase() &&
-            (d.divisionName || "").toUpperCase() === (selectedDivision || "").toUpperCase()
-        );
-    }, [rawData, selectedSalesmanForModal, selectedSupplier, selectedDivision]);
+        return rawData.filter(d => {
+            const code = salesmenMap.get(Number(d.salesmanId)) || d.salesmanName || "";
+            return (
+                code.toUpperCase() === (selectedSalesmanForModal || "").toUpperCase() &&
+                (d.supplierName || "").toUpperCase() === (selectedSupplier || "").toUpperCase() &&
+                (d.divisionName || "").toUpperCase() === (selectedDivision || "").toUpperCase()
+            );
+        });
+    }, [rawData, selectedSalesmanForModal, selectedSupplier, selectedDivision, salesmenMap]);
 
     const handleSalesmanClick = (name: string) => {
         setSelectedSalesmanForModal(name);
@@ -158,16 +204,16 @@ function ManagerialSupplierContent() {
         const salesmanMap = new Map<string, { sales: number, salesmanId: number }>();
 
         filtered.forEach(item => {
-            const name = item.salesmanName || "Unknown Salesman";
-            const current = salesmanMap.get(name) || { sales: 0, salesmanId: item.salesmanId || 0 };
-            salesmanMap.set(name, {
+            const code = salesmenMap.get(Number(item.salesmanId)) || item.salesmanName || "Unknown Salesman";
+            const current = salesmanMap.get(code) || { sales: 0, salesmanId: item.salesmanId || 0 };
+            salesmanMap.set(code, {
                 sales: current.sales + (item.netAmount || 0),
                 salesmanId: item.salesmanId || 0
             });
         });
 
         return Array.from(salesmanMap.entries())
-            .map(([name, data]) => {
+            .map(([code, data]) => {
                 const relevantSalesmanTargets = targets.salesmanTargets?.filter((t: TargetItem) => {
                     const targetDate = parseISO(t.fiscal_period);
                     return (
@@ -181,7 +227,7 @@ function ManagerialSupplierContent() {
                 const target = relevantSalesmanTargets?.reduce((sum: number, t: TargetItem) => sum + (t.target_amount || 0), 0) || 0;
 
                 return {
-                    name: name.toUpperCase(),
+                    name: code.toUpperCase(),
                     sales: data.sales,
                     target,
                     achievement: target > 0 ? (data.sales / target) * 100 : 0,
@@ -189,7 +235,7 @@ function ManagerialSupplierContent() {
                 };
             })
             .sort((a, b) => b.sales - a.sales);
-    }, [rawData, selectedSupplier, targets, selectedDivision, fromMonth, toMonth]);
+    }, [rawData, selectedSupplier, targets, selectedDivision, fromMonth, toMonth, salesmenMap]);
 
     const formatPHP = (val: number) => new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 0 }).format(val);
     const formatShort = (val: number) => {
@@ -505,7 +551,11 @@ function ManagerialSupplierContent() {
                 onClose={() => setIsDetailModalOpen(false)}
                 data={salesmanDetailData}
                 ids={salesmanDetailData[0]?.salesmanId ? [Number(salesmanDetailData[0].salesmanId)] : []}
-                salesmanName={selectedSalesmanForModal || ""}
+                salesmanName={
+                    selectedSalesmanForModal && salesmanDetailData[0]
+                        ? `${selectedSalesmanForModal} (${latestSalesmanNameMap.get(Number(salesmanDetailData[0].salesmanId)) || salesmanDetailData[0].salesmanName})`
+                        : (selectedSalesmanForModal || "")
+                }
                 supplierName={selectedSupplier || ""}
                 periodLabel={`${fromMonth} to ${toMonth}`}
                 startDate={format(startOfMonth(parseISO(fromMonth + "-01")), "yyyy-MM-dd")}
