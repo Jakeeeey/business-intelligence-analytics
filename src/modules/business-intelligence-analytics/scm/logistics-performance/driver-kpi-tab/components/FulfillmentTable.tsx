@@ -788,6 +788,7 @@ export default function FulfillmentTable(props: FulfillmentTableProps) {
                                                   </TableHead>
                                                   <TableHead>Address</TableHead>
                                                   <TableHead>Status</TableHead>
+                                                  <TableHead>Remarks</TableHead>
                                                   <TableHead>Amount</TableHead>
                                                 </TableRow>
                                               </TableHeader>
@@ -808,6 +809,7 @@ export default function FulfillmentTable(props: FulfillmentTableProps) {
                                                 <TableHead>Customer</TableHead>
                                                 <TableHead>Address</TableHead>
                                                 <TableHead>Status</TableHead>
+                                                <TableHead>Remarks</TableHead>
                                                 <TableHead>Amount</TableHead>
                                               </TableRow>
                                             </TableHeader>
@@ -863,6 +865,11 @@ export default function FulfillmentTable(props: FulfillmentTableProps) {
                                                       >
                                                         {c.fulfillmentStatus}
                                                       </span>
+                                                    </TableCell>
+                                                    <TableCell className="py-2">
+                                                      {c.invoiceRemarks ||
+                                                        c.dispatchRemarks ||
+                                                        "-"}
                                                     </TableCell>
                                                     <TableCell className="py-2">
                                                       {formatCurrency(
