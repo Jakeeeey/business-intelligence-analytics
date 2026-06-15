@@ -14,7 +14,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Clock } from "lucide-react";
-import type { CustomerLeadTimeFilters, CustomerLeadTimeRow, CustomerLeadTimeRecord } from "../../types";
+import type { CustomerLeadTimeFilters, CustomerLeadTimeRow } from "../../types";
 import { cn } from "@/lib/utils";
 import getStatusColor, { getStatusHex } from "../../utils/getStatusColor";
 import {
