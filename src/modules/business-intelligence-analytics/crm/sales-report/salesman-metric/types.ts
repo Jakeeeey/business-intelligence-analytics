@@ -9,7 +9,7 @@ export type DatePreset = "today" | "this-week" | "this-month" | "this-year" | "c
 export interface SalesmanMetricFilters {
   salesmanId: number | "";
   salesmanCode: string;
-  datePreset: DatePreset;
+  fiscalPeriod: string;
   startDate: string;
   endDate: string;
 }

@@ -109,20 +109,16 @@ function json(res: unknown, init?: ResponseInit) {
   return NextResponse.json(res, init);
 }
 
-// Fallback Mock Data in case external API is not reachable
-const MOCK_SALESMEN = [
-  { salesmanId: 75, salesmanCode: "(ILC-DLR)", salesmanName: "Alray Rivera" },
-  { salesmanId: 83, salesmanCode: "PANG-KAS", salesmanName: "P.J. Sales KAS" },
-  { salesmanId: 93, salesmanCode: "PANG-KAS", salesmanName: "P.J. Sales KAS 2" },
-  { salesmanId: 1021, salesmanCode: "BENG-MAS02", salesmanName: "Dianne Isibido BENG-MAS2" },
-  { salesmanId: 102, salesmanCode: "MOCK-SLS01", salesmanName: "John Doe" },
-];
-
-async function safeFetch<T>(url: string, defaultValue: T): Promise<T> {
+async function safeFetch<T>(url: string, defaultValue: T, token?: string): Promise<T> {
   try {
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
     const res = await fetch(url, {
       method: "GET",
-      headers: { "Content-Type": "application/json" },
+      headers,
       cache: "no-store",
       next: { revalidate: 0 }
     });
@@ -135,6 +131,7 @@ async function safeFetch<T>(url: string, defaultValue: T): Promise<T> {
 }
 
 export async function GET(req: NextRequest) {
+  const token = req.cookies.get("vos_access_token")?.value;
   const sp = req.nextUrl.searchParams;
   const mode = (sp.get("mode") || "report").toLowerCase();
 
@@ -142,10 +139,9 @@ export async function GET(req: NextRequest) {
   // MODE: LOOKUPS
   // ==========================================
   if (mode === "lookups") {
-    const allSalesData = await safeFetch<SalesPerformanceItem[] | null>(`${API_BASE}/api/view-sales-performance/all`, null);
+    const allSalesData = await safeFetch<SalesPerformanceItem[] | null>(`${API_BASE}/api/view-sales-performance/all`, null, token);
     if (!allSalesData || !Array.isArray(allSalesData)) {
-      // Return fallback lookups if server is offline
-      return json({ success: true, data: MOCK_SALESMEN });
+      return json({ success: true, data: [] });
     }
 
     // Extract unique salesmen
@@ -166,7 +162,136 @@ export async function GET(req: NextRequest) {
       a.salesmanName.localeCompare(b.salesmanName)
     );
 
-    return json({ success: true, data: salesmenList.length ? salesmenList : MOCK_SALESMEN });
+    return json({ success: true, data: salesmenList });
+  }
+
+  // ==========================================
+  // MODE: SUPPLIER BREAKDOWN
+  // ==========================================
+  if (mode === "supplier-breakdown") {
+    const salesmanIdParam = sp.get("salesmanId");
+    const startDate = sp.get("startDate") || "2025-01-01";
+    const endDate = sp.get("endDate") || "2026-12-31";
+
+    if (!salesmanIdParam) {
+      return json({ success: false, error: "salesmanId is required" }, { status: 400 });
+    }
+
+    const salesmanId = Number(salesmanIdParam);
+
+    const allSalesData = await safeFetch<SalesPerformanceItem[] | null>(`${API_BASE}/api/view-sales-performance/all`, null, token);
+    if (!allSalesData || !Array.isArray(allSalesData)) {
+      return json({ success: true, totalSales: 0, data: [] });
+    }
+
+    // Filter by salesman and date
+    const filtered = allSalesData.filter((x) => {
+      const matchedSalesman = Number(x.salesmanId) === salesmanId;
+      if (!matchedSalesman) return false;
+      if (x.transactionDate) {
+        return x.transactionDate >= startDate && x.transactionDate <= endDate;
+      }
+      return true;
+    });
+
+    // Group by supplier
+    const groupMap = new Map<number, { supplierId: number; supplierName: string; netAmount: number }>();
+    let totalSales = 0;
+
+    for (const item of filtered) {
+      const supId = Number(item.supplierId) || 0;
+      const supName = item.supplierName || "Other / Unknown Supplier";
+      const amt = Number(item.netAmount) || 0;
+
+      totalSales += amt;
+
+      const existing = groupMap.get(supId);
+      if (existing) {
+        existing.netAmount += amt;
+      } else {
+        groupMap.set(supId, {
+          supplierId: supId,
+          supplierName: supName,
+          netAmount: amt,
+        });
+      }
+    }
+
+    const breakdown = Array.from(groupMap.values())
+      .map(item => ({
+        ...item,
+        percentage: totalSales > 0 ? (item.netAmount / totalSales) * 100 : 0
+      }))
+      .sort((a, b) => b.netAmount - a.netAmount);
+
+    return json({ success: true, totalSales, data: breakdown });
+  }
+
+  // ==========================================
+  // MODE: FREQUENCY DETAIL
+  // ==========================================
+  if (mode === "frequency-detail") {
+    const salesmanIdParam = sp.get("salesmanId");
+    const salesmanCodeParam = sp.get("salesmanCode") || "";
+    const startDate = sp.get("startDate") || "2025-01-01";
+    const endDate = sp.get("endDate") || "2026-12-31";
+
+    if (!salesmanIdParam) {
+      return json({ success: false, error: "salesmanId is required" }, { status: 400 });
+    }
+
+    const salesmanId = Number(salesmanIdParam);
+    const code = encodeURIComponent(salesmanCodeParam);
+
+    const fiscalPeriod = startDate.substring(0, 7) + "-01";
+    const freqUrl = `${API_BASE}/api/view-salesman-frequency-report/filter?fiscalPeriod=${fiscalPeriod}&salesmanId=${salesmanId}&salesmanCode=${code}`;
+    const freqData = await safeFetch<FrequencyReportItem[]>(freqUrl, [], token);
+
+    const filtered = freqData.filter((x) => {
+      const matchedSalesman = Number(x.salesmanId) === salesmanId;
+      if (!matchedSalesman) return false;
+
+      const date = x.transactionDate || x.fiscalPeriod;
+      if (date) {
+        return date >= startDate && date <= endDate;
+      }
+      return true;
+    });
+
+    return json({ success: true, data: filtered });
+  }
+
+  // ==========================================
+  // MODE: NEW ACCOUNTS DETAIL
+  // ==========================================
+  if (mode === "new-accounts-detail") {
+    const salesmanIdParam = sp.get("salesmanId");
+    const salesmanCodeParam = sp.get("salesmanCode") || "";
+    const startDate = sp.get("startDate") || "2025-01-01";
+    const endDate = sp.get("endDate") || "2026-12-31";
+
+    if (!salesmanIdParam) {
+      return json({ success: false, error: "salesmanId is required" }, { status: 400 });
+    }
+
+    const salesmanId = Number(salesmanIdParam);
+    const code = encodeURIComponent(salesmanCodeParam);
+
+    const newAccUrl = `${API_BASE}/api/v-salesman-new-account/filter?startDate=${startDate}&endDate=${endDate}&salesmanId=${salesmanId}&salesmanCode=${code}`;
+    const newAccData = await safeFetch<NewAccountItem[]>(newAccUrl, [], token);
+
+    const filtered = newAccData.filter((x) => {
+      const matchedSalesman = Number(x.salesmanId) === salesmanId;
+      if (!matchedSalesman) return false;
+
+      const date = x.dateEntered || x.fiscalPeriod;
+      if (date) {
+        return date >= startDate && date <= endDate;
+      }
+      return true;
+    });
+
+    return json({ success: true, data: filtered });
   }
 
   // ==========================================
@@ -183,22 +308,14 @@ export async function GET(req: NextRequest) {
   const targetMonth = dateParts[1] ? Number(dateParts[1]) : 3;
 
   // 1. Fetch sales performance list to identify salesmen we need to report on
-  let allSalesData = await safeFetch<SalesPerformanceItem[] | null>(`${API_BASE}/api/view-sales-performance/all`, null);
-  const isBackendOffline = !allSalesData;
-
-  if (isBackendOffline || !allSalesData) {
-    allSalesData = [
-      { salesmanId: 75, salesmanCode: "(ILC-DLR)", salesmanName: "Alray Rivera", netAmount: 125000 },
-      { salesmanId: 83, salesmanCode: "PANG-KAS", salesmanName: "P.J. Sales KAS", netAmount: 98000 },
-      { salesmanId: 93, salesmanCode: "PANG-KAS", salesmanName: "P.J. Sales KAS 2", netAmount: 142000 },
-      { salesmanId: 1021, salesmanCode: "BENG-MAS02", salesmanName: "Dianne Isibido BENG-MAS2", netAmount: 83000 },
-      { salesmanId: 102, salesmanCode: "MOCK-SLS01", salesmanName: "John Doe", netAmount: 67000 },
-    ];
+  const allSalesData = await safeFetch<SalesPerformanceItem[] | null>(`${API_BASE}/api/view-sales-performance/all`, null, token);
+  if (!allSalesData || !Array.isArray(allSalesData)) {
+    return json({ success: true, data: [] });
   }
 
   // Determine target salesmen
   let targetSalesmen: Array<{ salesmanId: number; salesmanCode: string; salesmanName: string }> = [];
-  
+
   if (salesmanIdParam && salesmanIdParam !== "all") {
     const targetId = Number(salesmanIdParam);
     const matched = allSalesData.find((x) => Number(x.salesmanId) === targetId);
@@ -239,8 +356,8 @@ export async function GET(req: NextRequest) {
       const id = sm.salesmanId;
       const code = encodeURIComponent(sm.salesmanCode);
 
-      // Construct endpoints
-      const freqUrl = `${API_BASE}/api/view-salesman-frequency-report/filter?startDate=${startDate}&endDate=${endDate}&salesmanId=${id}&salesmanCode=${code}`;
+      const fiscalPeriod = startDate.substring(0, 7) + "-01";
+      const freqUrl = `${API_BASE}/api/view-salesman-frequency-report/filter?fiscalPeriod=${fiscalPeriod}&salesmanId=${id}&salesmanCode=${code}`;
       const newAccUrl = `${API_BASE}/api/v-salesman-new-account/filter?startDate=${startDate}&endDate=${endDate}&salesmanId=${id}&salesmanCode=${code}`;
       const productiveOutletUrl = `${API_BASE}/api/salesman-productive-outlet-target?salesmanId=${id}&targetMonth=${targetMonth}&targetYear=${targetYear}`;
       const lineSalesUrl = `${API_BASE}/api/salesman-line-sales-target-setting?salesmanId=${id}&targetMonth=${targetMonth}&targetYear=${targetYear}`;
@@ -250,22 +367,29 @@ export async function GET(req: NextRequest) {
 
       // Fetch in parallel
       const [freqData, newAccData, productiveOutlet, lineSales, basketCount, tacticalSku, reachData] = await Promise.all([
-        safeFetch<FrequencyReportItem[]>(freqUrl, []),
-        safeFetch<NewAccountItem[]>(newAccUrl, []),
-        safeFetch<ProductiveOutletTarget | null>(productiveOutletUrl, null),
-        safeFetch<LineSalesTarget | null>(lineSalesUrl, null),
-        safeFetch<BasketCountTarget | null>(basketCountUrl, null),
-        safeFetch<TacticalSkuTarget[]>(tacticalSkuUrl, []),
-        safeFetch<ReachFilterItem | null>(reachUrl, null),
+        safeFetch<FrequencyReportItem[]>(freqUrl, [], token),
+        safeFetch<NewAccountItem[]>(newAccUrl, [], token),
+        safeFetch<ProductiveOutletTarget | null>(productiveOutletUrl, null, token),
+        safeFetch<LineSalesTarget | null>(lineSalesUrl, null, token),
+        safeFetch<BasketCountTarget | null>(basketCountUrl, null, token),
+        safeFetch<TacticalSkuTarget[]>(tacticalSkuUrl, [], token),
+        safeFetch<ReachFilterItem | null>(reachUrl, null, token),
       ]);
 
       // Process Metric 1: Sales Performance
-      const salesPerformance = (allSalesData || [])
-        .filter((x) => Number(x.salesmanId) === id)
+      const salesPerformance = allSalesData
+        .filter((x) => {
+          const matchedSalesman = Number(x.salesmanId) === id;
+          if (!matchedSalesman) return false;
+          if (x.transactionDate) {
+            return x.transactionDate >= startDate && x.transactionDate <= endDate;
+          }
+          return true;
+        })
         .reduce((sum: number, x) => sum + (Number(x.netAmount) || 0), 0);
 
       // Process Metric 2: Reach
-      const reach = reachData ? Number(reachData.totalReach ?? 0) : (isBackendOffline ? Math.floor(Math.random() * 15) + 3 : 0);
+      const reach = reachData ? Number(reachData.totalReach ?? 0) : 0;
 
       // Process Metric 3: Frequency
       const freqCount = Array.isArray(freqData) ? freqData.length : 0;
@@ -277,38 +401,63 @@ export async function GET(req: NextRequest) {
       const newAccounts = Array.isArray(newAccData) ? newAccData.length : 0;
 
       // Process Metric 5: Productive Outlets Target
-      const productiveOutletsTarget = productiveOutlet ? Number(productiveOutlet.targetProductiveOutlets ?? 0) : 0;
-      const productiveOutletsActual = productiveOutlet ? Number(productiveOutlet.actualProductiveOutlets ?? 0) : 0;
-      const productiveOutletsAchievement = productiveOutlet ? Number(productiveOutlet.achievementPercentage ?? 0) : 0;
-      const productiveOutletsStatus = productiveOutlet ? String(productiveOutlet.goalStatus ?? "No Target Set") : "No Target Set";
+      let productiveOutletsTarget = 0;
+      let productiveOutletsActual = 0;
+      let productiveOutletsAchievement = 0;
+      let productiveOutletsStatus = "No Target Set";
+      if (productiveOutlet) {
+        productiveOutletsTarget = Number(productiveOutlet.targetProductiveOutlets ?? 0);
+        productiveOutletsActual = Number(productiveOutlet.actualProductiveOutlets ?? 0);
+        productiveOutletsAchievement = Number(productiveOutlet.achievementPercentage ?? 0);
+        productiveOutletsStatus = String(productiveOutlet.goalStatus ?? "No Target Set");
+      }
 
       // Process Metric 6: Line Sales Target
-      const lineSalesTargetProductsPerReceipt = lineSales ? Number(lineSales.targetProductsPerReceipt ?? 0) : 0;
-      const lineSalesTargetReceiptCount = lineSales ? Number(lineSales.targetReceiptCount ?? 0) : 0;
-      const lineSalesActualReceipts = lineSales ? Number(lineSales.actualQualifiedReceipts ?? 0) : 0;
-      const lineSalesAchievement = lineSales ? Number(lineSales.achievementPercentage ?? 0) : 0;
-      const lineSalesStatus = lineSales ? String(lineSales.goalStatus ?? "Below Target") : "Below Target";
+      let lineSalesTargetProductsPerReceipt = 0;
+      let lineSalesTargetReceiptCount = 0;
+      let lineSalesActualReceipts = 0;
+      let lineSalesAchievement = 0;
+      let lineSalesStatus = "Below Target";
+      if (lineSales) {
+        lineSalesTargetProductsPerReceipt = Number(lineSales.targetProductsPerReceipt ?? 0);
+        lineSalesTargetReceiptCount = Number(lineSales.targetReceiptCount ?? 0);
+        lineSalesActualReceipts = Number(lineSales.actualQualifiedReceipts ?? 0);
+        lineSalesAchievement = Number(lineSales.achievementPercentage ?? 0);
+        lineSalesStatus = String(lineSales.goalStatus ?? "Below Target");
+      }
 
       // Process Metric 7: Basket Count Target
-      const basketCountTargetAmount = basketCount ? Number(basketCount.targetAmountPerReceipt ?? 0) : 0;
-      const basketCountTargetReceiptCount = basketCount ? Number(basketCount.targetReceiptCount ?? 0) : 0;
-      const basketCountActualReceipts = basketCount ? Number(basketCount.actualQualifiedReceipts ?? 0) : 0;
-      const basketCountAchievement = basketCount ? Number(basketCount.achievementPercentage ?? 0) : 0;
-      const basketCountStatus = basketCount ? String(basketCount.goalStatus ?? "Below Target") : "Below Target";
+      let basketCountTargetAmount = 0;
+      let basketCountTargetReceiptCount = 0;
+      let basketCountActualReceipts = 0;
+      let basketCountAchievement = 0;
+      let basketCountStatus = "Below Target";
+      if (basketCount) {
+        basketCountTargetAmount = Number(basketCount.targetAmountPerReceipt ?? 0);
+        basketCountTargetReceiptCount = Number(basketCount.targetReceiptCount ?? 0);
+        basketCountActualReceipts = Number(basketCount.actualQualifiedReceipts ?? 0);
+        basketCountAchievement = Number(basketCount.achievementPercentage ?? 0);
+        basketCountStatus = String(basketCount.goalStatus ?? "Below Target");
+      }
 
-      // Process Metric 8: Tactical SKU Target (Aggregate array of tactical SKU targets)
-      const tacticalSkuTargetQty = Array.isArray(tacticalSku)
+      // Process Metric 8: Tactical SKU Target
+      let tacticalSkuTargetQty = 0;
+      let tacticalSkuActualQty = 0;
+      let tacticalSkuAchievement = 0;
+      let tacticalSkuStatus = "No Target Set";
+
+      tacticalSkuTargetQty = Array.isArray(tacticalSku)
         ? tacticalSku.reduce((sum, item) => sum + Number(item.targetQuantity ?? 0), 0)
         : 0;
-      const tacticalSkuActualQty = Array.isArray(tacticalSku)
+      tacticalSkuActualQty = Array.isArray(tacticalSku)
         ? tacticalSku.reduce((sum, item) => sum + Number(item.actualQuantity ?? 0), 0)
         : 0;
-      const tacticalSkuAchievement = tacticalSkuTargetQty > 0
+      tacticalSkuAchievement = tacticalSkuTargetQty > 0
         ? (tacticalSkuActualQty / tacticalSkuTargetQty) * 100
         : (Array.isArray(tacticalSku) && tacticalSku.length > 0 ? Number(tacticalSku[0].quantityAchievementPercentage ?? 0) : 0);
 
       const hasBelowTarget = Array.isArray(tacticalSku) && tacticalSku.some(item => String(item.quantityGoalStatus).toLowerCase().includes("below"));
-      const tacticalSkuStatus = Array.isArray(tacticalSku) && tacticalSku.length > 0
+      tacticalSkuStatus = Array.isArray(tacticalSku) && tacticalSku.length > 0
         ? (hasBelowTarget ? "Below Target" : "Met Target")
         : "No Target Set";
 
@@ -316,30 +465,29 @@ export async function GET(req: NextRequest) {
         salesmanId: id,
         salesmanCode: sm.salesmanCode,
         salesmanName: sm.salesmanName,
-        salesPerformance: isBackendOffline && salesPerformance === 0 ? Math.floor(Math.random() * 200000) + 50000 : salesPerformance,
+        salesPerformance,
         reach,
-        frequencyCount: isBackendOffline && freqCount === 0 ? Math.floor(Math.random() * 40) + 10 : freqCount,
-        frequencyAmount: isBackendOffline && freqAmount === 0 ? Math.floor(Math.random() * 80000) + 20000 : freqAmount,
-        newAccounts: isBackendOffline && newAccounts === 0 ? Math.floor(Math.random() * 8) : newAccounts,
-        productiveOutletsTarget: isBackendOffline ? 10 : productiveOutletsTarget,
-        productiveOutletsActual: isBackendOffline ? Math.floor(Math.random() * 12) : productiveOutletsActual,
-        productiveOutletsAchievement: isBackendOffline ? 80.00 : productiveOutletsAchievement,
-        productiveOutletsStatus: isBackendOffline ? "Met Target" : productiveOutletsStatus,
-        lineSalesTargetProductsPerReceipt: isBackendOffline ? 5 : lineSalesTargetProductsPerReceipt,
-        lineSalesTargetReceiptCount: isBackendOffline ? 50 : lineSalesTargetReceiptCount,
-        lineSalesActualReceipts: isBackendOffline ? Math.floor(Math.random() * 45) : lineSalesActualReceipts,
-        lineSalesAchievement: isBackendOffline ? 90.00 : lineSalesAchievement,
-        lineSalesStatus: isBackendOffline ? "Below Target" : lineSalesStatus,
-        basketCountTargetAmount: isBackendOffline ? 500 : basketCountTargetAmount,
-        basketCountTargetReceiptCount: isBackendOffline ? 100 : basketCountTargetReceiptCount,
-        basketCountActualReceipts: isBackendOffline ? Math.floor(Math.random() * 80) : basketCountActualReceipts,
-        basketCountAchievement: isBackendOffline ? 80.00 : basketCountAchievement,
-        basketCountStatus: isBackendOffline ? "Below Target" : basketCountStatus,
-        // Mock fallback for Metric 8 if offline
-        tacticalSkuTargetQty: isBackendOffline ? 20 : tacticalSkuTargetQty,
-        tacticalSkuActualQty: isBackendOffline ? Math.floor(Math.random() * 20) : tacticalSkuActualQty,
-        tacticalSkuAchievement: isBackendOffline ? 75.00 : tacticalSkuAchievement,
-        tacticalSkuStatus: isBackendOffline ? "Below Target" : tacticalSkuStatus,
+        frequencyCount: freqCount,
+        frequencyAmount: freqAmount,
+        newAccounts,
+        productiveOutletsTarget,
+        productiveOutletsActual,
+        productiveOutletsAchievement,
+        productiveOutletsStatus,
+        lineSalesTargetProductsPerReceipt,
+        lineSalesTargetReceiptCount,
+        lineSalesActualReceipts,
+        lineSalesAchievement,
+        lineSalesStatus,
+        basketCountTargetAmount,
+        basketCountTargetReceiptCount,
+        basketCountActualReceipts,
+        basketCountAchievement,
+        basketCountStatus,
+        tacticalSkuTargetQty,
+        tacticalSkuActualQty,
+        tacticalSkuAchievement,
+        tacticalSkuStatus,
       };
     })
   );

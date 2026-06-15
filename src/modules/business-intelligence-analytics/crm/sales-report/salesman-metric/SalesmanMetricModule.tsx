@@ -4,72 +4,32 @@ import * as React from "react";
 import { FiltersBar } from "./components/FiltersBar";
 import { MetricGridOne } from "./components/MetricGridOne";
 import { MetricGridTwo } from "./components/MetricGridTwo";
-import { DatePreset, MetricRow, SalesmanMetricFilters, SalesmanOption } from "./types";
+import { SupplierSalesModal } from "./components/SupplierSalesModal";
+import { FrequencyDetailModal } from "./components/FrequencyDetailModal";
+import { NewAccountsDetailModal } from "./components/NewAccountsDetailModal";
+import { MetricRow, SalesmanMetricFilters, SalesmanOption } from "./types";
 
-// Helper to format Date to YYYY-MM-DD
-function formatDateString(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
-
-// Compute start and end date based on preset choice
-function getDateRangeFromPreset(preset: DatePreset): { start: string; end: string } {
-  const now = new Date(); // Local system date
-  let start = now;
-  let end = now;
-
-  switch (preset) {
-    case "today":
-      start = now;
-      end = now;
-      break;
-
-    case "this-week": {
-      // Find start of the current week (Monday)
-      const day = now.getDay();
-      const diff = now.getDate() - day + (day === 0 ? -6 : 1);
-      const monday = new Date(now.setDate(diff));
-      const sunday = new Date(monday);
-      sunday.setDate(monday.getDate() + 6);
-      start = monday;
-      end = sunday;
-      break;
-    }
-
-    case "this-month":
-      start = new Date(now.getFullYear(), now.getMonth(), 1);
-      end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-      break;
-
-    case "this-year":
-      start = new Date(now.getFullYear(), 0, 1);
-      end = new Date(now.getFullYear(), 11, 31);
-      break;
-
-    case "custom":
-    default:
-      // Default custom range can be this-month or similar
-      start = new Date(now.getFullYear(), now.getMonth(), 1);
-      end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-      break;
-  }
-
-  return {
-    start: formatDateString(start),
-    end: formatDateString(end),
-  };
+// Helper to compute first and last day of month based on YYYY-MM-DD fiscal period
+function getFiscalPeriodRange(fiscalPeriod: string): { start: string; end: string } {
+  const parts = fiscalPeriod.split("-");
+  const year = Number(parts[0]);
+  const month = Number(parts[1]);
+  const start = `${parts[0]}-${parts[1]}-01`;
+  const lastDay = new Date(year, month, 0).getDate();
+  const end = `${parts[0]}-${parts[1]}-${String(lastDay).padStart(2, "0")}`;
+  return { start, end };
 }
 
 export default function SalesmanMetricModule() {
   const [salesmen, setSalesmen] = React.useState<SalesmanOption[]>([]);
   const [filters, setFilters] = React.useState<SalesmanMetricFilters>(() => {
-    const range = getDateRangeFromPreset("this-month");
+    const today = new Date();
+    const currentFiscalPeriod = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-01`;
+    const range = getFiscalPeriodRange(currentFiscalPeriod);
     return {
       salesmanId: "",
       salesmanCode: "",
-      datePreset: "this-month",
+      fiscalPeriod: currentFiscalPeriod,
       startDate: range.start,
       endDate: range.end,
     };
@@ -77,6 +37,23 @@ export default function SalesmanMetricModule() {
 
   const [loading, setLoading] = React.useState<boolean>(false);
   const [rows, setRows] = React.useState<MetricRow[]>([]);
+
+  // Modal State for Supplier Sales Breakdown
+  const [modalOpen, setModalOpen] = React.useState<boolean>(false);
+  const [selectedSalesmanId, setSelectedSalesmanId] = React.useState<number | "">("");
+  const [selectedSalesmanName, setSelectedSalesmanName] = React.useState<string>("");
+
+  // Modal State for Frequency Detailed Breakdown
+  const [freqModalOpen, setFreqModalOpen] = React.useState<boolean>(false);
+  const [freqSalesmanId, setFreqSalesmanId] = React.useState<number | "">("");
+  const [freqSalesmanCode, setFreqSalesmanCode] = React.useState<string>("");
+  const [freqSalesmanName, setFreqSalesmanName] = React.useState<string>("");
+
+  // Modal State for New Accounts Detailed Breakdown
+  const [newAccModalOpen, setNewAccModalOpen] = React.useState<boolean>(false);
+  const [newAccSalesmanId, setNewAccSalesmanId] = React.useState<number | "">("");
+  const [newAccSalesmanCode, setNewAccSalesmanCode] = React.useState<string>("");
+  const [newAccSalesmanName, setNewAccSalesmanName] = React.useState<string>("");
 
   // Fetch salesmen options on mount
   React.useEffect(() => {
@@ -126,7 +103,6 @@ export default function SalesmanMetricModule() {
       }
     }
 
-    // Only load if lookups have loaded or we are fetching all
     fetchMetrics();
 
     return () => {
@@ -143,22 +119,34 @@ export default function SalesmanMetricModule() {
     }));
   };
 
-  const handleDatePresetChange = (preset: DatePreset) => {
-    const range = getDateRangeFromPreset(preset);
+  const handleFiscalPeriodChange = (fp: string) => {
+    const range = getFiscalPeriodRange(fp);
     setFilters((prev) => ({
       ...prev,
-      datePreset: preset,
+      fiscalPeriod: fp,
       startDate: range.start,
       endDate: range.end,
     }));
   };
 
-  const handleCustomDatesChange = (start: string, end: string) => {
-    setFilters((prev) => ({
-      ...prev,
-      startDate: start,
-      endDate: end,
-    }));
+  const handleViewSupplierBreakdown = (salesmanId: number, salesmanName: string) => {
+    setSelectedSalesmanId(salesmanId);
+    setSelectedSalesmanName(salesmanName);
+    setModalOpen(true);
+  };
+
+  const handleViewFrequencyDetail = (salesmanId: number, salesmanCode: string, salesmanName: string) => {
+    setFreqSalesmanId(salesmanId);
+    setFreqSalesmanCode(salesmanCode);
+    setFreqSalesmanName(salesmanName);
+    setFreqModalOpen(true);
+  };
+
+  const handleViewNewAccountsDetail = (salesmanId: number, salesmanCode: string, salesmanName: string) => {
+    setNewAccSalesmanId(salesmanId);
+    setNewAccSalesmanCode(salesmanCode);
+    setNewAccSalesmanName(salesmanName);
+    setNewAccModalOpen(true);
   };
 
   return (
@@ -174,20 +162,55 @@ export default function SalesmanMetricModule() {
       <FiltersBar
         salesmen={salesmen}
         selectedSalesmanId={filters.salesmanId}
-        selectedDatePreset={filters.datePreset}
-        startDate={filters.startDate}
-        endDate={filters.endDate}
+        fiscalPeriod={filters.fiscalPeriod}
         onChangeSalesman={handleSalesmanChange}
-        onChangeDatePreset={handleDatePresetChange}
-        onChangeCustomDates={handleCustomDatesChange}
+        onChangeFiscalPeriod={handleFiscalPeriodChange}
         loading={loading}
       />
 
       {/* Metric Grids */}
       <div className="grid grid-cols-1 gap-6">
-        <MetricGridOne rows={rows} loading={loading} />
+        <MetricGridOne
+          rows={rows}
+          loading={loading}
+          onViewSupplierBreakdown={handleViewSupplierBreakdown}
+          onViewFrequencyDetail={handleViewFrequencyDetail}
+          onViewNewAccountsDetail={handleViewNewAccountsDetail}
+        />
         <MetricGridTwo rows={rows} loading={loading} />
       </div>
+
+      {/* Supplier Breakdown Modal */}
+      <SupplierSalesModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        salesmanId={selectedSalesmanId}
+        salesmanName={selectedSalesmanName}
+        startDate={filters.startDate}
+        endDate={filters.endDate}
+      />
+
+      {/* Frequency Details Modal */}
+      <FrequencyDetailModal
+        isOpen={freqModalOpen}
+        onClose={() => setFreqModalOpen(false)}
+        salesmanId={freqSalesmanId}
+        salesmanCode={freqSalesmanCode}
+        salesmanName={freqSalesmanName}
+        startDate={filters.startDate}
+        endDate={filters.endDate}
+      />
+
+      {/* New Accounts Details Modal */}
+      <NewAccountsDetailModal
+        isOpen={newAccModalOpen}
+        onClose={() => setNewAccModalOpen(false)}
+        salesmanId={newAccSalesmanId}
+        salesmanCode={newAccSalesmanCode}
+        salesmanName={newAccSalesmanName}
+        startDate={filters.startDate}
+        endDate={filters.endDate}
+      />
     </div>
   );
 }
