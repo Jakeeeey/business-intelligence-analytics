@@ -23,11 +23,14 @@ export interface VisitRecord {
   brgy?: string;
   city?: string;
   province?: string;
+  cluster?: string | null; // Added for cluster mapping
   invoiceNo?: string;
   totalAmount?: number;
   invoiceDate?: string;
   driverNames?: string;
   helperNames?: string | null;
+  dispatchRemarks?: string | null;
+  invoiceRemarks?: string | null;
 }
 
 export interface Driver {

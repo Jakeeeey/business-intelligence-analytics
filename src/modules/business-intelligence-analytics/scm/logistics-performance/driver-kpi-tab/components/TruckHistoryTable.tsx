@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import  { useState, useEffect, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
@@ -87,6 +87,10 @@ export default function TruckHistoryTable() {
         case "dispatchNo":
           va = a.dispatchDocumentNo ?? "";
           vb = b.dispatchDocumentNo ?? "";
+          break;
+        case "cluster":
+          va = firstA?.cluster ?? "";
+          vb = firstB?.cluster ?? "";
           break;
         case "dispatchTime":
           va = a.dispatchTime ?? null;
@@ -263,6 +267,21 @@ export default function TruckHistoryTable() {
                         <button
                           type="button"
                           className="inline-flex items-center gap-1"
+                          onClick={() => toggleSort("cluster")}
+                        >
+                          Cluster
+                          {sortKey === "cluster" &&
+                            (sortDir === "asc" ? (
+                              <ChevronUpIcon className="size-4" />
+                            ) : (
+                              <ChevronDownIcon className="size-4" />
+                            ))}
+                        </button>
+                      </TableHead>
+                      <TableHead className="w-35">
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-1"
                           onClick={() => toggleSort("dispatchTime")}
                         >
                           Dispatch Time
@@ -348,6 +367,7 @@ export default function TruckHistoryTable() {
                             </TableCell>
                             <TableCell>{first?.truckType ?? "-"}</TableCell>
                             <TableCell>{d.dispatchDocumentNo}</TableCell>
+                            <TableCell>{first?.cluster ?? "-"}</TableCell>
                             <TableCell>
                               {dispatchTime
                                 ? formatDateTime(dispatchTime.toISOString())
