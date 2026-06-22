@@ -117,7 +117,7 @@ export default async function Page() {
 
             <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6">
                 <Suspense fallback={<div className="p-4 text-sm text-muted-foreground">Loading Consolidator Audit...</div>}>
-                    <ConsolidatorAuditModule />
+                    <ConsolidatorAuditModule userName={headerUser.name} />
                 </Suspense>
             </main>
         </div>

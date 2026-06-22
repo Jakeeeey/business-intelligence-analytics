@@ -16,6 +16,7 @@ export interface ConsolidatorAuditRecord {
 }
 
 export interface ConsolidatorAuditFilters {
+  dateRangeType: "today" | "week" | "month" | "year" | "custom";
   startDate: string;
   endDate: string;
   pdpNo?: string;
@@ -24,6 +25,8 @@ export interface ConsolidatorAuditFilters {
   consolidatorStatus?: string;
   dpNo?: string;
   dpStatus?: string;
+  showUnlinkedConsolidator?: boolean;
+  showUnlinkedDp?: boolean;
 }
 
 export interface GroupedPdp {
