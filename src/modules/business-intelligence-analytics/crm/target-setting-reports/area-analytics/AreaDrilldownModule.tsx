@@ -78,7 +78,7 @@ function CommandCenterContent() {
             pNode.total += item.netAmount;
             pNode.cities.set(city, (pNode.cities.get(city) || 0) + item.netAmount);
         });
-        return Array.from(root.entries()).sort((a, b) => b[1].total - a[1].total);
+        return Array.from(root.entries()).sort((a, b) => a[0].localeCompare(b[0]));
     }, [rawData, selectedDivision]);
 
     // 🧠 2. AGGREGATE THE RIGHT PANEL (Dynamic Insights based on selection)
