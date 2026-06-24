@@ -373,7 +373,7 @@ export function BreakdownAnalysisModal({
                             <div className="flex items-center gap-6">
                                 <Tabs defaultValue="customer" value={viewType} onValueChange={(v) => {
                                     setViewType(v as "customer" | "area");
-                                    setSelectedStoreType(null);
+                                    setSelectedStoreType(v === "customer" ? channelName : null);
                                     setSelectedArea(null);
                                     setSortConfig({ key: 'peak', direction: 'desc' });
                                 }} className="w-[300px]">
