@@ -13,6 +13,7 @@ import {
   Row,
 } from "@tanstack/react-table";
 import { cn } from "@/lib/utils";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { ChevronRight, ChevronDown } from "lucide-react";
 import { ReportData, PivotConfig, ColumnFilter } from "../types";
 import { createPivotColumns, pivotAggregationFns, formatDateValue } from "../utils/tanstack-pivot-adapter";
@@ -186,6 +187,17 @@ export const PivotTableView = forwardRef<PivotTableViewRef, PivotTableViewProps>
 
   const { rows } = table.getRowModel();
 
+  const visibleRows = useMemo(() => rows.filter(r => r.getIsGrouped()), [rows]);
+
+  const bodyRef = useRef<HTMLDivElement>(null);
+
+  const rowVirtualizer = useVirtualizer({
+    count: visibleRows.length,
+    getScrollElement: () => bodyRef.current,
+    estimateSize: () => 40,
+    overscan: 10,
+  });
+
     // ═══════════════════════════════════════════════════════════════════
     // EXPORT LOGIC (Exposed to parent)
     // ═══════════════════════════════════════════════════════════════════
@@ -308,7 +320,7 @@ export const PivotTableView = forwardRef<PivotTableViewRef, PivotTableViewProps>
     <div className="flex-1 h-full min-h-0 flex flex-col bg-background font-sans text-[11px] leading-none overflow-hidden border border-border rounded-xl">
       
       {/* Viewport: The window that allows both vertical and horizontal scrolling */}
-      <div className="flex-1 min-h-0 overflow-auto custom-scrollbar relative bg-background dark:bg-slate-950">
+      <div ref={bodyRef} className="flex-1 min-h-0 overflow-auto custom-scrollbar relative bg-background dark:bg-slate-950">
         
         {/* Canvas: The actual wide area containing the table */}
         {/* CRITICAL: width:100% fills viewport when cols are few (no orphan space) */}
@@ -376,10 +388,9 @@ export const PivotTableView = forwardRef<PivotTableViewRef, PivotTableViewProps>
           </div>
 
           {/* BODY ROWS */}
-          <div className="flex flex-col bg-white" style={{ minWidth: 'max-content' }}>
-            {rows.map((row) => {
-              // Option A: Strict Pivot - Do not render raw leaf rows
-              if (!row.getIsGrouped()) return null;
+          <div className="flex flex-col bg-white relative" style={{ minWidth: 'max-content', height: `${rowVirtualizer.getTotalSize()}px` }}>
+            {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+              const row = visibleRows[virtualRow.index];
 
               // Determine if this is the deepest grouping level
               const isLastGroupLevel = row.depth >= config.rowFields.length - 1;
@@ -387,11 +398,17 @@ export const PivotTableView = forwardRef<PivotTableViewRef, PivotTableViewProps>
 
               return (
                 <div 
-                  key={row.id}
+                  key={virtualRow.key}
                   className={cn(
-                    "flex border-b border-border transition-colors h-10 items-center group bg-background dark:bg-slate-950",
+                    "flex border-b border-border transition-colors items-center group bg-background dark:bg-slate-950 absolute w-full",
                     "hover:bg-slate-100 dark:hover:bg-slate-800"
                   )}
+                  style={{
+                    top: 0,
+                    left: 0,
+                    height: `${virtualRow.size}px`,
+                    transform: `translateY(${virtualRow.start}px)`,
+                  }}
                 >
                   {row.getVisibleCells().map((cell) => {
                     const isRowLabelColumn = cell.column.id === "rowLabels";
