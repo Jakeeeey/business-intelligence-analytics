@@ -161,7 +161,7 @@ function CommandCenterContent() {
                         </Badge>
                     </div>
 
-                    <ScrollArea className="flex-1">
+                    <ScrollArea className="flex-1 min-h-0">
                         {loading ? (
                             <div className="flex justify-center p-10"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
                         ) : (
@@ -207,7 +207,7 @@ function CommandCenterContent() {
                                             {isPOpen && (
                                                 <div className="pl-6 space-y-1 pb-1">
                                                     {Array.from(pData.cities.entries())
-                                                        .sort((a,b) => b[1] - a[1])
+                                                        .sort((a,b) => a[0].localeCompare(b[0]))
                                                         .map(([city]) => {
                                                             const isCActive = activeSelection.level === "CITY" && activeSelection.cityName === city;
                                                             return (
@@ -259,7 +259,7 @@ function CommandCenterContent() {
                             <div className="bg-muted/30 p-4 border-b border-border/50 text-xs font-bold text-amber-500 uppercase tracking-widest flex items-center gap-2 shrink-0">
                                 <Package className="h-4 w-4" /> Top Suppliers
                             </div>
-                            <ScrollArea className="flex-1 p-4">
+                            <ScrollArea className="flex-1 min-h-0 p-4">
                                 <div className="space-y-4 pr-3">
                                     {topSuppliers.length === 0 && !loading && <p className="text-xs text-muted-foreground text-center pt-10">No supplier data for this region.</p>}
                                     {topSuppliers.map(([sup, amt], idx) => {
@@ -286,7 +286,7 @@ function CommandCenterContent() {
                             <div className="bg-muted/30 p-4 border-b border-border/50 text-xs font-bold text-emerald-500 uppercase tracking-widest flex items-center gap-2 shrink-0">
                                 <User className="h-4 w-4" /> Top Representatives
                             </div>
-                            <ScrollArea className="flex-1 p-4">
+                            <ScrollArea className="flex-1 min-h-0 p-4">
                                 <div className="space-y-3 pr-3">
                                     {topSalesmen.length === 0 && !loading && <p className="text-xs text-muted-foreground text-center pt-10">No sales representative data for this region.</p>}
                                     {topSalesmen.map(([man, amt], idx) => {

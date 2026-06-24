@@ -72,21 +72,16 @@ function SupervisorKPIContent() {
         });
 
         const salesmanIdToCode = new Map<number, string>();
-        const nameToCode = new Map<string, string>();
         if (mappings.salesmanMaster) {
             mappings.salesmanMaster.forEach(sm => {
                 salesmanIdToCode.set(sm.id, sm.salesman_code);
-                // Also store a normalized name map to find the supervisor's code
-                nameToCode.set(sm.salesman_name.trim().toLowerCase(), sm.salesman_code);
             });
         }
 
         const supervisorIdToName = new Map<number, string>();
         mappings.supervisors.forEach(s => {
             const fullName = `${s.supervisor_id.first_name} ${s.supervisor_id.last_name}`.trim();
-            const code = nameToCode.get(fullName.toLowerCase());
-            // If a salesman code is found for this supervisor name, use it; otherwise fallback to the full name
-            supervisorIdToName.set(s.id, code || fullName);
+            supervisorIdToName.set(s.id, fullName);
         });
 
         const start = parseISO(fromMonth + "-01");
