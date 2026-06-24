@@ -12,6 +12,7 @@ import {
 import { ReportData } from "../types";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   Popover,
   PopoverContent,
@@ -208,6 +209,13 @@ export const DynamicTable = forwardRef<DynamicTableRef, DynamicTableProps>(({
         : bStr.localeCompare(aStr);
     });
   }, [data, sortConfig]);
+
+  const rowVirtualizer = useVirtualizer({
+    count: sortedData.length,
+    getScrollElement: () => bodyRef.current,
+    estimateSize: () => 40,
+    overscan: 10,
+  });
 
   const handleDragStart = (e: React.DragEvent, col: string) => {
     setDraggedColumn(col);
@@ -545,14 +553,22 @@ export const DynamicTable = forwardRef<DynamicTableRef, DynamicTableProps>(({
           <Table className="border-separate border-spacing-0 table-fixed" style={{ width: TOTAL_WIDTH }}>
             <ColGroup />
             <TableBody>
-              {sortedData.map((row, rowIndex) => (
-                <TableRow 
-                  key={rowIndex} 
-                  className="group border-0 relative transition-none bg-transparent"
-                >
-                  {activeColumns.map((col, colIdx) => {
-                    const value = row[col];
-                    const isEven = rowIndex % 2 === 0;
+              {rowVirtualizer.getVirtualItems().length > 0 && rowVirtualizer.getVirtualItems()[0].start > 0 && (
+                <tr style={{ height: `${rowVirtualizer.getVirtualItems()[0].start}px` }}>
+                  <td colSpan={activeColumns.length} />
+                </tr>
+              )}
+              {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                const rowIndex = virtualRow.index;
+                const row = sortedData[rowIndex];
+                return (
+                  <TableRow 
+                    key={virtualRow.key} 
+                    className="group border-0 relative transition-none bg-transparent h-10"
+                  >
+                    {activeColumns.map((col, colIdx) => {
+                      const value = row[col];
+                      const isEven = rowIndex % 2 === 0;
                     return (
                       <TableCell 
                         key={`${rowIndex}-${col}`} 
@@ -572,7 +588,13 @@ export const DynamicTable = forwardRef<DynamicTableRef, DynamicTableProps>(({
                     );
                   })}
                 </TableRow>
-              ))}
+                );
+              })}
+              {rowVirtualizer.getVirtualItems().length > 0 && (
+                <tr style={{ height: `${rowVirtualizer.getTotalSize() - (rowVirtualizer.getVirtualItems()[rowVirtualizer.getVirtualItems().length - 1]?.end || 0)}px` }}>
+                  <td colSpan={activeColumns.length} />
+                </tr>
+              )}
             </TableBody>
           </Table>
         </div>
