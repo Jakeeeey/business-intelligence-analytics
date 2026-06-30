@@ -1,12 +1,17 @@
 "use client";
 
 import * as React from "react";
+import { useDebounce } from "use-debounce";
 import { FiltersBar } from "./components/FiltersBar";
 import { MetricGridOne } from "./components/MetricGridOne";
 import { MetricGridTwo } from "./components/MetricGridTwo";
 import { SupplierSalesModal } from "./components/SupplierSalesModal";
 import { FrequencyDetailModal } from "./components/FrequencyDetailModal";
 import { NewAccountsDetailModal } from "./components/NewAccountsDetailModal";
+import { ProductiveOutletDetailModal } from "./components/ProductiveOutletDetailModal";
+import { BasketCountDetailModal } from "./components/BasketCountDetailModal";
+import { LineSalesDetailModal } from "./components/LineSalesDetailModal";
+import { TacticalSkuDetailModal } from "./components/TacticalSkuDetailModal";
 import { MetricRow, SalesmanMetricFilters, SalesmanOption } from "./types";
 
 // Helper to compute first and last day of month based on YYYY-MM-DD fiscal period
@@ -37,6 +42,7 @@ export default function SalesmanMetricModule() {
 
   const [loading, setLoading] = React.useState<boolean>(false);
   const [rows, setRows] = React.useState<MetricRow[]>([]);
+  const [debouncedFilters] = useDebounce(filters, 300);
 
   // Modal State for Supplier Sales Breakdown
   const [modalOpen, setModalOpen] = React.useState<boolean>(false);
@@ -54,6 +60,26 @@ export default function SalesmanMetricModule() {
   const [newAccSalesmanId, setNewAccSalesmanId] = React.useState<number | "">("");
   const [newAccSalesmanCode, setNewAccSalesmanCode] = React.useState<string>("");
   const [newAccSalesmanName, setNewAccSalesmanName] = React.useState<string>("");
+
+  // Modal State for Productive Outlet Breakdown
+  const [poModalOpen, setPoModalOpen] = React.useState<boolean>(false);
+  const [poSalesmanId, setPoSalesmanId] = React.useState<number | "">("");
+  const [poSalesmanName, setPoSalesmanName] = React.useState<string>("");
+
+  // Modal State for Basket Count Breakdown
+  const [bcModalOpen, setBcModalOpen] = React.useState<boolean>(false);
+  const [bcSalesmanId, setBcSalesmanId] = React.useState<number | "">("");
+  const [bcSalesmanName, setBcSalesmanName] = React.useState<string>("");
+
+  // Modal State for Line Sales Breakdown
+  const [lsModalOpen, setLsModalOpen] = React.useState<boolean>(false);
+  const [lsSalesmanId, setLsSalesmanId] = React.useState<number | "">("");
+  const [lsSalesmanName, setLsSalesmanName] = React.useState<string>("");
+
+  // Modal State for Tactical SKU Breakdown
+  const [tskuModalOpen, setTskuModalOpen] = React.useState<boolean>(false);
+  const [tskuSalesmanId, setTskuSalesmanId] = React.useState<number | "">("");
+  const [tskuSalesmanName, setTskuSalesmanName] = React.useState<string>("");
 
   // Fetch salesmen options on mount
   React.useEffect(() => {
@@ -79,16 +105,16 @@ export default function SalesmanMetricModule() {
       setLoading(true);
       try {
         const salesmanCode =
-          filters.salesmanId !== ""
-            ? salesmen.find((s) => s.salesmanId === filters.salesmanId)?.salesmanCode || ""
+          debouncedFilters.salesmanId !== ""
+            ? salesmen.find((s) => s.salesmanId === debouncedFilters.salesmanId)?.salesmanCode || ""
             : "";
 
         const queryParams = new URLSearchParams({
           mode: "report",
-          salesmanId: filters.salesmanId === "" ? "all" : String(filters.salesmanId),
+          salesmanId: debouncedFilters.salesmanId === "" ? "all" : String(debouncedFilters.salesmanId),
           salesmanCode,
-          startDate: filters.startDate,
-          endDate: filters.endDate,
+          startDate: debouncedFilters.startDate,
+          endDate: debouncedFilters.endDate,
         });
 
         const res = await fetch(`/api/bia/crm/sales-report/salesman-metric?${queryParams.toString()}`);
@@ -108,7 +134,7 @@ export default function SalesmanMetricModule() {
     return () => {
       active = false;
     };
-  }, [filters.salesmanId, filters.startDate, filters.endDate, salesmen]);
+  }, [debouncedFilters.salesmanId, debouncedFilters.startDate, debouncedFilters.endDate, salesmen]);
 
   const handleSalesmanChange = (id: number | "") => {
     const code = id !== "" ? salesmen.find((s) => s.salesmanId === id)?.salesmanCode || "" : "";
@@ -149,6 +175,30 @@ export default function SalesmanMetricModule() {
     setNewAccModalOpen(true);
   };
 
+  const handleViewProductiveOutletDetail = (salesmanId: number, salesmanName: string) => {
+    setPoSalesmanId(salesmanId);
+    setPoSalesmanName(salesmanName);
+    setPoModalOpen(true);
+  };
+
+  const handleViewBasketCountDetail = (salesmanId: number, salesmanName: string) => {
+    setBcSalesmanId(salesmanId);
+    setBcSalesmanName(salesmanName);
+    setBcModalOpen(true);
+  };
+
+  const handleViewLineSalesDetail = (salesmanId: number, salesmanName: string) => {
+    setLsSalesmanId(salesmanId);
+    setLsSalesmanName(salesmanName);
+    setLsModalOpen(true);
+  };
+
+  const handleViewTacticalSkuDetail = (salesmanId: number, salesmanName: string) => {
+    setTskuSalesmanId(salesmanId);
+    setTskuSalesmanName(salesmanName);
+    setTskuModalOpen(true);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-1">
@@ -177,40 +227,101 @@ export default function SalesmanMetricModule() {
           onViewFrequencyDetail={handleViewFrequencyDetail}
           onViewNewAccountsDetail={handleViewNewAccountsDetail}
         />
-        <MetricGridTwo rows={rows} loading={loading} />
+        <MetricGridTwo 
+          rows={rows} 
+          loading={loading} 
+          onViewProductiveOutletDetail={handleViewProductiveOutletDetail}
+          onViewLineSalesDetail={handleViewLineSalesDetail}
+          onViewBasketCountDetail={handleViewBasketCountDetail}
+          onViewTacticalSkuDetail={handleViewTacticalSkuDetail}
+        />
       </div>
 
       {/* Supplier Breakdown Modal */}
-      <SupplierSalesModal
-        isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
-        salesmanId={selectedSalesmanId}
-        salesmanName={selectedSalesmanName}
-        startDate={filters.startDate}
-        endDate={filters.endDate}
-      />
+      {modalOpen && (
+        <SupplierSalesModal
+          isOpen={modalOpen}
+          onClose={() => setModalOpen(false)}
+          salesmanId={selectedSalesmanId}
+          salesmanName={selectedSalesmanName}
+          startDate={filters.startDate}
+          endDate={filters.endDate}
+        />
+      )}
 
       {/* Frequency Details Modal */}
-      <FrequencyDetailModal
-        isOpen={freqModalOpen}
-        onClose={() => setFreqModalOpen(false)}
-        salesmanId={freqSalesmanId}
-        salesmanCode={freqSalesmanCode}
-        salesmanName={freqSalesmanName}
-        startDate={filters.startDate}
-        endDate={filters.endDate}
-      />
+      {freqModalOpen && (
+        <FrequencyDetailModal
+          isOpen={freqModalOpen}
+          onClose={() => setFreqModalOpen(false)}
+          salesmanId={freqSalesmanId}
+          salesmanCode={freqSalesmanCode}
+          salesmanName={freqSalesmanName}
+          startDate={filters.startDate}
+          endDate={filters.endDate}
+        />
+      )}
 
       {/* New Accounts Details Modal */}
-      <NewAccountsDetailModal
-        isOpen={newAccModalOpen}
-        onClose={() => setNewAccModalOpen(false)}
-        salesmanId={newAccSalesmanId}
-        salesmanCode={newAccSalesmanCode}
-        salesmanName={newAccSalesmanName}
-        startDate={filters.startDate}
-        endDate={filters.endDate}
-      />
+      {newAccModalOpen && (
+        <NewAccountsDetailModal
+          isOpen={newAccModalOpen}
+          onClose={() => setNewAccModalOpen(false)}
+          salesmanId={newAccSalesmanId}
+          salesmanCode={newAccSalesmanCode}
+          salesmanName={newAccSalesmanName}
+          startDate={filters.startDate}
+          endDate={filters.endDate}
+        />
+      )}
+
+      {/* Productive Outlet Details Modal */}
+      {poModalOpen && (
+        <ProductiveOutletDetailModal
+          isOpen={poModalOpen}
+          onClose={() => setPoModalOpen(false)}
+          salesmanId={poSalesmanId}
+          salesmanName={poSalesmanName}
+          targetMonth={Number(filters.fiscalPeriod.split("-")[1])}
+          targetYear={Number(filters.fiscalPeriod.split("-")[0])}
+        />
+      )}
+
+      {/* Basket Count Details Modal */}
+      {bcModalOpen && (
+        <BasketCountDetailModal
+          isOpen={bcModalOpen}
+          onClose={() => setBcModalOpen(false)}
+          salesmanId={bcSalesmanId}
+          salesmanName={bcSalesmanName}
+          targetMonth={Number(filters.fiscalPeriod.split("-")[1])}
+          targetYear={Number(filters.fiscalPeriod.split("-")[0])}
+        />
+      )}
+
+      {/* Line Sales Details Modal */}
+      {lsModalOpen && (
+        <LineSalesDetailModal
+          isOpen={lsModalOpen}
+          onClose={() => setLsModalOpen(false)}
+          salesmanId={lsSalesmanId}
+          salesmanName={lsSalesmanName}
+          targetMonth={Number(filters.fiscalPeriod.split("-")[1])}
+          targetYear={Number(filters.fiscalPeriod.split("-")[0])}
+        />
+      )}
+
+      {/* Tactical SKU Details Modal */}
+      {tskuModalOpen && (
+        <TacticalSkuDetailModal
+          isOpen={tskuModalOpen}
+          onClose={() => setTskuModalOpen(false)}
+          salesmanId={tskuSalesmanId}
+          salesmanName={tskuSalesmanName}
+          targetMonth={Number(filters.fiscalPeriod.split("-")[1])}
+          targetYear={Number(filters.fiscalPeriod.split("-")[0])}
+        />
+      )}
     </div>
   );
 }

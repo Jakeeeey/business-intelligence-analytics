@@ -111,16 +111,13 @@ function json(res: unknown, init?: ResponseInit) {
 
 async function safeFetch<T>(url: string, defaultValue: T, token?: string): Promise<T> {
   try {
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
-    }
-
     const res = await fetch(url, {
       method: "GET",
-      headers,
-      cache: "no-store",
-      next: { revalidate: 0 }
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      },
+      cache: "no-store"
     });
     if (!res.ok) return defaultValue;
     return await res.json() as T;
@@ -295,6 +292,94 @@ export async function GET(req: NextRequest) {
   }
 
   // ==========================================
+  // MODE: PRODUCTIVE OUTLET DETAIL
+  // ==========================================
+  if (mode === "productive-outlet-detail") {
+    const salesmanIdParam = sp.get("salesmanId");
+    const targetMonthParam = sp.get("targetMonth");
+    const targetYearParam = sp.get("targetYear");
+
+    if (!salesmanIdParam || !targetMonthParam || !targetYearParam) {
+      return json({ success: false, error: "salesmanId, targetMonth, and targetYear are required" }, { status: 400 });
+    }
+
+    const salesmanId = Number(salesmanIdParam);
+    const targetMonth = Number(targetMonthParam);
+    const targetYear = Number(targetYearParam);
+
+    const url = `${API_BASE}/api/salesman-productive-outlet-target?salesmanId=${salesmanId}&targetMonth=${targetMonth}&targetYear=${targetYear}`;
+    const data = await safeFetch<any[]>(url, [], token);
+
+    return json({ success: true, data });
+  }
+
+  // ==========================================
+  // MODE: BASKET COUNT DETAIL
+  // ==========================================
+  if (mode === "basket-count-detail") {
+    const salesmanIdParam = sp.get("salesmanId");
+    const targetMonthParam = sp.get("targetMonth");
+    const targetYearParam = sp.get("targetYear");
+
+    if (!salesmanIdParam || !targetMonthParam || !targetYearParam) {
+      return json({ success: false, error: "salesmanId, targetMonth, and targetYear are required" }, { status: 400 });
+    }
+
+    const salesmanId = Number(salesmanIdParam);
+    const targetMonth = Number(targetMonthParam);
+    const targetYear = Number(targetYearParam);
+
+    const url = `${API_BASE}/api/salesman-basket-count-target-set?salesmanId=${salesmanId}&targetMonth=${targetMonth}&targetYear=${targetYear}`;
+    const data = await safeFetch<any[]>(url, [], token);
+
+    return json({ success: true, data });
+  }
+
+  // ==========================================
+  // MODE: LINE SALES DETAIL
+  // ==========================================
+  if (mode === "line-sales-detail") {
+    const salesmanIdParam = sp.get("salesmanId");
+    const targetMonthParam = sp.get("targetMonth");
+    const targetYearParam = sp.get("targetYear");
+
+    if (!salesmanIdParam || !targetMonthParam || !targetYearParam) {
+      return json({ success: false, error: "salesmanId, targetMonth, and targetYear are required" }, { status: 400 });
+    }
+
+    const salesmanId = Number(salesmanIdParam);
+    const targetMonth = Number(targetMonthParam);
+    const targetYear = Number(targetYearParam);
+
+    const url = `${API_BASE}/api/salesman-line-sales-target-setting?salesmanId=${salesmanId}&targetMonth=${targetMonth}&targetYear=${targetYear}`;
+    const data = await safeFetch<any[]>(url, [], token);
+
+    return json({ success: true, data });
+  }
+
+  // ==========================================
+  // MODE: TACTICAL SKU DETAIL
+  // ==========================================
+  if (mode === "tactical-sku-detail") {
+    const salesmanIdParam = sp.get("salesmanId");
+    const targetMonthParam = sp.get("targetMonth");
+    const targetYearParam = sp.get("targetYear");
+
+    if (!salesmanIdParam || !targetMonthParam || !targetYearParam) {
+      return json({ success: false, error: "salesmanId, targetMonth, and targetYear are required" }, { status: 400 });
+    }
+
+    const salesmanId = Number(salesmanIdParam);
+    const targetMonth = Number(targetMonthParam);
+    const targetYear = Number(targetYearParam);
+
+    const url = `${API_BASE}/api/salesman-tactical-sku-target-setting?salesmanId=${salesmanId}&targetMonth=${targetMonth}&targetYear=${targetYear}`;
+    const data = await safeFetch<any[]>(url, [], token);
+
+    return json({ success: true, data });
+  }
+
+  // ==========================================
   // MODE: REPORT
   // ==========================================
   const salesmanIdParam = sp.get("salesmanId");
@@ -418,12 +503,27 @@ export async function GET(req: NextRequest) {
       let lineSalesActualReceipts = 0;
       let lineSalesAchievement = 0;
       let lineSalesStatus = "Below Target";
-      if (lineSales) {
-        lineSalesTargetProductsPerReceipt = Number(lineSales.targetProductsPerReceipt ?? 0);
-        lineSalesTargetReceiptCount = Number(lineSales.targetReceiptCount ?? 0);
-        lineSalesActualReceipts = Number(lineSales.actualQualifiedReceipts ?? 0);
-        lineSalesAchievement = Number(lineSales.achievementPercentage ?? 0);
-        lineSalesStatus = String(lineSales.goalStatus ?? "Below Target");
+
+      if (Array.isArray(lineSales) && lineSales.length > 0) {
+        lineSalesTargetProductsPerReceipt = Number(lineSales[0].targetProductsPerReceipt ?? 0);
+        lineSalesTargetReceiptCount = Number(lineSales[0].targetReceiptCount ?? 0);
+        
+        const validReceipts = lineSales.filter((item: any) => item.invoiceNumber);
+        lineSalesActualReceipts = validReceipts.length;
+
+        if (lineSalesTargetReceiptCount > 0) {
+          lineSalesAchievement = (lineSalesActualReceipts / lineSalesTargetReceiptCount) * 100;
+          lineSalesStatus = lineSalesAchievement >= 100 ? "Met Target" : "Below Target";
+        } else {
+          lineSalesAchievement = lineSalesActualReceipts > 0 ? 100 : 0;
+          lineSalesStatus = lineSalesTargetReceiptCount === 0 && lineSalesActualReceipts === 0 ? "No Target Set" : (lineSalesActualReceipts > 0 ? "Met Target" : "Below Target");
+        }
+      } else if (lineSales && !Array.isArray(lineSales)) {
+        lineSalesTargetProductsPerReceipt = Number((lineSales as any).targetProductsPerReceipt ?? 0);
+        lineSalesTargetReceiptCount = Number((lineSales as any).targetReceiptCount ?? 0);
+        lineSalesActualReceipts = Number((lineSales as any).actualQualifiedReceipts ?? 0);
+        lineSalesAchievement = Number((lineSales as any).achievementPercentage ?? 0);
+        lineSalesStatus = String((lineSales as any).goalStatus ?? "Below Target");
       }
 
       // Process Metric 7: Basket Count Target
@@ -432,12 +532,29 @@ export async function GET(req: NextRequest) {
       let basketCountActualReceipts = 0;
       let basketCountAchievement = 0;
       let basketCountStatus = "Below Target";
-      if (basketCount) {
-        basketCountTargetAmount = Number(basketCount.targetAmountPerReceipt ?? 0);
-        basketCountTargetReceiptCount = Number(basketCount.targetReceiptCount ?? 0);
-        basketCountActualReceipts = Number(basketCount.actualQualifiedReceipts ?? 0);
-        basketCountAchievement = Number(basketCount.achievementPercentage ?? 0);
-        basketCountStatus = String(basketCount.goalStatus ?? "Below Target");
+
+      if (Array.isArray(basketCount) && basketCount.length > 0) {
+        basketCountTargetAmount = Number(basketCount[0].targetAmountPerReceipt ?? 0);
+        basketCountTargetReceiptCount = Number(basketCount[0].targetReceiptCount ?? 0);
+        
+        // Count receipts that actually have an invoice number and amount
+        const validReceipts = basketCount.filter((item: any) => item.invoiceNumber);
+        basketCountActualReceipts = validReceipts.length;
+        
+        if (basketCountTargetReceiptCount > 0) {
+          basketCountAchievement = (basketCountActualReceipts / basketCountTargetReceiptCount) * 100;
+          basketCountStatus = basketCountAchievement >= 100 ? "Met Target" : "Below Target";
+        } else {
+          basketCountAchievement = basketCountActualReceipts > 0 ? 100 : 0;
+          basketCountStatus = basketCountTargetReceiptCount === 0 && basketCountActualReceipts === 0 ? "No Target Set" : (basketCountActualReceipts > 0 ? "Met Target" : "Below Target");
+        }
+      } else if (basketCount && !Array.isArray(basketCount)) {
+        // Fallback in case it ever returns an object again
+        basketCountTargetAmount = Number((basketCount as any).targetAmountPerReceipt ?? 0);
+        basketCountTargetReceiptCount = Number((basketCount as any).targetReceiptCount ?? 0);
+        basketCountActualReceipts = Number((basketCount as any).actualQualifiedReceipts ?? 0);
+        basketCountAchievement = Number((basketCount as any).achievementPercentage ?? 0);
+        basketCountStatus = String((basketCount as any).goalStatus ?? "Below Target");
       }
 
       // Process Metric 8: Tactical SKU Target

@@ -16,15 +16,26 @@ import { MetricRow } from "../types";
 interface MetricGridTwoProps {
   rows: MetricRow[];
   loading: boolean;
+  onViewProductiveOutletDetail?: (salesmanId: number, salesmanName: string) => void;
+  onViewLineSalesDetail?: (salesmanId: number, salesmanName: string) => void;
+  onViewBasketCountDetail?: (salesmanId: number, salesmanName: string) => void;
+  onViewTacticalSkuDetail?: (salesmanId: number, salesmanName: string) => void;
 }
 
-export function MetricGridTwo({ rows, loading }: MetricGridTwoProps) {
+export function MetricGridTwo({ rows, loading, onViewProductiveOutletDetail, onViewLineSalesDetail, onViewBasketCountDetail, onViewTacticalSkuDetail }: MetricGridTwoProps) {
   const getStatusTone = (status: string): StatusTone => {
     const s = status.toLowerCase();
     if (s.includes("met") || s.includes("achieved") || s.includes("above")) return "success";
     if (s.includes("below")) return "warning";
     if (s.includes("no target") || s.includes("none")) return "neutral";
     return "destructive";
+  };
+
+  const getProgressColor = (achievement: number, status: string) => {
+    if (status.toLowerCase().includes("no target") || status.toLowerCase().includes("none")) return "bg-muted-foreground/30";
+    if (achievement >= 100) return "bg-emerald-500";
+    if (achievement >= 50) return "bg-amber-500";
+    return "bg-rose-500";
   };
 
   const formatPercentage = (value?: number | null) => {
@@ -55,11 +66,11 @@ export function MetricGridTwo({ rows, loading }: MetricGridTwoProps) {
               {loading ? (
                 Array.from({ length: 4 }).map((_, idx) => (
                   <TableRow key={idx} className="border-b border-border/40 dark:border-zinc-800/40 animate-pulse">
-                    <TableCell className="py-4 pl-6"><div className="h-4 w-32 bg-muted rounded" /></TableCell>
-                    <TableCell className="py-4"><div className="h-4 w-28 bg-muted rounded" /></TableCell>
-                    <TableCell className="py-4"><div className="h-4 w-28 bg-muted rounded" /></TableCell>
-                    <TableCell className="py-4"><div className="h-4 w-28 bg-muted rounded" /></TableCell>
-                    <TableCell className="py-4 pr-6"><div className="h-4 w-28 bg-muted rounded" /></TableCell>
+                     <TableCell className="py-4 pl-6"><div className="h-4 w-32 bg-muted rounded" /></TableCell>
+                     <TableCell className="py-4"><div className="h-4 w-28 bg-muted rounded" /></TableCell>
+                     <TableCell className="py-4"><div className="h-4 w-28 bg-muted rounded" /></TableCell>
+                     <TableCell className="py-4"><div className="h-4 w-28 bg-muted rounded" /></TableCell>
+                     <TableCell className="py-4 pr-6"><div className="h-4 w-28 bg-muted rounded" /></TableCell>
                   </TableRow>
                 ))
               ) : rows.length === 0 ? (
@@ -78,41 +89,109 @@ export function MetricGridTwo({ rows, loading }: MetricGridTwoProps) {
                       <div className="font-semibold">{row.salesmanName}</div>
                       <div className="text-xs text-muted-foreground">{row.salesmanCode}</div>
                     </TableCell>
-                    <TableCell className="text-foreground">
-                      <div className="font-semibold">{row.productiveOutletsActual} / {row.productiveOutletsTarget}</div>
-                      <div className="text-xs text-muted-foreground mb-1">
-                        Achievement: {formatPercentage(row.productiveOutletsAchievement)}
+                    <TableCell
+                      className={`text-foreground ${onViewProductiveOutletDetail ? "cursor-pointer hover:bg-muted/50 transition-colors rounded-md" : ""}`}
+                      onClick={() => onViewProductiveOutletDetail?.(row.salesmanId, row.salesmanName)}
+                    >
+                      <div className="flex flex-col gap-1.5 w-full max-w-[200px]">
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-sm">
+                            {row.productiveOutletsActual} <span className="text-muted-foreground font-normal">/ {row.productiveOutletsTarget}</span>
+                          </span>
+                          <span className="text-xs font-bold text-muted-foreground">
+                            {formatPercentage(row.productiveOutletsAchievement)}
+                          </span>
+                        </div>
+                        <div className="h-1.5 w-full bg-muted overflow-hidden rounded-full">
+                          <div
+                            className={`h-full ${getProgressColor(row.productiveOutletsAchievement, row.productiveOutletsStatus)} transition-all duration-500`}
+                            style={{ width: `${Math.min(row.productiveOutletsAchievement || 0, 100)}%` }}
+                          />
+                        </div>
+                        <div className="mt-0.5">
+                          <StatusBadge tone={getStatusTone(row.productiveOutletsStatus)}>
+                            {row.productiveOutletsStatus}
+                          </StatusBadge>
+                        </div>
                       </div>
-                      <StatusBadge tone={getStatusTone(row.productiveOutletsStatus)}>
-                        {row.productiveOutletsStatus}
-                      </StatusBadge>
                     </TableCell>
-                    <TableCell className="text-foreground">
-                      <div className="font-semibold">{row.lineSalesActualReceipts} Qualified</div>
-                      <div className="text-xs text-muted-foreground mb-1">
-                        Achieved: {formatPercentage(row.lineSalesAchievement)}
+                    <TableCell
+                      className={`text-foreground ${onViewLineSalesDetail ? "cursor-pointer hover:bg-muted/50 transition-colors rounded-md" : ""}`}
+                      onClick={() => onViewLineSalesDetail?.(row.salesmanId, row.salesmanName)}
+                    >
+                      <div className="flex flex-col gap-1.5 w-full max-w-[200px]">
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-sm">
+                            {row.lineSalesActualReceipts} <span className="text-muted-foreground font-normal">/ {row.lineSalesTargetReceiptCount}</span>
+                          </span>
+                          <span className="text-xs font-bold text-muted-foreground">
+                            {formatPercentage(row.lineSalesAchievement)}
+                          </span>
+                        </div>
+                        <div className="h-1.5 w-full bg-muted overflow-hidden rounded-full">
+                          <div
+                            className={`h-full ${getProgressColor(row.lineSalesAchievement, row.lineSalesStatus)} transition-all duration-500`}
+                            style={{ width: `${Math.min(row.lineSalesAchievement || 0, 100)}%` }}
+                          />
+                        </div>
+                        <div className="mt-0.5">
+                          <StatusBadge tone={getStatusTone(row.lineSalesStatus)}>
+                            {row.lineSalesStatus}
+                          </StatusBadge>
+                        </div>
                       </div>
-                      <StatusBadge tone={getStatusTone(row.lineSalesStatus)}>
-                        {row.lineSalesStatus}
-                      </StatusBadge>
                     </TableCell>
-                    <TableCell className="text-foreground">
-                      <div className="font-semibold">{row.basketCountActualReceipts} Qualified</div>
-                      <div className="text-xs text-muted-foreground mb-1">
-                        Achieved: {formatPercentage(row.basketCountAchievement)}
+                    <TableCell
+                      className={`text-foreground ${onViewBasketCountDetail ? "cursor-pointer hover:bg-muted/50 transition-colors rounded-md" : ""}`}
+                      onClick={() => onViewBasketCountDetail?.(row.salesmanId, row.salesmanName)}
+                    >
+                      <div className="flex flex-col gap-1.5 w-full max-w-[200px]">
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-sm">
+                            {row.basketCountActualReceipts} <span className="text-muted-foreground font-normal">/ {row.basketCountTargetReceiptCount}</span>
+                          </span>
+                          <span className="text-xs font-bold text-muted-foreground">
+                            {formatPercentage(row.basketCountAchievement)}
+                          </span>
+                        </div>
+                        <div className="h-1.5 w-full bg-muted overflow-hidden rounded-full">
+                          <div
+                            className={`h-full ${getProgressColor(row.basketCountAchievement, row.basketCountStatus)} transition-all duration-500`}
+                            style={{ width: `${Math.min(row.basketCountAchievement || 0, 100)}%` }}
+                          />
+                        </div>
+                        <div className="mt-0.5">
+                          <StatusBadge tone={getStatusTone(row.basketCountStatus)}>
+                            {row.basketCountStatus}
+                          </StatusBadge>
+                        </div>
                       </div>
-                      <StatusBadge tone={getStatusTone(row.basketCountStatus)}>
-                        {row.basketCountStatus}
-                      </StatusBadge>
                     </TableCell>
-                    <TableCell className="text-foreground pr-6">
-                      <div className="font-semibold">{row.tacticalSkuActualQty} / {row.tacticalSkuTargetQty} Qty</div>
-                      <div className="text-xs text-muted-foreground mb-1">
-                        Achieved: {formatPercentage(row.tacticalSkuAchievement)}
+                    <TableCell
+                      className={`text-foreground pr-6 ${onViewTacticalSkuDetail ? "cursor-pointer hover:bg-muted/50 transition-colors rounded-md" : ""}`}
+                      onClick={() => onViewTacticalSkuDetail?.(row.salesmanId, row.salesmanName)}
+                    >
+                      <div className="flex flex-col gap-1.5 w-full max-w-[200px]">
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-sm">
+                            {row.tacticalSkuActualQty} <span className="text-muted-foreground font-normal">/ {row.tacticalSkuTargetQty}</span>
+                          </span>
+                          <span className="text-xs font-bold text-muted-foreground">
+                            {formatPercentage(row.tacticalSkuAchievement)}
+                          </span>
+                        </div>
+                        <div className="h-1.5 w-full bg-muted overflow-hidden rounded-full">
+                          <div
+                            className={`h-full ${getProgressColor(row.tacticalSkuAchievement, row.tacticalSkuStatus)} transition-all duration-500`}
+                            style={{ width: `${Math.min(row.tacticalSkuAchievement || 0, 100)}%` }}
+                          />
+                        </div>
+                        <div className="mt-0.5">
+                          <StatusBadge tone={getStatusTone(row.tacticalSkuStatus)}>
+                            {row.tacticalSkuStatus}
+                          </StatusBadge>
+                        </div>
                       </div>
-                      <StatusBadge tone={getStatusTone(row.tacticalSkuStatus)}>
-                        {row.tacticalSkuStatus}
-                      </StatusBadge>
                     </TableCell>
                   </TableRow>
                 ))
