@@ -62,6 +62,7 @@ interface ProductiveOutletTarget {
 }
 
 interface LineSalesTarget {
+  invoiceNumber?: string;
   salesmanId?: number;
   targetMonth?: number;
   targetYear?: number;
@@ -73,6 +74,7 @@ interface LineSalesTarget {
 }
 
 interface BasketCountTarget {
+  invoiceNumber?: string;
   salesmanId?: number;
   targetMonth?: number;
   targetYear?: number;
@@ -308,7 +310,7 @@ export async function GET(req: NextRequest) {
     const targetYear = Number(targetYearParam);
 
     const url = `${API_BASE}/api/salesman-productive-outlet-target?salesmanId=${salesmanId}&targetMonth=${targetMonth}&targetYear=${targetYear}`;
-    const data = await safeFetch<any[]>(url, [], token);
+    const data = await safeFetch<ProductiveOutletTarget[]>(url, [], token);
 
     return json({ success: true, data });
   }
@@ -330,7 +332,7 @@ export async function GET(req: NextRequest) {
     const targetYear = Number(targetYearParam);
 
     const url = `${API_BASE}/api/salesman-basket-count-target-set?salesmanId=${salesmanId}&targetMonth=${targetMonth}&targetYear=${targetYear}`;
-    const data = await safeFetch<any[]>(url, [], token);
+    const data = await safeFetch<BasketCountTarget[]>(url, [], token);
 
     return json({ success: true, data });
   }
@@ -352,7 +354,7 @@ export async function GET(req: NextRequest) {
     const targetYear = Number(targetYearParam);
 
     const url = `${API_BASE}/api/salesman-line-sales-target-setting?salesmanId=${salesmanId}&targetMonth=${targetMonth}&targetYear=${targetYear}`;
-    const data = await safeFetch<any[]>(url, [], token);
+    const data = await safeFetch<LineSalesTarget[]>(url, [], token);
 
     return json({ success: true, data });
   }
@@ -374,7 +376,7 @@ export async function GET(req: NextRequest) {
     const targetYear = Number(targetYearParam);
 
     const url = `${API_BASE}/api/salesman-tactical-sku-target-setting?salesmanId=${salesmanId}&targetMonth=${targetMonth}&targetYear=${targetYear}`;
-    const data = await safeFetch<any[]>(url, [], token);
+    const data = await safeFetch<TacticalSkuTarget[]>(url, [], token);
 
     return json({ success: true, data });
   }
@@ -508,7 +510,7 @@ export async function GET(req: NextRequest) {
         lineSalesTargetProductsPerReceipt = Number(lineSales[0].targetProductsPerReceipt ?? 0);
         lineSalesTargetReceiptCount = Number(lineSales[0].targetReceiptCount ?? 0);
         
-        const validReceipts = lineSales.filter((item: any) => item.invoiceNumber);
+        const validReceipts = lineSales.filter((item: LineSalesTarget) => item.invoiceNumber);
         lineSalesActualReceipts = validReceipts.length;
 
         if (lineSalesTargetReceiptCount > 0) {
@@ -519,11 +521,11 @@ export async function GET(req: NextRequest) {
           lineSalesStatus = lineSalesTargetReceiptCount === 0 && lineSalesActualReceipts === 0 ? "No Target Set" : (lineSalesActualReceipts > 0 ? "Met Target" : "Below Target");
         }
       } else if (lineSales && !Array.isArray(lineSales)) {
-        lineSalesTargetProductsPerReceipt = Number((lineSales as any).targetProductsPerReceipt ?? 0);
-        lineSalesTargetReceiptCount = Number((lineSales as any).targetReceiptCount ?? 0);
-        lineSalesActualReceipts = Number((lineSales as any).actualQualifiedReceipts ?? 0);
-        lineSalesAchievement = Number((lineSales as any).achievementPercentage ?? 0);
-        lineSalesStatus = String((lineSales as any).goalStatus ?? "Below Target");
+        lineSalesTargetProductsPerReceipt = Number((lineSales as unknown as LineSalesTarget).targetProductsPerReceipt ?? 0);
+        lineSalesTargetReceiptCount = Number((lineSales as unknown as LineSalesTarget).targetReceiptCount ?? 0);
+        lineSalesActualReceipts = Number((lineSales as unknown as LineSalesTarget).actualQualifiedReceipts ?? 0);
+        lineSalesAchievement = Number((lineSales as unknown as LineSalesTarget).achievementPercentage ?? 0);
+        lineSalesStatus = String((lineSales as unknown as LineSalesTarget).goalStatus ?? "Below Target");
       }
 
       // Process Metric 7: Basket Count Target
@@ -538,7 +540,7 @@ export async function GET(req: NextRequest) {
         basketCountTargetReceiptCount = Number(basketCount[0].targetReceiptCount ?? 0);
         
         // Count receipts that actually have an invoice number and amount
-        const validReceipts = basketCount.filter((item: any) => item.invoiceNumber);
+        const validReceipts = basketCount.filter((item: BasketCountTarget) => item.invoiceNumber);
         basketCountActualReceipts = validReceipts.length;
         
         if (basketCountTargetReceiptCount > 0) {
@@ -550,11 +552,11 @@ export async function GET(req: NextRequest) {
         }
       } else if (basketCount && !Array.isArray(basketCount)) {
         // Fallback in case it ever returns an object again
-        basketCountTargetAmount = Number((basketCount as any).targetAmountPerReceipt ?? 0);
-        basketCountTargetReceiptCount = Number((basketCount as any).targetReceiptCount ?? 0);
-        basketCountActualReceipts = Number((basketCount as any).actualQualifiedReceipts ?? 0);
-        basketCountAchievement = Number((basketCount as any).achievementPercentage ?? 0);
-        basketCountStatus = String((basketCount as any).goalStatus ?? "Below Target");
+        basketCountTargetAmount = Number((basketCount as unknown as BasketCountTarget).targetAmountPerReceipt ?? 0);
+        basketCountTargetReceiptCount = Number((basketCount as unknown as BasketCountTarget).targetReceiptCount ?? 0);
+        basketCountActualReceipts = Number((basketCount as unknown as BasketCountTarget).actualQualifiedReceipts ?? 0);
+        basketCountAchievement = Number((basketCount as unknown as BasketCountTarget).achievementPercentage ?? 0);
+        basketCountStatus = String((basketCount as unknown as BasketCountTarget).goalStatus ?? "Below Target");
       }
 
       // Process Metric 8: Tactical SKU Target
