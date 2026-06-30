@@ -50,21 +50,35 @@ interface NormalizedPurchase {
 }
 
 function normalizeSales(items: Record<string, unknown>[]): NormalizedSales[] {
-  return items.map((item) => ({
-    invoiceNo: pickString(item, ["invoiceNo", "invoice_no", "invoice_number"]),
-    invoiceDate: pickString(item, ["invoiceDate", "invoice_date", "date", "transactionDate"]),
-    customerName: pickString(item, ["customerName", "customer_name", "customer", "clientName"]),
-    totalInvoiceAmount: pickNumber(item, ["totalInvoiceAmount", "total_invoice_amount", "amount", "totalAmount", "total"]),
-  }));
+  const uniqueInvoices = new Map<string, NormalizedSales>();
+  for (const item of items) {
+    const invoiceNo = pickString(item, ["invoiceNo", "invoice_no", "invoice_number"]);
+    if (invoiceNo && !uniqueInvoices.has(invoiceNo)) {
+      uniqueInvoices.set(invoiceNo, {
+        invoiceNo,
+        invoiceDate: pickString(item, ["invoiceDate", "invoice_date", "date", "transactionDate"]),
+        customerName: pickString(item, ["customerName", "customer_name", "customer", "clientName"]),
+        totalInvoiceAmount: pickNumber(item, ["totalInvoiceAmount", "total_invoice_amount", "amount", "totalAmount", "total"]),
+      });
+    }
+  }
+  return Array.from(uniqueInvoices.values());
 }
 
 function normalizePurchases(items: Record<string, unknown>[]): NormalizedPurchase[] {
-  return items.map((item) => ({
-    receiptNo: pickString(item, ["receiptNo", "receipt_no", "receipt_number"]),
-    receiptDate: pickString(item, ["receiptDate", "receipt_date", "date", "transactionDate"]),
-    supplierName: pickString(item, ["supplierName", "supplier_name", "supplier", "vendorName"]),
-    totalReceiptAmount: pickNumber(item, ["totalReceiptAmount", "total_receipt_amount", "amount", "totalAmount", "total"]),
-  }));
+  const uniqueReceipts = new Map<string, NormalizedPurchase>();
+  for (const item of items) {
+    const receiptNo = pickString(item, ["receiptNo", "receipt_no", "receipt_number", "docNo"]);
+    if (receiptNo && !uniqueReceipts.has(receiptNo)) {
+      uniqueReceipts.set(receiptNo, {
+        receiptNo,
+        receiptDate: pickString(item, ["receiptDate", "receipt_date", "date", "transactionDate"]),
+        supplierName: pickString(item, ["supplierName", "supplier_name", "supplier", "vendorName"]),
+        totalReceiptAmount: pickNumber(item, ["totalReceiptAmount", "total_receipt_amount", "amount", "totalAmount", "total", "totalPayable"]),
+      });
+    }
+  }
+  return Array.from(uniqueReceipts.values());
 }
 
 async function fetchWithErrorLogging(
@@ -106,6 +120,15 @@ async function fetchWithErrorLogging(
   }
 }
 
+// Module-level in-memory cache for ultra-fast dev and prod performance
+const NORMALIZED_CACHE = new Map<string, {
+  sales: NormalizedSales[];
+  purchases: NormalizedPurchase[];
+  customers: string[];
+  suppliers: string[];
+  expiry: number;
+}>();
+
 export async function GET(req: NextRequest) {
   const cookieStore = await cookies();
   const token =
@@ -136,8 +159,8 @@ export async function GET(req: NextRequest) {
   try {
     const baseUrl = SPRING_API_BASE_URL.replace(/\/+$/, "");
 
-    const salesUrl = new URL(`${baseUrl}/api/v1/view-sales-report/filter`);
-    const purchaseUrl = new URL(`${baseUrl}/api/view-purchase-report/filter`);
+    const salesUrl = new URL(`${baseUrl}/api/view-sales-report-itemized/filtered`);
+    const purchaseUrl = new URL(`${baseUrl}/api/view-accounts-payable/all`);
 
     if (dateFrom) {
       salesUrl.searchParams.set("startDate", dateFrom);
@@ -148,31 +171,48 @@ export async function GET(req: NextRequest) {
       purchaseUrl.searchParams.set("endDate", dateTo);
     }
 
-    const headers = {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    };
+    const cacheKey = `${dateFrom}:${dateTo}:${token}`;
+    const now = Date.now();
+    let cachedData = NORMALIZED_CACHE.get(cacheKey);
 
-    const [salesResult, purchaseResult] = await Promise.all([
-      fetchWithErrorLogging(salesUrl.toString(), "Sales API", headers),
-      fetchWithErrorLogging(purchaseUrl.toString(), "Purchase API", headers),
-    ]);
+    if (!cachedData || cachedData.expiry < now) {
+      const headers = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      };
 
-    const salesTransactions = normalizeSales(salesResult.data);
-    const purchaseTransactions = normalizePurchases(purchaseResult.data);
+      const [salesResult, purchaseResult] = await Promise.all([
+        fetchWithErrorLogging(salesUrl.toString(), "Sales API", headers),
+        fetchWithErrorLogging(purchaseUrl.toString(), "Purchase API", headers),
+      ]);
 
-    const customers = [
-      ...new Set(salesTransactions.map((s) => s.customerName).filter(Boolean)),
-    ].sort((a, b) => a.localeCompare(b));
-    const suppliers = [
-      ...new Set(
-        purchaseTransactions.map((s) => s.supplierName).filter(Boolean),
-      ),
-    ].sort((a, b) => a.localeCompare(b));
+      const salesTransactions = normalizeSales(salesResult.data);
+      const purchaseTransactions = normalizePurchases(purchaseResult.data);
 
-    const filteredSales = filterSalesByCustomer(salesTransactions, customerName);
+      const customers = [
+        ...new Set(salesTransactions.map((s) => s.customerName).filter(Boolean)),
+      ].sort((a, b) => a.localeCompare(b));
+      
+      const suppliers = [
+        ...new Set(
+          purchaseTransactions.map((s) => s.supplierName).filter(Boolean),
+        ),
+      ].sort((a, b) => a.localeCompare(b));
+
+      cachedData = {
+        sales: salesTransactions,
+        purchases: purchaseTransactions,
+        customers,
+        suppliers,
+        expiry: now + 15 * 60 * 1000, // 15 mins TTL
+      };
+      
+      NORMALIZED_CACHE.set(cacheKey, cachedData);
+    }
+
+    const filteredSales = filterSalesByCustomer(cachedData.sales, customerName);
     const filteredPurchases = filterPurchasesBySupplier(
-      purchaseTransactions,
+      cachedData.purchases,
       supplierName,
     );
 
@@ -189,8 +229,8 @@ export async function GET(req: NextRequest) {
         monthlyData: [],
         salesTransactions: [],
         purchaseTransactions: [],
-        customers,
-        suppliers,
+        customers: cachedData.customers,
+        suppliers: cachedData.suppliers,
         ok: true,
       });
     }
@@ -202,8 +242,8 @@ export async function GET(req: NextRequest) {
       monthlyData,
       salesTransactions: filteredSales,
       purchaseTransactions: filteredPurchases,
-      customers,
-      suppliers,
+      customers: cachedData.customers,
+      suppliers: cachedData.suppliers,
       ok: true,
     });
   } catch (error) {
