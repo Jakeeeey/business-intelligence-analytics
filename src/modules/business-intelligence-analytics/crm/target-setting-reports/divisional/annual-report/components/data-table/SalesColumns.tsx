@@ -35,11 +35,21 @@ export const salesColumns: ColumnDef<SalesTransaction>[] = [
   {
     accessorKey: "invoiceDate",
     header: ({ column }) => <SortHeader column={column} label="Invoice Date" />,
-    cell: ({ row }) => (
-      <span className="tabular-nums">
-        {row.original.invoiceDate}
-      </span>
-    ),
+    cell: ({ row }) => {
+      const dateStr = row.original.invoiceDate;
+      let displayDate = dateStr;
+      if (dateStr) {
+        const parsed = new Date(dateStr);
+        if (!isNaN(parsed.getTime())) {
+          displayDate = new Intl.DateTimeFormat('en-US', { month: 'short', day: '2-digit', year: 'numeric' }).format(parsed);
+        }
+      }
+      return (
+        <span className="tabular-nums">
+          {displayDate}
+        </span>
+      );
+    },
     meta: { label: "Invoice Date" },
   },
   {
