@@ -16,6 +16,7 @@ interface MetricGridOneProps {
   rows: MetricRow[];
   loading: boolean;
   onViewSupplierBreakdown?: (salesmanId: number, salesmanName: string) => void;
+  onViewReachBreakdown?: (salesmanId: number, salesmanCode: string, salesmanName: string) => void;
   onViewFrequencyDetail?: (salesmanId: number, salesmanCode: string, salesmanName: string) => void;
   onViewNewAccountsDetail?: (salesmanId: number, salesmanCode: string, salesmanName: string) => void;
 }
@@ -24,6 +25,7 @@ export function MetricGridOne({
   rows,
   loading,
   onViewSupplierBreakdown,
+  onViewReachBreakdown,
   onViewFrequencyDetail,
   onViewNewAccountsDetail,
 }: MetricGridOneProps) {
@@ -95,7 +97,18 @@ export function MetricGridOne({
                       </div>
                     </TableCell>
                     <TableCell className="text-foreground font-medium">
-                      {row.reach} customers
+                      <div className="flex items-center gap-2">
+                        <span>{row.reach} customers</span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-muted rounded-md transition-colors"
+                          title="View detailed reach breakdown"
+                          onClick={() => onViewReachBreakdown?.(row.salesmanId, row.salesmanCode || "", row.salesmanName)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                     <TableCell className="text-foreground">
                       <div className="flex items-center gap-2">

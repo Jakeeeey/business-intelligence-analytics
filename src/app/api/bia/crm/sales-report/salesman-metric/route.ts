@@ -100,11 +100,17 @@ interface TacticalSkuTarget {
   valueGoalStatus?: string;
 }
 
+interface ReachCustomer {
+  customerCode?: string;
+  customerName?: string;
+}
+
 interface ReachFilterItem {
   salesmanId?: number;
   salesmanCode?: string;
   salesmanName?: string;
   totalReach?: number;
+  customers?: ReachCustomer[];
 }
 
 function json(res: unknown, init?: ResponseInit) {
@@ -162,6 +168,32 @@ export async function GET(req: NextRequest) {
     );
 
     return json({ success: true, data: salesmenList });
+  }
+
+  // ==========================================
+  // MODE: REACH BREAKDOWN
+  // ==========================================
+  if (mode === "reach-breakdown") {
+    const salesmanIdParam = sp.get("salesmanId");
+    const salesmanCodeParam = sp.get("salesmanCode") || "";
+
+    if (!salesmanIdParam) {
+      return json({ success: false, error: "salesmanId is required" }, { status: 400 });
+    }
+
+    const salesmanId = Number(salesmanIdParam);
+    const reachUrl = `${API_BASE}/api/view-salesman-reach/filter?salesmanId=${salesmanId}&salesmanCode=${salesmanCodeParam}`;
+    const reachData = await safeFetch<ReachFilterItem | null>(reachUrl, null, token);
+    
+    if (!reachData || !reachData.customers) {
+      return json({ success: true, totalReach: 0, customers: [] });
+    }
+
+    return json({ 
+      success: true, 
+      totalReach: reachData.totalReach || 0,
+      customers: reachData.customers
+    });
   }
 
   // ==========================================

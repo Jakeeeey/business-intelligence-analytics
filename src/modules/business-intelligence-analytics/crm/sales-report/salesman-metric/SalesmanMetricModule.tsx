@@ -12,6 +12,7 @@ import { ProductiveOutletDetailModal } from "./components/ProductiveOutletDetail
 import { BasketCountDetailModal } from "./components/BasketCountDetailModal";
 import { LineSalesDetailModal } from "./components/LineSalesDetailModal";
 import { TacticalSkuDetailModal } from "./components/TacticalSkuDetailModal";
+import { ReachDetailModal } from "./components/ReachDetailModal";
 import { MetricRow, SalesmanMetricFilters, SalesmanOption } from "./types";
 
 // Helper to compute first and last day of month based on YYYY-MM-DD fiscal period
@@ -54,6 +55,12 @@ export default function SalesmanMetricModule() {
   const [freqSalesmanId, setFreqSalesmanId] = React.useState<number | "">("");
   const [freqSalesmanCode, setFreqSalesmanCode] = React.useState<string>("");
   const [freqSalesmanName, setFreqSalesmanName] = React.useState<string>("");
+
+  // Modal State for Reach Detailed Breakdown
+  const [reachModalOpen, setReachModalOpen] = React.useState<boolean>(false);
+  const [reachSalesmanId, setReachSalesmanId] = React.useState<number | "">("");
+  const [reachSalesmanCode, setReachSalesmanCode] = React.useState<string>("");
+  const [reachSalesmanName, setReachSalesmanName] = React.useState<string>("");
 
   // Modal State for New Accounts Detailed Breakdown
   const [newAccModalOpen, setNewAccModalOpen] = React.useState<boolean>(false);
@@ -168,6 +175,13 @@ export default function SalesmanMetricModule() {
     setFreqModalOpen(true);
   };
 
+  const handleViewReachBreakdown = (salesmanId: number, salesmanCode: string, salesmanName: string) => {
+    setReachSalesmanId(salesmanId);
+    setReachSalesmanCode(salesmanCode);
+    setReachSalesmanName(salesmanName);
+    setReachModalOpen(true);
+  };
+
   const handleViewNewAccountsDetail = (salesmanId: number, salesmanCode: string, salesmanName: string) => {
     setNewAccSalesmanId(salesmanId);
     setNewAccSalesmanCode(salesmanCode);
@@ -224,6 +238,7 @@ export default function SalesmanMetricModule() {
           rows={rows}
           loading={loading}
           onViewSupplierBreakdown={handleViewSupplierBreakdown}
+          onViewReachBreakdown={handleViewReachBreakdown}
           onViewFrequencyDetail={handleViewFrequencyDetail}
           onViewNewAccountsDetail={handleViewNewAccountsDetail}
         />
@@ -259,6 +274,17 @@ export default function SalesmanMetricModule() {
           salesmanName={freqSalesmanName}
           startDate={filters.startDate}
           endDate={filters.endDate}
+        />
+      )}
+
+      {/* Reach Breakdown Modal */}
+      {reachModalOpen && (
+        <ReachDetailModal
+          isOpen={reachModalOpen}
+          onClose={() => setReachModalOpen(false)}
+          salesmanId={reachSalesmanId}
+          salesmanCode={reachSalesmanCode}
+          salesmanName={reachSalesmanName}
         />
       )}
 
