@@ -45,49 +45,44 @@ function ManagerialSupplierContent() {
     }, [searchParams]);
 
     // Drill-down State
-    const [selectedSupplier, setSelectedSupplier] = useState<string | null>(null);
+    const [selectedChannel, setSelectedChannel] = useState<string | null>(null);
 
     const [rawData, setRawData] = useState<VSalesPerformanceDataDto[]>([]);
     type TargetItem = { fiscal_period: string; supplier_id?: number; salesman_id?: number; target_amount?: number; };
     const [targets, setTargets] = useState<{ supplierTargets: TargetItem[], salesmanTargets: TargetItem[] }>({ supplierTargets: [], salesmanTargets: [] });
 
-    // Store Type Detail Modal State
+    // Store Type Detail Modal State -> Supplier Detail Modal State
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-    const [selectedStoreTypeForModal, setSelectedStoreTypeForModal] = useState<string | null>(null);
+    const [selectedSupplierForModal, setSelectedSupplierForModal] = useState<string | null>(null);
 
     const salesmanDetailData = useMemo(() => {
-        if (!selectedStoreTypeForModal || !selectedSupplier) return [];
+        if (!selectedSupplierForModal || !selectedChannel) return [];
         return rawData.filter(d =>
-            (d.storeTypeLabel || "Unknown Store Type").toUpperCase() === (selectedStoreTypeForModal || "").toUpperCase() &&
-            (d.supplierName || "").toUpperCase() === (selectedSupplier || "").toUpperCase() &&
+            (d.supplierName || "Unknown Supplier").toUpperCase() === (selectedSupplierForModal || "").toUpperCase() &&
+            (d.storeTypeLabel || "Unknown Store Type").toUpperCase() === (selectedChannel || "").toUpperCase() &&
             (d.divisionName || "").toUpperCase() === (selectedDivision || "").toUpperCase()
         );
-    }, [rawData, selectedStoreTypeForModal, selectedSupplier, selectedDivision]);
+    }, [rawData, selectedSupplierForModal, selectedChannel, selectedDivision]);
 
-    const handleStoreTypeClick = (name: string) => {
-        setSelectedStoreTypeForModal(name);
+    const handleSupplierClick = (name: string) => {
+        setSelectedSupplierForModal(name);
         setIsDetailModalOpen(true);
     };
 
-    const [storeTypeTargets, setStoreTypeTargets] = useState<Record<string, number>>({});
+    const [channelTargets, setChannelTargets] = useState<Record<string, number>>({});
 
-    // Fetch Store Type targets when supplier changes
+    // Fetch Channel (Store Type) targets for the Division
     useEffect(() => {
         const loadTargets = async () => {
-            if (!selectedSupplier) {
-                setStoreTypeTargets({});
-                return;
-            }
             const start = format(startOfMonth(parseISO(fromMonth + "-01")), "yyyy-MM-dd");
             const end = format(endOfMonth(parseISO(toMonth + "-01")), "yyyy-MM-dd");
             
             const filtered = rawData.filter(d => 
-                (d.supplierName || "").toUpperCase() === selectedSupplier.toUpperCase() &&
                 (d.divisionName || "").toUpperCase() === selectedDivision.toUpperCase()
             );
             const salesmanIds = Array.from(new Set(filtered.map(d => d.salesmanId).filter(Boolean))) as number[];
             if (salesmanIds.length === 0) {
-                setStoreTypeTargets({});
+                setChannelTargets({});
                 return;
             }
 
@@ -95,13 +90,13 @@ function ManagerialSupplierContent() {
 
             try {
                 const res = await fetchCustomerTargets(salesmanIds, start, end, 'storeType', uniqueStoreTypes);
-                setStoreTypeTargets(res || {});
+                setChannelTargets(res || {});
             } catch (e) {
                 console.error(e);
             }
         };
         loadTargets();
-    }, [selectedSupplier, rawData, fromMonth, toMonth, selectedDivision]);
+    }, [rawData, fromMonth, toMonth, selectedDivision]);
 
     // 1. Fetch Data
     useEffect(() => {
@@ -127,32 +122,19 @@ function ManagerialSupplierContent() {
 
     const divisions = useMemo(() => Array.from(new Set(rawData.map(d => (d.divisionName || "").toUpperCase()))).sort(), [rawData]);
 
-    // 2. Data Processing for Suppliers (Level 1)
-    const { supplierPerformance, divisionSummary } = useMemo(() => {
-        const start = parseISO(fromMonth + "-01");
-        const end = parseISO(toMonth + "-01");
-
-        // Filter by Division
+    // 2. Data Processing for Channels (Level 1)
+    const { channelPerformance, divisionSummary } = useMemo(() => {
         const filtered = rawData.filter(d => (d.divisionName || "").toUpperCase() === (selectedDivision || "").toUpperCase());
 
         const salesMap = new Map<string, number>();
         filtered.forEach(item => {
-            if (item.supplierName) {
-                salesMap.set(item.supplierName, (salesMap.get(item.supplierName) || 0) + (item.netAmount || 0));
-            }
+            const name = item.storeTypeLabel || "Unknown Store Type";
+            salesMap.set(name, (salesMap.get(name) || 0) + (item.netAmount || 0));
         });
 
-        // Map Dynamic Targets
         const perf = Array.from(salesMap.entries()).map(([name, sales]) => {
-            const rawItem = filtered.find(d => d.supplierName === name);
-            const supplierId = rawItem?.supplierId;
-
-            // Find and sum targets for this supplier
-            const relevantTargets = targets.supplierTargets?.filter((t: TargetItem) => {
-                const targetDate = parseISO(t.fiscal_period);
-                return t.supplier_id === supplierId && targetDate >= start && targetDate <= end;
-            });
-            const target = relevantTargets?.reduce((sum: number, t: TargetItem) => sum + (t.target_amount || 0), 0) || 0;
+            const targetKey = Object.keys(channelTargets).find(k => k.toUpperCase() === name.toUpperCase());
+            const target = targetKey ? channelTargets[targetKey] : 0;
 
             return {
                 name: name.toUpperCase(),
@@ -167,34 +149,43 @@ function ManagerialSupplierContent() {
         const totalTarget = perf.reduce((s, i) => s + i.target, 0);
 
         return {
-            supplierPerformance: perf,
+            channelPerformance: perf,
             divisionSummary: { totalActual, totalTarget, achievement: totalTarget > 0 ? (totalActual / totalTarget) * 100 : 0 }
         };
-    }, [rawData, selectedDivision, fromMonth, toMonth, targets]);
+    }, [rawData, selectedDivision, channelTargets]);
 
-    // 3. Data Processing for Store Type (Level 2 - Drill Down)
-    const storeTypeBreakdown = useMemo(() => {
-        if (!selectedSupplier) return [];
+    // 3. Data Processing for Supplier (Level 2 - Drill Down)
+    const supplierBreakdown = useMemo(() => {
+        if (!selectedChannel) return [];
+
+        const start = parseISO(fromMonth + "-01");
+        const end = parseISO(toMonth + "-01");
 
         const filtered = rawData.filter(d =>
-            (d.supplierName || "").toUpperCase() === (selectedSupplier || "").toUpperCase() &&
+            (d.storeTypeLabel || "Unknown Store Type").toUpperCase() === (selectedChannel || "").toUpperCase() &&
             (d.divisionName || "").toUpperCase() === (selectedDivision || "").toUpperCase()
         );
 
-        const storeTypeMap = new Map<string, { sales: number }>();
+        const supplierMap = new Map<string, { sales: number }>();
 
         filtered.forEach(item => {
-            const name = item.storeTypeLabel || "Unknown Store Type";
-            const current = storeTypeMap.get(name) || { sales: 0 };
-            storeTypeMap.set(name, {
+            const name = item.supplierName || "Unknown Supplier";
+            const current = supplierMap.get(name) || { sales: 0 };
+            supplierMap.set(name, {
                 sales: current.sales + (item.netAmount || 0)
             });
         });
 
-        return Array.from(storeTypeMap.entries())
+        return Array.from(supplierMap.entries())
             .map(([name, data]) => {
-                const targetKey = Object.keys(storeTypeTargets).find(k => k.toUpperCase() === name.toUpperCase());
-                const target = targetKey ? storeTypeTargets[targetKey] : 0;
+                const rawItem = filtered.find(d => d.supplierName === name);
+                const supplierId = rawItem?.supplierId;
+
+                const relevantTargets = targets.supplierTargets?.filter((t: TargetItem) => {
+                    const targetDate = parseISO(t.fiscal_period);
+                    return t.supplier_id === supplierId && targetDate >= start && targetDate <= end;
+                });
+                const target = relevantTargets?.reduce((sum: number, t: TargetItem) => sum + (t.target_amount || 0), 0) || 0;
 
                 return {
                     name: name.toUpperCase(),
@@ -205,7 +196,7 @@ function ManagerialSupplierContent() {
                 };
             })
             .sort((a, b) => b.sales - a.sales);
-    }, [rawData, selectedSupplier, storeTypeTargets, selectedDivision]);
+    }, [rawData, selectedChannel, selectedDivision, fromMonth, toMonth, targets]);
 
     const formatPHP = (val: number) => new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 0 }).format(val);
     const formatShort = (val: number) => {
@@ -225,14 +216,14 @@ function ManagerialSupplierContent() {
                 <div className="space-y-2">
                     <div className="flex items-center gap-2 text-muted-foreground/60 mb-1 text-[10px] uppercase font-black tracking-[0.2em]">
                         <span>BIA Intelligence</span> <ChevronRight className="h-3 w-3" />
-                        <span>Supplier Analytics</span> <ChevronRight className="h-3 w-3" />
+                        <span>Channel Analytics</span> <ChevronRight className="h-3 w-3" />
                         <span className="text-primary font-black">{selectedDivision}</span>
                     </div>
                     <h2 className="text-4xl font-black tracking-tight text-foreground uppercase italic leading-none">
                         Managerial <span className="text-primary">Dashboard</span>
                     </h2>
                     <p className="text-xs text-muted-foreground font-medium uppercase tracking-widest">
-                        Supplier performance matrix and personnel achievement tracking
+                        Channel performance matrix and personnel achievement tracking
                     </p>
                 </div>
 
@@ -249,7 +240,7 @@ function ManagerialSupplierContent() {
                         <Filter className="h-4 w-4 text-primary" />
                         <Select value={selectedDivision} onValueChange={(val) => {
                             setSelectedDivision(val);
-                            setSelectedSupplier(null);
+                            setSelectedChannel(null);
                         }}>
                             <SelectTrigger className="w-[140px] h-8 border-none bg-transparent shadow-none text-[11px] font-black uppercase p-0">
                                 <SelectValue />
@@ -321,17 +312,17 @@ function ManagerialSupplierContent() {
                         <div className="space-y-1">
                             <div className="flex items-center gap-2">
                                 <CardTitle className="text-lg font-black uppercase tracking-tight italic">
-                                    {selectedSupplier ? <><span className="text-primary">{selectedSupplier}</span> Breakdown</> : <>Top <span className="text-primary">Supplier Volume</span></>}
+                                    {selectedChannel ? <><span className="text-primary">{selectedChannel}</span> Breakdown</> : <>Top <span className="text-primary">Channel Volume</span></>}
                                 </CardTitle>
                                 <Badge variant="secondary" className="text-[9px] font-black tracking-widest uppercase py-0 px-2 h-4">Visual Analytics</Badge>
                             </div>
                             <CardDescription className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">
-                                {selectedSupplier ? "Breakdown of sales by store type" : "Comparative supplier hitting matrix"}
+                                {selectedChannel ? "Breakdown of sales by supplier" : "Comparative channel hitting matrix"}
                             </CardDescription>
                         </div>
                         <div className="flex items-center gap-2">
-                            {selectedSupplier && (
-                                <Button variant="outline" size="sm" onClick={() => setSelectedSupplier(null)} className="h-8 gap-2 border-border/40 text-[10px] font-black uppercase tracking-widest hover:bg-primary/10 hover:text-primary transition-all">
+                            {selectedChannel && (
+                                <Button variant="outline" size="sm" onClick={() => setSelectedChannel(null)} className="h-8 gap-2 border-border/40 text-[10px] font-black uppercase tracking-widest hover:bg-primary/10 hover:text-primary transition-all">
                                     <ArrowLeft className="h-3 w-3" /> Reset View
                                 </Button>
                             )}
@@ -343,14 +334,14 @@ function ManagerialSupplierContent() {
                     <CardContent className="h-[520px] pt-8 px-2">
                         <ResponsiveContainer width="100%" height="100%">
                             <ComposedChart 
-                                data={(selectedSupplier ? storeTypeBreakdown : supplierPerformance).slice(0, 10)} 
+                                data={(selectedChannel ? supplierBreakdown : channelPerformance).slice(0, 10)} 
                                 layout="vertical" 
                                 margin={{ left: 20, right: 100, bottom: 20 }}
                                 onClick={(data) => {
-                                    if (!selectedSupplier && data && data.activePayload) {
-                                        setSelectedSupplier(data.activePayload[0].payload.name);
-                                    } else if (selectedSupplier && data && data.activePayload) {
-                                        handleStoreTypeClick(data.activePayload[0].payload.name);
+                                    if (!selectedChannel && data && data.activePayload) {
+                                        setSelectedChannel(data.activePayload[0].payload.name);
+                                    } else if (selectedChannel && data && data.activePayload) {
+                                        handleSupplierClick(data.activePayload[0].payload.name);
                                     }
                                 }}
                                 style={{ cursor: 'pointer' }}
@@ -394,8 +385,8 @@ function ManagerialSupplierContent() {
                                     }}
                                 />
                                 <Bar dataKey="sales" name="Actual" barSize={28} radius={[0, 8, 8, 0]} minPointSize={2}>
-                                    {(selectedSupplier ? storeTypeBreakdown : supplierPerformance).slice(0, 10).map((e, i) => (
-                                        <Cell key={i} fill={selectedSupplier ? 'hsl(var(--primary))' : (e.sales >= e.target ? '#10b981' : '#f59e0b')} fillOpacity={0.8} />
+                                    {(selectedChannel ? supplierBreakdown : channelPerformance).slice(0, 10).map((e, i) => (
+                                        <Cell key={i} fill={selectedChannel ? 'hsl(var(--primary))' : (e.sales >= e.target ? '#10b981' : '#f59e0b')} fillOpacity={0.8} />
                                     ))}
                                     <LabelList 
                                         dataKey="sales" 
@@ -444,28 +435,28 @@ function ManagerialSupplierContent() {
                     <CardHeader className="border-b border-border/40 bg-muted/10">
                         <div className="flex items-center justify-between">
                             <CardTitle className="text-lg font-black uppercase tracking-tight italic">
-                                {selectedSupplier ? <><span className="text-primary">Store Type</span> Rank</> : <><span className="text-primary">Supplier</span> Health</>}
+                                {selectedChannel ? <><span className="text-primary">Supplier</span> Rank</> : <><span className="text-primary">Channel</span> Health</>}
                             </CardTitle>
                             <div className="p-2 bg-background rounded-xl border border-border/40 shadow-sm">
                                 <Trophy className="h-4 w-4 text-amber-500" />
                             </div>
                         </div>
                         <CardDescription className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">
-                            {selectedSupplier ? "Store Type Sales Performance" : "Supplier-wise target scorecard"}
+                            {selectedChannel ? "Supplier Sales Performance" : "Channel-wise target scorecard"}
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="flex-1 overflow-hidden p-0">
                         <ScrollArea className="h-[520px] w-full px-4 pt-6">
                             <div className="space-y-4 pb-6">
-                                {(selectedSupplier ? storeTypeBreakdown : supplierPerformance).map((item, i) => (
+                                {(selectedChannel ? supplierBreakdown : channelPerformance).map((item, i) => (
                                     <div 
                                         key={i} 
                                         className="group relative p-4 rounded-2xl border border-border/40 bg-muted/5 hover:bg-primary/5 hover:border-primary/20 transition-all duration-300 cursor-pointer overflow-hidden"
-                                        onClick={() => !selectedSupplier ? setSelectedSupplier(item.name) : handleStoreTypeClick(item.name)}
+                                        onClick={() => !selectedChannel ? setSelectedChannel(item.name) : handleSupplierClick(item.name)}
                                     >
                                         {/* Background Decoration */}
                                         <div className="absolute -right-4 -bottom-4 opacity-[0.03] group-hover:opacity-[0.08] transition-opacity">
-                                            {selectedSupplier ? <User2 className="h-24 w-24 rotate-12" /> : <Trophy className="h-24 w-24 rotate-12" />}
+                                            {selectedChannel ? <User2 className="h-24 w-24 rotate-12" /> : <Trophy className="h-24 w-24 rotate-12" />}
                                         </div>
 
                                         <div className="flex justify-between items-start mb-4 relative z-10">
@@ -475,7 +466,7 @@ function ManagerialSupplierContent() {
                                                     {item.sales < item.target && <AlertCircle className="h-3 w-3 text-destructive animate-pulse" />}
                                                 </div>
                                                 <p className="text-[9px] font-bold text-muted-foreground/60 uppercase tracking-widest italic">
-                                                    {selectedSupplier ? "Store Type Performance" : "Supplier Health Index"}
+                                                    {selectedChannel ? "Supplier Performance" : "Channel Health Index"}
                                                 </p>
                                             </div>
                                             <div className="flex flex-col items-end">
@@ -521,8 +512,8 @@ function ManagerialSupplierContent() {
                 onClose={() => setIsDetailModalOpen(false)}
                 data={salesmanDetailData}
                 ids={Array.from(new Set(salesmanDetailData.map(d => Number(d.salesmanId)).filter(Boolean)))}
-                channelName={selectedStoreTypeForModal || ""}
-                supplierName={selectedSupplier || ""}
+                channelName={selectedChannel || ""}
+                supplierName={selectedSupplierForModal || ""}
                 periodLabel={`${fromMonth} to ${toMonth}`}
                 startDate={format(startOfMonth(parseISO(fromMonth + "-01")), "yyyy-MM-dd")}
                 endDate={format(endOfMonth(parseISO(toMonth + "-01")), "yyyy-MM-dd")}
