@@ -5,7 +5,7 @@ import {
     Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList, ComposedChart, Scatter
 } from 'recharts';
 import {
-    Filter, Loader2, Calendar, ChevronRight, User2, ArrowLeft, LayoutDashboard, Trophy, Coins, TrendingUp, TrendingDown, AlertCircle
+    Filter, Loader2, Calendar, ChevronRight, LayoutDashboard, Trophy, Coins, TrendingUp, TrendingDown, AlertCircle
 } from "lucide-react";
 import { format, startOfMonth, endOfMonth, parseISO } from "date-fns";
 import { useSearchParams } from "next/navigation";
@@ -14,10 +14,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
-import { fetchManagerialData, fetchDynamicTargets, fetchCustomerTargets } from "./providers/fetchProvider";
+import { fetchManagerialData, fetchCustomerTargets } from "./providers/fetchProvider";
 import { VSalesPerformanceDataDto } from "./types";
 import { BreakdownAnalysisModal } from "./components/BreakdownAnalysisModal";
 
@@ -48,8 +47,6 @@ function ManagerialSupplierContent() {
     const [selectedChannel, setSelectedChannel] = useState<string | null>(null);
 
     const [rawData, setRawData] = useState<VSalesPerformanceDataDto[]>([]);
-    type TargetItem = { fiscal_period: string; supplier_id?: number; salesman_id?: number; target_amount?: number; };
-    const [targets, setTargets] = useState<{ supplierTargets: TargetItem[], salesmanTargets: TargetItem[] }>({ supplierTargets: [], salesmanTargets: [] });
 
     // Store Type Detail Modal State
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -100,14 +97,6 @@ function ManagerialSupplierContent() {
 
                 const data = await fetchManagerialData(start, end);
                 setRawData(data);
-
-                // Scope targets to selected division
-                const divItem = data.find(d => (d.divisionName || "").toUpperCase() === (selectedDivision || "").toUpperCase());
-                const targetData = await fetchDynamicTargets(start, end, divItem?.divisionId);
-                setTargets({
-                    supplierTargets: (targetData.supplierTargets as TargetItem[]) || [], 
-                    salesmanTargets: (targetData.salesmanTargets as TargetItem[]) || []
-                });
             } catch (err) { console.error(err); }
         };
         load();

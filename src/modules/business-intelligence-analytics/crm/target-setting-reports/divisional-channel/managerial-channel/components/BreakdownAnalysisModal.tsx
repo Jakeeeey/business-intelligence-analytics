@@ -141,7 +141,7 @@ export function BreakdownAnalysisModal({
         });
 
         return Array.from(map.entries()).map(([name, metrics]) => ({ name, ...metrics as { sales: number; count: number; customerCode: string; sId: number; supId: number; province: string; city: string } }));
-    }, [data, viewType, selectedStoreType, selectedArea]);
+    }, [filteredData, viewType, selectedStoreType, selectedArea]);
 
     useEffect(() => {
         const loadPeaks = async () => {
