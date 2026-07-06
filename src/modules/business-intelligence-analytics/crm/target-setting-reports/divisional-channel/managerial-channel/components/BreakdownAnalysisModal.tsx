@@ -247,31 +247,35 @@ export function BreakdownAnalysisModal({
         Object.entries(peakSales).forEach(([pName, pData]) => {
             const key = (pData.metadata?.customerCode as string) || pName;
             if (!groupedMap.has(key)) {
-                groupedMap.set(key, {
-                    name: pName,
-                    sales: 0,
-                    count: 0,
-                    customerCode: key,
-                    sId: Number(pData.metadata?.sId) || ids[0],
-                    supId: Number(pData.metadata?.supId) || 0,
-                    peak: 0,
-                    target: 0,
-                    storeTypeLabel: pData.metadata?.storeTypeLabel as string
-                });
+                if (selectedSupplierFilter === "ALL") {
+                    groupedMap.set(key, {
+                        name: pName,
+                        sales: 0,
+                        count: 0,
+                        customerCode: key,
+                        sId: Number(pData.metadata?.sId) || ids[0],
+                        supId: Number(pData.metadata?.supId) || 0,
+                        peak: 0,
+                        target: 0,
+                        storeTypeLabel: pData.metadata?.storeTypeLabel as string
+                    });
+                }
             }
-            const existing = groupedMap.get(key)!;
-            existing.peak = pData.peak;
-            if (pData.metadata?.name) {
-                existing.name = pData.metadata.name as string;
-            }
-            if (pData.metadata?.storeTypeLabel) {
-                existing.storeTypeLabel = pData.metadata.storeTypeLabel as string;
-            }
-            if (pData.metadata?.province) {
-                existing.province = pData.metadata.province as string;
-            }
-            if (pData.metadata?.city) {
-                existing.city = pData.metadata.city as string;
+            const existing = groupedMap.get(key);
+            if (existing) {
+                existing.peak = pData.peak;
+                if (pData.metadata?.name) {
+                    existing.name = pData.metadata.name as string;
+                }
+                if (pData.metadata?.storeTypeLabel) {
+                    existing.storeTypeLabel = pData.metadata.storeTypeLabel as string;
+                }
+                if (pData.metadata?.province) {
+                    existing.province = pData.metadata.province as string;
+                }
+                if (pData.metadata?.city) {
+                    existing.city = pData.metadata.city as string;
+                }
             }
         });
 
@@ -284,7 +288,7 @@ export function BreakdownAnalysisModal({
                     break;
                 }
             }
-            if (!found) {
+            if (!found && selectedSupplierFilter === "ALL") {
                 groupedMap.set(tName, {
                     name: tName,
                     sales: 0,
