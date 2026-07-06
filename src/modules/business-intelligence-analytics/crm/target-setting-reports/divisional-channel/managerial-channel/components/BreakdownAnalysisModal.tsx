@@ -20,7 +20,8 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, Store, Users, TrendingUp, Loader2, MapPin, ArrowUpDown, ChevronUp, ChevronDown, ArrowLeft } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Search, Store, Users, TrendingUp, Loader2, MapPin, ArrowUpDown, ChevronUp, ChevronDown, ArrowLeft, Filter } from "lucide-react";
 
 import { VSalesPerformanceDataDto } from "../types";
 import { fetchCustomerPeaks, fetchCustomerTargets } from "../providers/fetchProvider";
@@ -58,6 +59,22 @@ export function BreakdownAnalysisModal({
     const [selectedProdCust, setSelectedProdCust] = useState<{ name: string; code: string; sId: number; supId: number } | null>(null);
     const [loadingPeaks, setLoadingPeaks] = useState(false);
     const [loadingTargets, setLoadingTargets] = useState(false);
+    const [selectedSupplierFilter, setSelectedSupplierFilter] = useState<string>("ALL");
+
+    const suppliersList = useMemo(() => {
+        const unique = new Set<string>();
+        data.forEach(item => {
+            if (item.supplierName) {
+                unique.add(item.supplierName.toUpperCase());
+            }
+        });
+        return Array.from(unique).sort();
+    }, [data]);
+
+    const filteredData = useMemo(() => {
+        if (selectedSupplierFilter === "ALL") return data;
+        return data.filter(item => (item.supplierName || "").toUpperCase() === selectedSupplierFilter);
+    }, [data, selectedSupplierFilter]);
 
     const idsKey = ids.join(',');
 
@@ -65,12 +82,13 @@ export function BreakdownAnalysisModal({
         setSelectedStoreType(channelName);
         setSelectedArea(null);
         setSearchTerm("");
+        setSelectedSupplierFilter("ALL");
     }, [idsKey, supplierName, channelName]);
 
     const baseCustomerMetrics = useMemo(() => {
         const map = new Map<string, { sales: number; count: number; customerCode: string; sId: number; supId: number }>();
 
-        data.forEach((item) => {
+        filteredData.forEach((item) => {
             let name = "";
             let rawCode = "";
 
@@ -123,7 +141,7 @@ export function BreakdownAnalysisModal({
         });
 
         return Array.from(map.entries()).map(([name, metrics]) => ({ name, ...metrics as { sales: number; count: number; customerCode: string; sId: number; supId: number; province: string; city: string } }));
-    }, [data, viewType, selectedStoreType, selectedArea]);
+    }, [filteredData, viewType, selectedStoreType, selectedArea]);
 
     useEffect(() => {
         const loadPeaks = async () => {
@@ -152,7 +170,7 @@ export function BreakdownAnalysisModal({
                     const rollup: Record<string, number> = {};
                     
                     const customerToType: Record<string, string> = {};
-                    data.forEach(item => {
+                    filteredData.forEach(item => {
                         const type = (item.storeTypeLabel || "OTHERS").trim();
                         const cust = (item.storeName || "Unknown Customer").trim();
                         customerToType[cust] = type;
@@ -186,7 +204,7 @@ export function BreakdownAnalysisModal({
         };
 
         loadPeaks();
-    }, [isOpen, baseCustomerMetrics, ids, startDate, endDate, viewType, selectedStoreType, selectedArea, data]);
+    }, [isOpen, baseCustomerMetrics, ids, startDate, endDate, viewType, selectedStoreType, selectedArea, filteredData]);
 
     const { customerMetrics, totalSales, uniqueCustomers } = useMemo(() => {
         const groupedMap = new Map<string, {
@@ -222,38 +240,42 @@ export function BreakdownAnalysisModal({
             existing.count += c.count;
             existing.province = c.province;
             existing.city = c.city;
-            const item = data.find(d => (d.customerCode || d.storeName) === key || d.storeName === c.name);
+            const item = filteredData.find(d => (d.customerCode || d.storeName) === key || d.storeName === c.name);
             if (item) existing.storeTypeLabel = item.storeTypeLabel;
         });
 
         Object.entries(peakSales).forEach(([pName, pData]) => {
             const key = (pData.metadata?.customerCode as string) || pName;
             if (!groupedMap.has(key)) {
-                groupedMap.set(key, {
-                    name: pName,
-                    sales: 0,
-                    count: 0,
-                    customerCode: key,
-                    sId: Number(pData.metadata?.sId) || ids[0],
-                    supId: Number(pData.metadata?.supId) || 0,
-                    peak: 0,
-                    target: 0,
-                    storeTypeLabel: pData.metadata?.storeTypeLabel as string
-                });
+                if (selectedSupplierFilter === "ALL") {
+                    groupedMap.set(key, {
+                        name: pName,
+                        sales: 0,
+                        count: 0,
+                        customerCode: key,
+                        sId: Number(pData.metadata?.sId) || ids[0],
+                        supId: Number(pData.metadata?.supId) || 0,
+                        peak: 0,
+                        target: 0,
+                        storeTypeLabel: pData.metadata?.storeTypeLabel as string
+                    });
+                }
             }
-            const existing = groupedMap.get(key)!;
-            existing.peak = pData.peak;
-            if (pData.metadata?.name) {
-                existing.name = pData.metadata.name as string;
-            }
-            if (pData.metadata?.storeTypeLabel) {
-                existing.storeTypeLabel = pData.metadata.storeTypeLabel as string;
-            }
-            if (pData.metadata?.province) {
-                existing.province = pData.metadata.province as string;
-            }
-            if (pData.metadata?.city) {
-                existing.city = pData.metadata.city as string;
+            const existing = groupedMap.get(key);
+            if (existing) {
+                existing.peak = pData.peak;
+                if (pData.metadata?.name) {
+                    existing.name = pData.metadata.name as string;
+                }
+                if (pData.metadata?.storeTypeLabel) {
+                    existing.storeTypeLabel = pData.metadata.storeTypeLabel as string;
+                }
+                if (pData.metadata?.province) {
+                    existing.province = pData.metadata.province as string;
+                }
+                if (pData.metadata?.city) {
+                    existing.city = pData.metadata.city as string;
+                }
             }
         });
 
@@ -266,7 +288,7 @@ export function BreakdownAnalysisModal({
                     break;
                 }
             }
-            if (!found) {
+            if (!found && selectedSupplierFilter === "ALL") {
                 groupedMap.set(tName, {
                     name: tName,
                     sales: 0,
@@ -301,7 +323,7 @@ export function BreakdownAnalysisModal({
             totalSales: filtered.reduce((sum, c) => sum + (c.sales > 0 ? c.sales : 0), 0),
             uniqueCustomers: filtered.length
         };
-    }, [baseCustomerMetrics, peakSales, customerTargets, searchTerm, ids, viewType, selectedStoreType, selectedArea, data]);
+    }, [baseCustomerMetrics, peakSales, customerTargets, searchTerm, ids, viewType, selectedStoreType, selectedArea, filteredData, selectedSupplierFilter]);
 
     const formatPHP = (val: number) => {
         if (!val || isNaN(val)) return "₱0";
@@ -356,18 +378,33 @@ export function BreakdownAnalysisModal({
                 <DialogContent className="sm:max-w-[95vw] w-full h-[94vh] flex flex-col overflow-hidden bg-background/95 backdrop-blur-xl border-border/40 shadow-2xl p-6 pt-12">
                     <DialogHeader className="border-b border-border/40 pb-4 flex-shrink-0">
                         <div className="flex justify-between items-start pr-8">
-                            <div>
-                                <div className="flex items-center gap-2 text-muted-foreground text-xs uppercase tracking-[0.2em] font-bold mb-1">
-                                    <Store className="h-3 w-3" /> Breakdown Analysis
+                            <div className="flex flex-col gap-2">
+                                <div>
+                                    <div className="flex items-center gap-2 text-muted-foreground text-xs uppercase tracking-[0.2em] font-bold mb-1">
+                                        <Store className="h-3 w-3" /> Breakdown Analysis
+                                    </div>
+                                    <DialogTitle className="text-2xl font-black tracking-tight uppercase flex flex-col sm:flex-row sm:items-baseline gap-2">
+                                        <span className="text-primary italic">{channelName}</span>
+                                        <span className="text-muted-foreground text-sm font-bold tracking-widest">OVERALL PERFORMANCE</span>
+                                    </DialogTitle>
+                                    <DialogDescription className="text-xs font-medium uppercase tracking-wider mt-1">
+                                        Period: {periodLabel}
+                                    </DialogDescription>
                                 </div>
-                                <DialogTitle className="text-2xl font-black tracking-tight uppercase flex flex-col sm:flex-row sm:items-baseline gap-2">
-                                    <span className="text-primary italic">{channelName}</span>
-                                    <span className="text-muted-foreground text-sm font-bold tracking-widest">SUPPLYING</span>
-                                    <span className="text-emerald-500">{supplierName}</span>
-                                </DialogTitle>
-                                <DialogDescription className="text-xs font-medium uppercase tracking-wider mt-1">
-                                    Period: {periodLabel}
-                                </DialogDescription>
+                                <div className="flex items-center gap-2 mt-1">
+                                    <Filter className="h-3.5 w-3.5 text-primary" />
+                                    <Select value={selectedSupplierFilter} onValueChange={setSelectedSupplierFilter}>
+                                        <SelectTrigger className="w-[240px] h-8 text-[11px] font-black uppercase bg-muted/20 border-border/40">
+                                            <SelectValue placeholder="FILTER BY SUPPLIER" />
+                                        </SelectTrigger>
+                                        <SelectContent className="border-border/40 bg-popover/95 backdrop-blur-xl">
+                                            <SelectItem value="ALL" className="text-[10px] font-black uppercase">ALL SUPPLIERS</SelectItem>
+                                            {suppliersList.map(sup => (
+                                                <SelectItem key={sup} value={sup} className="text-[10px] font-black uppercase">{sup}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </div>
                             
                             <div className="flex items-center gap-6">
@@ -389,7 +426,7 @@ export function BreakdownAnalysisModal({
 
                                 <div className="flex flex-col items-end gap-1">
                                     <Badge variant="outline" className="text-xs font-mono uppercase bg-muted/20">
-                                        {data.length} Trans
+                                        {filteredData.length} Trans
                                     </Badge>
                                 </div>
                             </div>
