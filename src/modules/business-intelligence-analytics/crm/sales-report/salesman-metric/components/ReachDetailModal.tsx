@@ -15,6 +15,7 @@ import { Loader2, Users } from "lucide-react";
 interface ReachCustomer {
   customerCode: string;
   customerName: string;
+  dateEntered?: string;
 }
 
 interface ReachDetailModalProps {
@@ -23,6 +24,8 @@ interface ReachDetailModalProps {
   salesmanId: number | string;
   salesmanCode: string;
   salesmanName: string;
+  startDate?: string;
+  endDate?: string;
 }
 
 export function ReachDetailModal({
@@ -31,6 +34,8 @@ export function ReachDetailModal({
   salesmanId,
   salesmanCode,
   salesmanName,
+  startDate,
+  endDate,
 }: ReachDetailModalProps) {
   const [loading, setLoading] = useState(false);
   const [customers, setCustomers] = useState<ReachCustomer[]>([]);
@@ -45,6 +50,8 @@ export function ReachDetailModal({
           mode: "reach-breakdown",
           salesmanId: String(salesmanId),
           salesmanCode: salesmanCode,
+          ...(startDate && { startDate }),
+          ...(endDate && { endDate }),
         });
         const res = await fetch(`/api/bia/crm/sales-report/salesman-metric?${params.toString()}`);
         if (!res.ok) throw new Error("Failed to fetch reach breakdown");
@@ -64,7 +71,7 @@ export function ReachDetailModal({
     }
 
     fetchBreakdown();
-  }, [isOpen, salesmanId, salesmanCode]);
+  }, [isOpen, salesmanId, salesmanCode, startDate, endDate]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -101,12 +108,13 @@ export function ReachDetailModal({
                   <TableHead className="w-[50px] text-[9px] uppercase font-black tracking-wider text-muted-foreground">#</TableHead>
                   <TableHead className="text-[9px] uppercase font-black tracking-wider text-muted-foreground">Customer Code</TableHead>
                   <TableHead className="text-[9px] uppercase font-black tracking-wider text-muted-foreground">Customer Name</TableHead>
+                  <TableHead className="w-[120px] text-right text-[9px] uppercase font-black tracking-wider text-muted-foreground">Date Entered</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {customers.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={3} className="h-24 text-center">
+                    <TableCell colSpan={4} className="h-24 text-center">
                       <div className="flex flex-col items-center justify-center text-muted-foreground">
                         <Users className="h-6 w-6 mb-2 opacity-20" />
                         <span className="text-xs font-medium uppercase tracking-wider">No customers found</span>
@@ -119,6 +127,7 @@ export function ReachDetailModal({
                       <TableCell className="font-mono text-xs text-muted-foreground">{i + 1}</TableCell>
                       <TableCell className="font-mono text-xs font-medium text-foreground">{c.customerCode}</TableCell>
                       <TableCell className="text-xs font-bold text-foreground">{c.customerName}</TableCell>
+                      <TableCell className="text-xs font-medium text-foreground text-right">{c.dateEntered || "-"}</TableCell>
                     </TableRow>
                   ))
                 )}

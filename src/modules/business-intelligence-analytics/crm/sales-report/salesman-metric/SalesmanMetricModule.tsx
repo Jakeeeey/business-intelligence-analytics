@@ -285,6 +285,8 @@ export default function SalesmanMetricModule() {
           salesmanId={reachSalesmanId}
           salesmanCode={reachSalesmanCode}
           salesmanName={reachSalesmanName}
+          startDate={filters.startDate}
+          endDate={filters.endDate}
         />
       )}
 

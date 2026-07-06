@@ -103,6 +103,7 @@ interface TacticalSkuTarget {
 interface ReachCustomer {
   customerCode?: string;
   customerName?: string;
+  dateEntered?: string;
 }
 
 interface ReachFilterItem {
@@ -175,15 +176,20 @@ export async function GET(req: NextRequest) {
   // ==========================================
   if (mode === "reach-breakdown") {
     const salesmanIdParam = sp.get("salesmanId");
-    const salesmanCodeParam = sp.get("salesmanCode") || "";
+    const startDate = sp.get("startDate") || "2025-01-01";
 
     if (!salesmanIdParam) {
       return json({ success: false, error: "salesmanId is required" }, { status: 400 });
     }
 
+    const dateParts = startDate.split("-");
+    const targetYear = dateParts[0] ? Number(dateParts[0]) : 2026;
+    const targetMonth = dateParts[1] ? Number(dateParts[1]) : 3;
+
     const salesmanId = Number(salesmanIdParam);
-    const reachUrl = `${API_BASE}/api/view-salesman-reach/filter?salesmanId=${salesmanId}&salesmanCode=${salesmanCodeParam}`;
-    const reachData = await safeFetch<ReachFilterItem | null>(reachUrl, null, token);
+    const reachUrl = `${API_BASE}/api/view-salesman-reach/filter-by-date?month=${targetMonth}&year=${targetYear}`;
+    const allReachData = await safeFetch<ReachFilterItem[] | null>(reachUrl, null, token);
+    const reachData = Array.isArray(allReachData) ? allReachData.find(r => r.salesmanId === salesmanId) : null;
     
     if (!reachData || !reachData.customers) {
       return json({ success: true, totalReach: 0, customers: [] });
@@ -219,10 +225,8 @@ export async function GET(req: NextRequest) {
     const filtered = allSalesData.filter((x) => {
       const matchedSalesman = Number(x.salesmanId) === salesmanId;
       if (!matchedSalesman) return false;
-      if (x.transactionDate) {
-        return x.transactionDate >= startDate && x.transactionDate <= endDate;
-      }
-      return true;
+      if (!x.transactionDate) return false;
+      return x.transactionDate >= startDate && x.transactionDate <= endDate;
     });
 
     // Group by supplier
@@ -469,6 +473,13 @@ export async function GET(req: NextRequest) {
     targetSalesmen = Array.from(map.values());
   }
 
+  // Fetch all reach data for the target month and year
+  const allReachData = await safeFetch<ReachFilterItem[] | null>(
+    `${API_BASE}/api/view-salesman-reach/filter-by-date?month=${targetMonth}&year=${targetYear}`, 
+    null, 
+    token
+  );
+
   // For each target salesman, fetch their metrics in parallel
   const rows = await Promise.all(
     targetSalesmen.map(async (sm) => {
@@ -482,28 +493,26 @@ export async function GET(req: NextRequest) {
       const lineSalesUrl = `${API_BASE}/api/salesman-line-sales-target-setting?salesmanId=${id}&targetMonth=${targetMonth}&targetYear=${targetYear}`;
       const basketCountUrl = `${API_BASE}/api/salesman-basket-count-target-set?salesmanId=${id}&targetMonth=${targetMonth}&targetYear=${targetYear}`;
       const tacticalSkuUrl = `${API_BASE}/api/salesman-tactical-sku-target-setting?salesmanId=${id}&targetMonth=${targetMonth}&targetYear=${targetYear}`;
-      const reachUrl = `${API_BASE}/api/view-salesman-reach/filter?salesmanId=${id}&salesmanCode=${code}`;
 
       // Fetch in parallel
-      const [freqData, newAccData, productiveOutlet, lineSales, basketCount, tacticalSku, reachData] = await Promise.all([
+      const [freqData, newAccData, productiveOutlet, lineSales, basketCount, tacticalSku] = await Promise.all([
         safeFetch<FrequencyReportItem[]>(freqUrl, [], token),
         safeFetch<NewAccountItem[]>(newAccUrl, [], token),
         safeFetch<ProductiveOutletTarget | null>(productiveOutletUrl, null, token),
         safeFetch<LineSalesTarget | null>(lineSalesUrl, null, token),
         safeFetch<BasketCountTarget | null>(basketCountUrl, null, token),
         safeFetch<TacticalSkuTarget[]>(tacticalSkuUrl, [], token),
-        safeFetch<ReachFilterItem | null>(reachUrl, null, token),
       ]);
+
+      const reachData = Array.isArray(allReachData) ? allReachData.find(r => r.salesmanId === id) : null;
 
       // Process Metric 1: Sales Performance
       const salesPerformance = allSalesData
         .filter((x) => {
           const matchedSalesman = Number(x.salesmanId) === id;
           if (!matchedSalesman) return false;
-          if (x.transactionDate) {
-            return x.transactionDate >= startDate && x.transactionDate <= endDate;
-          }
-          return true;
+          if (!x.transactionDate) return false;
+          return x.transactionDate >= startDate && x.transactionDate <= endDate;
         })
         .reduce((sum: number, x) => sum + (Number(x.netAmount) || 0), 0);
 
