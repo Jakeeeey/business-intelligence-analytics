@@ -323,7 +323,7 @@ export function BreakdownAnalysisModal({
             totalSales: filtered.reduce((sum, c) => sum + (c.sales > 0 ? c.sales : 0), 0),
             uniqueCustomers: filtered.length
         };
-    }, [baseCustomerMetrics, peakSales, customerTargets, searchTerm, ids, viewType, selectedStoreType, selectedArea, filteredData]);
+    }, [baseCustomerMetrics, peakSales, customerTargets, searchTerm, ids, viewType, selectedStoreType, selectedArea, filteredData, selectedSupplierFilter]);
 
     const formatPHP = (val: number) => {
         if (!val || isNaN(val)) return "₱0";
