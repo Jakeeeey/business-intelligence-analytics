@@ -18,6 +18,7 @@ type GroupedItem = {
   province: string;
   storeTypeName: string;
   customerName: string;
+  probability: string;
 };
 
 type ProspectingBiaTableProps = {
@@ -100,17 +101,20 @@ export default function ProspectingBiaTable({ data }: ProspectingBiaTableProps) 
           <Table className="w-full border-collapse">
             <TableHeader className="relative z-10">
               <TableRow className="hover:bg-transparent bg-muted/25">
-                <TableHead className="font-bold text-foreground border-r border-b border-border px-4 py-2 w-1/4 sticky top-0 bg-muted/90 backdrop-blur-xs z-10">
+                <TableHead className="font-bold text-foreground border-r border-b border-border px-4 py-2 w-1/5 sticky top-0 bg-muted/90 backdrop-blur-xs z-10">
                   Salesman
                 </TableHead>
-                <TableHead className="font-bold text-foreground border-r border-b border-border px-4 py-2 w-1/4 sticky top-0 bg-muted/90 backdrop-blur-xs z-10">
+                <TableHead className="font-bold text-foreground border-r border-b border-border px-4 py-2 w-1/5 sticky top-0 bg-muted/90 backdrop-blur-xs z-10">
                   Area (Province)
                 </TableHead>
-                <TableHead className="font-bold text-foreground border-r border-b border-border px-4 py-2 w-1/4 sticky top-0 bg-muted/90 backdrop-blur-xs z-10">
+                <TableHead className="font-bold text-foreground border-r border-b border-border px-4 py-2 w-1/5 sticky top-0 bg-muted/90 backdrop-blur-xs z-10">
                   Store Type
                 </TableHead>
-                <TableHead className="font-bold text-foreground border-b border-border px-4 py-2 w-1/4 sticky top-0 bg-muted/90 backdrop-blur-xs z-10">
+                <TableHead className="font-bold text-foreground border-r border-b border-border px-4 py-2 w-1/5 sticky top-0 bg-muted/90 backdrop-blur-xs z-10">
                   Customer Name
+                </TableHead>
+                <TableHead className="font-bold text-foreground border-b border-border px-4 py-2 w-1/5 sticky top-0 bg-muted/90 backdrop-blur-xs z-10">
+                  Probability
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -156,8 +160,13 @@ export default function ProspectingBiaTable({ data }: ProspectingBiaTableProps) 
                     )}
 
                     {/* Customer Name column */}
-                    <TableCell className="align-middle text-foreground border-b border-border px-4 py-2">
+                    <TableCell className="align-middle text-foreground border-r border-b border-border px-4 py-2">
                       {item.customerName}
+                    </TableCell>
+
+                    {/* Probability column */}
+                    <TableCell className="align-middle text-foreground border-b border-border px-4 py-2">
+                      {item.probability}
                     </TableCell>
                   </TableRow>
                 );
