@@ -14,6 +14,7 @@ type GroupedItem = {
   province: string;
   storeTypeName: string;
   customerName: string;
+  probability: string;
 };
 
 export default function ProspectingBiaModule() {
@@ -64,7 +65,7 @@ export default function ProspectingBiaModule() {
     return new Map(storeTypes.map((t) => [t.id, t.store_type]));
   }, [storeTypes]);
 
-  // Compute all combinations of Salesman, Province, Store Type, and Customer Name
+  // Compute all combinations of Salesman, Province, Store Type, Customer Name, and Probability
   const allCombinations = React.useMemo<GroupedItem[]>(() => {
     const list: GroupedItem[] = [];
     const seen = new Set<string>();
@@ -75,7 +76,15 @@ export default function ProspectingBiaModule() {
       const storeTypeName = (p.store_type ? storeTypesMap.get(p.store_type) : null) || "Unknown Store Type";
       const customerName = (p.customer_name && p.customer_name.trim()) || "Unknown Customer";
 
-      const key = `${salesmanName}||${province}||${storeTypeName}||${customerName}`;
+      let probability = "0%";
+      if (p.percentage !== undefined && p.percentage !== null) {
+        const numVal = parseFloat(String(p.percentage));
+        if (!isNaN(numVal)) {
+          probability = `${numVal}%`;
+        }
+      }
+
+      const key = `${salesmanName}||${province}||${storeTypeName}||${customerName}||${probability}`;
       if (!seen.has(key)) {
         seen.add(key);
         list.push({
@@ -83,6 +92,7 @@ export default function ProspectingBiaModule() {
           province,
           storeTypeName,
           customerName,
+          probability,
         });
       }
     }
@@ -98,7 +108,10 @@ export default function ProspectingBiaModule() {
       const cmpStoreType = a.storeTypeName.localeCompare(b.storeTypeName);
       if (cmpStoreType !== 0) return cmpStoreType;
 
-      return a.customerName.localeCompare(b.customerName);
+      const cmpCustomer = a.customerName.localeCompare(b.customerName);
+      if (cmpCustomer !== 0) return cmpCustomer;
+
+      return a.probability.localeCompare(b.probability);
     });
   }, [prospects, salesmenMap, storeTypesMap]);
 
