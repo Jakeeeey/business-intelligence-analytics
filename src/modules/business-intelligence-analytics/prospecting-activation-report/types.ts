@@ -1,0 +1,87 @@
+import { z } from "zod";
+
+export const CustomerProspectSchema = z.object({
+  id: z.number(),
+  salesman_id: z.number().optional().nullable(),
+  prospect_date: z.string().optional().nullable(),
+  customer_code: z.string().optional().nullable(),
+  customer_name: z.string().optional().nullable(),
+  type: z.enum(["Regular", "Employee"]).default("Regular"),
+  user_id: z.number().optional().nullable(),
+  customer_image: z.string().optional().nullable(),
+  store_name: z.string().optional().nullable(),
+  store_signage: z.string().optional().nullable(),
+  brgy: z.string().optional().nullable(),
+  city: z.string().optional().nullable(),
+  province: z.string().optional().nullable(),
+  contact_number: z.string().optional().nullable(),
+  customer_email: z.string().optional().nullable(),
+  tel_number: z.string().optional().nullable(),
+  bank_details: z.string().optional().nullable(),
+  customer_tin: z.string().optional().nullable(),
+  payment_term: z.number().optional().nullable(),
+  store_type: z.number().optional().nullable(),
+  price_type: z.string().optional().nullable(),
+  encoder_id: z.number().optional().nullable(),
+  credit_type: z.number().optional().nullable(),
+  company_code: z.number().optional().nullable(),
+  date_entered: z.string().optional().nullable(),
+  isActive: z.number().optional().nullable(),
+  isVAT: z.number().optional().nullable(),
+  isEWT: z.number().optional().nullable(),
+  discount_type: z.number().optional().nullable(),
+  otherDetails: z.string().optional().nullable(),
+  classification: z.number().optional().nullable(),
+  prospect_status: z.enum(["pending", "approved", "rejected"]).default("pending"),
+  latitude: z.union([z.number(), z.string()]).optional().nullable(),
+  longitude: z.union([z.number(), z.string()]).optional().nullable(),
+  percentage: z.union([z.number(), z.string()]).optional().nullable(),
+});
+
+export type CustomerProspect = z.infer<typeof CustomerProspectSchema>;
+
+export const CustomerSchema = z.object({
+  id: z.number(),
+  customer_group_id: z.number().optional().nullable(),
+  customer_code: z.string(),
+  customer_name: z.string(),
+  type: z.enum(["Regular", "Employee"]).default("Regular"),
+  user_id: z.number().optional().nullable(),
+  customer_image: z.string().optional().nullable(),
+  store_name: z.string(),
+  store_signage: z.string(),
+  brgy: z.string().optional().nullable(),
+  city: z.string().optional().nullable(),
+  province: z.string().optional().nullable(),
+  contact_number: z.string().optional().nullable(),
+  customer_email: z.string().optional().nullable(),
+  password: z.string().optional().nullable(),
+  tel_number: z.string().optional().nullable(),
+  bank_details: z.string().optional().nullable(),
+  customer_tin: z.string().optional().nullable(),
+  payment_term: z.number().optional().nullable(),
+  store_type: z.number().optional().nullable(),
+  price_type: z.string().optional().nullable(),
+  price_type_id: z.number().optional().nullable(),
+  encoder_id: z.number().optional().nullable(),
+  credit_type: z.number().optional().nullable(),
+  company_code: z.number().optional().nullable(),
+  date_entered: z.string().optional().nullable(),
+  isActive: z.number().optional().nullable(),
+  isVAT: z.number().optional().nullable(),
+  isEWT: z.number().optional().nullable(),
+  discount_type: z.number().optional().nullable(),
+  otherDetails: z.string().optional().nullable(),
+  classification: z.number().optional().nullable(),
+  prospect_status: z.enum(["pending", "visited"]).optional().nullable(),
+  latitude: z.union([z.number(), z.string()]).optional().nullable(),
+  longitude: z.union([z.number(), z.string()]).optional().nullable(),
+  qr_code: z.string().optional().nullable(),
+});
+
+export type Customer = z.infer<typeof CustomerSchema>;
+
+export interface ProspectingActivationPayload {
+  customerProspects: CustomerProspect[];
+  customers: Customer[];
+}
