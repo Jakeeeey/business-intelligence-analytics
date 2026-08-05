@@ -93,8 +93,8 @@ export function ProductiveOutletDetailModal({
   };
 
   const getProgressColor = (achievement: number, status: string) => {
-    if (status.toLowerCase().includes("no target") || status.toLowerCase().includes("none")) return "bg-muted-foreground/30";
     if (achievement >= 100) return "bg-emerald-500";
+    if (status.toLowerCase().includes("no target") || status.toLowerCase().includes("none")) return "bg-muted-foreground/30";
     if (achievement >= 50) return "bg-amber-500";
     return "bg-rose-500";
   };

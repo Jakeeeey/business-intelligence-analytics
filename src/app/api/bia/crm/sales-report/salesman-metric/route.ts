@@ -4,6 +4,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const API_BASE = (process.env.SPRING_API_BASE_URL ?? "").replace(/\/+$/, "");
+const DIRECTUS_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL || "").replace(/\/+$/, "");
+const DIRECTUS_TOKEN = process.env.DIRECTUS_STATIC_TOKEN || "";
 
 interface SalesPerformanceItem {
   divisionId?: number;
@@ -145,7 +147,15 @@ export async function GET(req: NextRequest) {
   // MODE: LOOKUPS
   // ==========================================
   if (mode === "lookups") {
-    const allSalesData = await safeFetch<SalesPerformanceItem[] | null>(`${API_BASE}/api/view-sales-performance/all`, null, token);
+    const startDate = sp.get("startDate") || "2025-01-01";
+    const endDate = sp.get("endDate") || "2026-12-31";
+
+    const allSalesData = await safeFetch<SalesPerformanceItem[] | null>(
+      `${API_BASE}/api/view-sales-performance/all?startDate=${startDate}&endDate=${endDate}`,
+      null,
+      token
+    );
+
     if (!allSalesData || !Array.isArray(allSalesData)) {
       return json({ success: true, data: [] });
     }
@@ -216,7 +226,7 @@ export async function GET(req: NextRequest) {
 
     const salesmanId = Number(salesmanIdParam);
 
-    const allSalesData = await safeFetch<SalesPerformanceItem[] | null>(`${API_BASE}/api/view-sales-performance/all`, null, token);
+    const allSalesData = await safeFetch<SalesPerformanceItem[] | null>(`${API_BASE}/api/view-sales-performance/all?startDate=${startDate}&endDate=${endDate}`, null, token);
     if (!allSalesData || !Array.isArray(allSalesData)) {
       return json({ success: true, totalSales: 0, data: [] });
     }
@@ -278,8 +288,7 @@ export async function GET(req: NextRequest) {
     const salesmanId = Number(salesmanIdParam);
     const code = encodeURIComponent(salesmanCodeParam);
 
-    const fiscalPeriod = startDate.substring(0, 7) + "-01";
-    const freqUrl = `${API_BASE}/api/view-salesman-frequency-report/filter?fiscalPeriod=${fiscalPeriod}&salesmanId=${salesmanId}&salesmanCode=${code}`;
+    const freqUrl = `${API_BASE}/api/view-salesman-frequency-report/filter?startDate=${startDate}&endDate=${endDate}&salesmanId=${salesmanId}&salesmanCode=${code}`;
     const freqData = await safeFetch<FrequencyReportItem[]>(freqUrl, [], token);
 
     const filtered = freqData.filter((x) => {
@@ -431,7 +440,11 @@ export async function GET(req: NextRequest) {
   const targetMonth = dateParts[1] ? Number(dateParts[1]) : 3;
 
   // 1. Fetch sales performance list to identify salesmen we need to report on
-  const allSalesData = await safeFetch<SalesPerformanceItem[] | null>(`${API_BASE}/api/view-sales-performance/all`, null, token);
+  const allSalesData = await safeFetch<SalesPerformanceItem[] | null>(
+    `${API_BASE}/api/view-sales-performance/all?startDate=${startDate}&endDate=${endDate}`,
+    null,
+    token
+  );
   if (!allSalesData || !Array.isArray(allSalesData)) {
     return json({ success: true, data: [] });
   }
@@ -486,8 +499,7 @@ export async function GET(req: NextRequest) {
       const id = sm.salesmanId;
       const code = encodeURIComponent(sm.salesmanCode);
 
-      const fiscalPeriod = startDate.substring(0, 7) + "-01";
-      const freqUrl = `${API_BASE}/api/view-salesman-frequency-report/filter?fiscalPeriod=${fiscalPeriod}&salesmanId=${id}&salesmanCode=${code}`;
+      const freqUrl = `${API_BASE}/api/view-salesman-frequency-report/filter?startDate=${startDate}&endDate=${endDate}&salesmanId=${id}&salesmanCode=${code}`;
       const newAccUrl = `${API_BASE}/api/v-salesman-new-account/filter?startDate=${startDate}&endDate=${endDate}&salesmanId=${id}&salesmanCode=${code}`;
       const productiveOutletUrl = `${API_BASE}/api/salesman-productive-outlet-target?salesmanId=${id}&targetMonth=${targetMonth}&targetYear=${targetYear}`;
       const lineSalesUrl = `${API_BASE}/api/salesman-line-sales-target-setting?salesmanId=${id}&targetMonth=${targetMonth}&targetYear=${targetYear}`;
@@ -520,13 +532,28 @@ export async function GET(req: NextRequest) {
       const reach = reachData ? Number(reachData.totalReach ?? 0) : 0;
 
       // Process Metric 3: Frequency
-      const freqCount = Array.isArray(freqData) ? freqData.length : 0;
-      const freqAmount = Array.isArray(freqData)
-        ? freqData.reduce((sum: number, x) => sum + (Number(x.netAmount) || 0), 0)
-        : 0;
+      const filteredFreq = Array.isArray(freqData)
+        ? freqData.filter((x) => {
+            const date = x.transactionDate || x.fiscalPeriod;
+            return date ? (date >= startDate && date <= endDate) : true;
+          })
+        : [];
+
+      // Count unique customer codes (representing active outlets/customers meeting the threshold)
+      const uniqueCustomers = new Set(filteredFreq.map((x) => x.customerCode).filter(Boolean));
+
+      const freqCount = uniqueCustomers.size;
+      const freqAmount = filteredFreq.reduce((sum: number, x) => sum + (Number(x.netAmount) || 0), 0);
 
       // Process Metric 4: New Accounts
-      const newAccounts = Array.isArray(newAccData) ? newAccData.length : 0;
+      const filteredNewAcc = Array.isArray(newAccData)
+        ? newAccData.filter((x) => {
+            const date = x.dateEntered || x.fiscalPeriod;
+            return date ? (date >= startDate && date <= endDate) : true;
+          })
+        : [];
+
+      const newAccounts = filteredNewAcc.length;
 
       // Process Metric 5: Productive Outlets Target
       let productiveOutletsTarget = 0;
