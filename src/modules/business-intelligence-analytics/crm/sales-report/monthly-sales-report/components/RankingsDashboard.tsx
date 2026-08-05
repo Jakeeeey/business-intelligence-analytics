@@ -96,8 +96,8 @@ export default function RankingsDashboard({
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
       {/* Visual Chart Card */}
-      <Card className="lg:col-span-2 border shadow-xs overflow-hidden">
-        <CardHeader className="bg-muted/30 border-b px-4 py-3 flex flex-row items-center justify-between">
+      <Card className="lg:col-span-2 border shadow-xs overflow-hidden flex flex-col">
+        <CardHeader className="bg-muted/30 border-b px-4 py-3 flex flex-row items-center justify-between shrink-0">
           <div className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4 text-primary" />
             <CardTitle className="text-base font-bold tracking-tight text-foreground">
@@ -116,13 +116,13 @@ export default function RankingsDashboard({
             </button>
           )}
         </CardHeader>
-        <CardContent className="p-4 flex items-center justify-center min-h-[300px]">
+        <CardContent className="p-4 flex-1 flex flex-col justify-end min-h-[300px]">
           {topFive.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground text-sm">
+            <div className="text-center py-12 flex-1 flex items-center justify-center text-muted-foreground text-sm">
               No sales records for the selected period.
             </div>
           ) : (
-            <div className="h-72 w-full">
+            <div className="h-72 w-full mt-auto">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={topFive} margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
                   <XAxis
