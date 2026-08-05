@@ -55,7 +55,7 @@ export default function DateSelector({
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Month" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent position="popper">
                   {MONTHS.map((m, idx) => (
                     <SelectItem key={idx} value={String(idx)}>
                       {m}
@@ -73,7 +73,7 @@ export default function DateSelector({
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Year" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent position="popper">
                   {YEARS.map((y) => (
                     <SelectItem key={y} value={String(y)}>
                       {y}
