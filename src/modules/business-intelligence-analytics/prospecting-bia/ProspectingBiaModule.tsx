@@ -10,6 +10,7 @@ import { MultiSelectOption } from "./components/MultiSelect";
 import type { CustomerProspect, Salesman, StoreType, ProspectingDataPayload } from "./types";
 
 type GroupedItem = {
+  id: number;
   salesmanName: string;
   province: string;
   storeTypeName: string;
@@ -84,10 +85,11 @@ export default function ProspectingBiaModule() {
         }
       }
 
-      const key = `${salesmanName}||${province}||${storeTypeName}||${customerName}||${probability}`;
+      const key = `${p.id}||${salesmanName}||${province}||${storeTypeName}||${customerName}||${probability}`;
       if (!seen.has(key)) {
         seen.add(key);
         list.push({
+          id: p.id,
           salesmanName,
           province,
           storeTypeName,
