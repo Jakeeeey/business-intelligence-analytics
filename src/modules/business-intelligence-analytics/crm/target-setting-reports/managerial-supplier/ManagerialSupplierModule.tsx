@@ -29,23 +29,20 @@ function ManagerialSupplierContent() {
     const [toMonth, setToMonth] = useState(searchParams.get("to") || format(new Date(), "yyyy-MM"));
     const [selectedDivision, setSelectedDivision] = useState<string>((searchParams.get("division") || "DRY GOODS").toUpperCase());
 
-    // Sync state with URL params
+    // Sync state with URL params — only re-run when the URL itself changes, not on local state changes
     useEffect(() => {
         const divParam = searchParams.get("division");
         const fromParam = searchParams.get("from");
         const toParam = searchParams.get("to");
 
-        // Use setTimeout to avoid synchronous cascading renders warning
         const timer = setTimeout(() => {
-            if (divParam && divParam.toUpperCase() !== selectedDivision.toUpperCase()) {
-                setSelectedDivision(divParam.toUpperCase());
-            }
-            if (fromParam && fromParam !== fromMonth) setFromMonth(fromParam);
-            if (toParam && toParam !== toMonth) setToMonth(toParam);
+            if (divParam) setSelectedDivision(divParam.toUpperCase());
+            if (fromParam) setFromMonth(fromParam);
+            if (toParam) setToMonth(toParam);
         }, 0);
 
         return () => clearTimeout(timer);
-    }, [searchParams, fromMonth, selectedDivision, toMonth]);
+    }, [searchParams]);
 
     // Drill-down State
     const [selectedSupplier, setSelectedSupplier] = useState<string | null>(null);
@@ -270,9 +267,9 @@ function ManagerialSupplierContent() {
                     <div className="flex items-center gap-2 px-4 border-r border-border/40 py-1">
                         <Calendar className="h-4 w-4 text-primary" />
                         <div className="flex items-center gap-1">
-                            <Input type="month" value={fromMonth} onChange={e => setFromMonth(e.target.value)} className="w-[110px] border-none bg-transparent h-8 text-[11px] font-black uppercase focus-visible:ring-0 cursor-pointer p-0" />
+                            <Input type="month" value={fromMonth} onChange={e => { if (e.target.value) setFromMonth(e.target.value); }} className="w-[110px] border-none bg-transparent h-8 text-[11px] font-black uppercase focus-visible:ring-0 cursor-pointer p-0" />
                             <span className="text-muted-foreground/30 font-black px-1">/</span>
-                            <Input type="month" value={toMonth} onChange={e => setToMonth(e.target.value)} className="w-[110px] border-none bg-transparent h-8 text-[11px] font-black uppercase focus-visible:ring-0 cursor-pointer p-0" />
+                            <Input type="month" value={toMonth} onChange={e => { if (e.target.value) setToMonth(e.target.value); }} className="w-[110px] border-none bg-transparent h-8 text-[11px] font-black uppercase focus-visible:ring-0 cursor-pointer p-0" />
                         </div>
                     </div>
                     <div className="flex items-center gap-2 px-4 py-1">

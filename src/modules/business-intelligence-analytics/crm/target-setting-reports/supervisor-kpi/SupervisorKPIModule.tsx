@@ -71,9 +71,17 @@ function SupervisorKPIContent() {
             salesmanToSupervisorId.set(m.salesman_id, m.supervisor_per_division_id);
         });
 
+        const salesmanIdToCode = new Map<number, string>();
+        if (mappings.salesmanMaster) {
+            mappings.salesmanMaster.forEach(sm => {
+                salesmanIdToCode.set(sm.id, sm.salesman_code);
+            });
+        }
+
         const supervisorIdToName = new Map<number, string>();
         mappings.supervisors.forEach(s => {
-            supervisorIdToName.set(s.id, `${s.supervisor_id.first_name} ${s.supervisor_id.last_name}`);
+            const fullName = `${s.supervisor_id.first_name} ${s.supervisor_id.last_name}`.trim();
+            supervisorIdToName.set(s.id, fullName);
         });
 
         const start = parseISO(fromMonth + "-01");
@@ -97,7 +105,8 @@ function SupervisorKPIContent() {
             if (selectedSupervisor && supervisorName !== selectedSupervisor) return;
 
             // Determine unique display name and key
-            const pName = selectedSupervisor ? (item.salesmanName || "Unknown Salesman") : supervisorName;
+            const salesmanCode = salesmanIdToCode.get(Number(salesmanId)) || item.salesmanName || `Salesman #${salesmanId}`;
+            const pName = selectedSupervisor ? salesmanCode : supervisorName;
             const pKey = pName.trim().toUpperCase(); // Normalize key to combine duplicates
 
             const amount = item.netAmount || 0;
@@ -139,8 +148,9 @@ function SupervisorKPIContent() {
             const supervisorName = supervisorId ? (supervisorIdToName.get(supervisorId) || "No Assigned Supervisor") : "No Assigned Supervisor";
             if (selectedSupervisor && supervisorName !== selectedSupervisor) return;
 
+            const salesmanCode = salesmanIdToCode.get(salesmanId) || rawData.find(d => Number(d.salesmanId) === salesmanId)?.salesmanName || `Salesman #${salesmanId}`;
             const pName = selectedSupervisor
-                ? (rawData.find(d => Number(d.salesmanId) === salesmanId)?.salesmanName || `Salesman #${salesmanId}`)
+                ? salesmanCode
                 : supervisorName;
             
             const pKey = pName.trim().toUpperCase();
@@ -234,6 +244,20 @@ function SupervisorKPIContent() {
     });
 
     const handleCellClick = (pName: string, supplier: string, ids: Set<number>) => {
+        if (supplier === "ALL") {
+            const filtered = rawData.filter(d => ids.has(Number(d.salesmanId)));
+            setCustomerModalData({
+                isOpen: true,
+                ids: Array.from(ids),
+                salesman: pName,
+                supplier: "OVERALL",
+                data: filtered,
+                startDate: format(startOfMonth(parseISO(fromMonth + "-01")), "yyyy-MM-dd"),
+                endDate: format(endOfMonth(parseISO(toMonth + "-01")), "yyyy-MM-dd")
+            });
+            return;
+        }
+
         if (selectedSupervisor) {
             // We are already in drill-down mode (viewing individual salesmen)
             // Show customer level breakdown
@@ -362,7 +386,10 @@ function SupervisorKPIContent() {
                                                 </div>
                                             </td>
 
-                                            <td className="sticky left-[240px] z-40 bg-background/95 backdrop-blur-sm p-4 border-r border-b group-hover:bg-accent transition-all">
+                                            <td 
+                                                className="sticky left-[240px] z-40 bg-background/95 backdrop-blur-sm p-4 border-r border-b group-hover:bg-accent hover:bg-accent/80 transition-all cursor-pointer"
+                                                onClick={() => handleCellClick(person.name, "ALL", person.ids)}
+                                            >
                                                 <div className="space-y-1">
                                                     <div className="flex justify-between items-center text-[10px] font-black">
                                                         <span className="text-emerald-500">{formatShort(personalTotal.amount)}</span>
