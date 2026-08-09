@@ -75,6 +75,8 @@ export function OrdersTab({ canonicalOrders, filteredData }: Props) {
       data = data.filter(
         (o) =>
           String(o.orderNo).toLowerCase().includes(q) ||
+          (o.invoiceNo || "").toLowerCase().includes(q) ||
+          (o.customerName || "").toLowerCase().includes(q) ||
           (o.supplierName || "").toLowerCase().includes(q),
       );
     }
@@ -112,8 +114,8 @@ export function OrdersTab({ canonicalOrders, filteredData }: Props) {
         return sortDir === "asc" ? va - vb : vb - va;
       }
       return sortDir === "asc"
-        ? String(va).localeCompare(String(vb))
-        : String(vb).localeCompare(String(va));
+        ? String(va ?? "").localeCompare(String(vb ?? ""))
+        : String(vb ?? "").localeCompare(String(va ?? ""));
     });
   }, [filteredOrders, sortKey, sortDir]);
 
@@ -174,7 +176,7 @@ export function OrdersTab({ canonicalOrders, filteredData }: Props) {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Input
-              placeholder="Search orders..."
+              placeholder="Search orders, invoices, customers..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="h-8 w-64"
@@ -225,17 +227,19 @@ export function OrdersTab({ canonicalOrders, filteredData }: Props) {
         <div className="overflow-x-auto">
           <table
             className="w-full text-sm"
-            style={{ tableLayout: "fixed", minWidth: 1000 }}
+            style={{ tableLayout: "fixed", minWidth: 1180 }}
           >
             <colgroup>
-              <col style={{ width: 40 }} /> {/* expand toggle */}
-              <col style={{ width: 130 }} /> {/* Order No */}
-              <col style={{ width: 120 }} /> {/* Date */}
-              <col style={{ width: 140 }} /> {/* Status */}
-              <col style={{ width: 200 }} /> {/* Supplier */}
-              <col style={{ width: 100 }} /> {/* Products */}
-              <col style={{ width: 120 }} /> {/* Qty Ordered */}
-              <col style={{ width: 150 }} /> {/* Net Amount */}
+              <col style={{ width: 36 }} />
+              <col style={{ width: 130 }} />
+              <col style={{ width: 130 }} />
+              <col style={{ width: 110 }} />
+              <col style={{ width: 130 }} />
+              <col style={{ width: 180 }} />
+              <col style={{ width: 170 }} />
+              <col style={{ width: 80 }} />
+              <col style={{ width: 120 }} />
+              <col style={{ width: 130 }} />
             </colgroup>
             <thead>
               <tr className="border-b  bg-muted/30">
@@ -245,6 +249,12 @@ export function OrdersTab({ canonicalOrders, filteredData }: Props) {
                   onClick={() => handleSort("orderNo")}
                 >
                   Order No. {sortIcon("orderNo")}
+                </th>
+                <th
+                  className="py-3 px-2 text-left font-medium text-muted-foreground cursor-pointer hover:text-foreground"
+                  onClick={() => handleSort("invoiceNo")}
+                >
+                  Invoice No. {sortIcon("invoiceNo")}
                 </th>
                 <th
                   className="py-3 px-2 text-left font-medium text-muted-foreground cursor-pointer hover:text-foreground"
@@ -258,12 +268,12 @@ export function OrdersTab({ canonicalOrders, filteredData }: Props) {
                 >
                   Status {sortIcon("orderStatus")}
                 </th>
-                {/* <th
+                <th
                   className="py-3 px-2 text-left font-medium text-muted-foreground cursor-pointer hover:text-foreground"
-                  onClick={() => handleSort("isConsolidated")}
+                  onClick={() => handleSort("customerName")}
                 >
-                  Consolidated? {sortIcon("isConsolidated")}
-                </th> */}
+                  Customer {sortIcon("customerName")}
+                </th>
                 <th
                   className="py-3 px-2 text-left font-medium text-muted-foreground cursor-pointer hover:text-foreground"
                   onClick={() => handleSort("supplierName")}
@@ -314,6 +324,14 @@ export function OrdersTab({ canonicalOrders, filteredData }: Props) {
                       <td className="py-2.5 pl-2 pr-2 font-medium">
                         <span className="block truncate">{row.orderNo}</span>
                       </td>
+                      <td className="py-2.5 px-2 text-muted-foreground text-xs">
+                        <span
+                          className="block truncate"
+                          title={row.invoiceNo || "—"}
+                        >
+                          {row.invoiceNo || "—"}
+                        </span>
+                      </td>
                       <td className="py-2.5 px-2 text-muted-foreground text-xs whitespace-nowrap">
                         {fmtDate(row.orderDate)}
                       </td>
@@ -324,26 +342,17 @@ export function OrdersTab({ canonicalOrders, filteredData }: Props) {
                           </span>
                         </Badge>
                       </td>
-                      {/* <td className="py-2.5 px-2">
-                        {row.isConsolidated ? (
-                          <Badge
-                            variant="outline"
-                            className="text-xs border-emerald-500 text-emerald-600 dark:text-emerald-400"
-                          >
-                            Yes
-                          </Badge>
-                        ) : (
-                          <Badge
-                            variant="outline"
-                            className="text-xs border-amber-500 text-amber-600 dark:text-amber-400"
-                          >
-                            For Consolidation
-                          </Badge>
-                        )}
-                      </td> */}
                       <td className="py-2.5 px-2">
                         <span
-                          className="block truncate"
+                          className="block truncate font-medium"
+                          title={row.customerName || "—"}
+                        >
+                          {row.customerName || "—"}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-2">
+                        <span
+                          className="block truncate text-muted-foreground"
                           title={row.supplierName}
                         >
                           {row.supplierName}
@@ -363,25 +372,22 @@ export function OrdersTab({ canonicalOrders, filteredData }: Props) {
                     {/* ── Expanded product lines ── */}
                     {isExpanded && (
                       <tr className="border-b dark:border-zinc-800 bg-muted/10">
-                        <td colSpan={8} className="p-0">
+                        <td colSpan={10} className="p-0">
                           <div className="px-6 py-3 overflow-x-auto">
                             <table
                               className="w-full text-xs"
                               style={{ tableLayout: "fixed", minWidth: 960 }}
                             >
                               <colgroup>
-                                <col style={{ width: 110 }} /> {/* Brand */}
-                                <col style={{ width: 120 }} /> {/* Category */}
-                                <col style={{ width: 240 }} />{" "}
-                                {/* Product Name */}
-                                <col style={{ width: 70 }} /> {/* Unit */}
-                                <col style={{ width: 100 }} /> {/* Net Price */}
-                                <col style={{ width: 80 }} /> {/* Ordered */}
-                                <col style={{ width: 100 }} />{" "}
-                                {/* Consolidated */}
-                                <col style={{ width: 70 }} /> {/* Gap */}
-                                <col style={{ width: 120 }} />{" "}
-                                {/* Variance Amount */}
+                                <col style={{ width: 110 }} />
+                                <col style={{ width: 120 }} />
+                                <col style={{ width: 240 }} />
+                                <col style={{ width: 70 }} />
+                                <col style={{ width: 100 }} />
+                                <col style={{ width: 80 }} />
+                                <col style={{ width: 100 }} />
+                                <col style={{ width: 70 }} />
+                                <col style={{ width: 120 }} />
                               </colgroup>
                               <thead>
                                 <tr className="border-b  text-muted-foreground">
