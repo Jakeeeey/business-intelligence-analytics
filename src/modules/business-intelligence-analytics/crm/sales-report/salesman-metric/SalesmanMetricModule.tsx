@@ -137,8 +137,9 @@ export default function SalesmanMetricModule() {
         if (active && json.success && Array.isArray(json.data)) {
           setRows(json.data);
         }
-      } catch (err: any) {
-        if (err.name !== 'AbortError') {
+      } catch (err: unknown) {
+        const error = err as Error;
+        if (error.name !== 'AbortError') {
           console.error("Error fetching salesman metrics:", err);
         }
       } finally {

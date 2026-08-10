@@ -4,8 +4,6 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const API_BASE = (process.env.SPRING_API_BASE_URL ?? "").replace(/\/+$/, "");
-const DIRECTUS_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL || "").replace(/\/+$/, "");
-const DIRECTUS_TOKEN = process.env.DIRECTUS_STATIC_TOKEN || "";
 
 interface SalesPerformanceItem {
   divisionId?: number;
@@ -120,7 +118,7 @@ function json(res: unknown, init?: ResponseInit) {
   return NextResponse.json(res, init);
 }
 
-const requestCache = new Map<string, { data: any; expiry: number }>();
+const requestCache = new Map<string, { data: unknown; expiry: number }>();
 
 function getCachedData<T>(key: string): T | null {
   const cached = requestCache.get(key);
@@ -541,7 +539,7 @@ export async function GET(req: NextRequest) {
   );
 
   // For each target salesman, fetch their metrics in chunks
-  const rows: any[] = [];
+  const rows: Record<string, unknown>[] = [];
   const chunkSize = 5;
 
   for (let i = 0; i < targetSalesmen.length; i += chunkSize) {
