@@ -47,7 +47,7 @@ export function MetricGridTwo({ rows, loading, onViewProductiveOutletDetail, onV
     <Card className="border-border/60 bg-card dark:border-zinc-800">
       <CardHeader className="py-4 px-6 border-b border-border/40 dark:border-zinc-800/40">
         <CardTitle className="text-lg font-bold tracking-tight text-foreground">
-          Salesman Metrics (Grid 2)
+          Salesman Metrics
         </CardTitle>
       </CardHeader>
       <CardContent className="p-0">
@@ -66,11 +66,11 @@ export function MetricGridTwo({ rows, loading, onViewProductiveOutletDetail, onV
               {loading ? (
                 Array.from({ length: 4 }).map((_, idx) => (
                   <TableRow key={idx} className="border-b border-border/40 dark:border-zinc-800/40 animate-pulse">
-                     <TableCell className="py-4 pl-6"><div className="h-4 w-32 bg-muted rounded" /></TableCell>
-                     <TableCell className="py-4"><div className="h-4 w-28 bg-muted rounded" /></TableCell>
-                     <TableCell className="py-4"><div className="h-4 w-28 bg-muted rounded" /></TableCell>
-                     <TableCell className="py-4"><div className="h-4 w-28 bg-muted rounded" /></TableCell>
-                     <TableCell className="py-4 pr-6"><div className="h-4 w-28 bg-muted rounded" /></TableCell>
+                    <TableCell className="py-4 pl-6"><div className="h-4 w-32 bg-muted rounded" /></TableCell>
+                    <TableCell className="py-4"><div className="h-4 w-28 bg-muted rounded" /></TableCell>
+                    <TableCell className="py-4"><div className="h-4 w-28 bg-muted rounded" /></TableCell>
+                    <TableCell className="py-4"><div className="h-4 w-28 bg-muted rounded" /></TableCell>
+                    <TableCell className="py-4 pr-6"><div className="h-4 w-28 bg-muted rounded" /></TableCell>
                   </TableRow>
                 ))
               ) : rows.length === 0 ? (

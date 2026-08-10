@@ -40,7 +40,7 @@ export function MetricGridOne({
     <Card className="border-border/60 bg-card dark:border-zinc-800">
       <CardHeader className="py-4 px-6 border-b border-border/40 dark:border-zinc-800/40">
         <CardTitle className="text-lg font-bold tracking-tight text-foreground">
-          Salesman Metrics (Grid 1)
+          Salesman Metrics
         </CardTitle>
       </CardHeader>
       <CardContent className="p-0">
@@ -75,8 +75,8 @@ export function MetricGridOne({
               ) : (
                 rows.map((row) => (
                   <TableRow
-                     key={row.salesmanId}
-                     className="border-b border-border/40 hover:bg-muted/30 dark:border-zinc-800/40 transition-colors"
+                    key={row.salesmanId}
+                    className="border-b border-border/40 hover:bg-muted/30 dark:border-zinc-800/40 transition-colors"
                   >
                     <TableCell className="font-medium text-foreground py-3.5 pl-6">
                       <div className="font-semibold">{row.salesmanName}</div>

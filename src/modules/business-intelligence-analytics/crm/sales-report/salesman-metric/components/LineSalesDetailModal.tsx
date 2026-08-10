@@ -94,8 +94,8 @@ export function LineSalesDetailModal({
   };
 
   const getProgressColor = (achievement: number, status: string) => {
-    if (status.toLowerCase().includes("no target") || status.toLowerCase().includes("none")) return "bg-muted-foreground/30";
     if (achievement >= 100) return "bg-emerald-500";
+    if (status.toLowerCase().includes("no target") || status.toLowerCase().includes("none")) return "bg-muted-foreground/30";
     if (achievement >= 50) return "bg-amber-500";
     return "bg-rose-500";
   };
@@ -235,10 +235,23 @@ export function LineSalesDetailModal({
                           {item.invoiceNumber}
                         </span>
                       </TableCell>
-                      <TableCell className="py-3 max-w-[300px] truncate" title={item.productsInReceipt}>
-                        <span className="text-xs text-foreground/80">
-                          {item.productsInReceipt}
-                        </span>
+                      <TableCell className="py-3">
+                        <div className="flex flex-col gap-1 max-w-[450px]">
+                          {item.productsInReceipt
+                            ? item.productsInReceipt
+                                .split(";")
+                                .map((p) => p.trim())
+                                .filter(Boolean)
+                                .map((product, idx) => (
+                                  <span
+                                    key={idx}
+                                    className="text-[11px] font-medium text-foreground/80 bg-muted/40 px-2 py-0.5 rounded-md border border-border/20 w-fit"
+                                  >
+                                    {product}
+                                  </span>
+                                ))
+                            : <span className="text-muted-foreground/60">-</span>}
+                        </div>
                       </TableCell>
                       <TableCell className="py-3 text-right font-mono font-bold pr-6">
                         {item.actualItemsInReceipt}

@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
 
 type GroupedItem = {
+  id: number;
   salesmanName: string;
   province: string;
   storeTypeName: string;

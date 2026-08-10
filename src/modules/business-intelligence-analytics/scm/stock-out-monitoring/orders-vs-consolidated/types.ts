@@ -19,6 +19,9 @@ export type OrdersRecord = {
   allocatedQuantity: number;
   discrepancyGap: number;
   netAmount: number;
+  customerName?: string | null;
+  customerCode?: string | null;
+  invoiceNo?: string | null;
 };
 
 export type DateRangePreset =
@@ -137,6 +140,9 @@ export type CanonicalOrder = {
   netAmount: number;
   /** true when orderStatus !== "For Consolidation" */
   isConsolidated: boolean;
+  customerName?: string | null;
+  customerCode?: string | null;
+  invoiceNo?: string | null;
 };
 
 export type Granularity =

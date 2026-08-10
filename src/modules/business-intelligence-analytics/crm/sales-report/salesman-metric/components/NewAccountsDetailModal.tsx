@@ -18,7 +18,6 @@ import {
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Loader2, Search, Calendar, UserPlus, MapPin, Milestone } from "lucide-react";
 
@@ -34,6 +33,25 @@ interface NewAccountItem {
   city?: string;
   dateEntered?: string;
   fiscalPeriod?: string;
+}
+
+function formatDateTime(dateStr?: string) {
+  if (!dateStr) return "-";
+  try {
+    const formattedStr = dateStr.includes(" ") ? dateStr.replace(" ", "T") : dateStr;
+    const dateObj = new Date(formattedStr);
+    if (isNaN(dateObj.getTime())) return dateStr;
+    
+    const mm = String(dateObj.getMonth() + 1).padStart(2, "0");
+    const dd = String(dateObj.getDate()).padStart(2, "0");
+    const yyyy = dateObj.getFullYear();
+    const hh = String(dateObj.getHours()).padStart(2, "0");
+    const min = String(dateObj.getMinutes()).padStart(2, "0");
+    
+    return `${mm}-${dd}-${yyyy} ${hh}:${min}`;
+  } catch {
+    return dateStr;
+  }
 }
 
 interface NewAccountsDetailModalProps {
@@ -170,7 +188,7 @@ export function NewAccountsDetailModal({
             </div>
 
             {/* Scrollable Table Area */}
-            <ScrollArea className="flex-1 min-h-0 border border-border/40 rounded-xl bg-card/10">
+            <div className="flex-1 overflow-y-auto border border-border/40 rounded-xl bg-card/10">
               <Table>
                 <TableHeader className="bg-muted/30 sticky top-0 z-10 backdrop-blur-sm">
                   <TableRow className="hover:bg-transparent border-b border-border/40">
@@ -183,7 +201,7 @@ export function NewAccountsDetailModal({
                 <TableBody>
                   {filteredAccounts.length > 0 ? (
                     filteredAccounts.map((item, index) => (
-                      <TableRow key={item.customerId || index} className="hover:bg-muted/20 border-border/40 group">
+                      <TableRow key={`${item.customerId || "acc"}-${index}`} className="hover:bg-muted/20 border-border/40 group">
                         <TableCell className="font-mono text-xs text-muted-foreground/50 font-bold">{index + 1}</TableCell>
                         <TableCell className="py-3">
                           <div className="flex flex-col text-left">
@@ -203,8 +221,8 @@ export function NewAccountsDetailModal({
                             </span>
                           </span>
                         </TableCell>
-                        <TableCell className="py-3 text-xs font-medium text-muted-foreground">
-                          {item.dateEntered || "N/A"}
+                        <TableCell className="py-3 text-xs font-mono font-medium text-muted-foreground">
+                          {formatDateTime(item.dateEntered)}
                         </TableCell>
                       </TableRow>
                     ))
@@ -217,7 +235,7 @@ export function NewAccountsDetailModal({
                   )}
                 </TableBody>
               </Table>
-            </ScrollArea>
+            </div>
           </>
         )}
       </DialogContent>
