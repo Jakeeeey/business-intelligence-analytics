@@ -88,11 +88,16 @@ export default function SalesmanMetricModule() {
   const [tskuSalesmanId, setTskuSalesmanId] = React.useState<number | "">("");
   const [tskuSalesmanName, setTskuSalesmanName] = React.useState<string>("");
 
-  // Fetch salesmen options on mount
+  // Fetch salesmen options when selected dates change
   React.useEffect(() => {
     async function loadLookups() {
       try {
-        const response = await fetch("/api/bia/crm/sales-report/salesman-metric?mode=lookups");
+        const queryParams = new URLSearchParams({
+          mode: "lookups",
+          startDate: filters.startDate,
+          endDate: filters.endDate,
+        });
+        const response = await fetch(`/api/bia/crm/sales-report/salesman-metric?${queryParams.toString()}`);
         const json = await response.json();
         if (json.success && Array.isArray(json.data)) {
           setSalesmen(json.data);
@@ -102,11 +107,12 @@ export default function SalesmanMetricModule() {
       }
     }
     loadLookups();
-  }, []);
+  }, [filters.startDate, filters.endDate]);
 
   // Fetch metrics data when filters change
   React.useEffect(() => {
     let active = true;
+    const controller = new AbortController();
 
     async function fetchMetrics() {
       setLoading(true);
@@ -124,13 +130,18 @@ export default function SalesmanMetricModule() {
           endDate: debouncedFilters.endDate,
         });
 
-        const res = await fetch(`/api/bia/crm/sales-report/salesman-metric?${queryParams.toString()}`);
+        const res = await fetch(`/api/bia/crm/sales-report/salesman-metric?${queryParams.toString()}`, {
+          signal: controller.signal
+        });
         const json = await res.json();
         if (active && json.success && Array.isArray(json.data)) {
           setRows(json.data);
         }
-      } catch (err) {
-        console.error("Error fetching salesman metrics:", err);
+      } catch (err: unknown) {
+        const error = err as Error;
+        if (error.name !== 'AbortError') {
+          console.error("Error fetching salesman metrics:", err);
+        }
       } finally {
         if (active) setLoading(false);
       }
@@ -140,6 +151,7 @@ export default function SalesmanMetricModule() {
 
     return () => {
       active = false;
+      controller.abort();
     };
   }, [debouncedFilters.salesmanId, debouncedFilters.startDate, debouncedFilters.endDate, salesmen]);
 

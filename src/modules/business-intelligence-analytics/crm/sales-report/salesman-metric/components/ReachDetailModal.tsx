@@ -8,7 +8,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Users } from "lucide-react";
 
@@ -16,6 +15,25 @@ interface ReachCustomer {
   customerCode: string;
   customerName: string;
   dateEntered?: string;
+}
+
+function formatDateTime(dateStr?: string) {
+  if (!dateStr) return "-";
+  try {
+    const formattedStr = dateStr.includes(" ") ? dateStr.replace(" ", "T") : dateStr;
+    const dateObj = new Date(formattedStr);
+    if (isNaN(dateObj.getTime())) return dateStr;
+    
+    const mm = String(dateObj.getMonth() + 1).padStart(2, "0");
+    const dd = String(dateObj.getDate()).padStart(2, "0");
+    const yyyy = dateObj.getFullYear();
+    const hh = String(dateObj.getHours()).padStart(2, "0");
+    const min = String(dateObj.getMinutes()).padStart(2, "0");
+    
+    return `${mm}-${dd}-${yyyy} ${hh}:${min}`;
+  } catch {
+    return dateStr;
+  }
 }
 
 interface ReachDetailModalProps {
@@ -75,7 +93,7 @@ export function ReachDetailModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px] w-full max-h-[85vh] flex flex-col overflow-hidden bg-background/95 backdrop-blur-xl border-border/40 shadow-2xl p-6">
+      <DialogContent className="sm:max-w-[700px] w-full max-h-[85vh] flex flex-col overflow-hidden bg-background/95 backdrop-blur-xl border-border/40 shadow-2xl p-6">
         <DialogHeader className="border-b border-border/40 pb-4 flex-shrink-0">
           <div className="flex justify-between items-start pr-6">
             <div>
@@ -101,7 +119,7 @@ export function ReachDetailModal({
             <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Loading reach data...</p>
           </div>
         ) : (
-          <ScrollArea className="flex-1 min-h-0 border border-border/40 rounded-xl bg-card/10 mt-4">
+          <div className="flex-1 overflow-y-auto border border-border/40 rounded-xl bg-card/10 mt-4">
             <Table>
               <TableHeader className="bg-muted/30 sticky top-0 z-10 backdrop-blur-sm">
                 <TableRow className="hover:bg-transparent border-b border-border/40">
@@ -127,13 +145,13 @@ export function ReachDetailModal({
                       <TableCell className="font-mono text-xs text-muted-foreground">{i + 1}</TableCell>
                       <TableCell className="font-mono text-xs font-medium text-foreground">{c.customerCode}</TableCell>
                       <TableCell className="text-xs font-bold text-foreground">{c.customerName}</TableCell>
-                      <TableCell className="text-xs font-medium text-foreground text-right">{c.dateEntered || "-"}</TableCell>
+                      <TableCell className="text-xs font-mono font-medium text-foreground text-right">{formatDateTime(c.dateEntered)}</TableCell>
                     </TableRow>
                   ))
                 )}
               </TableBody>
             </Table>
-          </ScrollArea>
+          </div>
         )}
       </DialogContent>
     </Dialog>
