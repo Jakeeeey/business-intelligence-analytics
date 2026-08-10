@@ -112,6 +112,7 @@ export default function SalesmanMetricModule() {
   // Fetch metrics data when filters change
   React.useEffect(() => {
     let active = true;
+    const controller = new AbortController();
 
     async function fetchMetrics() {
       setLoading(true);
@@ -129,13 +130,17 @@ export default function SalesmanMetricModule() {
           endDate: debouncedFilters.endDate,
         });
 
-        const res = await fetch(`/api/bia/crm/sales-report/salesman-metric?${queryParams.toString()}`);
+        const res = await fetch(`/api/bia/crm/sales-report/salesman-metric?${queryParams.toString()}`, {
+          signal: controller.signal
+        });
         const json = await res.json();
         if (active && json.success && Array.isArray(json.data)) {
           setRows(json.data);
         }
-      } catch (err) {
-        console.error("Error fetching salesman metrics:", err);
+      } catch (err: any) {
+        if (err.name !== 'AbortError') {
+          console.error("Error fetching salesman metrics:", err);
+        }
       } finally {
         if (active) setLoading(false);
       }
@@ -145,6 +150,7 @@ export default function SalesmanMetricModule() {
 
     return () => {
       active = false;
+      controller.abort();
     };
   }, [debouncedFilters.salesmanId, debouncedFilters.startDate, debouncedFilters.endDate, salesmen]);
 
