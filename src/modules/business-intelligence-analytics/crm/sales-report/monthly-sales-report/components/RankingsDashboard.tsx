@@ -81,7 +81,8 @@ export default function RankingsDashboard({
   // Max value for progress bars
   const maxAmount = React.useMemo(() => {
     if (activeData.length === 0) return 1;
-    return Math.max(...activeData.map((d) => d.amount));
+    const maxVal = Math.max(...activeData.map((d) => d.amount));
+    return maxVal > 0 ? maxVal : 1;
   }, [activeData]);
 
   // Navigation handlers
@@ -144,7 +145,9 @@ export default function RankingsDashboard({
                         return (
                           <div className="bg-background/95 border shadow-md rounded-lg p-2 text-xs">
                             <span className="font-bold text-foreground block mb-0.5">{item.name}</span>
-                            <span className="text-primary font-black">{formatVal(item.amount)}</span>
+                            <span className={`font-black ${item.amount < 0 ? "text-destructive" : "text-primary"}`}>
+                              {formatVal(item.amount)}
+                            </span>
                           </div>
                         );
                       }
@@ -152,8 +155,11 @@ export default function RankingsDashboard({
                     }}
                   />
                   <Bar dataKey="amount" radius={[4, 4, 0, 0]}>
-                    {topFive.map((_, idx) => (
-                      <Cell key={idx} fill={CHART_COLORS[idx % CHART_COLORS.length]} />
+                    {topFive.map((item, idx) => (
+                      <Cell
+                        key={idx}
+                        fill={item.amount < 0 ? "hsl(var(--destructive))" : CHART_COLORS[idx % CHART_COLORS.length]}
+                      />
                     ))}
                   </Bar>
                 </BarChart>
@@ -184,7 +190,7 @@ export default function RankingsDashboard({
             <div className="divide-y divide-border">
               <AnimatePresence mode="popLayout">
                 {activeData.map((item, idx) => {
-                  const percent = (item.amount / maxAmount) * 100;
+                  const percent = Math.max(0, (item.amount / maxAmount) * 100);
                   const isSelectable = tier !== "customer";
 
                   // Top 3 style customization helper
@@ -256,7 +262,9 @@ export default function RankingsDashboard({
                       </div>
 
                       <div className="flex items-center gap-1.5 shrink-0">
-                        <span className={`text-xs font-black ${idx <= 2 ? nameStyle : "text-primary"}`}>
+                        <span className={`text-xs font-black ${
+                          item.amount < 0 ? "text-destructive" : (idx <= 2 ? nameStyle : "text-primary")
+                        }`}>
                           {formatVal(item.amount)}
                         </span>
                         {isSelectable && (

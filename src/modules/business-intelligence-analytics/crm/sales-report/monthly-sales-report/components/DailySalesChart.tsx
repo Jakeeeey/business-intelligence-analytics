@@ -11,7 +11,6 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-// Self-contained currency formatter to avoid dependency errors.
 
 const formatVal = (v: number) => {
   return new Intl.NumberFormat("en-US", {
@@ -21,13 +20,31 @@ const formatVal = (v: number) => {
   }).format(v);
 };
 
-type DailySalesChartProps = {
-  data: { day: number; dateStr: string; amount: number }[];
-  monthName: string;
-  year: number;
+const formatDateRange = (fromStr: string, toStr: string) => {
+  const parse = (str: string) => {
+    if (!str) return null;
+    const parts = str.split("-").map(Number);
+    if (parts.length < 3) return null;
+    return new Date(parts[0], parts[1] - 1, parts[2]);
+  };
+
+  const fromDate = parse(fromStr);
+  const toDate = parse(toStr);
+
+  const opt: Intl.DateTimeFormatOptions = { month: "short", day: "numeric", year: "numeric" };
+  const fromFmt = fromDate ? fromDate.toLocaleDateString("en-US", opt) : fromStr;
+  const toFmt = toDate ? toDate.toLocaleDateString("en-US", opt) : toStr;
+
+  return `${fromFmt} – ${toFmt}`;
 };
 
-export default function DailySalesChart({ data, monthName, year }: DailySalesChartProps) {
+type DailySalesChartProps = {
+  data: { dateKey: string; label: string; dateStr: string; amount: number }[];
+  dateFrom: string;
+  dateTo: string;
+};
+
+export default function DailySalesChart({ data, dateFrom, dateTo }: DailySalesChartProps) {
   const totalPeriodSales = React.useMemo(() => {
     return data.reduce((acc, item) => acc + item.amount, 0);
   }, [data]);
@@ -40,7 +57,7 @@ export default function DailySalesChart({ data, monthName, year }: DailySalesCha
             Daily Sales Trend
           </CardTitle>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Month-to-Date performance for {monthName} {year}
+            Performance for {formatDateRange(dateFrom, dateTo)}
           </p>
         </div>
         <div className="text-right">
@@ -65,7 +82,7 @@ export default function DailySalesChart({ data, monthName, year }: DailySalesCha
               </defs>
               <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-muted/40" />
               <XAxis
-                dataKey="day"
+                dataKey="label"
                 tickLine={false}
                 axisLine={false}
                 tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
@@ -86,7 +103,7 @@ export default function DailySalesChart({ data, monthName, year }: DailySalesCha
                         <span className="font-bold text-muted-foreground block mb-1">
                           {item.dateStr}
                         </span>
-                        <span className="text-primary font-black text-sm">
+                        <span className={`font-black text-sm ${item.amount < 0 ? "text-destructive" : "text-primary"}`}>
                           {formatVal(item.amount)}
                         </span>
                       </div>
