@@ -440,6 +440,9 @@ export function useOrderedvsConsolidated() {
         e.totalAllocated += r.allocatedQuantity;
         e.netAmount += r.netAmount;
         e.productIds.add(r.productId);
+        if (!e.customerName && r.customerName) e.customerName = r.customerName;
+        if (!e.customerCode && r.customerCode) e.customerCode = r.customerCode;
+        if (!e.invoiceNo && r.invoiceNo) e.invoiceNo = r.invoiceNo;
       } else {
         map.set(r.orderId, {
           orderId: r.orderId,
@@ -453,6 +456,9 @@ export function useOrderedvsConsolidated() {
           totalAllocated: r.allocatedQuantity,
           netAmount: r.netAmount,
           isConsolidated: r.orderStatus !== PENDING_STATUS,
+          customerName: r.customerName ?? null,
+          customerCode: r.customerCode ?? null,
+          invoiceNo: r.invoiceNo ?? null,
           productIds: new Set([r.productId]),
         });
       }
@@ -471,6 +477,9 @@ export function useOrderedvsConsolidated() {
         totalAllocated: o.totalAllocated,
         netAmount: o.netAmount,
         isConsolidated: o.isConsolidated,
+        customerName: o.customerName,
+        customerCode: o.customerCode,
+        invoiceNo: o.invoiceNo,
       }))
       .sort((a, b) => b.orderDate.localeCompare(a.orderDate));
   }, [filteredData]);
