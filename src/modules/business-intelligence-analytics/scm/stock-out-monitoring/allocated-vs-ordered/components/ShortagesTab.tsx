@@ -137,17 +137,16 @@ export function ShortagesTab({ shortageSummaries }: Props) {
           <div className="overflow-x-auto">
             <table className="w-full text-sm" style={{ tableLayout: "fixed" }}>
               <colgroup>
-                <col style={{ width: 110 }} /> {/* Order No */}
-                <col style={{ width: 100 }} /> {/* Date */}
-                <col style={{ width: 130 }} /> {/* Status */}
+                <col style={{ width: 110 }} />
+                <col style={{ width: 100 }} />
+                <col style={{ width: 130 }} />
                 <col style={{ width: "auto" }} />
-                {/* Supplier */}
-                <col style={{ width: 80 }} /> {/* Products */}
-                <col style={{ width: 90 }} /> {/* Ordered */}
-                <col style={{ width: 95 }} /> {/* Allocated */}
-                <col style={{ width: 80 }} /> {/* Gap */}
-                <col style={{ width: 80 }} /> {/* Rate */}
-                <col style={{ width: 110 }} /> {/* Net Amount */}
+                <col style={{ width: 80 }} />
+                <col style={{ width: 90 }} />
+                <col style={{ width: 95 }} />
+                <col style={{ width: 80 }} />
+                <col style={{ width: 80 }} />
+                <col style={{ width: 110 }} />
               </colgroup>
               <thead>
                 <tr className="border-b  bg-muted/30">
