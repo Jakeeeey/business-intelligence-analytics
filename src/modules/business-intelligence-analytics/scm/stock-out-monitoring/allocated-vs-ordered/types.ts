@@ -8,6 +8,10 @@ export type AllocatedOrderedRecord = {
   orderStatus: string;
   supplierId: number;
   supplierName: string;
+  customerCode: string;
+  customerName: string;
+  customer_code?: string;
+  customer_name?: string;
   productId: number;
   productName: string;
   productCode: string | null;
@@ -105,6 +109,20 @@ export type SupplierAllocationSummary = {
   allocationGap: number;
   allocationRate: number;
   /** Unique deduplicated orders from this supplier */
+  orderCount: number;
+  netAmount: number;
+  rank: number;
+  percentShare: number;
+};
+
+export type CustomerAllocationSummary = {
+  customerCode: string;
+  customerName: string;
+  totalOrdered: number;
+  totalAllocated: number;
+  allocationGap: number;
+  allocationRate: number;
+  /** Unique deduplicated orders from this customer */
   orderCount: number;
   netAmount: number;
   rank: number;

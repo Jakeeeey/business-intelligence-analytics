@@ -32,7 +32,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type {
-  SupplierAllocationSummary,
+  CustomerAllocationSummary,
   AllocatedOrderedRecord,
 } from "../types";
 
@@ -199,8 +199,8 @@ const GroupedBarTooltip = React.memo(function GroupedBarTooltip({
 }) {
   if (!active || !payload?.length) return null;
   const name =
-    (payload[0] as unknown as { payload: { supplierName: string } })?.payload
-      ?.supplierName ?? "";
+    (payload[0] as unknown as { payload: { customerName: string } })?.payload
+      ?.customerName ?? "";
   return (
     <div className="rounded-lg border bg-background p-3 shadow-md text-sm min-w-44 space-y-1 pointer-events-none">
       <p className="font-semibold leading-snug line-clamp-2">{name}</p>
@@ -287,32 +287,32 @@ function Pagination({
 
 /* ─── Main Component ──────────────────────────────────────────── */
 type Props = {
-  supplierSummaries: SupplierAllocationSummary[];
+  customerSummaries: CustomerAllocationSummary[];
   allRecords: AllocatedOrderedRecord[];
 };
 
-export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
+export function CustomersTab({ customerSummaries, allRecords }: Props) {
   // const { theme } = useTheme();
   // const isDark = theme === "dark";
   // const barColor = isDark ? chartColorsDark[0] : chartColors[0];
 
   /* ─── Table state ── */
   const [sortKey, setSortKey] =
-    React.useState<keyof SupplierAllocationSummary>("allocationGap");
+    React.useState<keyof CustomerAllocationSummary>("allocationGap");
   const [sortDir, setSortDir] = React.useState<"asc" | "desc">("desc");
   const [currentPage, setCurrentPage] = React.useState(1);
   const [itemsPerPage, setItemsPerPage] = React.useState(10);
 
   /* ─── Chart state ── */
   const [hoveredBar, setHoveredBar] = React.useState<string | null>(null);
-  const [selectedSupplier, setSelectedSupplier] = React.useState<string | null>(
+  const [selectedCustomer, setSelectedCustomer] = React.useState<string | null>(
     null,
   );
-  const [modalSupplier, setModalSupplier] =
-    React.useState<SupplierAllocationSummary | null>(null);
+  const [modalCustomer, setModalCustomer] =
+    React.useState<CustomerAllocationSummary | null>(null);
 
   /* ─── Drill-down state ── */
-  const [drillDownSupplier, setDrillDownSupplier] = React.useState<
+  const [drillDownCustomer, setDrillDownCustomer] = React.useState<
     string | null
   >(null);
   const [searchQuery, setSearchQuery] = React.useState("");
@@ -320,7 +320,7 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
   const [showFullyAllocated] = React.useState<boolean>(true);
 
   const handleSort = React.useCallback(
-    (key: keyof SupplierAllocationSummary) => {
+    (key: keyof CustomerAllocationSummary) => {
       if (key === sortKey) {
         setSortDir((d) => (d === "asc" ? "desc" : "asc"));
       } else {
@@ -334,13 +334,13 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
 
   /* ─── Computed data ── */
   const sorted = React.useMemo(() => {
-    let data = supplierSummaries;
-    // Apply search (supplier name)
+    let data = customerSummaries;
+    // Apply search (Customer name)
     if (appliedSearch && appliedSearch.trim() !== "") {
       const q = appliedSearch.trim().toLowerCase();
-      data = data.filter((s) => s.supplierName.toLowerCase().includes(q));
+      data = data.filter((s) => s.customerName.toLowerCase().includes(q));
     }
-    // Exclude fully allocated suppliers when toggle is off
+    // Exclude fully allocated Customers when toggle is off
     if (!showFullyAllocated) {
       data = data.filter((s) => !(s.allocationGap === 0 && s.totalOrdered > 0));
     }
@@ -353,24 +353,24 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
         ? String(va).localeCompare(String(vb))
         : String(vb).localeCompare(String(va));
     });
-  }, [supplierSummaries, sortKey, sortDir, appliedSearch, showFullyAllocated]);
+  }, [customerSummaries, sortKey, sortDir, appliedSearch, showFullyAllocated]);
 
   const top10ByGap = React.useMemo(
     () =>
-      supplierSummaries
+      customerSummaries
         .filter((s) => s.allocationGap > 0)
         .sort((a, b) => b.allocationGap - a.allocationGap)
         .slice(0, 10),
-    [supplierSummaries],
+    [customerSummaries],
   );
   const top10ByOrders = React.useMemo(
-    () => supplierSummaries.slice(0, 10),
-    [supplierSummaries],
+    () => customerSummaries.slice(0, 10),
+    [customerSummaries],
   );
 
-  /* ─── Drill-down products for selected supplier ── */
+  /* ─── Drill-down products for selected Customer ── */
   const drillProducts = React.useMemo(() => {
-    if (!drillDownSupplier) return [];
+    if (!drillDownCustomer) return [];
     const map = new Map<
       number,
       {
@@ -383,7 +383,7 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
       }
     >();
     for (const r of allRecords) {
-      if (r.supplierName !== drillDownSupplier) continue;
+      if (r.customerName !== drillDownCustomer) continue;
       const e = map.get(r.productId);
       if (e) {
         e.totalOrdered += r.orderedQuantity;
@@ -407,13 +407,13 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
           p.totalOrdered > 0 ? (p.totalAllocated / p.totalOrdered) * 100 : 0,
       }))
       .sort((a, b) => b.allocationGap - a.allocationGap);
-  }, [drillDownSupplier, allRecords]);
+  }, [drillDownCustomer, allRecords]);
   // const top10ByRate = React.useMemo(
   //   () =>
-  //     [...supplierSummaries]
+  //     [...customerSummaries]
   //       .sort((a, b) => a.allocationRate - b.allocationRate)
   //       .slice(0, 10),
-  //   [supplierSummaries],
+  //   [customerSummaries],
   // );
 
   const totalPages = Math.ceil(sorted.length / itemsPerPage);
@@ -433,11 +433,11 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
 
   const openModal = React.useCallback(
     (name: string) => {
-      setSelectedSupplier((prev) => (prev === name ? null : name));
-      const found = supplierSummaries.find((s) => s.supplierName === name);
-      if (found) setModalSupplier(found);
+      setSelectedCustomer((prev) => (prev === name ? null : name));
+      const found = customerSummaries.find((s) => s.customerName === name);
+      if (found) setModalCustomer(found);
     },
-    [supplierSummaries],
+    [customerSummaries],
   );
 
   const cellStyle = React.useCallback(
@@ -452,7 +452,7 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
     [hoveredBar],
   );
 
-  const sortIcon = (col: keyof SupplierAllocationSummary) => (
+  const sortIcon = (col: keyof CustomerAllocationSummary) => (
     <span className="ml-1 opacity-50 text-xs">
       {sortKey === col ? (sortDir === "asc" ? "↑" : "↓") : "↕"}
     </span>
@@ -489,11 +489,11 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
   //   return Math.max(8, Math.min(40, Math.round(orderedBarSize * 0.28)));
   // }, [orderedBarSize]);
 
-  if (supplierSummaries.length === 0) {
+  if (customerSummaries.length === 0) {
     return (
       <Card className="border-muted ">
         <CardContent className="py-12 text-center text-sm text-muted-foreground">
-          No supplier data available. Generate a report to see results.
+          No Customer data available. Generate a report to see results.
         </CardContent>
       </Card>
     );
@@ -501,12 +501,12 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
 
   return (
     <div className="space-y-4">
-      {/* ── Chart 1: Allocation Gap by Supplier ── */}
+      {/* ── Chart 1: Allocation Gap by Customer ── */}
       {top10ByGap.length > 0 && (
         <Card className="border-muted ">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">
-              Allocation Gap by Supplier
+              Allocation Gap by Customer
             </CardTitle>
             <CardDescription>
               Units short-allocated — click for insights
@@ -536,7 +536,7 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
                 />
                 <YAxis
                   type="category"
-                  dataKey="supplierName"
+                  dataKey="customerName"
                   width={155}
                   tick={(p) => <CustomYAxisTick {...p} onClick={openModal} />}
                   tickLine={false}
@@ -550,7 +550,7 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
                         top10ByGap as unknown as Array<Record<string, unknown>>
                       }
                       valueKey="allocationGap"
-                      nameKey="supplierName"
+                      nameKey="customerName"
                       valueLabel="Allocation Gap"
                     />
                   )}
@@ -559,9 +559,9 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
                   dataKey="allocationGap"
                   name="Allocation Gap"
                   radius={[0, 4, 4, 0]}
-                  onMouseEnter={(d) => setHoveredBar(`gap::${d.supplierName}`)}
+                  onMouseEnter={(d) => setHoveredBar(`gap::${d.customerName}`)}
                   onMouseLeave={() => setHoveredBar(null)}
-                  onClick={(d) => openModal(d.supplierName)}
+                  onClick={(d) => openModal(d.customerName)}
                   cursor="pointer"
                 >
                   <LabelList
@@ -578,12 +578,12 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
                         key={i}
                         fill={severity}
                         opacity={
-                          selectedSupplier &&
-                          selectedSupplier !== e.supplierName
+                          selectedCustomer &&
+                          selectedCustomer !== e.customerName
                             ? 0.25
                             : 1
                         }
-                        style={cellStyle("gap", e.supplierName)}
+                        style={cellStyle("gap", e.customerName)}
                       />
                     );
                   })}
@@ -594,14 +594,14 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
         </Card>
       )}
 
-      {/* ── Chart 2: Ordered vs Allocated by Supplier ── */}
+      {/* ── Chart 2: Ordered vs Allocated by Customer ── */}
       <Card className="border-muted ">
         <CardHeader className="pb-2">
           <CardTitle className="text-base">
-            Ordered vs Allocated by Supplier
+            Ordered vs Allocated by Customer
           </CardTitle>
           <CardDescription>
-            Side-by-side comparison of top 10 suppliers — click for insights
+            Side-by-side comparison of top 10 Customers — click for insights
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -618,7 +618,7 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
                   strokeOpacity={0.1}
                 />
                 <XAxis
-                  dataKey="supplierName"
+                  dataKey="customerName"
                   tick={(p) => <CustomXAxisTick {...p} onClick={openModal} />}
                   tickLine={false}
                   axisLine={{ stroke: "currentColor", strokeOpacity: 0.2 }}
@@ -643,9 +643,9 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
                   fill="#6366f1"
                   radius={[4, 4, 0, 0]}
                   barSize={orderedBarSize}
-                  onMouseEnter={(d) => setHoveredBar(`ord::${d.supplierName}`)}
+                  onMouseEnter={(d) => setHoveredBar(`ord::${d.customerName}`)}
                   onMouseLeave={() => setHoveredBar(null)}
-                  onClick={(d) => openModal(d.supplierName)}
+                  onClick={(d) => openModal(d.customerName)}
                   cursor="pointer"
                 >
                   {top10ByOrders.map((e, i) => (
@@ -653,7 +653,7 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
                       key={i}
                       fill="#6366f1"
                       opacity={
-                        selectedSupplier && selectedSupplier !== e.supplierName
+                        selectedCustomer && selectedCustomer !== e.customerName
                           ? 0.25
                           : 1
                       }
@@ -666,9 +666,9 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
                   fill="#10b981"
                   radius={[4, 4, 0, 0]}
                   barSize={orderedBarSize}
-                  onMouseEnter={(d) => setHoveredBar(`alc::${d.supplierName}`)}
+                  onMouseEnter={(d) => setHoveredBar(`alc::${d.customerName}`)}
                   onMouseLeave={() => setHoveredBar(null)}
-                  onClick={(d) => openModal(d.supplierName)}
+                  onClick={(d) => openModal(d.customerName)}
                   cursor="pointer"
                 >
                   {top10ByOrders.map((e, i) => (
@@ -676,7 +676,7 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
                       key={i}
                       fill="#10b981"
                       opacity={
-                        selectedSupplier && selectedSupplier !== e.supplierName
+                        selectedCustomer && selectedCustomer !== e.customerName
                           ? 0.25
                           : 1
                       }
@@ -705,14 +705,14 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
         </CardContent>
       </Card>
 
-      {/* ── Chart 3: Allocation Rate by Supplier (lowest first) ── */}
+      {/* ── Chart 3: Allocation Rate by Customer (lowest first) ── */}
       {/* <Card className="border-muted ">
         <CardHeader className="pb-2">
           <CardTitle className="text-base">
-            Allocation Rate by Supplier
+            Allocation Rate by Customer
           </CardTitle>
           <CardDescription>
-            Suppliers with lowest fill-rate (most under-allocated) — click for
+            Customers with lowest fill-rate (most under-allocated) — click for
             insights
           </CardDescription>
         </CardHeader>
@@ -741,7 +741,7 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
               />
               <YAxis
                 type="category"
-                dataKey="supplierName"
+                dataKey="customerName"
                 width={155}
                 tick={(p) => <CustomYAxisTick {...p} onClick={openModal} />}
                 tickLine={false}
@@ -757,9 +757,9 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
                 dataKey="allocationRate"
                 name="Allocation Rate %"
                 radius={[0, 4, 4, 0]}
-                onMouseEnter={(d) => setHoveredBar(`rate::${d.supplierName}`)}
+                onMouseEnter={(d) => setHoveredBar(`rate::${d.customerName}`)}
                 onMouseLeave={() => setHoveredBar(null)}
-                onClick={(d) => openModal(d.supplierName)}
+                onClick={(d) => openModal(d.customerName)}
                 cursor="pointer"
               >
                 {top10ByRate.map((e, i) => (
@@ -773,11 +773,11 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
                           : "#ef4444"
                     }
                     opacity={
-                      selectedSupplier && selectedSupplier !== e.supplierName
+                      selectedCustomer && selectedCustomer !== e.customerName
                         ? 0.25
                         : 1
                     }
-                    style={cellStyle("rate", e.supplierName)}
+                    style={cellStyle("rate", e.customerName)}
                   />
                 ))}
               </Bar>
@@ -786,13 +786,13 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
         </CardContent>
       </Card> */}
 
-      {/* ── Supplier Table ── */}
+      {/* ── Customer Table ── */}
       <Card className="border-muted ">
         <CardHeader className="pb-2">
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base">
-                Suppliers by Allocation — {supplierSummaries.length} suppliers
+                Customers by Allocation — {customerSummaries.length} Customers
               </CardTitle>
               <span className="text-xs text-muted-foreground">
                 Sorted by:{" "}
@@ -802,7 +802,7 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
 
             <div className="flex items-center gap-2">
               <Input
-                placeholder="Search suppliers..."
+                placeholder="Search Customers..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="h-8 w-64"
@@ -851,9 +851,9 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
                 <tr className="border-b  bg-muted/30">
                   <th
                     className="py-3 pl-4 px-2 text-left font-medium text-muted-foreground cursor-pointer hover:text-foreground"
-                    onClick={() => handleSort("supplierName")}
+                    onClick={() => handleSort("customerName")}
                   >
-                    Supplier {sortIcon("supplierName")}
+                    Customer {sortIcon("customerName")}
                   </th>
                   <th
                     className="py-3 px-2 text-right font-medium text-muted-foreground cursor-pointer hover:text-foreground"
@@ -904,28 +904,28 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
                   const isHighGap = row.allocationGap > 0;
                   const isFullyAllocated = row.allocationGap === 0;
                   return (
-                    <React.Fragment key={row.supplierId}>
+                    <React.Fragment key={row.customerCode}>
                       <tr
                         className={`border-b dark:border-zinc-800 hover:bg-muted/30 transition-colors ${isHighGap && row.percentShare > 10 ? "bg-rose-50/40 dark:bg-rose-950/20" : ""} ${isFullyAllocated ? "bg-emerald-50/30 dark:bg-emerald-950/10" : ""}`}
                       >
                         <td className="py-2.5 pl-4 px-2 font-medium">
                           <button
                             className="block truncate text-left w-full hover:text-primary transition-colors"
-                            title={`${row.supplierName} — click to view products`}
+                            title={`${row.customerName} — click to view products`}
                             onClick={() =>
-                              setDrillDownSupplier((prev) =>
-                                prev === row.supplierName
+                              setDrillDownCustomer((prev) =>
+                                prev === row.customerName
                                   ? null
-                                  : row.supplierName,
+                                  : row.customerName,
                               )
                             }
                           >
-                            {drillDownSupplier === row.supplierName ? (
+                            {drillDownCustomer === row.customerName ? (
                               <span className="text-primary">
-                                ▾ {row.supplierName}
+                                ▾ {row.customerName}
                               </span>
                             ) : (
-                              row.supplierName
+                              row.customerName
                             )}
                           </button>
                         </td>
@@ -964,16 +964,17 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
                           ₱{numFmt(row.netAmount)}
                         </td>
                       </tr>
-                      {drillDownSupplier === row.supplierName && (
+                      {/* ── Drill-down row ── */}
+                      {drillDownCustomer === row.customerName && (
                         <tr
-                          key={`drill-${row.supplierId}`}
+                          key={`drill-${row.customerCode}`}
                           className="bg-muted/20 dark:bg-white/5"
                         >
                           <td colSpan={8} className="px-4 py-3">
                             <p className="text-xs font-semibold text-muted-foreground mb-2">
                               Products for{" "}
                               <span className="text-foreground">
-                                {row.supplierName}
+                                {row.customerName}
                               </span>{" "}
                               ({drillProducts.length} SKUs)
                             </p>
@@ -1105,65 +1106,65 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
         </div>
       </Card>
 
-      {/* ── Supplier Modal ── */}
+      {/* ── Customer Modal ── */}
       <Dialog
-        open={!!modalSupplier}
+        open={!!modalCustomer}
         onOpenChange={(o) => {
           if (!o) {
-            setModalSupplier(null);
-            setSelectedSupplier(null);
+            setModalCustomer(null);
+            setSelectedCustomer(null);
           }
         }}
       >
         <DialogContent className="max-w-md ">
           <DialogHeader>
-            <DialogTitle>{modalSupplier?.supplierName}</DialogTitle>
-            <DialogDescription>Supplier allocation insights</DialogDescription>
+            <DialogTitle>{modalCustomer?.customerName}</DialogTitle>
+            <DialogDescription>Customer allocation insights</DialogDescription>
           </DialogHeader>
-          {modalSupplier && (
+          {modalCustomer && (
             <div className="space-y-0.5 pt-1">
               <InsightStat
                 label="Total Ordered"
-                value={numFmt(modalSupplier.totalOrdered)}
+                value={numFmt(modalCustomer.totalOrdered)}
               />
               <InsightStat
                 label="Total Allocated"
-                value={numFmt(modalSupplier.totalAllocated)}
+                value={numFmt(modalCustomer.totalAllocated)}
                 color="text-emerald-600 dark:text-emerald-400"
               />
               <InsightStat
                 label="Allocation Gap"
-                value={numFmt(modalSupplier.allocationGap)}
+                value={numFmt(modalCustomer.allocationGap)}
                 color={
-                  modalSupplier.allocationGap > 0
+                  modalCustomer.allocationGap > 0
                     ? "text-rose-600 dark:text-rose-400"
                     : "text-emerald-600 dark:text-emerald-400"
                 }
               />
               <InsightStat
                 label="Allocation Rate"
-                value={pctFmt(modalSupplier.allocationRate)}
+                value={pctFmt(modalCustomer.allocationRate)}
                 color={
-                  modalSupplier.allocationRate >= 90
+                  modalCustomer.allocationRate >= 90
                     ? "text-emerald-600 dark:text-emerald-400"
-                    : modalSupplier.allocationRate >= 70
+                    : modalCustomer.allocationRate >= 70
                       ? "text-amber-600 dark:text-amber-400"
                       : "text-rose-600 dark:text-rose-400"
                 }
               />
               <InsightStat
                 label="Order Count"
-                value={numFmt(modalSupplier.orderCount)}
+                value={numFmt(modalCustomer.orderCount)}
               />
               <InsightStat
                 label="Net Amount"
-                value={`₱${numFmt(modalSupplier.netAmount)}`}
+                value={`₱${numFmt(modalCustomer.netAmount)}`}
               />
               <InsightStat
                 label="Gap Share"
-                value={pctFmt(modalSupplier.percentShare)}
+                value={pctFmt(modalCustomer.percentShare)}
               />
-              <InsightStat label="Rank" value={`#${modalSupplier.rank}`} />
+              <InsightStat label="Rank" value={`#${modalCustomer.rank}`} />
             </div>
           )}
         </DialogContent>
