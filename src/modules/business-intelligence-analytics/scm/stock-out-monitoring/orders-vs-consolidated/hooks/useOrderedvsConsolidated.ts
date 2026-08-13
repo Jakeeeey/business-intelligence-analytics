@@ -103,6 +103,7 @@ function getDefaultFilters(): OrdersFilters {
     brands: [],
     categories: [],
     statuses: [],
+    customers: [],
   };
 }
 
@@ -307,6 +308,10 @@ export function useOrderedvsConsolidated() {
       filtered = filtered.filter((r) =>
         filters.statuses.includes(r.orderStatus),
       );
+    if (filters.customers.length > 0)
+      filtered = filtered.filter((r) =>
+        filters.customers.includes(r.customerName || "Unknown Customer"),
+      );
 
     setFilteredData(filtered);
   }, [
@@ -317,6 +322,7 @@ export function useOrderedvsConsolidated() {
     filters.brands,
     filters.categories,
     filters.statuses,
+    filters.customers,
   ]);
 
   // ── Date-only filtered data (base for faceted counts) ──────────────────
@@ -364,9 +370,16 @@ export function useOrderedvsConsolidated() {
         .sort(),
     [dateFilteredData],
   );
+  const uniqueCustomers = React.useMemo(
+    () =>
+      [...new Set(dateFilteredData.map((r) => r.customerName || "Unknown Customer"))]
+        .filter(Boolean)
+        .sort(),
+    [dateFilteredData],
+  );
 
   const supplierCounts = React.useMemo(() => {
-    // faceted: filter by brands + categories + statuses (NOT suppliers)
+    // faceted: filter by brands + categories + statuses + customers (NOT suppliers)
     let base = dateFilteredData;
     if (filters.brands.length > 0)
       base = base.filter((r) => filters.brands.includes(r.brandName));
@@ -374,14 +387,16 @@ export function useOrderedvsConsolidated() {
       base = base.filter((r) => filters.categories.includes(r.categoryName));
     if (filters.statuses.length > 0)
       base = base.filter((r) => filters.statuses.includes(r.orderStatus));
+    if (filters.customers.length > 0)
+      base = base.filter((r) => filters.customers.includes(r.customerName || "Unknown Customer"));
     const counts: Record<string, number> = {};
     for (const r of base)
       counts[r.supplierName] = (counts[r.supplierName] || 0) + 1;
     return counts;
-  }, [dateFilteredData, filters.brands, filters.categories, filters.statuses]);
+  }, [dateFilteredData, filters.brands, filters.categories, filters.statuses, filters.customers]);
 
   const brandCounts = React.useMemo(() => {
-    // faceted: filter by suppliers + categories + statuses (NOT brands)
+    // faceted: filter by suppliers + categories + statuses + customers (NOT brands)
     let base = dateFilteredData;
     if (filters.suppliers.length > 0)
       base = base.filter((r) => filters.suppliers.includes(r.supplierName));
@@ -389,6 +404,8 @@ export function useOrderedvsConsolidated() {
       base = base.filter((r) => filters.categories.includes(r.categoryName));
     if (filters.statuses.length > 0)
       base = base.filter((r) => filters.statuses.includes(r.orderStatus));
+    if (filters.customers.length > 0)
+      base = base.filter((r) => filters.customers.includes(r.customerName || "Unknown Customer"));
     const counts: Record<string, number> = {};
     for (const r of base) counts[r.brandName] = (counts[r.brandName] || 0) + 1;
     return counts;
@@ -397,10 +414,11 @@ export function useOrderedvsConsolidated() {
     filters.suppliers,
     filters.categories,
     filters.statuses,
+    filters.customers,
   ]);
 
   const categoryCounts = React.useMemo(() => {
-    // faceted: filter by suppliers + brands + statuses (NOT categories)
+    // faceted: filter by suppliers + brands + statuses + customers (NOT categories)
     let base = dateFilteredData;
     if (filters.suppliers.length > 0)
       base = base.filter((r) => filters.suppliers.includes(r.supplierName));
@@ -408,14 +426,16 @@ export function useOrderedvsConsolidated() {
       base = base.filter((r) => filters.brands.includes(r.brandName));
     if (filters.statuses.length > 0)
       base = base.filter((r) => filters.statuses.includes(r.orderStatus));
+    if (filters.customers.length > 0)
+      base = base.filter((r) => filters.customers.includes(r.customerName || "Unknown Customer"));
     const counts: Record<string, number> = {};
     for (const r of base)
       counts[r.categoryName] = (counts[r.categoryName] || 0) + 1;
     return counts;
-  }, [dateFilteredData, filters.suppliers, filters.brands, filters.statuses]);
+  }, [dateFilteredData, filters.suppliers, filters.brands, filters.statuses, filters.customers]);
 
   const statusCounts = React.useMemo(() => {
-    // faceted: filter by suppliers + brands + categories (NOT statuses)
+    // faceted: filter by suppliers + brands + categories + customers (NOT statuses)
     let base = dateFilteredData;
     if (filters.suppliers.length > 0)
       base = base.filter((r) => filters.suppliers.includes(r.supplierName));
@@ -423,11 +443,32 @@ export function useOrderedvsConsolidated() {
       base = base.filter((r) => filters.brands.includes(r.brandName));
     if (filters.categories.length > 0)
       base = base.filter((r) => filters.categories.includes(r.categoryName));
+    if (filters.customers.length > 0)
+      base = base.filter((r) => filters.customers.includes(r.customerName || "Unknown Customer"));
     const counts: Record<string, number> = {};
     for (const r of base)
       counts[r.orderStatus] = (counts[r.orderStatus] || 0) + 1;
     return counts;
-  }, [dateFilteredData, filters.suppliers, filters.brands, filters.categories]);
+  }, [dateFilteredData, filters.suppliers, filters.brands, filters.categories, filters.customers]);
+
+  const customerCounts = React.useMemo(() => {
+    // faceted: filter by suppliers + brands + categories + statuses (NOT customers)
+    let base = dateFilteredData;
+    if (filters.suppliers.length > 0)
+      base = base.filter((r) => filters.suppliers.includes(r.supplierName));
+    if (filters.brands.length > 0)
+      base = base.filter((r) => filters.brands.includes(r.brandName));
+    if (filters.categories.length > 0)
+      base = base.filter((r) => filters.categories.includes(r.categoryName));
+    if (filters.statuses.length > 0)
+      base = base.filter((r) => filters.statuses.includes(r.orderStatus));
+    const counts: Record<string, number> = {};
+    for (const r of base) {
+      const cust = r.customerName || "Unknown Customer";
+      counts[cust] = (counts[cust] || 0) + 1;
+    }
+    return counts;
+  }, [dateFilteredData, filters.suppliers, filters.brands, filters.categories, filters.statuses]);
 
   // ── Canonical orders (deduplicated) ───────────────────────────────────────
   const canonicalOrders = React.useMemo<CanonicalOrder[]>(() => {
@@ -927,9 +968,11 @@ export function useOrderedvsConsolidated() {
     uniqueBrands,
     uniqueCategories,
     uniqueStatuses,
+    uniqueCustomers,
     supplierCounts,
     brandCounts,
     categoryCounts,
     statusCounts,
+    customerCounts,
   };
 }

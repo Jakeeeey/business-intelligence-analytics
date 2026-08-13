@@ -36,10 +36,12 @@ export default function OrderedvsConsolidatedModule() {
         uniqueBrands={hook.uniqueBrands}
         uniqueCategories={hook.uniqueCategories}
         uniqueStatuses={hook.uniqueStatuses}
+        uniqueCustomers={hook.uniqueCustomers}
         supplierCounts={hook.supplierCounts}
         brandCounts={hook.brandCounts}
         categoryCounts={hook.categoryCounts}
         statusCounts={hook.statusCounts}
+        customerCounts={hook.customerCounts}
       />
 
       {/* Data loaded */}

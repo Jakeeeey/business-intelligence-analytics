@@ -55,6 +55,7 @@ export type OrdersFilters = {
   brands: string[];
   categories: string[];
   statuses: string[];
+  customers: string[];
 };
 
 export type OrdersKpis = {
