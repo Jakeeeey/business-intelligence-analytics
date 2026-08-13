@@ -127,6 +127,17 @@ export type SupplierOrdersSummary = {
   percentShare: number;
 };
 
+export type CustomerOrdersSummary = {
+  customerName: string;
+  totalOrders: number;
+  totalConsolidated: number;
+  pendingOrders: number;
+  totalNetAmount: number;
+  totalOrdered: number;
+  rank: number;
+  percentShare: number;
+};
+
 /** Canonical (deduplicated) order-level view */
 export type CanonicalOrder = {
   orderId: number;

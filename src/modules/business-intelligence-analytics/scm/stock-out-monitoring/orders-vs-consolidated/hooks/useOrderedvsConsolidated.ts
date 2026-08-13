@@ -10,6 +10,7 @@ import type {
   OrdersByPeriod,
   ProductOrdersSummary,
   SupplierOrdersSummary,
+  CustomerOrdersSummary,
   CanonicalOrder,
   Granularity,
   DateRangePreset,
@@ -716,6 +717,60 @@ export function useOrderedvsConsolidated() {
     }));
   }, [filteredData]);
 
+  // ── Customer summaries ─────────────────────────────────────────────────────
+  const customerSummaries = React.useMemo<CustomerOrdersSummary[]>(() => {
+    const map = new Map<
+      string,
+      Omit<CustomerOrdersSummary, "rank" | "percentShare"> & {
+        allOrderIds: Set<number>;
+        consolidatedOrderIds: Set<number>;
+      }
+    >();
+
+    for (const r of filteredData) {
+      const isConsolidated = r.orderStatus !== PENDING_STATUS;
+      const key = r.customerName || "Unknown Customer";
+      const e = map.get(key);
+      if (e) {
+        e.totalOrdered += r.orderedQuantity;
+        e.totalNetAmount += r.netAmount;
+        e.allOrderIds.add(r.orderId);
+        if (isConsolidated) e.consolidatedOrderIds.add(r.orderId);
+      } else {
+        map.set(key, {
+          customerName: key,
+          totalOrders: 1,
+          totalConsolidated: isConsolidated ? 1 : 0,
+          pendingOrders: isConsolidated ? 0 : 1,
+          totalNetAmount: r.netAmount,
+          totalOrdered: r.orderedQuantity,
+          allOrderIds: new Set([r.orderId]),
+          consolidatedOrderIds: new Set(isConsolidated ? [r.orderId] : []),
+        });
+      }
+    }
+
+    const list = [...map.values()].map((s) => ({
+      customerName: s.customerName,
+      totalOrders: s.allOrderIds.size,
+      totalConsolidated: s.consolidatedOrderIds.size,
+      pendingOrders: s.allOrderIds.size - s.consolidatedOrderIds.size,
+      totalNetAmount: s.totalNetAmount,
+      totalOrdered: s.totalOrdered,
+      rank: 0,
+      percentShare: 0,
+    }));
+
+    list.sort((a, b) => b.totalOrders - a.totalOrders);
+    const totalOrders = list.reduce((s, cust) => s + cust.totalOrders, 0);
+
+    return list.map((s, i) => ({
+      ...s,
+      rank: i + 1,
+      percentShare: totalOrders > 0 ? (s.totalOrders / totalOrders) * 100 : 0,
+    }));
+  }, [filteredData]);
+
   // ── Time-series ───────────────────────────────────────────────────────────
   const ordersByPeriod = React.useMemo<OrdersByPeriod[]>(() => {
     // Bucket by canonical order (deduplicated by orderId per period)
@@ -960,6 +1015,7 @@ export function useOrderedvsConsolidated() {
     pendingOrders,
     productSummaries,
     supplierSummaries,
+    customerSummaries,
     categorySummaries,
     ordersByPeriod,
     productTrends,
