@@ -55,6 +55,7 @@ export type OrdersFilters = {
   brands: string[];
   categories: string[];
   statuses: string[];
+  customers: string[];
 };
 
 export type OrdersKpis = {
@@ -117,6 +118,17 @@ export type ProductOrdersSummary = {
 export type SupplierOrdersSummary = {
   supplierId: number;
   supplierName: string;
+  totalOrders: number;
+  totalConsolidated: number;
+  pendingOrders: number;
+  totalNetAmount: number;
+  totalOrdered: number;
+  rank: number;
+  percentShare: number;
+};
+
+export type CustomerOrdersSummary = {
+  customerName: string;
   totalOrders: number;
   totalConsolidated: number;
   pendingOrders: number;
