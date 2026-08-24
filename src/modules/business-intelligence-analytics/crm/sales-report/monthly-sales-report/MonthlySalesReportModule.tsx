@@ -7,26 +7,30 @@ import { AlertCircle, ChevronRight } from "lucide-react";
 import DateSelector from "./components/DateSelector";
 import DailySalesChart from "./components/DailySalesChart";
 import RankingsDashboard, { RankItem } from "./components/RankingsDashboard";
-import type { SalesOrder, Customer, Salesman, Supplier, MonthlySalesReportPayload } from "./types";
+import type { SalesPerformanceItem, MonthlySalesReportPayload } from "./types";
 
-const MONTHS_NAMES = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December"
-];
+const formatYMD = (date: Date) => {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+};
 
 export default function MonthlySalesReportModule() {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
   // Raw states
-  const [salesOrders, setSalesOrders] = React.useState<SalesOrder[]>([]);
-  const [customers, setCustomers] = React.useState<Customer[]>([]);
-  const [salesmen, setSalesmen] = React.useState<Salesman[]>([]);
-  const [suppliers, setSuppliers] = React.useState<Supplier[]>([]);
+  const [salesPerformance, setSalesPerformance] = React.useState<SalesPerformanceItem[]>([]);
 
-  // Selection states
-  const [selectedMonth, setSelectedMonth] = React.useState(() => new Date().getMonth());
-  const [selectedYear, setSelectedYear] = React.useState(() => new Date().getFullYear());
+  // Selection states (Default: Month-to-Date)
+  const [dateFrom, setDateFrom] = React.useState(() => {
+    const now = new Date();
+    return formatYMD(new Date(now.getFullYear(), now.getMonth(), 1));
+  });
+  const [dateTo, setDateTo] = React.useState(() => {
+    return formatYMD(new Date());
+  });
 
   // Drill-down states
   const [selectedSalesmanId, setSelectedSalesmanId] = React.useState<number | null>(null);
@@ -34,21 +38,19 @@ export default function MonthlySalesReportModule() {
   const [selectedSupplierId, setSelectedSupplierId] = React.useState<number | null>(null);
   const [selectedSupplierName, setSelectedSupplierName] = React.useState("");
 
-  // Load datasets on mount
+  // Load datasets on date range changes
   React.useEffect(() => {
     async function loadData() {
       try {
         setLoading(true);
         setError(null);
-        const res = await fetch("/api/bia/crm/sales-report/monthly-sales-report");
+
+        const res = await fetch(`/api/bia/crm/sales-report/monthly-sales-report?startDate=${dateFrom}&endDate=${dateTo}`);
         if (!res.ok) {
           throw new Error(`Failed to load data: ${res.statusText}`);
         }
         const data: MonthlySalesReportPayload = await res.json();
-        setSalesOrders(data.salesOrders || []);
-        setCustomers(data.customers || []);
-        setSalesmen(data.salesmen || []);
-        setSuppliers(data.suppliers || []);
+        setSalesPerformance(data.salesPerformance || []);
       } catch (err: unknown) {
         console.error(err);
         setError(err instanceof Error ? err.message : "An unexpected error occurred.");
@@ -58,111 +60,153 @@ export default function MonthlySalesReportModule() {
     }
 
     loadData();
-  }, []);
+  }, [dateFrom, dateTo]);
 
-  // Filter orders by Month and Year
+  // Filter items that fall within the custom date range
   const mtdOrders = React.useMemo(() => {
-    return salesOrders.filter((order) => {
-      if (!order.order_date) return false;
-      const parts = order.order_date.split("-").map(Number);
-      if (parts.length < 3) return false;
-      const [y, m] = parts;
-      return y === selectedYear && m - 1 === selectedMonth;
+    return salesPerformance.filter((item) => {
+      if (!item.transactionDate) return false;
+      const cleanDate = item.transactionDate.substring(0, 10);
+      return cleanDate >= dateFrom && cleanDate <= dateTo;
     });
-  }, [salesOrders, selectedMonth, selectedYear]);
+  }, [salesPerformance, dateFrom, dateTo]);
 
-  // Compute daily sales for the line chart (1 to last day of selected month)
+  // Compute daily sales for the trend line chart dynamically over the date range
   const dailySalesData = React.useMemo(() => {
-    const totalDays = new Date(selectedYear, selectedMonth + 1, 0).getDate();
-    const daysArr = Array.from({ length: totalDays }, (_, i) => ({
-      day: i + 1,
-      dateStr: `${MONTHS_NAMES[selectedMonth]} ${i + 1}`,
-      amount: 0,
-    }));
+    const list: { dateKey: string; label: string; dateStr: string; amount: number }[] = [];
 
-    for (const order of mtdOrders) {
-      const parts = order.order_date.split("-").map(Number);
-      if (parts.length >= 3) {
-        const dayIdx = parts[2] - 1;
-        if (dayIdx >= 0 && dayIdx < totalDays) {
-          const amount = order.net_amount ?? order.total_amount ?? 0;
-          daysArr[dayIdx].amount += amount;
-        }
+    const startParts = dateFrom.split("-").map(Number);
+    const endParts = dateTo.split("-").map(Number);
+    if (startParts.length < 3 || endParts.length < 3) return [];
+
+    const start = new Date(startParts[0], startParts[1] - 1, startParts[2]);
+    const end = new Date(endParts[0], endParts[1] - 1, endParts[2]);
+
+    const current = new Date(start);
+    while (current <= end) {
+      const dateKey = formatYMD(current);
+      const label = current.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+      const dateStr = current.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+
+      list.push({
+        dateKey,
+        label,
+        dateStr,
+        amount: 0,
+      });
+
+      current.setDate(current.getDate() + 1);
+    }
+
+    // Map amounts to their respective date keys
+    const amountMap = new Map<string, number>();
+    for (const item of mtdOrders) {
+      if (item.transactionDate) {
+        const cleanDate = item.transactionDate.substring(0, 10);
+        const amount = Number(item.netAmount ?? 0);
+        amountMap.set(cleanDate, (amountMap.get(cleanDate) || 0) + amount);
       }
     }
 
-    return daysArr;
-  }, [mtdOrders, selectedMonth, selectedYear]);
+    for (const point of list) {
+      point.amount = amountMap.get(point.dateKey) || 0;
+    }
 
-  // Maps for fast lookups
-  const salesmenMap = React.useMemo(() => new Map(salesmen.map((s) => [s.id, s.salesman_name])), [salesmen]);
-  const suppliersMap = React.useMemo(() => new Map(suppliers.map((s) => [s.id, s.supplier_name])), [suppliers]);
-  const customersMap = React.useMemo(
-    () => new Map(customers.map((c) => [c.customer_code.toLowerCase(), c.customer_name || c.store_name || "Unknown Customer"])),
-    [customers]
-  );
+    return list;
+  }, [mtdOrders, dateFrom, dateTo]);
 
   // TIER 1: Salesman Rankings
   const salesmenRankings = React.useMemo<RankItem[]>(() => {
-    const sums = new Map<number, number>();
-    for (const order of mtdOrders) {
-      if (order.salesman_id !== undefined && order.salesman_id !== null) {
-        const amount = order.net_amount ?? order.total_amount ?? 0;
-        sums.set(order.salesman_id, (sums.get(order.salesman_id) || 0) + amount);
+    const sums = new Map<number, { name: string; amount: number }>();
+    for (const item of mtdOrders) {
+      if (item.salesmanId !== undefined && item.salesmanId !== null) {
+        const sId = Number(item.salesmanId);
+        const amount = Number(item.netAmount ?? 0);
+        const current = sums.get(sId) || {
+          name: item.salesmanName || `Salesman #${sId}`,
+          amount: 0
+        };
+        current.amount += amount;
+        sums.set(sId, current);
       }
     }
 
     return Array.from(sums.entries())
-      .map(([id, amount]) => ({
+      .map(([id, info]) => ({
         id,
-        name: salesmenMap.get(id) || `Salesman #${id}`,
-        amount,
+        name: info.name,
+        amount: info.amount,
       }))
       .sort((a, b) => b.amount - a.amount);
-  }, [mtdOrders, salesmenMap]);
+  }, [mtdOrders]);
 
   // TIER 2: Supplier Rankings (Filtered by selected Salesman)
   const suppliersRankings = React.useMemo<RankItem[]>(() => {
     if (selectedSalesmanId === null) return [];
 
-    const sums = new Map<number, number>();
-    for (const order of mtdOrders) {
-      if (order.salesman_id === selectedSalesmanId && order.supplier_id !== undefined && order.supplier_id !== null) {
-        const amount = order.net_amount ?? order.total_amount ?? 0;
-        sums.set(order.supplier_id, (sums.get(order.supplier_id) || 0) + amount);
+    const sums = new Map<number, { name: string; amount: number }>();
+    for (const item of mtdOrders) {
+      if (
+        item.salesmanId !== undefined &&
+        item.salesmanId !== null &&
+        Number(item.salesmanId) === selectedSalesmanId &&
+        item.supplierId !== undefined &&
+        item.supplierId !== null
+      ) {
+        const supId = Number(item.supplierId);
+        const amount = Number(item.netAmount ?? 0);
+        const current = sums.get(supId) || {
+          name: item.supplierName || `Supplier #${supId}`,
+          amount: 0
+        };
+        current.amount += amount;
+        sums.set(supId, current);
       }
     }
 
     return Array.from(sums.entries())
-      .map(([id, amount]) => ({
+      .map(([id, info]) => ({
         id,
-        name: suppliersMap.get(id) || `Supplier #${id}`,
-        amount,
+        name: info.name,
+        amount: info.amount,
       }))
       .sort((a, b) => b.amount - a.amount);
-  }, [mtdOrders, selectedSalesmanId, suppliersMap]);
+  }, [mtdOrders, selectedSalesmanId]);
 
   // TIER 3: Customer Rankings (Filtered by selected Salesman + Supplier combo)
   const customersRankings = React.useMemo<RankItem[]>(() => {
     if (selectedSalesmanId === null || selectedSupplierId === null) return [];
 
-    const sums = new Map<string, number>();
-    for (const order of mtdOrders) {
-      if (order.salesman_id === selectedSalesmanId && order.supplier_id === selectedSupplierId && order.customer_code) {
-        const amount = order.net_amount ?? order.total_amount ?? 0;
-        const code = order.customer_code.trim().toLowerCase();
-        sums.set(code, (sums.get(code) || 0) + amount);
+    const sums = new Map<string, { name: string; amount: number }>();
+    for (const item of mtdOrders) {
+      if (
+        item.salesmanId !== undefined &&
+        item.salesmanId !== null &&
+        Number(item.salesmanId) === selectedSalesmanId &&
+        item.supplierId !== undefined &&
+        item.supplierId !== null &&
+        Number(item.supplierId) === selectedSupplierId &&
+        item.customerCode
+      ) {
+        const amount = Number(item.netAmount ?? 0);
+        const code = item.customerCode.trim().toLowerCase();
+        const current = sums.get(code) || {
+          name: item.storeName || item.customerCode || `Customer [${item.customerCode.toUpperCase()}]`,
+          amount: 0
+        };
+        current.amount += amount;
+        sums.set(code, current);
       }
     }
 
     return Array.from(sums.entries())
-      .map(([code, amount]) => ({
+      .map(([code, info]) => ({
         id: code,
-        name: customersMap.get(code) || `Customer [${code.toUpperCase()}]`,
-        amount,
+        name: info.name,
+        amount: info.amount,
       }))
       .sort((a, b) => b.amount - a.amount);
-  }, [mtdOrders, selectedSalesmanId, selectedSupplierId, customersMap]);
+  }, [mtdOrders, selectedSalesmanId, selectedSupplierId]);
 
   // Reset drilldown when date range shifts
   React.useEffect(() => {
@@ -170,7 +214,7 @@ export default function MonthlySalesReportModule() {
     setSelectedSalesmanName("");
     setSelectedSupplierId(null);
     setSelectedSupplierName("");
-  }, [selectedMonth, selectedYear]);
+  }, [dateFrom, dateTo]);
 
   if (error) {
     return (
@@ -186,10 +230,10 @@ export default function MonthlySalesReportModule() {
     <div className="space-y-4">
       {/* Period selector */}
       <DateSelector
-        selectedMonth={selectedMonth}
-        selectedYear={selectedYear}
-        onMonthChange={setSelectedMonth}
-        onYearChange={setSelectedYear}
+        dateFrom={dateFrom}
+        dateTo={dateTo}
+        onDateFromChange={setDateFrom}
+        onDateToChange={setDateTo}
       />
 
       {/* Daily sales trend line/area chart */}
@@ -200,8 +244,8 @@ export default function MonthlySalesReportModule() {
       ) : (
         <DailySalesChart
           data={dailySalesData}
-          monthName={MONTHS_NAMES[selectedMonth]}
-          year={selectedYear}
+          dateFrom={dateFrom}
+          dateTo={dateTo}
         />
       )}
 

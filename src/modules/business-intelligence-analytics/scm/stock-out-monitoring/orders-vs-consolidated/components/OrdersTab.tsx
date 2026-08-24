@@ -306,7 +306,6 @@ export function OrdersTab({ canonicalOrders, filteredData }: Props) {
                 const lines = linesByOrder.get(row.orderId) ?? [];
                 return (
                   <React.Fragment key={row.orderId}>
-                    {/* ── Parent row ── */}
                     <tr
                       className={[
                         "border-b dark:border-zinc-800 hover:bg-muted/30 transition-colors cursor-pointer select-none",
@@ -368,8 +367,6 @@ export function OrdersTab({ canonicalOrders, filteredData }: Props) {
                         ₱{numFmt(row.netAmount)}
                       </td>
                     </tr>
-
-                    {/* ── Expanded product lines ── */}
                     {isExpanded && (
                       <tr className="border-b dark:border-zinc-800 bg-muted/10">
                         <td colSpan={10} className="p-0">

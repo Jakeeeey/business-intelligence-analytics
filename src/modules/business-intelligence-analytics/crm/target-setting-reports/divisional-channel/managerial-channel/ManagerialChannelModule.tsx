@@ -5,7 +5,7 @@ import {
     Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList, ComposedChart, Scatter
 } from 'recharts';
 import {
-    Filter, Loader2, Calendar, ChevronRight, LayoutDashboard, Trophy, Coins, TrendingUp, TrendingDown, AlertCircle
+    Filter, Loader2, Calendar, ChevronRight, LayoutDashboard, Trophy, Coins, TrendingUp, TrendingDown, AlertCircle, ArrowLeft, User2
 } from "lucide-react";
 import { format, startOfMonth, endOfMonth, parseISO } from "date-fns";
 import { useSearchParams } from "next/navigation";
@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
 
 import { fetchManagerialData, fetchCustomerTargets } from "./providers/fetchProvider";
 import { VSalesPerformanceDataDto } from "./types";
@@ -48,19 +49,25 @@ function ManagerialSupplierContent() {
 
     const [rawData, setRawData] = useState<VSalesPerformanceDataDto[]>([]);
 
-    // Store Type Detail Modal State
+    // Store Type Detail Modal State -> Supplier Detail Modal State
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+    const [selectedSupplierForModal, setSelectedSupplierForModal] = useState<string | null>(null);
 
     const salesmanDetailData = useMemo(() => {
-        if (!selectedChannel) return [];
+        if (!selectedSupplierForModal || !selectedChannel) return [];
         return rawData.filter(d =>
+            (d.supplierName || "Unknown Supplier").toUpperCase() === (selectedSupplierForModal || "").toUpperCase() &&
             (d.storeTypeLabel || "Unknown Store Type").toUpperCase() === (selectedChannel || "").toUpperCase() &&
             (d.divisionName || "").toUpperCase() === (selectedDivision || "").toUpperCase()
         );
-    }, [rawData, selectedChannel, selectedDivision]);
+    }, [rawData, selectedSupplierForModal, selectedChannel, selectedDivision]);
+
+    const handleSupplierClick = (name: string) => {
+        setSelectedSupplierForModal(name);
+        setIsDetailModalOpen(true);
+    };
 
     const [channelTargets, setChannelTargets] = useState<Record<string, number>>({});
-
     // Fetch Channel (Store Type) targets for the Division
     useEffect(() => {
         const loadTargets = async () => {
@@ -135,6 +142,39 @@ function ManagerialSupplierContent() {
             divisionSummary: { totalActual, totalTarget, achievement: totalTarget > 0 ? (totalActual / totalTarget) * 100 : 0 }
         };
     }, [rawData, selectedDivision, channelTargets]);
+
+    // 3. Data Processing for Supplier (Level 2 - Drill Down)
+    const supplierBreakdown = useMemo(() => {
+        if (!selectedChannel) return [];
+
+        const filtered = rawData.filter(d =>
+            (d.storeTypeLabel || "Unknown Store Type").toUpperCase() === (selectedChannel || "").toUpperCase() &&
+            (d.divisionName || "").toUpperCase() === (selectedDivision || "").toUpperCase()
+        );
+
+        const supplierMap = new Map<string, { sales: number }>();
+
+        filtered.forEach(item => {
+            const name = item.supplierName || "Unknown Supplier";
+            const current = supplierMap.get(name) || { sales: 0 };
+            supplierMap.set(name, {
+                sales: current.sales + (item.netAmount || 0)
+            });
+        });
+
+        return Array.from(supplierMap.entries())
+            .map(([name, data]) => {
+                const target = 0;
+
+                return {
+                    name: name.toUpperCase(),
+                    sales: data.sales,
+                    target,
+                    achievement: target > 0 ? (data.sales / target) * 100 : 0,
+                    status: target > 0 ? (data.sales >= target ? "HIT" : "MISS") : "SET"
+                };
+            })
+    }, [rawData, selectedChannel, selectedDivision]);
 
 
     const formatPHP = (val: number) => new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 0 }).format(val);
@@ -251,15 +291,20 @@ function ManagerialSupplierContent() {
                         <div className="space-y-1">
                             <div className="flex items-center gap-2">
                                 <CardTitle className="text-lg font-black uppercase tracking-tight italic">
-                                    Top <span className="text-primary">Channel Volume</span>
+                                    {selectedChannel ? <><span className="text-primary">{selectedChannel}</span> Breakdown</> : <>Top <span className="text-primary">Channel Volume</span></>}
                                 </CardTitle>
                                 <Badge variant="secondary" className="text-[9px] font-black tracking-widest uppercase py-0 px-2 h-4">Visual Analytics</Badge>
                             </div>
                             <CardDescription className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">
-                                Comparative channel hitting matrix
+                                {selectedChannel ? "Breakdown of sales by supplier" : "Comparative channel hitting matrix"}
                             </CardDescription>
                         </div>
                         <div className="flex items-center gap-2">
+                            {selectedChannel && (
+                                <Button variant="outline" size="sm" onClick={() => setSelectedChannel(null)} className="h-8 gap-2 border-border/40 text-[10px] font-black uppercase tracking-widest hover:bg-primary/10 hover:text-primary transition-all">
+                                    <ArrowLeft className="h-3 w-3" /> Reset View
+                                </Button>
+                            )}
                             <div className="p-2 bg-background rounded-xl border border-border/40 group-hover:border-primary/40 transition-colors shadow-sm">
                                 <LayoutDashboard className="h-4 w-4 text-primary opacity-60" />
                             </div>
@@ -268,14 +313,14 @@ function ManagerialSupplierContent() {
                     <CardContent className="h-[520px] pt-8 px-2">
                         <ResponsiveContainer width="100%" height="100%">
                             <ComposedChart 
-                                data={channelPerformance.slice(0, 10)} 
+                                data={(selectedChannel ? supplierBreakdown : channelPerformance).slice(0, 10)} 
                                 layout="vertical" 
                                 margin={{ left: 20, right: 100, bottom: 20 }}
                                 onClick={(data) => {
-                                    if (data && data.activePayload) {
-                                        const channelName = data.activePayload[0].payload.name;
-                                        setSelectedChannel(channelName);
-                                        setIsDetailModalOpen(true);
+                                    if (!selectedChannel && data && data.activePayload) {
+                                        setSelectedChannel(data.activePayload[0].payload.name);
+                                    } else if (selectedChannel && data && data.activePayload) {
+                                        handleSupplierClick(data.activePayload[0].payload.name);
                                     }
                                 }}
                                 style={{ cursor: 'pointer' }}
@@ -319,8 +364,8 @@ function ManagerialSupplierContent() {
                                     }}
                                 />
                                 <Bar dataKey="sales" name="Actual" barSize={28} radius={[0, 8, 8, 0]} minPointSize={2}>
-                                    {channelPerformance.slice(0, 10).map((e, i) => (
-                                        <Cell key={i} fill={e.sales >= e.target ? '#10b981' : '#f59e0b'} fillOpacity={0.8} />
+                                    {(selectedChannel ? supplierBreakdown : channelPerformance).slice(0, 10).map((e, i) => (
+                                        <Cell key={i} fill={selectedChannel ? 'hsl(var(--primary))' : (e.sales >= e.target ? '#10b981' : '#f59e0b')} fillOpacity={0.8} />
                                     ))}
                                     <LabelList 
                                         dataKey="sales" 
@@ -369,31 +414,28 @@ function ManagerialSupplierContent() {
                     <CardHeader className="border-b border-border/40 bg-muted/10">
                         <div className="flex items-center justify-between">
                             <CardTitle className="text-lg font-black uppercase tracking-tight italic">
-                                <span className="text-primary">Channel</span> Health
+                                {selectedChannel ? <><span className="text-primary">Supplier</span> Rank</> : <><span className="text-primary">Channel</span> Health</>}
                             </CardTitle>
                             <div className="p-2 bg-background rounded-xl border border-border/40 shadow-sm">
                                 <Trophy className="h-4 w-4 text-amber-500" />
                             </div>
                         </div>
                         <CardDescription className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">
-                            Channel-wise target scorecard
+                            {selectedChannel ? "Supplier Sales Performance" : "Channel-wise target scorecard"}
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="flex-1 overflow-hidden p-0">
                         <ScrollArea className="h-[520px] w-full px-4 pt-6">
                             <div className="space-y-4 pb-6">
-                                {channelPerformance.map((item, i) => (
+                                {(selectedChannel ? supplierBreakdown : channelPerformance).map((item, i) => (
                                     <div 
                                         key={i} 
                                         className="group relative p-4 rounded-2xl border border-border/40 bg-muted/5 hover:bg-primary/5 hover:border-primary/20 transition-all duration-300 cursor-pointer overflow-hidden"
-                                        onClick={() => {
-                                            setSelectedChannel(item.name);
-                                            setIsDetailModalOpen(true);
-                                        }}
+                                        onClick={() => !selectedChannel ? setSelectedChannel(item.name) : handleSupplierClick(item.name)}
                                     >
                                         {/* Background Decoration */}
                                         <div className="absolute -right-4 -bottom-4 opacity-[0.03] group-hover:opacity-[0.08] transition-opacity">
-                                            <Trophy className="h-24 w-24 rotate-12" />
+                                            {selectedChannel ? <User2 className="h-24 w-24 rotate-12" /> : <Trophy className="h-24 w-24 rotate-12" />}
                                         </div>
 
                                         <div className="flex justify-between items-start mb-4 relative z-10">
@@ -403,7 +445,7 @@ function ManagerialSupplierContent() {
                                                     {item.sales < item.target && <AlertCircle className="h-3 w-3 text-destructive animate-pulse" />}
                                                 </div>
                                                 <p className="text-[9px] font-bold text-muted-foreground/60 uppercase tracking-widest italic">
-                                                    Channel Health Index
+                                                    {selectedChannel ? "Supplier Performance" : "Channel Health Index"}
                                                 </p>
                                             </div>
                                             <div className="flex flex-col items-end">
@@ -453,7 +495,7 @@ function ManagerialSupplierContent() {
                 data={salesmanDetailData}
                 ids={Array.from(new Set(salesmanDetailData.map(d => Number(d.salesmanId)).filter(Boolean)))}
                 channelName={selectedChannel || ""}
-                supplierName=""
+                supplierName={selectedSupplierForModal || ""}
                 periodLabel={`${fromMonth} to ${toMonth}`}
                 startDate={format(startOfMonth(parseISO(fromMonth + "-01")), "yyyy-MM-dd")}
                 endDate={format(endOfMonth(parseISO(toMonth + "-01")), "yyyy-MM-dd")}

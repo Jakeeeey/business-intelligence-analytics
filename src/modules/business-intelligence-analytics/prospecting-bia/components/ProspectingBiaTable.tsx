@@ -12,6 +12,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
+import { MapPin } from "lucide-react";
 
 type GroupedItem = {
   id: number;
@@ -24,6 +25,85 @@ type GroupedItem = {
 
 type ProspectingBiaTableProps = {
   data: GroupedItem[];
+};
+
+const toTitleCase = (str: string) => {
+  if (!str) return "";
+  return str
+    .trim()
+    .toLowerCase()
+    .split(/\s+/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+};
+
+const getInitials = (name: string) => {
+  if (!name) return "";
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+};
+
+const getStoreTypeBadge = (storeTypeName: string) => {
+  const clean = storeTypeName.trim().toLowerCase();
+  const display = toTitleCase(storeTypeName);
+
+  if (clean.includes("market") || clean.includes("stall")) {
+    return (
+      <Badge className="bg-amber-500/10 hover:bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/20 font-semibold px-2.5 py-0.5 rounded-md text-xs select-none border">
+        {display}
+      </Badge>
+    );
+  } else if (clean.includes("supermarket") || clean.includes("grocery") || clean.includes("groceries")) {
+    return (
+      <Badge className="bg-purple-500/10 hover:bg-purple-500/15 text-purple-700 dark:text-purple-400 border-purple-500/20 font-semibold px-2.5 py-0.5 rounded-md text-xs select-none border">
+        {display}
+      </Badge>
+    );
+  } else if (clean.includes("convenience") || clean.includes("minimart") || clean.includes("store")) {
+    return (
+      <Badge className="bg-sky-500/10 hover:bg-sky-500/15 text-sky-700 dark:text-sky-400 border-sky-500/20 font-semibold px-2.5 py-0.5 rounded-md text-xs select-none border">
+        {display}
+      </Badge>
+    );
+  } else if (clean.includes("wholesale") || clean.includes("dealer")) {
+    return (
+      <Badge className="bg-emerald-500/10 hover:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/20 font-semibold px-2.5 py-0.5 rounded-md text-xs select-none border">
+        {display}
+      </Badge>
+    );
+  } else {
+    return (
+      <Badge className="bg-slate-500/10 hover:bg-slate-500/15 text-slate-700 dark:text-slate-400 border-slate-500/20 font-semibold px-2.5 py-0.5 rounded-md text-xs select-none border">
+        {display}
+      </Badge>
+    );
+  }
+};
+
+const getProbabilityBadge = (probStr: string) => {
+  const num = parseFloat(probStr.replace("%", ""));
+  if (isNaN(num)) return <Badge variant="secondary">{probStr}</Badge>;
+
+  if (num >= 70) {
+    return (
+      <Badge className="bg-emerald-500/10 hover:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/20 font-bold px-2 py-0.5 rounded-full select-none">
+        {probStr}
+      </Badge>
+    );
+  } else if (num >= 40) {
+    return (
+      <Badge className="bg-amber-500/10 hover:bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/20 font-bold px-2 py-0.5 rounded-full select-none">
+        {probStr}
+      </Badge>
+    );
+  } else {
+    return (
+      <Badge className="bg-red-500/10 hover:bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/20 font-bold px-2 py-0.5 rounded-full select-none">
+        {probStr}
+      </Badge>
+    );
+  }
 };
 
 export default function ProspectingBiaTable({ data }: ProspectingBiaTableProps) {
@@ -102,19 +182,19 @@ export default function ProspectingBiaTable({ data }: ProspectingBiaTableProps) 
           <Table className="w-full border-collapse">
             <TableHeader className="relative z-10">
               <TableRow className="hover:bg-transparent bg-muted/25">
-                <TableHead className="font-bold text-foreground border-r border-b border-border px-4 py-2 w-1/5 sticky top-0 bg-muted/90 backdrop-blur-xs z-10">
+                <TableHead className="font-bold text-foreground border-r border-b border-border px-4 py-3 w-1/5 sticky top-0 bg-muted/90 backdrop-blur-xs z-10">
                   Salesman
                 </TableHead>
-                <TableHead className="font-bold text-foreground border-r border-b border-border px-4 py-2 w-1/5 sticky top-0 bg-muted/90 backdrop-blur-xs z-10">
+                <TableHead className="font-bold text-foreground border-r border-b border-border px-4 py-3 w-1/5 sticky top-0 bg-muted/90 backdrop-blur-xs z-10">
                   Area (Province)
                 </TableHead>
-                <TableHead className="font-bold text-foreground border-r border-b border-border px-4 py-2 w-1/5 sticky top-0 bg-muted/90 backdrop-blur-xs z-10">
+                <TableHead className="font-bold text-foreground border-r border-b border-border px-4 py-3 w-1/5 sticky top-0 bg-muted/90 backdrop-blur-xs z-10">
                   Store Type
                 </TableHead>
-                <TableHead className="font-bold text-foreground border-r border-b border-border px-4 py-2 w-1/5 sticky top-0 bg-muted/90 backdrop-blur-xs z-10">
+                <TableHead className="font-bold text-foreground border-r border-b border-border px-4 py-3 w-1/5 sticky top-0 bg-muted/90 backdrop-blur-xs z-10">
                   Customer Name
                 </TableHead>
-                <TableHead className="font-bold text-foreground border-b border-border px-4 py-2 w-1/5 sticky top-0 bg-muted/90 backdrop-blur-xs z-10">
+                <TableHead className="font-bold text-foreground border-b border-border px-4 py-3 w-1/5 sticky top-0 bg-muted/90 backdrop-blur-xs z-10">
                   Probability
                 </TableHead>
               </TableRow>
@@ -134,9 +214,16 @@ export default function ProspectingBiaTable({ data }: ProspectingBiaTableProps) 
                     {salesmanSpan > 0 && (
                       <TableCell
                         rowSpan={salesmanSpan}
-                        className="align-middle font-semibold text-foreground border-r border-b border-border px-4 py-2 bg-card"
+                        className="align-middle border-r border-b border-border px-4 py-3 bg-card border-l-4 border-l-primary"
                       >
-                        {item.salesmanName}
+                        <div className="flex items-center gap-2.5">
+                          <div className="flex items-center justify-center h-8 w-8 rounded-full bg-primary/10 text-primary font-black text-xs shrink-0 select-none border border-primary/20">
+                            {getInitials(item.salesmanName)}
+                          </div>
+                          <span className="font-bold text-sm text-foreground tracking-tight block">
+                            {toTitleCase(item.salesmanName)}
+                          </span>
+                        </div>
                       </TableCell>
                     )}
 
@@ -144,9 +231,14 @@ export default function ProspectingBiaTable({ data }: ProspectingBiaTableProps) 
                     {provinceSpan > 0 && (
                       <TableCell
                         rowSpan={provinceSpan}
-                        className="align-middle text-muted-foreground border-r border-b border-border px-4 py-2 bg-card/40"
+                        className="align-middle border-r border-b border-border px-4 py-3 bg-card/30"
                       >
-                        {item.province}
+                        <div className="flex items-center gap-1.5 text-muted-foreground">
+                          <MapPin className="h-3.5 w-3.5 text-primary shrink-0" />
+                          <span className="text-xs font-semibold text-foreground/80">
+                            {toTitleCase(item.province)}
+                          </span>
+                        </div>
                       </TableCell>
                     )}
 
@@ -154,20 +246,20 @@ export default function ProspectingBiaTable({ data }: ProspectingBiaTableProps) 
                     {storeTypeSpan > 0 && (
                       <TableCell
                         rowSpan={storeTypeSpan}
-                        className="align-middle text-foreground border-r border-b border-border px-4 py-2 bg-card/10"
+                        className="align-middle border-r border-b border-border px-4 py-3 bg-card/10"
                       >
-                        {item.storeTypeName}
+                        {getStoreTypeBadge(item.storeTypeName)}
                       </TableCell>
                     )}
 
                     {/* Customer Name column */}
-                    <TableCell className="align-middle text-foreground border-r border-b border-border px-4 py-2">
-                      {item.customerName}
+                    <TableCell className="align-middle font-medium text-foreground border-r border-b border-border px-4 py-3">
+                      {toTitleCase(item.customerName)}
                     </TableCell>
 
                     {/* Probability column */}
-                    <TableCell className="align-middle text-foreground border-b border-border px-4 py-2">
-                      {item.probability}
+                    <TableCell className="align-middle border-b border-border px-4 py-3">
+                      {getProbabilityBadge(item.probability)}
                     </TableCell>
                   </TableRow>
                 );

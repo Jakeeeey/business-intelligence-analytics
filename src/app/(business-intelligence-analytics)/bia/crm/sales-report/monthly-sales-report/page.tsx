@@ -121,15 +121,6 @@ export default async function Page() {
 
       {/* Main content scroll area */}
       <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-4 space-y-4">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-3xl font-black tracking-tighter text-foreground">
-            Monthly Sales Report
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Monitor Month-to-Date sales trends and drill down into top salesman, supplier, and customer performance.
-          </p>
-        </div>
-
         <MonthlySalesReportModule />
       </main>
     </div>
