@@ -3,8 +3,7 @@
 import * as React from "react";
 import { FiltersBar } from "./components/FiltersBar";
 import { BookingMetricsGrid } from "./components/BookingMetricsGrid";
-import { MetricGridOne } from "./components/MetricGridOne";
-import { MetricGridTwo } from "./components/MetricGridTwo";
+import { SiteSalesMetricsList } from "./components/SiteSalesMetricsList";
 import { SupplierSalesModal } from "./components/SupplierSalesModal";
 import { FrequencyDetailModal } from "./components/FrequencyDetailModal";
 import { NewAccountsDetailModal } from "./components/NewAccountsDetailModal";
@@ -24,6 +23,9 @@ export default function SalesmanMetricModule() {
     rows,
     handleSalesmanChange,
     handleFiscalPeriodChange,
+    // Search
+    searchQuery,
+    setSearchQuery,
     
     // Modal States & Setters
     modalOpen, setModalOpen, selectedSalesmanId, selectedSalesmanName,
@@ -62,6 +64,8 @@ export default function SalesmanMetricModule() {
         fiscalPeriod={filters.fiscalPeriod}
         onChangeSalesman={handleSalesmanChange}
         onChangeFiscalPeriod={handleFiscalPeriodChange}
+        searchQuery={searchQuery}
+        onSearchQueryChange={setSearchQuery}
         loading={loading}
       />
 
@@ -80,25 +84,19 @@ export default function SalesmanMetricModule() {
             Site Sales Metrics
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-6">
-          <div className="grid grid-cols-1 gap-6">
-            <MetricGridOne
-              rows={rows}
-              loading={loading}
-              onViewSupplierBreakdown={handleViewSupplierBreakdown}
-              onViewReachBreakdown={handleViewReachBreakdown}
-              onViewFrequencyDetail={handleViewFrequencyDetail}
-              onViewNewAccountsDetail={handleViewNewAccountsDetail}
-            />
-            <MetricGridTwo 
-              rows={rows} 
-              loading={loading} 
-              onViewProductiveOutletDetail={handleViewProductiveOutletDetail}
-              onViewLineSalesDetail={handleViewLineSalesDetail}
-              onViewBasketCountDetail={handleViewBasketCountDetail}
-              onViewTacticalSkuDetail={handleViewTacticalSkuDetail}
-            />
-          </div>
+        <CardContent className="p-0">
+          <SiteSalesMetricsList
+            rows={rows}
+            loading={loading}
+            onViewSupplierBreakdown={handleViewSupplierBreakdown}
+            onViewReachBreakdown={handleViewReachBreakdown}
+            onViewFrequencyDetail={handleViewFrequencyDetail}
+            onViewNewAccountsDetail={handleViewNewAccountsDetail}
+            onViewProductiveOutletDetail={handleViewProductiveOutletDetail}
+            onViewLineSalesDetail={handleViewLineSalesDetail}
+            onViewBasketCountDetail={handleViewBasketCountDetail}
+            onViewTacticalSkuDetail={handleViewTacticalSkuDetail}
+          />
         </CardContent>
       </Card>
 

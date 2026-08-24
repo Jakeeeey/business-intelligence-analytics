@@ -30,6 +30,7 @@ export function useSalesmanMetric() {
 
   const [loading, setLoading] = React.useState<boolean>(false);
   const [rows, setRows] = React.useState<MetricRow[]>([]);
+  const [searchQuery, setSearchQuery] = React.useState<string>("");
   const [debouncedFilters] = useDebounce(filters, 300);
 
   // Modal State for Supplier Sales Breakdown
@@ -161,6 +162,15 @@ export function useSalesmanMetric() {
     }));
   };
 
+  const filteredRows = React.useMemo(() => {
+    if (!searchQuery.trim()) return rows;
+    const lowerQuery = searchQuery.toLowerCase();
+    return rows.filter((r) => 
+      r.salesmanName.toLowerCase().includes(lowerQuery) || 
+      (r.salesmanCode && r.salesmanCode.toLowerCase().includes(lowerQuery))
+    );
+  }, [rows, searchQuery]);
+
   const handleViewSupplierBreakdown = (salesmanId: number, salesmanName: string) => {
     setSelectedSalesmanId(salesmanId);
     setSelectedSalesmanName(salesmanName);
@@ -216,7 +226,11 @@ export function useSalesmanMetric() {
     salesmen,
     filters,
     loading,
-    rows,
+    rows: filteredRows,
+    
+    // Search
+    searchQuery,
+    setSearchQuery,
     
     // Handlers for filters
     handleSalesmanChange,
