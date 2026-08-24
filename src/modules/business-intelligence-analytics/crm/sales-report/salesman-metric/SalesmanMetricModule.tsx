@@ -26,7 +26,7 @@ export default function SalesmanMetricModule() {
     // Search
     searchQuery,
     setSearchQuery,
-    
+
     // Modal States & Setters
     modalOpen, setModalOpen, selectedSalesmanId, selectedSalesmanName,
     freqModalOpen, setFreqModalOpen, freqSalesmanId, freqSalesmanCode, freqSalesmanName,
@@ -36,7 +36,7 @@ export default function SalesmanMetricModule() {
     bcModalOpen, setBcModalOpen, bcSalesmanId, bcSalesmanName,
     lsModalOpen, setLsModalOpen, lsSalesmanId, lsSalesmanName,
     tskuModalOpen, setTskuModalOpen, tskuSalesmanId, tskuSalesmanName,
-    
+
     // Actions
     handleViewSupplierBreakdown,
     handleViewFrequencyDetail,
@@ -51,7 +51,7 @@ export default function SalesmanMetricModule() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Salesman Metric Performance</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">Salesman Metric</h1>
         <p className="text-sm text-muted-foreground">
           View key metrics performance, reach, frequency, and targets for salesmen.
         </p>

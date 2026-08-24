@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { ChevronDown, ExternalLink, Eye, Plus, Target } from "lucide-react";
+import { ChevronDown, ExternalLink, Eye, Plus } from "lucide-react";
 import { MetricRow } from "../types";
 
 interface SiteSalesRowProps {
