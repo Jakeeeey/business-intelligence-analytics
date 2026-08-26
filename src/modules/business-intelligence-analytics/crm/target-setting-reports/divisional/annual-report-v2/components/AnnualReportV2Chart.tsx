@@ -59,6 +59,74 @@ function abbreviateValue(value: number): string {
   return `₱${value.toFixed(0)}`;
 }
 
+const CustomSellOutLabel = (props: any) => {
+  const { x, y, value, maxValue } = props;
+  if (value === undefined || value === null) return null;
+  const isLow = Number(value) < (maxValue || 0) * 0.15;
+  if (isLow) {
+    return (
+      <text
+        x={x - 24}
+        y={y + 4}
+        fill="currentColor"
+        fontSize={10}
+        fontWeight={500}
+        textAnchor="end"
+        className="fill-foreground"
+      >
+        {abbreviateValue(Number(value))}
+      </text>
+    );
+  }
+  return (
+    <text
+      x={x}
+      y={y - 10}
+      fill="currentColor"
+      fontSize={10}
+      fontWeight={500}
+      textAnchor="middle"
+      className="fill-foreground"
+    >
+      {abbreviateValue(Number(value))}
+    </text>
+  );
+};
+
+const CustomSellInLabel = (props: any) => {
+  const { x, y, value, maxValue } = props;
+  if (value === undefined || value === null) return null;
+  const isLow = Number(value) < (maxValue || 0) * 0.15;
+  if (isLow) {
+    return (
+      <text
+        x={x + 24}
+        y={y + 4}
+        fill="currentColor"
+        fontSize={10}
+        fontWeight={500}
+        textAnchor="start"
+        className="fill-foreground"
+      >
+        {abbreviateValue(Number(value))}
+      </text>
+    );
+  }
+  return (
+    <text
+      x={x}
+      y={y + 16}
+      fill="currentColor"
+      fontSize={10}
+      fontWeight={500}
+      textAnchor="middle"
+      className="fill-foreground"
+    >
+      {abbreviateValue(Number(value))}
+    </text>
+  );
+};
+
 export function AnnualReportV2Chart({ data, isLoading }: AnnualReportV2ChartProps) {
   if (isLoading) {
     return (
@@ -83,6 +151,11 @@ export function AnnualReportV2Chart({ data, isLoading }: AnnualReportV2ChartProp
   const totalSellOut = data.reduce((s, d) => s + d.totalSales, 0);
   const totalSellIn = data.reduce((s, d) => s + d.totalPurchases, 0);
   const netDirection = totalSellOut >= totalSellIn ? "positive" : "negative";
+
+  const maxValue = Math.max(
+    ...data.map((d) => Math.max(d.totalSales, d.totalPurchases)),
+    1,
+  );
 
   return (
     <Card>
@@ -156,10 +229,7 @@ export function AnnualReportV2Chart({ data, isLoading }: AnnualReportV2ChartProp
             >
               <LabelList
                 dataKey="sellOut"
-                position="top"
-                offset={10}
-                formatter={(value: number) => abbreviateValue(value)}
-                className="fill-foreground text-[10px] font-medium"
+                content={<CustomSellOutLabel maxValue={maxValue} />}
               />
             </Line>
             <Line
@@ -176,10 +246,7 @@ export function AnnualReportV2Chart({ data, isLoading }: AnnualReportV2ChartProp
             >
               <LabelList
                 dataKey="sellIn"
-                position="bottom"
-                offset={10}
-                formatter={(value: number) => abbreviateValue(value)}
-                className="fill-foreground text-[10px] font-medium"
+                content={<CustomSellInLabel maxValue={maxValue} />}
               />
             </Line>
           </LineChart>
