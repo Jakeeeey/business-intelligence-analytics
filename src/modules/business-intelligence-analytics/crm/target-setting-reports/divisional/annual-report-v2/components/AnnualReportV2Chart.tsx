@@ -59,15 +59,22 @@ function abbreviateValue(value: number): string {
   return `₱${value.toFixed(0)}`;
 }
 
-const CustomSellOutLabel = (props: any) => {
+interface CustomLabelProps {
+  x?: number;
+  y?: number;
+  value?: number;
+  maxValue?: number;
+}
+
+const CustomSellOutLabel = (props: CustomLabelProps) => {
   const { x, y, value, maxValue } = props;
   if (value === undefined || value === null) return null;
   const isLow = Number(value) < (maxValue || 0) * 0.15;
   if (isLow) {
     return (
       <text
-        x={x - 24}
-        y={y + 4}
+        x={x !== undefined ? x - 24 : undefined}
+        y={y !== undefined ? y + 4 : undefined}
         fill="currentColor"
         fontSize={10}
         fontWeight={500}
@@ -81,7 +88,7 @@ const CustomSellOutLabel = (props: any) => {
   return (
     <text
       x={x}
-      y={y - 10}
+      y={y !== undefined ? y - 10 : undefined}
       fill="currentColor"
       fontSize={10}
       fontWeight={500}
@@ -93,15 +100,15 @@ const CustomSellOutLabel = (props: any) => {
   );
 };
 
-const CustomSellInLabel = (props: any) => {
+const CustomSellInLabel = (props: CustomLabelProps) => {
   const { x, y, value, maxValue } = props;
   if (value === undefined || value === null) return null;
   const isLow = Number(value) < (maxValue || 0) * 0.15;
   if (isLow) {
     return (
       <text
-        x={x + 24}
-        y={y + 4}
+        x={x !== undefined ? x + 24 : undefined}
+        y={y !== undefined ? y + 4 : undefined}
         fill="currentColor"
         fontSize={10}
         fontWeight={500}
@@ -115,7 +122,7 @@ const CustomSellInLabel = (props: any) => {
   return (
     <text
       x={x}
-      y={y + 16}
+      y={y !== undefined ? y + 16 : undefined}
       fill="currentColor"
       fontSize={10}
       fontWeight={500}
