@@ -3,7 +3,6 @@ import { cookies } from "next/headers";
 import {
   aggregateMonthlyData,
   calculateSummary,
-  filterPurchasesBySupplier,
 } from "@/modules/business-intelligence-analytics/crm/target-setting-reports/divisional/annual-report-v2/utils/annual-report.utils";
 
 export const runtime = "nodejs";
@@ -132,8 +131,8 @@ async function fetchWithErrorLogging(
 // Module-level in-memory cache for ultra-fast dev and prod performance
 const globalForCache = globalThis as unknown as {
   annualReportV2Cache: Map<string, {
-    sales: any[];
-    purchases: any[];
+    sales: NormalizedSales[];
+    purchases: NormalizedPurchase[];
     customers: string[];
     suppliers: string[];
     categories: string[];
@@ -144,8 +143,8 @@ const globalForCache = globalThis as unknown as {
 const NORMALIZED_CACHE = globalForCache.annualReportV2Cache || new Map<
   string,
   {
-    sales: any[];
-    purchases: any[];
+    sales: NormalizedSales[];
+    purchases: NormalizedPurchase[];
     customers: string[];
     suppliers: string[];
     categories: string[];
