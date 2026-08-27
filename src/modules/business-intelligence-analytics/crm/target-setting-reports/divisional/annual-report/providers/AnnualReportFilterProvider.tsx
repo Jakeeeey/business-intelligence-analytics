@@ -11,6 +11,7 @@ export interface AnnualReportFilters {
   dateTo: string;
   customerName: string;
   supplierName: string;
+  categoryName: string;
   year: string;
   month: string;
 }
@@ -46,6 +47,7 @@ export function AnnualReportFilterProvider({
         dateTo: sp.get("dateTo") ?? format(endOfMonth(base), "yyyy-MM-dd"),
         customerName: sp.get("customerName") ?? "",
         supplierName: sp.get("supplierName") ?? "",
+        categoryName: sp.get("categoryName") ?? "",
         year,
         month,
       };
@@ -60,6 +62,7 @@ export function AnnualReportFilterProvider({
         format(endOfYear(new Date(Number(year), 11, 31)), "yyyy-MM-dd"),
       customerName: sp.get("customerName") ?? "",
       supplierName: sp.get("supplierName") ?? "",
+      categoryName: sp.get("categoryName") ?? "",
       year,
       month,
     };
