@@ -56,7 +56,11 @@ export function aggregateMonthlyData(
   }
 
   return Array.from(monthlyMap.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
+    .sort(([a], [b]) => {
+      const [yearA, monthA] = a.split("-").map(Number);
+      const [yearB, monthB] = b.split("-").map(Number);
+      return yearA !== yearB ? yearA - yearB : monthA - monthB;
+    })
     .map(([key, values]) => {
       const [year, month] = key.split("-").map(Number);
       const variance = values.sales - values.purchases;
