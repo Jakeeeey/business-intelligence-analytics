@@ -6,6 +6,8 @@ export const SalesTransactionSchema = z.object({
   customerName: z.string(),
   totalInvoiceAmount: z.number(),
   productCategory: z.string().optional(),
+  productSupplier: z.string().optional(),
+  cases: z.number().optional(),
 });
 
 export type SalesTransaction = z.infer<typeof SalesTransactionSchema>;
@@ -15,6 +17,7 @@ export const PurchaseTransactionSchema = z.object({
   receiptDate: z.string(),
   supplierName: z.string(),
   totalReceiptAmount: z.number(),
+  cases: z.number().optional(),
 });
 
 export type PurchaseTransaction = z.infer<typeof PurchaseTransactionSchema>;

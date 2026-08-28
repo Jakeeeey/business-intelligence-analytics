@@ -28,7 +28,6 @@ export function AnnualReportV2Table({
   isLoading,
 }: AnnualReportV2TableProps) {
   const [activeTab, setActiveTab] = useState("monthly");
-
   const handleExportCSV = useCallback(() => {
     let csvContent = "";
     let filename = "";
@@ -56,11 +55,12 @@ export function AnnualReportV2Table({
       ].join("\n");
       filename = `monthly-breakdown-${new Date().toISOString().split("T")[0]}.csv`;
     } else if (activeTab === "sales") {
-      const headers = ["Invoice No", "Invoice Date", "Customer Name", "Total Invoice Amount"];
+      const headers = ["Invoice No", "Invoice Date", "Customer Name", "Cases", "Total Invoice Amount"];
       const rows = salesData.map((row) => [
         row.invoiceNo,
         row.invoiceDate,
         `"${row.customerName.replace(/"/g, '""')}"`,
+        String(row.cases ?? 0),
         row.totalInvoiceAmount.toFixed(2),
       ]);
       csvContent = [
@@ -69,11 +69,18 @@ export function AnnualReportV2Table({
       ].join("\n");
       filename = `sales-report-${new Date().toISOString().split("T")[0]}.csv`;
     } else if (activeTab === "purchases") {
-      const headers = ["Receipt No", "Receipt Date", "Supplier Name", "Total Receipt Amount"];
+      const headers = [
+        "Receipt No",
+        "Receipt Date",
+        "Supplier Name",
+        "Cases",
+        "Total Receipt Amount",
+      ];
       const rows = purchaseData.map((row) => [
         row.receiptNo,
         row.receiptDate,
         `"${row.supplierName.replace(/"/g, '""')}"`,
+        String(row.cases ?? 0),
         row.totalReceiptAmount.toFixed(2),
       ]);
       csvContent = [
@@ -96,45 +103,45 @@ export function AnnualReportV2Table({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <h3 className="text-lg font-semibold flex items-center gap-2">
-          <Table2 className="h-5 w-5 text-muted-foreground" />
-          Data Reports
-        </h3>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleExportCSV}
-          disabled={
-            (activeTab === "monthly" && !data.length) ||
-            (activeTab === "sales" && !salesData.length) ||
-            (activeTab === "purchases" && !purchaseData.length)
-          }
-          className="h-8 text-xs"
-        >
-          <Download className="h-3.5 w-3.5 mr-1.5" />
-          Export CSV
-        </Button>
-      </div>
+      {/* Title row — no Export CSV here anymore */}
+      <h3 className="text-lg font-semibold flex items-center gap-2">
+        <Table2 className="h-5 w-5 text-muted-foreground" />
+        Data Reports
+      </h3>
 
       <Tabs defaultValue="monthly" value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3 lg:w-[600px] mb-4">
-          <TabsTrigger value="monthly" className="flex items-center gap-2">
-            <Table2 className="h-4 w-4" />
-            <span className="hidden sm:inline">Monthly Breakdown</span>
-            <span className="sm:hidden">Monthly</span>
-          </TabsTrigger>
-          <TabsTrigger value="sales" className="flex items-center gap-2">
-            <FileText className="h-4 w-4" />
-            <span className="hidden sm:inline">Sales Report</span>
-            <span className="sm:hidden">Sales</span>
-          </TabsTrigger>
-          <TabsTrigger value="purchases" className="flex items-center gap-2">
-            <Receipt className="h-4 w-4" />
-            <span className="hidden sm:inline">Purchase Report</span>
-            <span className="sm:hidden">Purchases</span>
-          </TabsTrigger>
-        </TabsList>
+        {/* Tabs + Export CSV on same row */}
+        <div className="flex items-center justify-between gap-4 mb-4">
+          <TabsList className="w-fit">
+            <TabsTrigger value="monthly" className="flex items-center gap-2 whitespace-nowrap">
+              <Table2 className="h-4 w-4" />
+              Monthly Breakdown
+            </TabsTrigger>
+            <TabsTrigger value="sales" className="flex items-center gap-2 whitespace-nowrap">
+              <FileText className="h-4 w-4" />
+              Sales Report
+            </TabsTrigger>
+            <TabsTrigger value="purchases" className="flex items-center gap-2 whitespace-nowrap">
+              <Receipt className="h-4 w-4" />
+              Purchase Report
+            </TabsTrigger>
+          </TabsList>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportCSV}
+            disabled={
+              (activeTab === "monthly" && !data.length) ||
+              (activeTab === "sales" && !salesData.length) ||
+              (activeTab === "purchases" && !purchaseData.length)
+            }
+            className="h-8 text-xs shrink-0"
+          >
+            <Download className="h-3.5 w-3.5 mr-1.5" />
+            Export CSV
+          </Button>
+        </div>
 
         <TabsContent value="monthly" className="m-0">
           <DataTable
@@ -172,3 +179,4 @@ export function AnnualReportV2Table({
     </div>
   );
 }
+

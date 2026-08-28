@@ -40,6 +40,8 @@ interface NormalizedSales {
   invoiceTotalAmount: number;
   productCategory: string;
   productTotalAmount: number;
+  productSupplier?: string;
+  cases?: number;
 }
 
 interface NormalizedPurchase {
@@ -48,6 +50,7 @@ interface NormalizedPurchase {
   supplierName: string;
   productCategory: string;
   totalReceiptAmount: number;
+  cases?: number;
 }
 
 function normalizeSales(items: Record<string, unknown>[]): NormalizedSales[] {
@@ -61,7 +64,9 @@ function normalizeSales(items: Record<string, unknown>[]): NormalizedSales[] {
         customerName: pickString(item, ["customerName", "customer_name", "customer", "clientName"]),
         invoiceTotalAmount: pickNumber(item, ["totalInvoiceAmount", "total_invoice_amount", "amount", "totalAmount", "total"]),
         productCategory: pickString(item, ["productCategory", "product_category", "category"]),
+        productSupplier: pickString(item, ["productSupplier", "product_supplier", "supplier"]),
         productTotalAmount: pickNumber(item, ["productTotalAmount", "product_total_amount", "productSalesAmount", "productNetAmount", "totalProductAmount"]),
+        cases: pickNumber(item, ["productQuantity", "quantity"]),
       });
     }
   }
@@ -83,6 +88,7 @@ function normalizePurchases(items: Record<string, unknown>[]): NormalizedPurchas
         supplierName: pickString(item, ["supplierName", "supplier_name", "supplier", "vendorName"]),
         productCategory: pickString(item, ["productCategory", "product_category", "category"]),
         totalReceiptAmount: netAmount,
+        cases: pickNumber(item, ["receivedQuantity", "received_quantity"]),
       });
     }
   }
@@ -199,7 +205,7 @@ export async function GET(req: NextRequest) {
       purchaseUrl.searchParams.set("receiptDateTo", dateTo);
     }
 
-    const cacheKey = `v2:${dateFrom}:${dateTo}:${token}`;
+    const cacheKey = `v2.3:${dateFrom}:${dateTo}:${token}`;
     const now = Date.now();
     let cachedData = NORMALIZED_CACHE.get(cacheKey);
 
@@ -257,6 +263,11 @@ export async function GET(req: NextRequest) {
         item.productCategory.toLowerCase() === categoryName.toLowerCase()
       );
     }
+    if (supplierName) {
+      filteredSalesItems = filteredSalesItems.filter((item) =>
+        item.productSupplier && item.productSupplier.toLowerCase().includes(supplierName.toLowerCase())
+      );
+    }
 
     // Group items by invoiceNo to construct SalesTransaction[]
     interface GroupedSalesTransaction {
@@ -265,6 +276,8 @@ export async function GET(req: NextRequest) {
       customerName: string;
       totalInvoiceAmount: number;
       productCategory?: string;
+      productSupplier?: string;
+      cases?: number;
     }
     const salesGroupedMap = new Map<string, GroupedSalesTransaction>();
     for (const item of filteredSalesItems) {
@@ -272,6 +285,7 @@ export async function GET(req: NextRequest) {
       const existing = salesGroupedMap.get(item.invoiceNo);
       if (existing) {
         existing.totalInvoiceAmount += amountToAdd;
+        existing.cases = (existing.cases || 0) + (item.cases || 0);
       } else {
         salesGroupedMap.set(item.invoiceNo, {
           invoiceNo: item.invoiceNo,
@@ -279,6 +293,8 @@ export async function GET(req: NextRequest) {
           customerName: item.customerName,
           totalInvoiceAmount: amountToAdd,
           productCategory: item.productCategory,
+          productSupplier: item.productSupplier,
+          cases: item.cases || 0,
         });
       }
     }
@@ -317,18 +333,21 @@ export async function GET(req: NextRequest) {
       receiptDate: string;
       supplierName: string;
       totalReceiptAmount: number;
+      cases?: number;
     }
     const purchaseGroupedMap = new Map<string, GroupedPurchaseTransaction>();
     for (const item of filteredPurchasesItems) {
       const existing = purchaseGroupedMap.get(item.receiptNo);
       if (existing) {
         existing.totalReceiptAmount += item.totalReceiptAmount;
+        existing.cases = (existing.cases || 0) + (item.cases || 0);
       } else {
         purchaseGroupedMap.set(item.receiptNo, {
           receiptNo: item.receiptNo,
           receiptDate: item.receiptDate,
           supplierName: item.supplierName,
           totalReceiptAmount: item.totalReceiptAmount,
+          cases: item.cases || 0,
         });
       }
     }
