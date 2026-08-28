@@ -36,7 +36,7 @@ export default function AnnualReportV2Page() {
 
   const monthlyData = useMemo(() => data?.monthlyData ?? [], [data]);
   const summary = useMemo(() => data?.summary, [data]);
-  const customers = useMemo(() => data?.customers ?? [], [data]);
+
   const suppliers = useMemo(() => data?.suppliers ?? [], [data]);
   const categories = useMemo(() => data?.categories ?? [], [data]);
   const salesTransactions = useMemo(() => data?.salesTransactions ?? [], [data]);
@@ -76,7 +76,7 @@ export default function AnnualReportV2Page() {
           </p>
         </div>
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full sm:w-auto">
-          <AnnualReportV2Filters customers={customers} suppliers={suppliers} categories={categories} />
+          <AnnualReportV2Filters suppliers={suppliers} categories={categories} />
           <Button
             variant="ghost"
             size="icon"

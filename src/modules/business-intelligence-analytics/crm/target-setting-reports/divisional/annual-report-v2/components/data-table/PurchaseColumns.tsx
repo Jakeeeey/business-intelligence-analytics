@@ -58,12 +58,32 @@ export const purchaseColumns: ColumnDef<PurchaseTransaction>[] = [
     meta: { label: "Supplier Name" },
   },
   {
-    accessorKey: "totalReceiptAmount",
-    header: ({ column }) => <SortHeader column={column} label="Amount" />,
+    accessorKey: "cases",
+    header: ({ column }) => (
+      <div className="text-right">
+        <SortHeader column={column} label="Cases" />
+      </div>
+    ),
     cell: ({ row }) => (
-      <span className="text-red-600 dark:text-red-400 font-medium tabular-nums">
-        {formatCurrency(row.original.totalReceiptAmount)}
-      </span>
+      <div className="text-right font-medium tabular-nums">
+        {row.original.cases?.toLocaleString() ?? 0}
+      </div>
+    ),
+    meta: { label: "Cases" },
+  },
+  {
+    accessorKey: "totalReceiptAmount",
+    header: ({ column }) => (
+      <div className="text-right">
+        <SortHeader column={column} label="Amount" />
+      </div>
+    ),
+    cell: ({ row }) => (
+      <div className="text-right">
+        <span className="text-red-600 dark:text-red-400 font-medium tabular-nums">
+          {formatCurrency(row.original.totalReceiptAmount)}
+        </span>
+      </div>
     ),
     meta: { label: "Amount" },
   },

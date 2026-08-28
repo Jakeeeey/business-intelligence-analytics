@@ -23,13 +23,11 @@ const YEAR_OPTIONS = Array.from({ length: 7 }, (_, i) =>
 );
 
 interface AnnualReportV2FiltersProps {
-  customers: string[];
   suppliers: string[];
   categories: string[];
 }
 
 export function AnnualReportV2Filters({
-  customers,
   suppliers,
   categories = [],
 }: AnnualReportV2FiltersProps) {
@@ -38,10 +36,7 @@ export function AnnualReportV2Filters({
   const hasActiveFilters = filters.customerName || filters.supplierName || filters.categoryName || filters.month;
   const activeCount = [filters.customerName, filters.supplierName, filters.categoryName, filters.month].filter(Boolean).length;
 
-  const customerOptions = React.useMemo(
-    () => customers.map((c) => ({ label: c, value: c })),
-    [customers],
-  );
+
   const supplierOptions = React.useMemo(
     () => suppliers.map((s) => ({ label: s, value: s })),
     [suppliers],
@@ -95,7 +90,8 @@ export function AnnualReportV2Filters({
         </SelectContent>
       </Select>
 
-      <MultiSelect
+      {/* Customer filter hidden temporarily */}
+      {/* <MultiSelect
         mode="single"
         placeholder="Customer"
         options={customerOptions}
@@ -104,7 +100,7 @@ export function AnnualReportV2Filters({
           setFilter("customerName", next.length > 0 ? next[0] : "")
         }
         className="w-40 h-8 text-xs"
-      />
+      /> */}
 
       <MultiSelect
         mode="single"
