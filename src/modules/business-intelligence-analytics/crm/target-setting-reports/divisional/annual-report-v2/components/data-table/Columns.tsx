@@ -32,11 +32,7 @@ export const columns: ColumnDef<MonthlyAggregate>[] = [
     header: ({ column }) => <SortHeader column={column} label="Month" />,
     meta: { label: "Month" },
   },
-  {
-    accessorKey: "year",
-    header: ({ column }) => <SortHeader column={column} label="Year" />,
-    meta: { label: "Year" },
-  },
+
   {
     accessorKey: "totalSales",
     header: ({ column }) => <SortHeader column={column} label="Total Sales" />,
