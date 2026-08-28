@@ -3,8 +3,7 @@ import { cookies } from "next/headers";
 import {
   aggregateMonthlyData,
   calculateSummary,
-  filterPurchasesBySupplier,
-} from "@/modules/business-intelligence-analytics/crm/target-setting-reports/divisional/annual-report/utils/annual-report.utils";
+} from "@/modules/business-intelligence-analytics/crm/target-setting-reports/divisional/annual-report-v2/utils/annual-report.utils";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -47,6 +46,7 @@ interface NormalizedPurchase {
   receiptNo: string;
   receiptDate: string;
   supplierName: string;
+  productCategory: string;
   totalReceiptAmount: number;
 }
 
@@ -69,19 +69,24 @@ function normalizeSales(items: Record<string, unknown>[]): NormalizedSales[] {
 }
 
 function normalizePurchases(items: Record<string, unknown>[]): NormalizedPurchase[] {
-  const uniqueReceipts = new Map<string, NormalizedPurchase>();
+  const normalized: NormalizedPurchase[] = [];
   for (const item of items) {
     const receiptNo = pickString(item, ["receiptNo", "receipt_no", "receipt_number", "docNo"]);
-    if (receiptNo && !uniqueReceipts.has(receiptNo)) {
-      uniqueReceipts.set(receiptNo, {
+    if (receiptNo) {
+      const totalAmount = pickNumber(item, ["totalAmount", "amount", "totalReceiptAmount", "totalPayable"]) || 0;
+      const discountedAmount = pickNumber(item, ["discountedAmount", "discount"]) || 0;
+      const netAmount = totalAmount - discountedAmount;
+
+      normalized.push({
         receiptNo,
         receiptDate: pickString(item, ["receiptDate", "receipt_date", "date", "transactionDate"]),
         supplierName: pickString(item, ["supplierName", "supplier_name", "supplier", "vendorName"]),
-        totalReceiptAmount: pickNumber(item, ["totalReceiptAmount", "total_receipt_amount", "amount", "totalAmount", "total", "totalPayable"]),
+        productCategory: pickString(item, ["productCategory", "product_category", "category"]),
+        totalReceiptAmount: netAmount,
       });
     }
   }
-  return Array.from(uniqueReceipts.values());
+  return normalized;
 }
 
 async function fetchWithErrorLogging(
@@ -105,7 +110,7 @@ async function fetchWithErrorLogging(
           ? JSON.stringify(parsed).slice(0, 500)
           : text.slice(0, 300) || "(empty)";
       console.error(
-        `ERR_API_FAIL: [AnnualReport-API] ${label} failed [${res.status}]: ${body}`,
+        `ERR_API_FAIL: [AnnualReportV2-API] ${label} failed [${res.status}]: ${body}`,
       );
       return { ok: false, data: [], raw: parsed };
     }
@@ -118,20 +123,38 @@ async function fetchWithErrorLogging(
         [];
     return { ok: true, data: arr as Record<string, unknown>[], raw: parsed };
   } catch (err) {
-    console.error(`ERR_API_FAIL: [AnnualReport-API] ${label} network error:`, err);
+    console.error(`ERR_API_FAIL: [AnnualReportV2-API] ${label} network error:`, err);
     return { ok: false, data: [], raw: null };
   }
 }
 
 // Module-level in-memory cache for ultra-fast dev and prod performance
-const NORMALIZED_CACHE = new Map<string, {
-  sales: NormalizedSales[];
-  purchases: NormalizedPurchase[];
-  customers: string[];
-  suppliers: string[];
-  categories: string[];
-  expiry: number;
-}>();
+const globalForCache = globalThis as unknown as {
+  annualReportV2Cache: Map<string, {
+    sales: NormalizedSales[];
+    purchases: NormalizedPurchase[];
+    customers: string[];
+    suppliers: string[];
+    categories: string[];
+    expiry: number;
+  }>;
+};
+
+const NORMALIZED_CACHE = globalForCache.annualReportV2Cache || new Map<
+  string,
+  {
+    sales: NormalizedSales[];
+    purchases: NormalizedPurchase[];
+    customers: string[];
+    suppliers: string[];
+    categories: string[];
+    expiry: number;
+  }
+>();
+
+if (process.env.NODE_ENV !== "production") {
+  globalForCache.annualReportV2Cache = NORMALIZED_CACHE;
+}
 
 export async function GET(req: NextRequest) {
   const cookieStore = await cookies();
@@ -147,7 +170,7 @@ export async function GET(req: NextRequest) {
   }
 
   if (!SPRING_API_BASE_URL) {
-    console.error("ERR_CONFIG: [AnnualReport-API] SPRING_API_BASE_URL is not defined");
+    console.error("ERR_CONFIG: [AnnualReportV2-API] SPRING_API_BASE_URL is not defined");
     return NextResponse.json(
       { ok: false, error: "Server Configuration Error" },
       { status: 500 },
@@ -165,18 +188,18 @@ export async function GET(req: NextRequest) {
     const baseUrl = SPRING_API_BASE_URL.replace(/\/+$/, "");
 
     const salesUrl = new URL(`${baseUrl}/api/view-sales-report-itemized/filtered`);
-    const purchaseUrl = new URL(`${baseUrl}/api/view-accounts-payable/all`);
+    const purchaseUrl = new URL(`${baseUrl}/api/view-purchase-report-detailed/filter`);
 
     if (dateFrom) {
       salesUrl.searchParams.set("startDate", dateFrom);
-      purchaseUrl.searchParams.set("startDate", dateFrom);
+      purchaseUrl.searchParams.set("receiptDateFrom", dateFrom);
     }
     if (dateTo) {
       salesUrl.searchParams.set("endDate", dateTo);
-      purchaseUrl.searchParams.set("endDate", dateTo);
+      purchaseUrl.searchParams.set("receiptDateTo", dateTo);
     }
 
-    const cacheKey = `${dateFrom}:${dateTo}:${token}`;
+    const cacheKey = `v2:${dateFrom}:${dateTo}:${token}`;
     const now = Date.now();
     let cachedData = NORMALIZED_CACHE.get(cacheKey);
 
@@ -186,11 +209,10 @@ export async function GET(req: NextRequest) {
         Authorization: `Bearer ${token}`,
       };
 
-      const [salesResult, purchaseResult] = await Promise.all([
-        fetchWithErrorLogging(salesUrl.toString(), "Sales API", headers),
-        fetchWithErrorLogging(purchaseUrl.toString(), "Purchase API", headers),
-      ]);
+      const salesResult = await fetchWithErrorLogging(salesUrl.toString(), "Sales API", headers);
+      const purchaseResult = await fetchWithErrorLogging(purchaseUrl.toString(), "Purchase API", headers);
 
+      // Rebuild trigger
       const salesTransactions = normalizeSales(salesResult.data);
       const purchaseTransactions = normalizePurchases(purchaseResult.data);
 
@@ -205,9 +227,10 @@ export async function GET(req: NextRequest) {
       ].sort((a, b) => a.localeCompare(b));
 
       const categories = [
-        ...new Set(
-          salesTransactions.map((s) => s.productCategory).filter(Boolean),
-        ),
+        ...new Set([
+          ...salesTransactions.map((s) => s.productCategory),
+          ...purchaseTransactions.map((p) => p.productCategory),
+        ].filter(Boolean)),
       ].sort((a, b) => a.localeCompare(b));
 
       cachedData = {
@@ -245,27 +268,71 @@ export async function GET(req: NextRequest) {
     }
     const salesGroupedMap = new Map<string, GroupedSalesTransaction>();
     for (const item of filteredSalesItems) {
+      const amountToAdd = item.productTotalAmount || 0;
       const existing = salesGroupedMap.get(item.invoiceNo);
       if (existing) {
-        if (categoryName) {
-          existing.totalInvoiceAmount += item.productTotalAmount;
-        }
+        existing.totalInvoiceAmount += amountToAdd;
       } else {
         salesGroupedMap.set(item.invoiceNo, {
           invoiceNo: item.invoiceNo,
           invoiceDate: item.invoiceDate,
           customerName: item.customerName,
-          totalInvoiceAmount: categoryName ? item.productTotalAmount : item.invoiceTotalAmount,
+          totalInvoiceAmount: amountToAdd,
           productCategory: item.productCategory,
         });
       }
     }
     const filteredSales = Array.from(salesGroupedMap.values());
 
-    const filteredPurchases = filterPurchasesBySupplier(
-      cachedData.purchases,
-      supplierName,
-    );
+    // Filter purchases items by supplierName and categoryName
+    let filteredPurchasesItems = cachedData.purchases;
+
+    // In-memory date filtering safeguard because backend date filtering might have slight boundary gaps
+    if (dateFrom || dateTo) {
+      const from = dateFrom ? new Date(dateFrom) : null;
+      const to = dateTo ? new Date(dateTo + "T23:59:59.999") : null;
+      filteredPurchasesItems = filteredPurchasesItems.filter((item) => {
+        if (!item.receiptDate) return true;
+        const d = new Date(item.receiptDate);
+        if (from && d < from) return false;
+        if (to && d > to) return false;
+        return true;
+      });
+    }
+
+    if (supplierName) {
+      filteredPurchasesItems = filteredPurchasesItems.filter((item) =>
+        item.supplierName.toLowerCase().includes(supplierName.toLowerCase())
+      );
+    }
+    if (categoryName) {
+      filteredPurchasesItems = filteredPurchasesItems.filter((item) =>
+        item.productCategory.toLowerCase() === categoryName.toLowerCase()
+      );
+    }
+
+    // Group items by receiptNo to construct PurchaseTransaction[]
+    interface GroupedPurchaseTransaction {
+      receiptNo: string;
+      receiptDate: string;
+      supplierName: string;
+      totalReceiptAmount: number;
+    }
+    const purchaseGroupedMap = new Map<string, GroupedPurchaseTransaction>();
+    for (const item of filteredPurchasesItems) {
+      const existing = purchaseGroupedMap.get(item.receiptNo);
+      if (existing) {
+        existing.totalReceiptAmount += item.totalReceiptAmount;
+      } else {
+        purchaseGroupedMap.set(item.receiptNo, {
+          receiptNo: item.receiptNo,
+          receiptDate: item.receiptDate,
+          supplierName: item.supplierName,
+          totalReceiptAmount: item.totalReceiptAmount,
+        });
+      }
+    }
+    const filteredPurchases = Array.from(purchaseGroupedMap.values());
 
     const monthlyData = aggregateMonthlyData(filteredSales, filteredPurchases);
 
@@ -300,7 +367,7 @@ export async function GET(req: NextRequest) {
       ok: true,
     });
   } catch (error) {
-    console.error("ERR_INTERNAL_FAIL: [AnnualReport-API] Fatal Error:", error);
+    console.error("ERR_INTERNAL_FAIL: [AnnualReportV2-API] Fatal Error:", error);
     return NextResponse.json(
       { ok: false, error: "INTERNAL_FAIL: Gateway Error" },
       { status: 502 },

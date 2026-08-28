@@ -4,21 +4,21 @@ import React, { useMemo } from "react";
 import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ErrorPage } from "@/app/(business-intelligence-analytics)/bia/_components/ErrorPage";
-import { useAnnualReportFilters } from "./providers/AnnualReportFilterProvider";
-import { useAnnualReport } from "./hooks/useAnnualReport";
-import { AnnualReportFilters } from "./components/AnnualReportFilters";
-import { AnnualReportKPICards } from "./components/AnnualReportKPICards";
-import { AnnualReportChart } from "./components/AnnualReportChart";
-import { AnnualReportTable } from "./components/AnnualReportTable";
-import { AnnualReportSkeleton } from "./components/AnnualReportSkeleton";
+import { useAnnualReportV2Filters } from "./providers/AnnualReportV2FilterProvider";
+import { useAnnualReportV2 } from "./hooks/useAnnualReportV2";
+import { AnnualReportV2Filters } from "./components/AnnualReportV2Filters";
+import { AnnualReportV2KPICards } from "./components/AnnualReportV2KPICards";
+import { AnnualReportV2Chart } from "./components/AnnualReportV2Chart";
+import { AnnualReportV2Table } from "./components/AnnualReportV2Table";
+import { AnnualReportV2Skeleton } from "./components/AnnualReportV2Skeleton";
 
 const MONTH_LABELS = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December",
 ];
 
-export default function AnnualReportPage() {
-  const { filters } = useAnnualReportFilters();
+export default function AnnualReportV2Page() {
+  const { filters } = useAnnualReportV2Filters();
 
   const queryParams = useMemo(() => {
     const params: Record<string, string> = {};
@@ -32,7 +32,7 @@ export default function AnnualReportPage() {
     return params;
   }, [filters]);
 
-  const { data, isLoading, error, refresh } = useAnnualReport(queryParams);
+  const { data, isLoading, error, refresh } = useAnnualReportV2(queryParams);
 
   const monthlyData = useMemo(() => data?.monthlyData ?? [], [data]);
   const summary = useMemo(() => data?.summary, [data]);
@@ -52,7 +52,7 @@ export default function AnnualReportPage() {
     ? MONTH_LABELS[Number(filters.month) - 1]
     : null;
 
-  if (isLoading) return <AnnualReportSkeleton />;
+  if (isLoading) return <AnnualReportV2Skeleton />;
   if (error) return <ErrorPage message={error} onRefresh={refresh} />;
 
   return (
@@ -61,7 +61,7 @@ export default function AnnualReportPage() {
         <div className="space-y-1">
           <div className="flex items-center gap-3">
             <h2 className="text-3xl font-bold tracking-tight">
-              {monthLabel ? `${monthLabel} ${filters.year}` : `Annual Report ${filters.year}`}
+              {monthLabel ? `${monthLabel} ${filters.year}` : `Annual Report V2 ${filters.year}`}
             </h2>
             <span className="hidden sm:inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold text-muted-foreground">
               {periodCount > 0
@@ -76,7 +76,7 @@ export default function AnnualReportPage() {
           </p>
         </div>
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full sm:w-auto">
-          <AnnualReportFilters customers={customers} suppliers={suppliers} categories={categories} />
+          <AnnualReportV2Filters customers={customers} suppliers={suppliers} categories={categories} />
           <Button
             variant="ghost"
             size="icon"
@@ -89,11 +89,11 @@ export default function AnnualReportPage() {
         </div>
       </div>
 
-      <AnnualReportKPICards summary={summary} isLoading={isLoading} />
+      <AnnualReportV2KPICards summary={summary} isLoading={isLoading} />
 
-      <AnnualReportChart data={monthlyData} isLoading={isLoading} />
+      <AnnualReportV2Chart data={monthlyData} isLoading={isLoading} />
 
-      <AnnualReportTable
+      <AnnualReportV2Table
         data={monthlyData}
         salesData={salesTransactions}
         purchaseData={purchaseTransactions}

@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/select";
 import { MultiSelect } from "@/modules/business-intelligence-analytics/crm/sales-report/salesman-performance/components/MultiSelect";
 import { RotateCcw, Filter } from "lucide-react";
-import { useAnnualReportFilters } from "../providers/AnnualReportFilterProvider";
+import { useAnnualReportV2Filters } from "../providers/AnnualReportV2FilterProvider";
 
 const MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => ({
   value: String(i + 1),
@@ -22,18 +22,18 @@ const YEAR_OPTIONS = Array.from({ length: 7 }, (_, i) =>
   String(new Date().getFullYear() - 2 + i),
 );
 
-interface AnnualReportFiltersProps {
+interface AnnualReportV2FiltersProps {
   customers: string[];
   suppliers: string[];
   categories: string[];
 }
 
-export function AnnualReportFilters({
+export function AnnualReportV2Filters({
   customers,
   suppliers,
   categories = [],
-}: AnnualReportFiltersProps) {
-  const { filters, setFilter, resetFilters } = useAnnualReportFilters();
+}: AnnualReportV2FiltersProps) {
+  const { filters, setFilter, resetFilters } = useAnnualReportV2Filters();
 
   const hasActiveFilters = filters.customerName || filters.supplierName || filters.categoryName || filters.month;
   const activeCount = [filters.customerName, filters.supplierName, filters.categoryName, filters.month].filter(Boolean).length;

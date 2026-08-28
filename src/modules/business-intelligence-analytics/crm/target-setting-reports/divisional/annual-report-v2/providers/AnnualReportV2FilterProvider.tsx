@@ -6,7 +6,7 @@ import {
   startOfYear, endOfYear, startOfMonth, endOfMonth, format,
 } from "date-fns";
 
-export interface AnnualReportFilters {
+export interface AnnualReportV2Filters {
   dateFrom: string;
   dateTo: string;
   customerName: string;
@@ -16,16 +16,16 @@ export interface AnnualReportFilters {
   month: string;
 }
 
-interface AnnualReportFilterContextValue {
-  filters: AnnualReportFilters;
-  setFilter: (key: keyof AnnualReportFilters, value: string) => void;
+interface AnnualReportV2FilterContextValue {
+  filters: AnnualReportV2Filters;
+  setFilter: (key: keyof AnnualReportV2Filters, value: string) => void;
   resetFilters: () => void;
 }
 
-const AnnualReportFilterContext =
-  createContext<AnnualReportFilterContextValue | null>(null);
+const AnnualReportV2FilterContext =
+  createContext<AnnualReportV2FilterContextValue | null>(null);
 
-export function AnnualReportFilterProvider({
+export function AnnualReportV2FilterProvider({
   children,
 }: {
   children: React.ReactNode;
@@ -34,7 +34,7 @@ export function AnnualReportFilterProvider({
   const router = useRouter();
   const paramsStr = searchParams.toString();
 
-  const filters: AnnualReportFilters = useMemo(() => {
+  const filters: AnnualReportV2Filters = useMemo(() => {
     const sp = new URLSearchParams(paramsStr);
     const year = sp.get("year") ?? String(new Date().getFullYear());
     const month = sp.get("month") ?? "";
@@ -69,7 +69,7 @@ export function AnnualReportFilterProvider({
   }, [paramsStr]);
 
   const setFilter = useCallback(
-    (key: keyof AnnualReportFilters, value: string) => {
+    (key: keyof AnnualReportV2Filters, value: string) => {
       const params = new URLSearchParams(paramsStr);
       if (value) {
         params.set(key, value);
@@ -86,19 +86,19 @@ export function AnnualReportFilterProvider({
   }, [router]);
 
   return (
-    <AnnualReportFilterContext.Provider
+    <AnnualReportV2FilterContext.Provider
       value={{ filters, setFilter, resetFilters }}
     >
       {children}
-    </AnnualReportFilterContext.Provider>
+    </AnnualReportV2FilterContext.Provider>
   );
 }
 
-export function useAnnualReportFilters(): AnnualReportFilterContextValue {
-  const ctx = useContext(AnnualReportFilterContext);
+export function useAnnualReportV2Filters(): AnnualReportV2FilterContextValue {
+  const ctx = useContext(AnnualReportV2FilterContext);
   if (!ctx) {
     throw new Error(
-      "useAnnualReportFilters must be used within AnnualReportFilterProvider",
+      "useAnnualReportV2Filters must be used within AnnualReportV2FilterProvider",
     );
   }
   return ctx;

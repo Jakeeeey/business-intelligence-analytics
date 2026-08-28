@@ -62,7 +62,7 @@ export const DashboardResponseSchema = z.object({
 
 export type DashboardResponse = z.infer<typeof DashboardResponseSchema>;
 
-export const AnnualReportFiltersSchema = z.object({
+export const AnnualReportV2FiltersSchema = z.object({
   dateFrom: z.string().optional(),
   dateTo: z.string().optional(),
   customerName: z.string().optional(),
@@ -71,7 +71,7 @@ export const AnnualReportFiltersSchema = z.object({
   categoryName: z.string().optional(),
 });
 
-export type AnnualReportFilters = z.infer<typeof AnnualReportFiltersSchema>;
+export type AnnualReportV2Filters = z.infer<typeof AnnualReportV2FiltersSchema>;
 
 export interface HalfYearDataPoint {
   label: string;
