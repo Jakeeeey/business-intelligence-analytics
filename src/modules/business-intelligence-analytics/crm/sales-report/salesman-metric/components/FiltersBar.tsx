@@ -5,7 +5,8 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Search } from "lucide-react";
+import { MonthPicker } from "@/components/ui/month-picker";
+import { Search, RefreshCw, FunnelX } from "lucide-react";
 import { SalesmanOption } from "../types";
 
 interface FiltersBarProps {
@@ -16,6 +17,10 @@ interface FiltersBarProps {
   onChangeFiscalPeriod: (fp: string) => void;
   searchQuery: string;
   onSearchQueryChange: (query: string) => void;
+  onApplyFilters: () => void;
+  onRefresh: () => void;
+  onClearFilters: () => void;
+  hasActiveFilters: boolean;
   loading: boolean;
 }
 
@@ -27,6 +32,10 @@ export function FiltersBar({
   onChangeFiscalPeriod,
   searchQuery,
   onSearchQueryChange,
+  onApplyFilters,
+  onRefresh,
+  onClearFilters,
+  hasActiveFilters,
   loading,
 }: FiltersBarProps) {
   // Map salesmen list to option format for SearchableSelect
@@ -61,7 +70,7 @@ export function FiltersBar({
                 value={searchQuery}
                 onChange={(e) => onSearchQueryChange(e.target.value)}
                 disabled={loading}
-                className="pl-9 h-9 border-border/60 dark:border-zinc-800"
+                className="pl-9 h-9 border-border/60 bg-background text-foreground dark:border-zinc-800"
               />
             </div>
           </div>
@@ -87,18 +96,46 @@ export function FiltersBar({
           {/* Fiscal Period Filter */}
           <div className="w-full md:w-64 space-y-2">
             <Label className="text-sm font-semibold text-foreground/80">Fiscal Period</Label>
-            <Input
-              type="month"
+            <MonthPicker
               value={monthInputValue}
-              onChange={(e) => {
-                const val = e.target.value; // "YYYY-MM"
+              onChange={(val) => {
                 if (val) {
                   onChangeFiscalPeriod(val + "-01");
                 }
               }}
               disabled={loading}
-              className="h-9 border-border/60 dark:border-zinc-800"
             />
+          </div>
+
+          {/* Apply Filters & Actions */}
+          <div className="w-full md:w-auto flex items-end gap-2">
+            <button
+              onClick={onApplyFilters}
+              disabled={loading}
+              className="h-9 px-6 bg-primary text-primary-foreground font-semibold rounded-md shadow hover:bg-primary/90 disabled:opacity-50 transition-colors w-full md:w-auto"
+            >
+              Apply Filters
+            </button>
+
+            {hasActiveFilters && (
+              <button
+                onClick={onClearFilters}
+                disabled={loading}
+                title="Clear Filters"
+                className="h-9 w-9 flex items-center justify-center bg-muted text-muted-foreground hover:text-foreground rounded-md shadow-sm border border-border/60 hover:bg-muted/80 disabled:opacity-50 transition-colors shrink-0"
+              >
+                <FunnelX className="w-4 h-4" />
+              </button>
+            )}
+
+            <button
+              onClick={onRefresh}
+              disabled={loading}
+              title="Refresh Data"
+              className="h-9 w-9 flex items-center justify-center bg-muted text-muted-foreground hover:text-foreground rounded-md shadow-sm border border-border/60 hover:bg-muted/80 disabled:opacity-50 transition-colors shrink-0"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            </button>
           </div>
         </div>
       </CardContent>

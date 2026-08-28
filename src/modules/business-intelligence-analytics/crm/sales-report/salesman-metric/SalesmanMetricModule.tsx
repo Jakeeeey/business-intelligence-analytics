@@ -18,11 +18,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 export default function SalesmanMetricModule() {
   const {
     salesmen,
-    filters,
+    localFilters,
+    appliedFilters,
     loading,
     rows,
     handleSalesmanChange,
     handleFiscalPeriodChange,
+    handleApplyFilters,
+    handleRefresh,
+    handleClearFilters,
+    hasActiveFilters,
     // Search
     searchQuery,
     setSearchQuery,
@@ -60,12 +65,16 @@ export default function SalesmanMetricModule() {
       {/* 1. Filters Section */}
       <FiltersBar
         salesmen={salesmen}
-        selectedSalesmanId={filters.salesmanId}
-        fiscalPeriod={filters.fiscalPeriod}
+        selectedSalesmanId={localFilters.salesmanId}
+        fiscalPeriod={localFilters.fiscalPeriod}
         onChangeSalesman={handleSalesmanChange}
         onChangeFiscalPeriod={handleFiscalPeriodChange}
         searchQuery={searchQuery}
         onSearchQueryChange={setSearchQuery}
+        onApplyFilters={handleApplyFilters}
+        onRefresh={handleRefresh}
+        onClearFilters={handleClearFilters}
+        hasActiveFilters={hasActiveFilters}
         loading={loading}
       />
 
@@ -107,8 +116,8 @@ export default function SalesmanMetricModule() {
           onClose={() => setModalOpen(false)}
           salesmanId={selectedSalesmanId}
           salesmanName={selectedSalesmanName}
-          startDate={filters.startDate}
-          endDate={filters.endDate}
+          startDate={appliedFilters.startDate}
+          endDate={appliedFilters.endDate}
         />
       )}
 
@@ -119,8 +128,8 @@ export default function SalesmanMetricModule() {
           salesmanId={freqSalesmanId}
           salesmanCode={freqSalesmanCode}
           salesmanName={freqSalesmanName}
-          startDate={filters.startDate}
-          endDate={filters.endDate}
+          startDate={appliedFilters.startDate}
+          endDate={appliedFilters.endDate}
         />
       )}
 
@@ -131,8 +140,8 @@ export default function SalesmanMetricModule() {
           salesmanId={reachSalesmanId}
           salesmanCode={reachSalesmanCode}
           salesmanName={reachSalesmanName}
-          startDate={filters.startDate}
-          endDate={filters.endDate}
+          startDate={appliedFilters.startDate}
+          endDate={appliedFilters.endDate}
         />
       )}
 
@@ -143,8 +152,8 @@ export default function SalesmanMetricModule() {
           salesmanId={newAccSalesmanId}
           salesmanCode={newAccSalesmanCode}
           salesmanName={newAccSalesmanName}
-          startDate={filters.startDate}
-          endDate={filters.endDate}
+          startDate={appliedFilters.startDate}
+          endDate={appliedFilters.endDate}
         />
       )}
 
@@ -154,8 +163,8 @@ export default function SalesmanMetricModule() {
           onClose={() => setPoModalOpen(false)}
           salesmanId={poSalesmanId}
           salesmanName={poSalesmanName}
-          targetMonth={Number(filters.fiscalPeriod.split("-")[1])}
-          targetYear={Number(filters.fiscalPeriod.split("-")[0])}
+          targetMonth={Number(appliedFilters.fiscalPeriod.split("-")[1])}
+          targetYear={Number(appliedFilters.fiscalPeriod.split("-")[0])}
         />
       )}
 
@@ -165,8 +174,8 @@ export default function SalesmanMetricModule() {
           onClose={() => setBcModalOpen(false)}
           salesmanId={bcSalesmanId}
           salesmanName={bcSalesmanName}
-          targetMonth={Number(filters.fiscalPeriod.split("-")[1])}
-          targetYear={Number(filters.fiscalPeriod.split("-")[0])}
+          targetMonth={Number(appliedFilters.fiscalPeriod.split("-")[1])}
+          targetYear={Number(appliedFilters.fiscalPeriod.split("-")[0])}
         />
       )}
 
@@ -176,8 +185,8 @@ export default function SalesmanMetricModule() {
           onClose={() => setLsModalOpen(false)}
           salesmanId={lsSalesmanId}
           salesmanName={lsSalesmanName}
-          targetMonth={Number(filters.fiscalPeriod.split("-")[1])}
-          targetYear={Number(filters.fiscalPeriod.split("-")[0])}
+          targetMonth={Number(appliedFilters.fiscalPeriod.split("-")[1])}
+          targetYear={Number(appliedFilters.fiscalPeriod.split("-")[0])}
         />
       )}
 
@@ -187,8 +196,8 @@ export default function SalesmanMetricModule() {
           onClose={() => setTskuModalOpen(false)}
           salesmanId={tskuSalesmanId}
           salesmanName={tskuSalesmanName}
-          targetMonth={Number(filters.fiscalPeriod.split("-")[1])}
-          targetYear={Number(filters.fiscalPeriod.split("-")[0])}
+          targetMonth={Number(appliedFilters.fiscalPeriod.split("-")[1])}
+          targetYear={Number(appliedFilters.fiscalPeriod.split("-")[0])}
         />
       )}
     </div>

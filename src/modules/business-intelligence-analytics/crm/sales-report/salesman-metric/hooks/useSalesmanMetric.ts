@@ -1,5 +1,4 @@
 import * as React from "react";
-import { useDebounce } from "use-debounce";
 import { MetricRow, SalesmanMetricFilters, SalesmanOption } from "../types";
 
 // Helper to compute first and last day of month based on YYYY-MM-DD fiscal period
@@ -15,7 +14,7 @@ function getFiscalPeriodRange(fiscalPeriod: string): { start: string; end: strin
 
 export function useSalesmanMetric() {
   const [salesmen, setSalesmen] = React.useState<SalesmanOption[]>([]);
-  const [filters, setFilters] = React.useState<SalesmanMetricFilters>(() => {
+  const [localFilters, setLocalFilters] = React.useState<SalesmanMetricFilters>(() => {
     const today = new Date();
     const currentFiscalPeriod = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-01`;
     const range = getFiscalPeriodRange(currentFiscalPeriod);
@@ -27,11 +26,15 @@ export function useSalesmanMetric() {
       endDate: range.end,
     };
   });
+  
+  const [appliedFilters, setAppliedFilters] = React.useState<SalesmanMetricFilters>(localFilters);
+  const [selectedSalesman, setSelectedSalesman] = React.useState<SalesmanOption | null>(null);
+  
+  const [refreshTrigger, setRefreshTrigger] = React.useState<number>(0);
 
   const [loading, setLoading] = React.useState<boolean>(false);
-  const [rows, setRows] = React.useState<MetricRow[]>([]);
+  const [cachedRows, setCachedRows] = React.useState<MetricRow[]>([]);
   const [searchQuery, setSearchQuery] = React.useState<string>("");
-  const [debouncedFilters] = useDebounce(filters, 300);
 
   // Modal State for Supplier Sales Breakdown
   const [modalOpen, setModalOpen] = React.useState<boolean>(false);
@@ -76,14 +79,14 @@ export function useSalesmanMetric() {
   const [tskuSalesmanId, setTskuSalesmanId] = React.useState<number | "">("");
   const [tskuSalesmanName, setTskuSalesmanName] = React.useState<string>("");
 
-  // Fetch salesmen options when selected dates change
+  // Fetch salesmen options when selected dates change (based on localFilters)
   React.useEffect(() => {
     async function loadLookups() {
       try {
         const queryParams = new URLSearchParams({
           mode: "lookups",
-          startDate: filters.startDate,
-          endDate: filters.endDate,
+          startDate: localFilters.startDate,
+          endDate: localFilters.endDate,
         });
         const response = await fetch(`/api/bia/crm/sales-report/salesman-metric?${queryParams.toString()}`);
         const json = await response.json();
@@ -95,9 +98,10 @@ export function useSalesmanMetric() {
       }
     }
     loadLookups();
-  }, [filters.startDate, filters.endDate]);
+  }, [localFilters.startDate, localFilters.endDate]);
 
-  // Fetch metrics data when filters change
+  // Fetch metrics data when applied filters' fiscal period changes
+  // We fetch for all salesmen in that period to cache it locally
   React.useEffect(() => {
     let active = true;
     const controller = new AbortController();
@@ -105,17 +109,12 @@ export function useSalesmanMetric() {
     async function fetchMetrics() {
       setLoading(true);
       try {
-        const salesmanCode =
-          debouncedFilters.salesmanId !== ""
-            ? salesmen.find((s) => s.salesmanId === debouncedFilters.salesmanId)?.salesmanCode || ""
-            : "";
-
         const queryParams = new URLSearchParams({
           mode: "report",
-          salesmanId: debouncedFilters.salesmanId === "" ? "all" : String(debouncedFilters.salesmanId),
-          salesmanCode,
-          startDate: debouncedFilters.startDate,
-          endDate: debouncedFilters.endDate,
+          salesmanId: "all", // Fetch all to allow client-side filtering
+          salesmanCode: "",
+          startDate: appliedFilters.startDate,
+          endDate: appliedFilters.endDate,
         });
 
         const res = await fetch(`/api/bia/crm/sales-report/salesman-metric?${queryParams.toString()}`, {
@@ -123,7 +122,7 @@ export function useSalesmanMetric() {
         });
         const json = await res.json();
         if (active && json.success && Array.isArray(json.data)) {
-          setRows(json.data);
+          setCachedRows(json.data);
         }
       } catch (err: unknown) {
         const error = err as Error;
@@ -141,20 +140,32 @@ export function useSalesmanMetric() {
       active = false;
       controller.abort();
     };
-  }, [debouncedFilters.salesmanId, debouncedFilters.startDate, debouncedFilters.endDate, salesmen]);
+  }, [appliedFilters.startDate, appliedFilters.endDate, refreshTrigger]);
 
   const handleSalesmanChange = (id: number | "") => {
-    const code = id !== "" ? salesmen.find((s) => s.salesmanId === id)?.salesmanCode || "" : "";
-    setFilters((prev) => ({
-      ...prev,
-      salesmanId: id,
-      salesmanCode: code,
-    }));
+    if (id === "") {
+      setSelectedSalesman(null);
+      setLocalFilters((prev) => ({
+        ...prev,
+        salesmanId: "",
+        salesmanCode: "",
+      }));
+    } else {
+      const sm = salesmen.find((s) => s.salesmanId === id);
+      if (sm) {
+        setSelectedSalesman(sm);
+      }
+      setLocalFilters((prev) => ({
+        ...prev,
+        salesmanId: id,
+        salesmanCode: sm?.salesmanCode || "",
+      }));
+    }
   };
 
   const handleFiscalPeriodChange = (fp: string) => {
     const range = getFiscalPeriodRange(fp);
-    setFilters((prev) => ({
+    setLocalFilters((prev) => ({
       ...prev,
       fiscalPeriod: fp,
       startDate: range.start,
@@ -162,14 +173,55 @@ export function useSalesmanMetric() {
     }));
   };
 
+  const handleApplyFilters = () => {
+    setAppliedFilters(localFilters);
+  };
+
+  const handleRefresh = () => {
+    setRefreshTrigger(prev => prev + 1);
+  };
+
+  const handleClearFilters = () => {
+    const today = new Date();
+    const currentFiscalPeriod = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-01`;
+    const range = getFiscalPeriodRange(currentFiscalPeriod);
+    
+    const defaultFilters: SalesmanMetricFilters = {
+      salesmanId: "",
+      salesmanCode: "",
+      fiscalPeriod: currentFiscalPeriod,
+      startDate: range.start,
+      endDate: range.end,
+    };
+    
+    setSelectedSalesman(null);
+    setLocalFilters(defaultFilters);
+    setAppliedFilters(defaultFilters);
+    // Incrementing refreshTrigger forces a fetch of the baseline view
+    setRefreshTrigger(prev => prev + 1);
+  };
+
+  const hasActiveFilters = React.useMemo(() => {
+    const today = new Date();
+    const currentFiscalPeriod = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-01`;
+    return appliedFilters.salesmanId !== "" || appliedFilters.fiscalPeriod !== currentFiscalPeriod;
+  }, [appliedFilters.salesmanId, appliedFilters.fiscalPeriod]);
+
   const filteredRows = React.useMemo(() => {
-    if (!searchQuery.trim()) return rows;
+    // 1. Filter by applied salesmanId
+    let result = cachedRows;
+    if (appliedFilters.salesmanId !== "") {
+      result = result.filter(r => r.salesmanId === appliedFilters.salesmanId);
+    }
+    
+    // 2. Filter by search query
+    if (!searchQuery.trim()) return result;
     const lowerQuery = searchQuery.toLowerCase();
-    return rows.filter((r) => 
+    return result.filter((r) => 
       r.salesmanName.toLowerCase().includes(lowerQuery) || 
       (r.salesmanCode && r.salesmanCode.toLowerCase().includes(lowerQuery))
     );
-  }, [rows, searchQuery]);
+  }, [cachedRows, appliedFilters.salesmanId, searchQuery]);
 
   const handleViewSupplierBreakdown = (salesmanId: number, salesmanName: string) => {
     setSelectedSalesmanId(salesmanId);
@@ -222,9 +274,17 @@ export function useSalesmanMetric() {
     setTskuModalOpen(true);
   };
 
+  // Ensure the selected salesman is always in the dropdown options, even if they have no data in the new fiscal period
+  const displaySalesmen = React.useMemo(() => {
+    if (!selectedSalesman) return salesmen;
+    if (salesmen.some((s) => s.salesmanId === selectedSalesman.salesmanId)) return salesmen;
+    return [...salesmen, selectedSalesman];
+  }, [salesmen, selectedSalesman]);
+
   return {
-    salesmen,
-    filters,
+    salesmen: displaySalesmen,
+    localFilters,
+    appliedFilters,
     loading,
     rows: filteredRows,
     
@@ -235,6 +295,10 @@ export function useSalesmanMetric() {
     // Handlers for filters
     handleSalesmanChange,
     handleFiscalPeriodChange,
+    handleApplyFilters,
+    handleRefresh,
+    handleClearFilters,
+    hasActiveFilters,
 
     // Modal States & Setters
     modalOpen, setModalOpen, selectedSalesmanId, selectedSalesmanName,

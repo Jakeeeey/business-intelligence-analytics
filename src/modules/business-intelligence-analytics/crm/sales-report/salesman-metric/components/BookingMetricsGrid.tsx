@@ -61,7 +61,7 @@ export function BookingMetricsGrid({
               ) : rows.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={3} className="text-center py-8 text-muted-foreground text-sm">
-                    No data available for the selected salesman/date.
+                    No records found matching your filters.
                   </TableCell>
                 </TableRow>
               ) : (
