@@ -63,76 +63,88 @@ interface CustomLabelProps {
   x?: number;
   y?: number;
   value?: number;
+  index?: number;
   maxValue?: number;
+  chartData?: { sellOut: number; sellIn: number }[];
+  series?: "sellOut" | "sellIn";
 }
 
-const CustomSellOutLabel = (props: CustomLabelProps) => {
-  const { x, y, value, maxValue } = props;
-  if (value === undefined || value === null) return null;
-  const isLow = Number(value) < (maxValue || 0) * 0.15;
-  if (isLow) {
-    return (
-      <text
-        x={x !== undefined ? x - 24 : undefined}
-        y={y !== undefined ? y + 4 : undefined}
-        fill="currentColor"
-        fontSize={10}
-        fontWeight={500}
-        textAnchor="end"
-        className="fill-foreground"
-      >
-        {abbreviateValue(Number(value))}
-      </text>
-    );
-  }
-  return (
-    <text
-      x={x}
-      y={y !== undefined ? y - 10 : undefined}
-      fill="currentColor"
-      fontSize={10}
-      fontWeight={500}
-      textAnchor="middle"
-      className="fill-foreground"
-    >
-      {abbreviateValue(Number(value))}
-    </text>
-  );
-};
+// Proximity threshold: if the two values are within 8% of the max, labels get extra separation
+const PROXIMITY_THRESHOLD = 0.08;
 
-const CustomSellInLabel = (props: CustomLabelProps) => {
-  const { x, y, value, maxValue } = props;
-  if (value === undefined || value === null) return null;
-  const isLow = Number(value) < (maxValue || 0) * 0.15;
-  if (isLow) {
+function makeLabelRenderer(
+  series: "sellOut" | "sellIn",
+  chartData: { sellOut: number; sellIn: number }[],
+  maxValue: number,
+) {
+  return function CustomLabel(props: CustomLabelProps) {
+    const { x, y, value, index } = props;
+    if (value === undefined || value === null) return null;
+
+    const text = abbreviateValue(Number(value));
+    const cx = x ?? 0;
+    const cy = y ?? 0;
+    const val = Number(value);
+
+    // Get the other series value at same index to check proximity
+    const otherKey = series === "sellOut" ? "sellIn" : "sellOut";
+    const otherVal = index !== undefined ? (chartData[index]?.[otherKey] ?? 0) : 0;
+    const diff = Math.abs(val - otherVal);
+    const isClose = diff / maxValue < PROXIMITY_THRESHOLD;
+    const isLow = val < maxValue * 0.15;
+
+    let labelX = cx;
+    let labelY: number;
+    let anchor = "middle";
+
+    if (isLow) {
+      // Near bottom edge — push to the side
+      labelY = cy + 4;
+      labelX = series === "sellOut" ? cx - 26 : cx + 26;
+      anchor = series === "sellOut" ? "end" : "start";
+    } else if (isClose) {
+      // Lines crossing / very close — force strong vertical separation
+      labelY = series === "sellOut" ? cy - 20 : cy + 24;
+    } else {
+      // Normal: sellOut above dot, sellIn below dot
+      labelY = series === "sellOut" ? cy - 14 : cy + 18;
+    }
+
     return (
-      <text
-        x={x !== undefined ? x + 24 : undefined}
-        y={y !== undefined ? y + 4 : undefined}
-        fill="currentColor"
-        fontSize={10}
-        fontWeight={500}
-        textAnchor="start"
-        className="fill-foreground"
-      >
-        {abbreviateValue(Number(value))}
-      </text>
+      <g>
+        {/* Outline pass for readability over lines/dots */}
+        <text
+          x={labelX}
+          y={labelY}
+          fontSize={10}
+          fontWeight={600}
+          textAnchor={anchor}
+          style={{
+            paintOrder: "stroke",
+            stroke: "var(--background, white)",
+            strokeWidth: 3,
+            strokeLinejoin: "round",
+          }}
+        >
+          {text}
+        </text>
+        {/* Foreground pass */}
+        <text
+          x={labelX}
+          y={labelY}
+          fill="currentColor"
+          fontSize={10}
+          fontWeight={600}
+          textAnchor={anchor}
+          className="fill-foreground"
+        >
+          {text}
+        </text>
+      </g>
     );
-  }
-  return (
-    <text
-      x={x}
-      y={y !== undefined ? y + 16 : undefined}
-      fill="currentColor"
-      fontSize={10}
-      fontWeight={500}
-      textAnchor="middle"
-      className="fill-foreground"
-    >
-      {abbreviateValue(Number(value))}
-    </text>
-  );
-};
+  };
+}
+
 
 export function AnnualReportV2Chart({ data, isLoading }: AnnualReportV2ChartProps) {
   if (isLoading) {
@@ -164,6 +176,9 @@ export function AnnualReportV2Chart({ data, isLoading }: AnnualReportV2ChartProp
     1,
   );
 
+  const sellOutLabelRenderer = makeLabelRenderer("sellOut", chartData, maxValue);
+  const sellInLabelRenderer = makeLabelRenderer("sellIn", chartData, maxValue);
+
   return (
     <Card>
       <CardHeader>
@@ -179,7 +194,7 @@ export function AnnualReportV2Chart({ data, isLoading }: AnnualReportV2ChartProp
           <LineChart
             accessibilityLayer
             data={chartData}
-            margin={{ left: 12, right: 12, top: 24, bottom: 1 }}
+          margin={{ left: 12, right: 40, top: 28, bottom: 4 }}
           >
             <CartesianGrid vertical={false} />
             <XAxis
@@ -236,7 +251,7 @@ export function AnnualReportV2Chart({ data, isLoading }: AnnualReportV2ChartProp
             >
               <LabelList
                 dataKey="sellOut"
-                content={<CustomSellOutLabel maxValue={maxValue} />}
+                content={sellOutLabelRenderer}
               />
             </Line>
             <Line
@@ -253,7 +268,7 @@ export function AnnualReportV2Chart({ data, isLoading }: AnnualReportV2ChartProp
             >
               <LabelList
                 dataKey="sellIn"
-                content={<CustomSellInLabel maxValue={maxValue} />}
+                content={sellInLabelRenderer}
               />
             </Line>
           </LineChart>
