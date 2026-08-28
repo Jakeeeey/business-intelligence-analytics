@@ -251,7 +251,7 @@ export function AnnualReportV2Chart({ data, isLoading }: AnnualReportV2ChartProp
             >
               <LabelList
                 dataKey="sellOut"
-                content={sellOutLabelRenderer as any}
+                content={sellOutLabelRenderer}
               />
             </Line>
             <Line
@@ -268,7 +268,7 @@ export function AnnualReportV2Chart({ data, isLoading }: AnnualReportV2ChartProp
             >
               <LabelList
                 dataKey="sellIn"
-                content={sellInLabelRenderer as any}
+                content={sellInLabelRenderer}
               />
             </Line>
           </LineChart>
