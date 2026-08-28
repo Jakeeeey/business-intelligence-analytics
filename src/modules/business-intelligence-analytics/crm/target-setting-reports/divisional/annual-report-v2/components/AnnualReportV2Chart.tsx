@@ -60,9 +60,9 @@ function abbreviateValue(value: number): string {
 }
 
 interface CustomLabelProps {
-  x?: number;
-  y?: number;
-  value?: number;
+  x?: number | string;
+  y?: number | string;
+  value?: number | string;
   index?: number;
   maxValue?: number;
   chartData?: { sellOut: number; sellIn: number }[];
@@ -82,8 +82,8 @@ function makeLabelRenderer(
     if (value === undefined || value === null) return null;
 
     const text = abbreviateValue(Number(value));
-    const cx = x ?? 0;
-    const cy = y ?? 0;
+    const cx = Number(x) || 0;
+    const cy = Number(y) || 0;
     const val = Number(value);
 
     // Get the other series value at same index to check proximity
@@ -95,7 +95,7 @@ function makeLabelRenderer(
 
     let labelX = cx;
     let labelY: number;
-    let anchor = "middle";
+    let anchor: "middle" | "start" | "end" = "middle";
 
     if (isLow) {
       // Near bottom edge — push to the side
@@ -251,7 +251,7 @@ export function AnnualReportV2Chart({ data, isLoading }: AnnualReportV2ChartProp
             >
               <LabelList
                 dataKey="sellOut"
-                content={sellOutLabelRenderer}
+                content={sellOutLabelRenderer as any}
               />
             </Line>
             <Line
@@ -268,7 +268,7 @@ export function AnnualReportV2Chart({ data, isLoading }: AnnualReportV2ChartProp
             >
               <LabelList
                 dataKey="sellIn"
-                content={sellInLabelRenderer}
+                content={sellInLabelRenderer as any}
               />
             </Line>
           </LineChart>

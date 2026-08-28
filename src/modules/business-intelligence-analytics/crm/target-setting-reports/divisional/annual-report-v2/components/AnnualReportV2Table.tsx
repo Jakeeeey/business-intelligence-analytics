@@ -35,7 +35,6 @@ export function AnnualReportV2Table({
     if (activeTab === "monthly") {
       const headers = [
         "Month",
-        "Year",
         "Total Sales",
         "Total Purchases",
         "Variance",
@@ -43,7 +42,6 @@ export function AnnualReportV2Table({
       ];
       const rows = data.map((row) => [
         row.monthLabel,
-        String(row.year),
         row.totalSales.toFixed(2),
         row.totalPurchases.toFixed(2),
         row.variance.toFixed(2),
