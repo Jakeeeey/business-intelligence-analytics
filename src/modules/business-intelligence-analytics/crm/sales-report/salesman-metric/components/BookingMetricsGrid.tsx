@@ -34,11 +34,11 @@ export function BookingMetricsGrid({
   const [sortConfig, setSortConfig] = React.useState<{ key: SortKey; direction: 'asc' | 'desc' } | null>(null);
 
   const sortedRows = React.useMemo(() => {
-    let sortableItems = [...rows];
+    const sortableItems = [...rows];
     if (sortConfig !== null) {
       sortableItems.sort((a, b) => {
-        let aValue: any = a[sortConfig.key as keyof typeof a];
-        let bValue: any = b[sortConfig.key as keyof typeof b];
+        let aValue: number | string = a[sortConfig.key as keyof typeof a] as number | string;
+        let bValue: number | string = b[sortConfig.key as keyof typeof b] as number | string;
 
         if (sortConfig.key === 'overallAch') {
           aValue = ((a.salesAchievement || 0) + (a.frequencyAchievement || 0)) / 2;

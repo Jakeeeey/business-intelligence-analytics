@@ -94,7 +94,7 @@ export function useSalesmanMetric(isAdmin: boolean = false, userId: string = "")
           // A supervisor might have multiple supervisor_per_division_ids, group them
           const uniqueSupervisors = new Map<string, { id: string, name: string, divIds: number[] }>();
           
-          json.supervisors.forEach((s: any) => {
+          json.supervisors.forEach((s: { id: number, supervisor_id?: { id?: string, first_name?: string, last_name?: string } }) => {
             const userId = String(s.supervisor_id?.id || "unknown");
             const fullName = `${s.supervisor_id?.first_name || ""} ${s.supervisor_id?.last_name || ""}`.trim();
             
@@ -298,7 +298,7 @@ export function useSalesmanMetric(isAdmin: boolean = false, userId: string = "")
       r.salesmanName.toLowerCase().includes(lowerQuery) || 
       (r.salesmanCode && r.salesmanCode.toLowerCase().includes(lowerQuery))
     );
-  }, [cachedRows, appliedFilters.supervisorIds, appliedFilters.salesmanIds, searchQuery, supervisorToDivisionMap, salesmanMappings]);
+  }, [cachedRows, appliedFilters.supervisorIds, appliedFilters.salesmanIds, searchQuery, supervisorToDivisionMap, salesmanMappings, allowedSalesmanIdsForUser, isAdmin]);
 
   const handleViewSupplierBreakdown = (salesmanId: number, salesmanName: string) => {
     setSelectedSalesmanId(salesmanId);

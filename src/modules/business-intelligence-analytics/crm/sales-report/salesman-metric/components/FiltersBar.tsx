@@ -2,10 +2,7 @@
 
 import * as React from "react";
 import { MultiSelectFilter } from "./MultiSelectFilter";
-import { SearchableSelect } from "@/components/ui/searchable-select";
-import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
 import { MonthPicker } from "@/components/ui/month-picker";
 import { Search, RefreshCw, FunnelX } from "lucide-react";
 import { SalesmanOption, SupervisorOption } from "../types";

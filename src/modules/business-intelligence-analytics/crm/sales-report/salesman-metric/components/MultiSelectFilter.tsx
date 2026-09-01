@@ -17,7 +17,7 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover";
-import { Badge } from "@/components/ui/badge";
+
 
 export interface MultiSelectFilterProps {
     options: { value: string; label: string }[];

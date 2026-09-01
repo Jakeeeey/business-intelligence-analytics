@@ -541,7 +541,7 @@ export async function GET(req: NextRequest) {
   );
 
   // Fetch all salesman target settings for the target month
-  let allTargetSettings: Record<string, any>[] = [];
+  let allTargetSettings: Record<string, unknown>[] = [];
   try {
     const settingUrl = `${DIRECTUS_BASE}/items/salesman_target_setting?fields=salesman_id,volume,frequency,reach,new_accounts,productive_outlets,line_sales_target,basket_count_target,tactica_sku,date_range_from,date_range_to,status&limit=-1`;
     const settingRes = await fetch(settingUrl, {
@@ -554,10 +554,10 @@ export async function GET(req: NextRequest) {
     if (settingRes.ok) {
       const { data } = await settingRes.json();
       const targetMonthStr = `${targetYear}-${String(targetMonth).padStart(2, '0')}`;
-      allTargetSettings = (data || []).filter((s: any) => {
+      allTargetSettings = (data || []).filter((s: Record<string, unknown>) => {
         if (s.status !== "Approved") return false;
-        const sFrom = (s.date_range_from || "").substring(0, 7);
-        const sTo = (s.date_range_to || "").substring(0, 7);
+        const sFrom = (String(s.date_range_from) || "").substring(0, 7);
+        const sTo = (String(s.date_range_to) || "").substring(0, 7);
         return targetMonthStr >= sFrom && targetMonthStr <= sTo;
       });
     }
