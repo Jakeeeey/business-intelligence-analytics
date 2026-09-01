@@ -1,19 +1,24 @@
 "use client";
 
 import * as React from "react";
+import { MultiSelectFilter } from "./MultiSelectFilter";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { MonthPicker } from "@/components/ui/month-picker";
 import { Search, RefreshCw, FunnelX } from "lucide-react";
-import { SalesmanOption } from "../types";
+import { SalesmanOption, SupervisorOption } from "../types";
 
 interface FiltersBarProps {
+  isAdmin?: boolean;
+  supervisors: SupervisorOption[];
+  selectedSupervisorIds: string[];
+  onChangeSupervisor: (ids: string[]) => void;
   salesmen: SalesmanOption[];
-  selectedSalesmanId: number | "";
+  selectedSalesmanIds: number[];
   fiscalPeriod: string; // YYYY-MM-DD
-  onChangeSalesman: (id: number | "") => void;
+  onChangeSalesmen: (ids: number[]) => void;
   onChangeFiscalPeriod: (fp: string) => void;
   searchQuery: string;
   onSearchQueryChange: (query: string) => void;
@@ -25,10 +30,14 @@ interface FiltersBarProps {
 }
 
 export function FiltersBar({
+  isAdmin = false,
+  supervisors,
+  selectedSupervisorIds,
+  onChangeSupervisor,
   salesmen,
-  selectedSalesmanId,
+  selectedSalesmanIds,
   fiscalPeriod,
-  onChangeSalesman,
+  onChangeSalesmen,
   onChangeFiscalPeriod,
   searchQuery,
   onSearchQueryChange,
@@ -38,16 +47,23 @@ export function FiltersBar({
   hasActiveFilters,
   loading,
 }: FiltersBarProps) {
-  // Map salesmen list to option format for SearchableSelect
+  // Map supervisors to options format
+  const supervisorOptions = React.useMemo(() => {
+    return supervisors.map((sp) => ({
+      value: sp.supervisorId,
+      label: sp.supervisorName,
+    }));
+  }, [supervisors]);
+
+  // Map salesmen list to option format for MultiSelectFilter
   const salesmanOptions = React.useMemo(() => {
-    const list = salesmen.map((sm) => ({
+    return salesmen.map((sm) => ({
       value: String(sm.salesmanId),
       label: `${sm.salesmanName} (${sm.salesmanCode})`,
     }));
-    return [{ value: "all", label: "All Salesmen" }, ...list];
   }, [salesmen]);
 
-  const activeValue = selectedSalesmanId === "" ? "all" : String(selectedSalesmanId);
+  const activeValues = selectedSalesmanIds.map(String);
 
   // Convert fiscal period YYYY-MM-DD to YYYY-MM for the html month input
   const monthInputValue = React.useMemo(() => {
@@ -56,89 +72,93 @@ export function FiltersBar({
   }, [fiscalPeriod]);
 
   return (
-    <Card className="border-border/60 bg-card dark:border-zinc-800">
-      <CardContent className="p-4 md:p-6 space-y-4">
-        <div className="flex flex-col md:flex-row md:items-end justify-start gap-6">
-          {/* Search Input (Far Left) */}
-          <div className="w-full md:w-72 space-y-2">
-            <Label className="text-sm font-semibold text-foreground/80">Search</Label>
-            <div className="relative">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
-              <Input
-                type="text"
-                placeholder="Search by name or ID..."
-                value={searchQuery}
-                onChange={(e) => onSearchQueryChange(e.target.value)}
-                disabled={loading}
-                className="pl-9 h-9 border-border/60 bg-background text-foreground dark:border-zinc-800"
+    <div className="flex flex-wrap items-center gap-3 bg-card/50 backdrop-blur-md border border-border/40 rounded-2xl p-2 shadow-2xl">
+      <div className="flex items-center gap-2 px-4 border-r border-border/40 py-1">
+        <Search className="h-4 w-4 text-primary" />
+        <Input
+          type="text"
+          placeholder="SEARCH..."
+          value={searchQuery}
+          onChange={(e) => onSearchQueryChange(e.target.value)}
+          disabled={loading}
+          className="w-[120px] lg:w-[150px] border-none bg-transparent h-8 text-[11px] font-black uppercase focus-visible:ring-0 p-0 placeholder:text-muted-foreground/30"
+        />
+      </div>
+
+      {isAdmin && (
+        <div className="flex items-center gap-2 px-4 border-r border-border/40 py-1 min-w-[200px]">
+          <span className="text-muted-foreground/30 font-black text-[10px] uppercase tracking-widest">SUP:</span>
+          <div className="flex-1">
+              <MultiSelectFilter
+              options={supervisorOptions}
+              selectedValues={selectedSupervisorIds}
+              onValuesChange={onChangeSupervisor}
+              placeholder="Select supervisor..."
+              searchPlaceholder="Search supervisor..."
+              allLabel="All Supervisors"
+              disabled={loading}
               />
-            </div>
-          </div>
-
-          {/* Salesman Filter */}
-          <div className="w-full md:w-80 space-y-2">
-            <Label className="text-sm font-semibold text-foreground/80">Salesman</Label>
-            <SearchableSelect
-              options={salesmanOptions}
-              value={activeValue}
-              onValueChange={(val) => {
-                if (val === "all") {
-                  onChangeSalesman("");
-                } else {
-                  onChangeSalesman(Number(val));
-                }
-              }}
-              placeholder="Search salesman..."
-              disabled={loading}
-            />
-          </div>
-
-          {/* Fiscal Period Filter */}
-          <div className="w-full md:w-64 space-y-2">
-            <Label className="text-sm font-semibold text-foreground/80">Fiscal Period</Label>
-            <MonthPicker
-              value={monthInputValue}
-              onChange={(val) => {
-                if (val) {
-                  onChangeFiscalPeriod(val + "-01");
-                }
-              }}
-              disabled={loading}
-            />
-          </div>
-
-          {/* Apply Filters & Actions */}
-          <div className="w-full md:w-auto flex items-end gap-2">
-            <button
-              onClick={onApplyFilters}
-              disabled={loading}
-              className="h-9 px-6 bg-primary text-primary-foreground font-semibold rounded-md shadow hover:bg-primary/90 disabled:opacity-50 transition-colors w-full md:w-auto"
-            >
-              Apply Filters
-            </button>
-
-            {hasActiveFilters && (
-              <button
-                onClick={onClearFilters}
-                disabled={loading}
-                title="Clear Filters"
-                className="h-9 w-9 flex items-center justify-center bg-muted text-muted-foreground hover:text-foreground rounded-md shadow-sm border border-border/60 hover:bg-muted/80 disabled:opacity-50 transition-colors shrink-0"
-              >
-                <FunnelX className="w-4 h-4" />
-              </button>
-            )}
-
-            <button
-              onClick={onRefresh}
-              disabled={loading}
-              title="Refresh Data"
-              className="h-9 w-9 flex items-center justify-center bg-muted text-muted-foreground hover:text-foreground rounded-md shadow-sm border border-border/60 hover:bg-muted/80 disabled:opacity-50 transition-colors shrink-0"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            </button>
           </div>
         </div>
-      </CardContent>
-    </Card>
+      )}
+
+      <div className="flex items-center gap-2 px-4 border-r border-border/40 py-1 min-w-[200px]">
+        <span className="text-muted-foreground/30 font-black text-[10px] uppercase tracking-widest">REP:</span>
+        <div className="flex-1">
+            <MultiSelectFilter
+            options={salesmanOptions}
+            selectedValues={activeValues}
+            onValuesChange={(vals) => {
+                onChangeSalesmen(vals.map(Number));
+            }}
+            placeholder="Select salesman..."
+            searchPlaceholder="Search salesman..."
+            allLabel="All Salesmen"
+            disabled={loading}
+            />
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2 px-4 border-r border-border/40 py-1">
+        <span className="text-muted-foreground/30 font-black text-[10px] uppercase tracking-widest">DATE:</span>
+        <MonthPicker
+          value={monthInputValue}
+          onChange={(val) => {
+            if (val) onChangeFiscalPeriod(val + "-01");
+          }}
+          disabled={loading}
+        />
+      </div>
+
+      <div className="flex items-center gap-2 px-2 py-1">
+        <button
+          onClick={onApplyFilters}
+          disabled={loading}
+          className="h-8 px-4 bg-primary text-primary-foreground text-[10px] font-black uppercase tracking-widest rounded-lg shadow hover:bg-primary/90 disabled:opacity-50 transition-colors"
+        >
+          APPLY
+        </button>
+
+        {hasActiveFilters && (
+          <button
+            onClick={onClearFilters}
+            disabled={loading}
+            title="Clear Filters"
+            className="h-8 w-8 flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
+          >
+            <FunnelX className="w-4 h-4" />
+          </button>
+        )}
+
+        <button
+          onClick={onRefresh}
+          disabled={loading}
+          title="Refresh Data"
+          className="h-8 w-8 flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
+        >
+          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+        </button>
+      </div>
+    </div>
   );
 }

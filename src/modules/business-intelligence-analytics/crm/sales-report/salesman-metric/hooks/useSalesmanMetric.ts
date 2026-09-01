@@ -12,15 +12,19 @@ function getFiscalPeriodRange(fiscalPeriod: string): { start: string; end: strin
   return { start, end };
 }
 
-export function useSalesmanMetric() {
+export function useSalesmanMetric(isAdmin: boolean = false, userId: string = "") {
   const [salesmen, setSalesmen] = React.useState<SalesmanOption[]>([]);
+  const [supervisors, setSupervisors] = React.useState<{ supervisorId: string; supervisorName: string }[]>([]);
+  const [salesmanMappings, setSalesmanMappings] = React.useState<{ salesman_id: number; supervisor_per_division_id: number }[]>([]);
+  const [supervisorToDivisionMap, setSupervisorToDivisionMap] = React.useState<Map<string, number[]>>(new Map());
+
   const [localFilters, setLocalFilters] = React.useState<SalesmanMetricFilters>(() => {
     const today = new Date();
     const currentFiscalPeriod = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-01`;
     const range = getFiscalPeriodRange(currentFiscalPeriod);
     return {
-      salesmanId: "",
-      salesmanCode: "",
+      supervisorIds: [],
+      salesmanIds: [],
       fiscalPeriod: currentFiscalPeriod,
       startDate: range.start,
       endDate: range.end,
@@ -78,6 +82,50 @@ export function useSalesmanMetric() {
   const [tskuModalOpen, setTskuModalOpen] = React.useState<boolean>(false);
   const [tskuSalesmanId, setTskuSalesmanId] = React.useState<number | "">("");
   const [tskuSalesmanName, setTskuSalesmanName] = React.useState<string>("");
+
+  // Fetch supervisors and mappings once
+  React.useEffect(() => {
+    async function fetchSupervisors() {
+      try {
+        const response = await fetch('/api/bia/crm/target-setting-reports/supervisor-kpi/mapping');
+        const json = await response.json();
+        
+        if (json.supervisors && Array.isArray(json.supervisors)) {
+          // A supervisor might have multiple supervisor_per_division_ids, group them
+          const uniqueSupervisors = new Map<string, { id: string, name: string, divIds: number[] }>();
+          
+          json.supervisors.forEach((s: any) => {
+            const userId = String(s.supervisor_id?.id || "unknown");
+            const fullName = `${s.supervisor_id?.first_name || ""} ${s.supervisor_id?.last_name || ""}`.trim();
+            
+            if (!uniqueSupervisors.has(userId)) {
+              uniqueSupervisors.set(userId, { id: userId, name: fullName || `Supervisor ${userId}`, divIds: [s.id] });
+            } else {
+              uniqueSupervisors.get(userId)?.divIds.push(s.id);
+            }
+          });
+          
+          const sups = Array.from(uniqueSupervisors.values()).map(s => ({
+            supervisorId: s.id,
+            supervisorName: s.name
+          })).sort((a, b) => a.supervisorName.localeCompare(b.supervisorName));
+          
+          const divMap = new Map<string, number[]>();
+          Array.from(uniqueSupervisors.values()).forEach(s => divMap.set(s.id, s.divIds));
+          
+          setSupervisors(sups);
+          setSupervisorToDivisionMap(divMap);
+        }
+        
+        if (json.salesmanMappings && Array.isArray(json.salesmanMappings)) {
+          setSalesmanMappings(json.salesmanMappings);
+        }
+      } catch (err) {
+        console.error("Failed to load supervisors:", err);
+      }
+    }
+    fetchSupervisors();
+  }, []);
 
   // Fetch salesmen options when selected dates change (based on localFilters)
   React.useEffect(() => {
@@ -142,25 +190,19 @@ export function useSalesmanMetric() {
     };
   }, [appliedFilters.startDate, appliedFilters.endDate, refreshTrigger]);
 
-  const handleSalesmanChange = (id: number | "") => {
-    if (id === "") {
-      setSelectedSalesman(null);
-      setLocalFilters((prev) => ({
-        ...prev,
-        salesmanId: "",
-        salesmanCode: "",
-      }));
-    } else {
-      const sm = salesmen.find((s) => s.salesmanId === id);
-      if (sm) {
-        setSelectedSalesman(sm);
-      }
-      setLocalFilters((prev) => ({
-        ...prev,
-        salesmanId: id,
-        salesmanCode: sm?.salesmanCode || "",
-      }));
-    }
+  const handleSalesmenChange = (ids: number[]) => {
+    setLocalFilters((prev) => ({
+      ...prev,
+      salesmanIds: ids,
+    }));
+  };
+
+  const handleSupervisorChange = (ids: string[]) => {
+    setLocalFilters((prev) => ({
+      ...prev,
+      supervisorIds: ids,
+      salesmanIds: [] // Reset salesmen selection when supervisor changes
+    }));
   };
 
   const handleFiscalPeriodChange = (fp: string) => {
@@ -187,8 +229,8 @@ export function useSalesmanMetric() {
     const range = getFiscalPeriodRange(currentFiscalPeriod);
     
     const defaultFilters: SalesmanMetricFilters = {
-      salesmanId: "",
-      salesmanCode: "",
+      supervisorIds: [],
+      salesmanIds: [],
       fiscalPeriod: currentFiscalPeriod,
       startDate: range.start,
       endDate: range.end,
@@ -204,24 +246,59 @@ export function useSalesmanMetric() {
   const hasActiveFilters = React.useMemo(() => {
     const today = new Date();
     const currentFiscalPeriod = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-01`;
-    return appliedFilters.salesmanId !== "" || appliedFilters.fiscalPeriod !== currentFiscalPeriod;
-  }, [appliedFilters.salesmanId, appliedFilters.fiscalPeriod]);
+    return appliedFilters.salesmanIds.length > 0 || appliedFilters.fiscalPeriod !== currentFiscalPeriod;
+  }, [appliedFilters.salesmanIds, appliedFilters.fiscalPeriod]);
+
+  const allowedSalesmanIdsForUser = React.useMemo(() => {
+    if (isAdmin) return null; // Admin sees all
+    const allowedDivIds = supervisorToDivisionMap.get(String(userId)) || [];
+    return new Set(
+      salesmanMappings
+        .filter(m => allowedDivIds.includes(Number(m.supervisor_per_division_id)))
+        .map(m => Number(m.salesman_id))
+    );
+  }, [isAdmin, userId, supervisorToDivisionMap, salesmanMappings]);
+
+  const availableSalesmen = React.useMemo(() => {
+    if (isAdmin || !allowedSalesmanIdsForUser) return salesmen;
+    return salesmen.filter(sm => allowedSalesmanIdsForUser.has(sm.salesmanId));
+  }, [salesmen, isAdmin, allowedSalesmanIdsForUser]);
 
   const filteredRows = React.useMemo(() => {
-    // 1. Filter by applied salesmanId
     let result = cachedRows;
-    if (appliedFilters.salesmanId !== "") {
-      result = result.filter(r => r.salesmanId === appliedFilters.salesmanId);
+
+    // 0. Base RBAC Filter
+    if (!isAdmin && allowedSalesmanIdsForUser) {
+      result = result.filter(r => allowedSalesmanIdsForUser.has(r.salesmanId));
+    }
+
+    // 1. Filter by supervisor first (Admin only)
+    if (isAdmin && appliedFilters.supervisorIds.length > 0) {
+      const allowedDivIds = appliedFilters.supervisorIds.flatMap(id => 
+        supervisorToDivisionMap.get(String(id)) || []
+      ).map(String);
+      
+      const allowedSalesmanIds = new Set(
+        salesmanMappings
+          .filter(m => allowedDivIds.includes(String(m.supervisor_per_division_id)))
+          .map(m => Number(m.salesman_id))
+      );
+      result = result.filter(r => allowedSalesmanIds.has(r.salesmanId));
+    }
+
+    // 2. Filter by applied salesmanIds
+    if (appliedFilters.salesmanIds.length > 0) {
+      result = result.filter(r => appliedFilters.salesmanIds.includes(r.salesmanId));
     }
     
-    // 2. Filter by search query
+    // 3. Filter by search query
     if (!searchQuery.trim()) return result;
     const lowerQuery = searchQuery.toLowerCase();
     return result.filter((r) => 
       r.salesmanName.toLowerCase().includes(lowerQuery) || 
       (r.salesmanCode && r.salesmanCode.toLowerCase().includes(lowerQuery))
     );
-  }, [cachedRows, appliedFilters.salesmanId, searchQuery]);
+  }, [cachedRows, appliedFilters.supervisorIds, appliedFilters.salesmanIds, searchQuery, supervisorToDivisionMap, salesmanMappings]);
 
   const handleViewSupplierBreakdown = (salesmanId: number, salesmanName: string) => {
     setSelectedSalesmanId(salesmanId);
@@ -276,12 +353,29 @@ export function useSalesmanMetric() {
 
   // Ensure the selected salesman is always in the dropdown options, even if they have no data in the new fiscal period
   const displaySalesmen = React.useMemo(() => {
-    if (!selectedSalesman) return salesmen;
-    if (salesmen.some((s) => s.salesmanId === selectedSalesman.salesmanId)) return salesmen;
-    return [...salesmen, selectedSalesman];
-  }, [salesmen, selectedSalesman]);
+    // 1. Filter by supervisor first
+    let supsFiltered = availableSalesmen;
+    if (isAdmin && localFilters.supervisorIds.length > 0) {
+      const allowedDivIds = localFilters.supervisorIds.flatMap(id => 
+        supervisorToDivisionMap.get(String(id)) || []
+      ).map(String);
+      
+      const allowedSalesmanIds = new Set(
+        salesmanMappings
+          .filter(m => allowedDivIds.includes(String(m.supervisor_per_division_id)))
+          .map(m => String(m.salesman_id))
+      );
+      supsFiltered = availableSalesmen.filter(s => allowedSalesmanIds.has(String(s.salesmanId)));
+    }
+
+    // 2. Add selected salesman if not present
+    if (!selectedSalesman) return supsFiltered;
+    if (supsFiltered.some((s) => String(s.salesmanId) === String(selectedSalesman.salesmanId))) return supsFiltered;
+    return [...supsFiltered, selectedSalesman];
+  }, [isAdmin, availableSalesmen, selectedSalesman, localFilters.supervisorIds, supervisorToDivisionMap, salesmanMappings]);
 
   return {
+    supervisors,
     salesmen: displaySalesmen,
     localFilters,
     appliedFilters,
@@ -293,7 +387,8 @@ export function useSalesmanMetric() {
     setSearchQuery,
     
     // Handlers for filters
-    handleSalesmanChange,
+    handleSupervisorChange,
+    handleSalesmenChange,
     handleFiscalPeriodChange,
     handleApplyFilters,
     handleRefresh,

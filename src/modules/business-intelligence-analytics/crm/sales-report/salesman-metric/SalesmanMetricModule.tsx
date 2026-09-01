@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { ChevronRight } from "lucide-react";
 import { FiltersBar } from "./components/FiltersBar";
 import { BookingMetricsGrid } from "./components/BookingMetricsGrid";
 import { SiteSalesMetricsList } from "./components/SiteSalesMetricsList";
@@ -15,14 +16,16 @@ import { ReachDetailModal } from "./components/ReachDetailModal";
 import { useSalesmanMetric } from "./hooks/useSalesmanMetric";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-export default function SalesmanMetricModule() {
+export default function SalesmanMetricModule({ isAdmin = false, userId = "" }: { isAdmin?: boolean, userId?: string }) {
   const {
+    supervisors,
     salesmen,
     localFilters,
     appliedFilters,
     loading,
     rows,
-    handleSalesmanChange,
+    handleSupervisorChange,
+    handleSalesmenChange,
     handleFiscalPeriodChange,
     handleApplyFilters,
     handleRefresh,
@@ -51,23 +54,31 @@ export default function SalesmanMetricModule() {
     handleViewBasketCountDetail,
     handleViewLineSalesDetail,
     handleViewTacticalSkuDetail,
-  } = useSalesmanMetric();
+  } = useSalesmanMetric(isAdmin, userId);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Salesman Metric</h1>
-        <p className="text-sm text-muted-foreground">
-          View key metrics performance, reach, frequency, and targets for salesmen.
-        </p>
-      </div>
+    <div className="space-y-8 p-6 min-h-screen bg-background text-foreground">
+      {/* --- HEADER --- */}
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 pb-2">
+        <div className="space-y-2">
+          <h2 className="text-4xl font-black tracking-tight text-foreground uppercase italic leading-none">
+            Salesman <span className="text-primary">Performance</span>
+          </h2>
+          <p className="text-xs text-muted-foreground font-medium uppercase tracking-widest">
+            View key metrics performance, reach, frequency, and targets
+          </p>
+        </div>
 
-      {/* 1. Filters Section */}
+        {/* 1. Filters Section */}
       <FiltersBar
+        isAdmin={isAdmin}
+        supervisors={supervisors}
+        selectedSupervisorIds={localFilters.supervisorIds}
+        onChangeSupervisor={handleSupervisorChange}
         salesmen={salesmen}
-        selectedSalesmanId={localFilters.salesmanId}
+        selectedSalesmanIds={localFilters.salesmanIds}
         fiscalPeriod={localFilters.fiscalPeriod}
-        onChangeSalesman={handleSalesmanChange}
+        onChangeSalesmen={handleSalesmenChange}
         onChangeFiscalPeriod={handleFiscalPeriodChange}
         searchQuery={searchQuery}
         onSearchQueryChange={setSearchQuery}
@@ -77,6 +88,7 @@ export default function SalesmanMetricModule() {
         hasActiveFilters={hasActiveFilters}
         loading={loading}
       />
+      </div>
 
       {/* 2. Booking Metrics */}
       <BookingMetricsGrid
