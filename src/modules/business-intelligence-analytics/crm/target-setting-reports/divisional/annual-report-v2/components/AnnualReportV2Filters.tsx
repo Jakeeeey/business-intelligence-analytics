@@ -10,7 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { MultiSelect } from "@/modules/business-intelligence-analytics/crm/sales-report/salesman-performance/components/MultiSelect";
-import { RotateCcw, Filter } from "lucide-react";
+import { Filter } from "lucide-react";
 import { useAnnualReportV2Filters } from "../providers/AnnualReportV2FilterProvider";
 
 const MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => ({
@@ -25,16 +25,18 @@ const YEAR_OPTIONS = Array.from({ length: 7 }, (_, i) =>
 interface AnnualReportV2FiltersProps {
   suppliers: string[];
   categories: string[];
+  uoms: string[];
 }
 
 export function AnnualReportV2Filters({
   suppliers,
   categories = [],
+  uoms = [],
 }: AnnualReportV2FiltersProps) {
   const { filters, setFilter, resetFilters } = useAnnualReportV2Filters();
 
-  const hasActiveFilters = filters.customerName || filters.supplierName || filters.categoryName || filters.month;
-  const activeCount = [filters.customerName, filters.supplierName, filters.categoryName, filters.month].filter(Boolean).length;
+  const hasActiveFilters = filters.customerName || filters.supplierName || filters.categoryName || filters.month || filters.unitName;
+  const activeCount = [filters.customerName, filters.supplierName, filters.categoryName, filters.month, filters.unitName].filter(Boolean).length;
 
 
   const supplierOptions = React.useMemo(
@@ -44,6 +46,15 @@ export function AnnualReportV2Filters({
   const categoryOptions = React.useMemo(
     () => categories.map((c) => ({ label: c, value: c })),
     [categories],
+  );
+  const uomOptions = React.useMemo(
+    () => uoms
+      .filter((u) => {
+        const lower = u.toLowerCase();
+        return lower === "pieces" || lower === "box";
+      })
+      .map((u) => ({ label: u, value: u })),
+    [uoms],
   );
 
   return (
@@ -64,7 +75,7 @@ export function AnnualReportV2Filters({
         <SelectTrigger className="w-24 h-8 text-xs">
           <SelectValue placeholder="Year" />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent position="popper" align="start">
           {YEAR_OPTIONS.map((y) => (
             <SelectItem key={y} value={y}>
               {y}
@@ -73,22 +84,28 @@ export function AnnualReportV2Filters({
         </SelectContent>
       </Select>
 
-      <Select
-        value={filters.month}
-        onValueChange={(v) => setFilter("month", v === "all" ? "" : v)}
-      >
-        <SelectTrigger className="w-28 h-8 text-xs">
-          <SelectValue placeholder="All months" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All months</SelectItem>
-          {MONTH_OPTIONS.map((m) => (
-            <SelectItem key={m.value} value={m.value}>
-              {m.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <MultiSelect
+        mode="multi"
+        placeholder="Select months"
+        options={MONTH_OPTIONS}
+        value={
+          filters.month === "NONE"
+            ? []
+            : filters.month
+            ? filters.month.split(",")
+            : MONTH_OPTIONS.map((o) => o.value)
+        }
+        onChange={(next) => {
+          if (next.length === 0) {
+            setFilter("month", "NONE");
+          } else if (next.length === 12) {
+            setFilter("month", "");
+          } else {
+            setFilter("month", next.join(","));
+          }
+        }}
+        className="w-40 h-8 text-xs"
+      />
 
       {/* Customer filter hidden temporarily */}
       {/* <MultiSelect
@@ -103,35 +120,84 @@ export function AnnualReportV2Filters({
       /> */}
 
       <MultiSelect
-        mode="single"
+        mode="multi"
         placeholder="Supplier"
         options={supplierOptions}
-        value={filters.supplierName ? [filters.supplierName] : []}
-        onChange={(next) =>
-          setFilter("supplierName", next.length > 0 ? next[0] : "")
+        value={
+          filters.supplierName === "NONE"
+            ? []
+            : filters.supplierName
+            ? filters.supplierName.split("|")
+            : suppliers
         }
+        onChange={(next) => {
+          if (next.length === 0) {
+            setFilter("supplierName", "NONE");
+          } else if (next.length === suppliers.length) {
+            setFilter("supplierName", "");
+          } else {
+            setFilter("supplierName", next.join("|"));
+          }
+        }}
+        className="w-40 h-8 text-xs"
+      />
+
+      <MultiSelect
+        mode="multi"
+        placeholder="Category"
+        options={categoryOptions}
+        value={
+          filters.categoryName === "NONE"
+            ? []
+            : filters.categoryName
+            ? filters.categoryName.split("|")
+            : categories
+        }
+        onChange={(next) => {
+          if (next.length === 0) {
+            setFilter("categoryName", "NONE");
+          } else if (next.length === categories.length) {
+            setFilter("categoryName", "");
+          } else {
+            setFilter("categoryName", next.join("|"));
+          }
+        }}
         className="w-40 h-8 text-xs"
       />
 
       <MultiSelect
         mode="single"
-        placeholder="Category"
-        options={categoryOptions}
-        value={filters.categoryName ? [filters.categoryName] : []}
+        placeholder="UOM"
+        options={uomOptions}
+        value={filters.unitName ? [filters.unitName] : []}
         onChange={(next) =>
-          setFilter("categoryName", next.length > 0 ? next[0] : "")
+          setFilter("unitName", next.length > 0 ? next[0] : "")
         }
         className="w-40 h-8 text-xs"
       />
 
+      <Select
+        value={filters.amountType}
+        onValueChange={(v) => setFilter("amountType", v)}
+      >
+        <SelectTrigger className="w-32 h-8 text-xs">
+          <SelectValue placeholder="Amount Type" />
+        </SelectTrigger>
+        <SelectContent position="popper" align="start">
+          <SelectItem value="grossAmount">Gross Amount</SelectItem>
+          <SelectItem value="netAmount">Net Amount</SelectItem>
+          <SelectItem value="netOfReturns">Net of Returns</SelectItem>
+        </SelectContent>
+      </Select>
+
       <Button
-        variant="ghost"
+        variant="destructive"
         size="sm"
         onClick={resetFilters}
         disabled={!hasActiveFilters}
-        className="h-8 text-xs px-2 text-muted-foreground hover:text-foreground"
+        className="h-8 text-xs px-3 font-medium"
       >
-        <RotateCcw className="h-3.5 w-3.5" />
+        Reset Filters
       </Button>
     </div>
   );

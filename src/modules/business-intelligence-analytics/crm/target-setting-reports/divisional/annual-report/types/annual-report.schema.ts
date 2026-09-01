@@ -1,9 +1,10 @@
 import { z } from "zod";
 
 export const SalesTransactionSchema = z.object({
-  invoiceNo: z.string(),
-  invoiceDate: z.string(),
-  customerName: z.string(),
+  invoiceNo: z.string().optional(),
+  invoiceDate: z.string().optional(),
+  customerName: z.string().optional(),
+  productName: z.string().optional(),
   totalInvoiceAmount: z.number(),
   productCategory: z.string().optional(),
 });

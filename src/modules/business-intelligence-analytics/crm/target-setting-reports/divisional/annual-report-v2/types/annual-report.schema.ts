@@ -1,23 +1,39 @@
 import { z } from "zod";
 
 export const SalesTransactionSchema = z.object({
-  invoiceNo: z.string(),
-  invoiceDate: z.string(),
-  customerName: z.string(),
-  totalInvoiceAmount: z.number(),
+  invoiceNo: z.string().optional(),
+  invoiceDate: z.string().optional(),
+  customerName: z.string().optional(),
+  productName: z.string().optional(),
+  totalInvoiceAmount: z.number().optional(),
+  grossAmount: z.number().optional(),
+  netAmount: z.number().optional(),
+  netOfReturns: z.number().optional(),
+  quantity: z.number().optional(),
+  unitName: z.string().optional(),
   productCategory: z.string().optional(),
   productSupplier: z.string().optional(),
   cases: z.number().optional(),
+  conversionToPieces: z.number().optional(),
+  conversionToCases: z.number().optional(),
 });
 
 export type SalesTransaction = z.infer<typeof SalesTransactionSchema>;
 
 export const PurchaseTransactionSchema = z.object({
   receiptNo: z.string(),
-  receiptDate: z.string(),
-  supplierName: z.string(),
-  totalReceiptAmount: z.number(),
+  receiptDate: z.string().optional(),
+  supplierName: z.string().optional(),
+  totalReceiptAmount: z.number().optional(),
+  grossAmount: z.number().optional(),
+  netAmount: z.number().optional(),
+  netOfReturns: z.number().optional(),
+  quantity: z.number().optional(),
+  unitName: z.string().optional(),
+  productCategory: z.string().optional(),
   cases: z.number().optional(),
+  conversionToPieces: z.number().optional(),
+  conversionToCases: z.number().optional(),
 });
 
 export type PurchaseTransaction = z.infer<typeof PurchaseTransactionSchema>;
@@ -61,6 +77,7 @@ export const DashboardResponseSchema = z.object({
   customers: z.array(z.string()).optional(),
   suppliers: z.array(z.string()).optional(),
   categories: z.array(z.string()).optional(),
+  uoms: z.array(z.string()).optional(),
 });
 
 export type DashboardResponse = z.infer<typeof DashboardResponseSchema>;

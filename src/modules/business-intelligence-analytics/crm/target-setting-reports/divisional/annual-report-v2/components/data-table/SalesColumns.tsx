@@ -26,36 +26,29 @@ function SortHeader({ column, label }: { column: Column<SalesTransaction, unknow
   );
 }
 
-export const salesColumns: ColumnDef<SalesTransaction>[] = [
+export const salesColumns = (unitName?: string): ColumnDef<SalesTransaction>[] => [
   {
-    accessorKey: "invoiceNo",
-    header: ({ column }) => <SortHeader column={column} label="Invoice No" />,
-    meta: { label: "Invoice No" },
+    accessorKey: "productName",
+    header: ({ column }) => <SortHeader column={column} label="Product" />,
+    cell: ({ row }) => (
+      <span className="font-medium">{row.original.productName || "Unknown Product"}</span>
+    ),
+    meta: { label: "Product" },
   },
   {
-    accessorKey: "invoiceDate",
-    header: ({ column }) => <SortHeader column={column} label="Invoice Date" />,
-    cell: ({ row }) => {
-      const dateStr = row.original.invoiceDate;
-      let displayDate = dateStr;
+    id: "monthYear",
+    header: "Month",
+    accessorFn: (row) => {
+      const dateStr = row.invoiceDate;
       if (dateStr) {
         const parsed = new Date(dateStr);
         if (!isNaN(parsed.getTime())) {
-          displayDate = new Intl.DateTimeFormat('en-US', { month: 'short', day: '2-digit', year: 'numeric' }).format(parsed);
+          return new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(parsed);
         }
       }
-      return (
-        <span className="tabular-nums">
-          {displayDate}
-        </span>
-      );
+      return "Unknown Date";
     },
-    meta: { label: "Invoice Date" },
-  },
-  {
-    accessorKey: "customerName",
-    header: ({ column }) => <SortHeader column={column} label="Customer Name" />,
-    meta: { label: "Customer Name" },
+    meta: { label: "Month" }
   },
   {
     accessorKey: "cases",
@@ -65,7 +58,7 @@ export const salesColumns: ColumnDef<SalesTransaction>[] = [
       </div>
     ),
     cell: ({ row }) => (
-      <div className="text-right font-medium tabular-nums">
+      <div className="text-right font-medium tabular-nums text-emerald-600 dark:text-emerald-500">
         {row.original.cases?.toLocaleString() ?? 0}
       </div>
     ),
@@ -75,16 +68,16 @@ export const salesColumns: ColumnDef<SalesTransaction>[] = [
     accessorKey: "totalInvoiceAmount",
     header: ({ column }) => (
       <div className="text-right">
-        <SortHeader column={column} label="Amount" />
+        <SortHeader column={column} label={unitName ? "Quantity" : "Amount"} />
       </div>
     ),
     cell: ({ row }) => (
       <div className="text-right">
         <span className="text-blue-600 dark:text-blue-400 font-medium tabular-nums">
-          {formatCurrency(row.original.totalInvoiceAmount)}
+          {unitName ? (row.original.totalInvoiceAmount ?? 0).toLocaleString() : formatCurrency(row.original.totalInvoiceAmount ?? 0)}
         </span>
       </div>
     ),
-    meta: { label: "Amount" },
+    meta: { label: unitName ? "Quantity" : "Amount" },
   },
 ];

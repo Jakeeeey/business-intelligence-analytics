@@ -1,10 +1,8 @@
 "use client";
 
-import React, { createContext, useContext, useCallback, useMemo } from "react";
+import React, { createContext, useContext, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import {
-  startOfYear, endOfYear, startOfMonth, endOfMonth, format,
-} from "date-fns";
+import { format, startOfYear, endOfYear } from "date-fns";
 
 export interface AnnualReportV2Filters {
   dateFrom: string;
@@ -12,8 +10,10 @@ export interface AnnualReportV2Filters {
   customerName: string;
   supplierName: string;
   categoryName: string;
+  unitName: string;
   year: string;
   month: string;
+  amountType: string;
 }
 
 interface AnnualReportV2FilterContextValue {
@@ -32,58 +32,69 @@ export function AnnualReportV2FilterProvider({
 }) {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const paramsStr = searchParams.toString();
 
-  const filters: AnnualReportV2Filters = useMemo(() => {
-    const sp = new URLSearchParams(paramsStr);
-    const year = sp.get("year") ?? String(new Date().getFullYear());
-    const month = sp.get("month") ?? "";
-
-    if (month) {
-      const m = Number(month);
-      const base = new Date(Number(year), m - 1, 1);
-      return {
-        dateFrom: sp.get("dateFrom") ?? format(startOfMonth(base), "yyyy-MM-dd"),
-        dateTo: sp.get("dateTo") ?? format(endOfMonth(base), "yyyy-MM-dd"),
-        customerName: sp.get("customerName") ?? "",
-        supplierName: sp.get("supplierName") ?? "",
-        categoryName: sp.get("categoryName") ?? "",
-        year,
-        month,
-      };
-    }
-
+  const [filters, setFilters] = React.useState<AnnualReportV2Filters>(() => {
+    const year = searchParams.get("year") ?? String(new Date().getFullYear());
     return {
       dateFrom:
-        sp.get("dateFrom") ??
+        searchParams.get("dateFrom") ??
         format(startOfYear(new Date(Number(year), 0, 1)), "yyyy-MM-dd"),
       dateTo:
-        sp.get("dateTo") ??
+        searchParams.get("dateTo") ??
         format(endOfYear(new Date(Number(year), 11, 31)), "yyyy-MM-dd"),
-      customerName: sp.get("customerName") ?? "",
-      supplierName: sp.get("supplierName") ?? "",
-      categoryName: sp.get("categoryName") ?? "",
       year,
-      month,
+      month: searchParams.get("month") ?? "",
+      amountType: searchParams.get("amountType") ?? "netAmount",
+      customerName: searchParams.get("customerName") ?? "",
+      supplierName: searchParams.get("supplierName") ?? "",
+      categoryName: searchParams.get("categoryName") ?? "",
+      unitName: searchParams.get("unitName") ?? "",
     };
-  }, [paramsStr]);
+  });
 
   const setFilter = useCallback(
     (key: keyof AnnualReportV2Filters, value: string) => {
-      const params = new URLSearchParams(paramsStr);
-      if (value) {
-        params.set(key, value);
-      } else {
-        params.delete(key);
+      let updatedDateFrom = "";
+      let updatedDateTo = "";
+      
+      setFilters((prev) => {
+        const next = { ...prev, [key]: value };
+        
+        // If year changes, also update dateFrom and dateTo
+        if (key === "year") {
+          next.dateFrom = format(startOfYear(new Date(Number(value), 0, 1)), "yyyy-MM-dd");
+          next.dateTo = format(endOfYear(new Date(Number(value), 11, 31)), "yyyy-MM-dd");
+          updatedDateFrom = next.dateFrom;
+          updatedDateTo = next.dateTo;
+        }
+        
+        return next;
+      });
+
+      // Execute side-effect outside the pure setState function
+      if (key === "year") {
+        const params = new URLSearchParams(searchParams.toString());
+        params.set("year", value);
+        params.set("dateFrom", updatedDateFrom);
+        params.set("dateTo", updatedDateTo);
+        router.replace(`?${params.toString()}`, { scroll: false });
       }
-      router.replace(`?${params.toString()}`, { scroll: false });
     },
-    [router, paramsStr],
+    [router, searchParams],
   );
 
   const resetFilters = useCallback(() => {
-    router.replace(window.location.pathname, { scroll: false });
-  }, [router]);
+    setFilters((prev) => ({
+      ...prev,
+      month: "",
+      amountType: "netAmount",
+      customerName: "",
+      supplierName: "",
+      categoryName: "",
+      unitName: "",
+    }));
+    // We don't need to push to URL since these aren't in the URL anymore
+  }, []);
 
   return (
     <AnnualReportV2FilterContext.Provider

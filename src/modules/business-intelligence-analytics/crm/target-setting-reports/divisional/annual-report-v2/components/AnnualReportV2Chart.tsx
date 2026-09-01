@@ -31,6 +31,7 @@ import type { MonthlyAggregate } from "../types/annual-report.schema";
 interface AnnualReportV2ChartProps {
   data: MonthlyAggregate[];
   isLoading: boolean;
+  unitName?: string;
 }
 
 const chartConfig = {
@@ -48,15 +49,18 @@ const chartConfig = {
  * Abbreviates a numeric value for chart data labels.
  * e.g. 9410000 → "₱9.41M", 536000 → "₱536K"
  */
-function abbreviateValue(value: number): string {
+function abbreviateValue(value: number, unitName?: string): string {
   const abs = Math.abs(value);
+  const prefix = unitName ? "" : "₱";
+  const suffix = unitName ? ` ${unitName}` : "";
+
   if (abs >= 1_000_000) {
-    return `₱${(value / 1_000_000).toFixed(2)}M`;
+    return `${prefix}${(value / 1_000_000).toFixed(2)}M${suffix}`;
   }
   if (abs >= 1_000) {
-    return `₱${(value / 1_000).toFixed(0)}K`;
+    return `${prefix}${(value / 1_000).toFixed(0)}K${suffix}`;
   }
-  return `₱${value.toFixed(0)}`;
+  return `${prefix}${value.toFixed(0)}${suffix}`;
 }
 
 interface CustomLabelProps {
@@ -64,89 +68,98 @@ interface CustomLabelProps {
   y?: number | string;
   value?: number | string;
   index?: number;
-  maxValue?: number;
-  chartData?: { sellOut: number; sellIn: number }[];
-  series?: "sellOut" | "sellIn";
 }
 
-// Proximity threshold: if the two values are within 8% of the max, labels get extra separation
-const PROXIMITY_THRESHOLD = 0.08;
-
+/**
+ * Build a label renderer for one series.
+ * Uses Relative Value Positioning:
+ * - The HIGHER value gets pushed UP (above the dot)
+ * - The LOWER value gets pushed DOWN (below the dot)
+ * This guarantees the labels move away from each other and never overlap.
+ */
 function makeLabelRenderer(
   series: "sellOut" | "sellIn",
   chartData: { sellOut: number; sellIn: number }[],
   maxValue: number,
+  unitName?: string,
 ) {
+  const otherKey = series === "sellOut" ? "sellIn" : "sellOut";
+  const isSellOut = series === "sellOut";
+
   return function CustomLabel(props: CustomLabelProps) {
     const { x, y, value, index } = props;
     if (value === undefined || value === null) return null;
 
-    const text = abbreviateValue(Number(value));
+    const text = abbreviateValue(Number(value), unitName);
     const cx = Number(x) || 0;
     const cy = Number(y) || 0;
     const val = Number(value);
-
-    // Get the other series value at same index to check proximity
-    const otherKey = series === "sellOut" ? "sellIn" : "sellOut";
+    
     const otherVal = index !== undefined ? (chartData[index]?.[otherKey] ?? 0) : 0;
-    const diff = Math.abs(val - otherVal);
-    const isClose = diff / maxValue < PROXIMITY_THRESHOLD;
-    const isLow = val < maxValue * 0.15;
-
-    let labelX = cx;
-    let labelY: number;
-    let anchor: "middle" | "start" | "end" = "middle";
+    const isLow = val < maxValue * 0.12;
 
     if (isLow) {
-      // Near bottom edge — push to the side
-      labelY = cy + 4;
-      labelX = series === "sellOut" ? cx - 26 : cx + 26;
-      anchor = series === "sellOut" ? "end" : "start";
-    } else if (isClose) {
-      // Lines crossing / very close — force strong vertical separation
-      labelY = series === "sellOut" ? cy - 20 : cy + 24;
-    } else {
-      // Normal: sellOut above dot, sellIn below dot
-      labelY = series === "sellOut" ? cy - 14 : cy + 18;
+      // Near bottom edge — push sideways to prevent clipping or overlapping with axis
+      const labelX = isSellOut ? cx - 28 : cx + 28;
+      const anchor = isSellOut ? "end" : "start";
+      return renderLabel(text, labelX, cy + 4, anchor);
     }
 
-    return (
-      <g>
-        {/* Outline pass for readability over lines/dots */}
-        <text
-          x={labelX}
-          y={labelY}
-          fontSize={10}
-          fontWeight={600}
-          textAnchor={anchor}
-          style={{
-            paintOrder: "stroke",
-            stroke: "var(--background, white)",
-            strokeWidth: 3,
-            strokeLinejoin: "round",
-          }}
-        >
-          {text}
-        </text>
-        {/* Foreground pass */}
-        <text
-          x={labelX}
-          y={labelY}
-          fill="currentColor"
-          fontSize={10}
-          fontWeight={600}
-          textAnchor={anchor}
-          className="fill-foreground"
-        >
-          {text}
-        </text>
-      </g>
-    );
+    // Determine position based on relative value
+    let isHigher = val > otherVal;
+    
+    // Tie-breaker if values are exactly equal
+    if (val === otherVal) {
+      isHigher = isSellOut; // sellOut goes up, sellIn goes down
+    }
+
+    // Higher value goes ABOVE (cy - 14), Lower value goes BELOW (cy + 18)
+    const labelY = isHigher ? cy - 14 : cy + 18;
+    
+    return renderLabel(text, cx, labelY, "middle");
   };
 }
 
+function renderLabel(
+  text: string,
+  x: number,
+  y: number,
+  anchor: "middle" | "start" | "end",
+) {
+  return (
+    <g>
+      {/* White outline for readability over lines */}
+      <text
+        x={x}
+        y={y}
+        fontSize={10}
+        fontWeight={600}
+        textAnchor={anchor}
+        style={{
+          paintOrder: "stroke",
+          stroke: "var(--background, white)",
+          strokeWidth: 4,
+          strokeLinejoin: "round",
+        }}
+      >
+        {text}
+      </text>
+      {/* Foreground */}
+      <text
+        x={x}
+        y={y}
+        fontSize={10}
+        fontWeight={600}
+        textAnchor={anchor}
+        className="fill-foreground"
+      >
+        {text}
+      </text>
+    </g>
+  );
+}
 
-export function AnnualReportV2Chart({ data, isLoading }: AnnualReportV2ChartProps) {
+export function AnnualReportV2Chart({ data, isLoading, unitName }: AnnualReportV2ChartProps) {
   if (isLoading) {
     return (
       <Card>
@@ -176,8 +189,8 @@ export function AnnualReportV2Chart({ data, isLoading }: AnnualReportV2ChartProp
     1,
   );
 
-  const sellOutLabelRenderer = makeLabelRenderer("sellOut", chartData, maxValue);
-  const sellInLabelRenderer = makeLabelRenderer("sellIn", chartData, maxValue);
+  const sellOutLabel = makeLabelRenderer("sellOut", chartData, maxValue, unitName);
+  const sellInLabel = makeLabelRenderer("sellIn", chartData, maxValue, unitName);
 
   return (
     <Card>
@@ -185,7 +198,7 @@ export function AnnualReportV2Chart({ data, isLoading }: AnnualReportV2ChartProp
         <CardTitle>Sell-In vs Sell-Out by Month</CardTitle>
         <CardDescription>
           {chartData.length > 0
-            ? `${chartData.length} ${chartData.length === 1 ? "month" : "months"} — Sell-Out: ${formatCurrency(totalSellOut)} vs Sell-In: ${formatCurrency(totalSellIn)}`
+            ? `${chartData.length} ${chartData.length === 1 ? "month" : "months"} — Sell-Out: ${unitName ? totalSellOut.toLocaleString() + ' ' + unitName : formatCurrency(totalSellOut)} vs Sell-In: ${unitName ? totalSellIn.toLocaleString() + ' ' + unitName : formatCurrency(totalSellIn)}`
             : "No chart data available for the selected filters"}
         </CardDescription>
       </CardHeader>
@@ -194,7 +207,7 @@ export function AnnualReportV2Chart({ data, isLoading }: AnnualReportV2ChartProp
           <LineChart
             accessibilityLayer
             data={chartData}
-          margin={{ left: 12, right: 40, top: 28, bottom: 4 }}
+            margin={{ left: 12, right: 40, top: 32, bottom: 4 }}
           >
             <CartesianGrid vertical={false} />
             <XAxis
@@ -209,13 +222,7 @@ export function AnnualReportV2Chart({ data, isLoading }: AnnualReportV2ChartProp
               axisLine={false}
               tickMargin={8}
               tick={{ fontSize: 11 }}
-              tickFormatter={(value: number) =>
-                value >= 1e6
-                  ? `${(value / 1e6).toFixed(1)}M`
-                  : value >= 1e3
-                    ? `${(value / 1e3).toFixed(1)}K`
-                    : String(value)
-              }
+              tickFormatter={(val) => abbreviateValue(val, unitName)}
             />
             <ChartTooltip
               cursor={false}
@@ -227,7 +234,7 @@ export function AnnualReportV2Chart({ data, isLoading }: AnnualReportV2ChartProp
                       name;
                     return [
                       label,
-                      formatCurrency(Number(value), "PHP", "en-PH"),
+                      unitName ? `${Number(value).toLocaleString()} ${unitName}` : formatCurrency(Number(value), "PHP", "en-PH"),
                     ];
                   }}
                 />
@@ -249,10 +256,7 @@ export function AnnualReportV2Chart({ data, isLoading }: AnnualReportV2ChartProp
               }}
               activeDot={{ r: 6 }}
             >
-              <LabelList
-                dataKey="sellOut"
-                content={sellOutLabelRenderer}
-              />
+              <LabelList dataKey="sellOut" content={sellOutLabel} />
             </Line>
             <Line
               dataKey="sellIn"
@@ -266,10 +270,7 @@ export function AnnualReportV2Chart({ data, isLoading }: AnnualReportV2ChartProp
               }}
               activeDot={{ r: 6 }}
             >
-              <LabelList
-                dataKey="sellIn"
-                content={sellInLabelRenderer}
-              />
+              <LabelList dataKey="sellIn" content={sellInLabel} />
             </Line>
           </LineChart>
         </ChartContainer>
