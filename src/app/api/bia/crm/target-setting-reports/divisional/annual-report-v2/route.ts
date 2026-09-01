@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import fs from "fs";
 
 
 export const runtime = "nodejs";
@@ -208,10 +209,6 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const dateFrom = searchParams.get("dateFrom") ?? "";
   const dateTo = searchParams.get("dateTo") ?? "";
-  const customerName = searchParams.get("customerName") ?? "";
-  const supplierName = searchParams.get("supplierName") ?? "";
-  const categoryName = searchParams.get("categoryName") ?? "";
-  const unitName = searchParams.get("unitName") ?? "";
 
   try {
     const baseUrl = SPRING_API_BASE_URL.replace(/\/+$/, "");
@@ -243,14 +240,16 @@ export async function GET(req: NextRequest) {
 
       try {
         if (salesResult.data && salesResult.data.length > 0) {
-          require("fs").writeFileSync("C:/Users/Admin/.gemini/antigravity-ide/brain/2ab11339-0940-4694-b202-510b144f6340/scratch/raw_sales_item.json", JSON.stringify(salesResult.data[0], null, 2));
+          fs.writeFileSync("C:/Users/Admin/.gemini/antigravity-ide/brain/2ab11339-0940-4694-b202-510b144f6340/scratch/raw_sales_item.json", JSON.stringify(salesResult.data[0], null, 2));
           // Also write any records that have no productName
           const nullProductItems = salesResult.data.filter((item: Record<string, unknown>) => !item.productName && !item.product_name && !item.itemName && !item.product);
           if (nullProductItems.length > 0) {
-            require("fs").writeFileSync("C:/Users/Admin/.gemini/antigravity-ide/brain/2ab11339-0940-4694-b202-510b144f6340/scratch/null_product_items.json", JSON.stringify(nullProductItems.slice(0, 5), null, 2));
+            fs.writeFileSync("C:/Users/Admin/.gemini/antigravity-ide/brain/2ab11339-0940-4694-b202-510b144f6340/scratch/null_product_items.json", JSON.stringify(nullProductItems.slice(0, 5), null, 2));
           }
         }
-      } catch (e) {}
+      } catch {
+        // ignore debug write errors
+      }
 
       // Rebuild trigger
       const salesTransactions = normalizeSales(salesResult.data);

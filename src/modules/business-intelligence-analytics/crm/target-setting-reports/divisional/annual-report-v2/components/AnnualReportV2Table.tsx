@@ -78,7 +78,7 @@ export function AnnualReportV2Table({
       const rows = salesData.map((row) => [
         `"${(row.productName || "Unknown Product").replace(/"/g, '""')}"`,
         String(row.cases ?? 0),
-        row.totalInvoiceAmount.toFixed(2),
+        (row.totalInvoiceAmount ?? 0).toFixed(2),
       ]);
       csvContent = [
         headers.join(","),
@@ -96,9 +96,9 @@ export function AnnualReportV2Table({
       const rows = purchaseData.map((row) => [
         row.receiptNo,
         row.receiptDate,
-        `"${row.supplierName.replace(/"/g, '""')}"`,
+        `"${(row.supplierName || "Unknown Supplier").replace(/"/g, '""')}"`,
         String(row.cases ?? 0),
-        row.totalReceiptAmount.toFixed(2),
+        (row.totalReceiptAmount ?? 0).toFixed(2),
       ]);
       csvContent = [
         headers.join(","),

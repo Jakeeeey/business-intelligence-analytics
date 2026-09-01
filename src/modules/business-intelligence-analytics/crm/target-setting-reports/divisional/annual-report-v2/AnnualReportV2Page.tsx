@@ -10,6 +10,8 @@ import { AnnualReportV2Chart } from "./components/AnnualReportV2Chart";
 import { AnnualReportV2Table } from "./components/AnnualReportV2Table";
 import { AnnualReportV2Skeleton } from "./components/AnnualReportV2Skeleton";
 import { aggregateMonthlyData, calculateSummary } from "./utils/annual-report.utils";
+import type { SalesTransaction, PurchaseTransaction } from "./types/annual-report.schema";
+
 
 const MONTH_LABELS = [
   "January", "February", "March", "April", "May", "June",
@@ -31,8 +33,8 @@ export default function AnnualReportV2Page() {
   const { data, isLoading, error, refresh } = useAnnualReportV2(queryParams);
 
   // Raw data from the server
-  const rawSales = useMemo(() => (data?.salesTransactions as any[]) ?? [], [data]);
-  const rawPurchases = useMemo(() => (data?.purchaseTransactions as any[]) ?? [], [data]);
+  const rawSales = useMemo(() => (data?.salesTransactions as SalesTransaction[]) ?? [], [data]);
+  const rawPurchases = useMemo(() => (data?.purchaseTransactions as PurchaseTransaction[]) ?? [], [data]);
 
   const suppliers = useMemo(() => data?.suppliers ?? [], [data]);
   const categories = useMemo(() => data?.categories ?? [], [data]);
@@ -91,7 +93,7 @@ export default function AnnualReportV2Page() {
         filteredSales = filteredSales.filter((item) =>
           item.productSupplier &&
           selectedSuppliers.some((supplier) =>
-            item.productSupplier.toLowerCase().includes(supplier)
+            item.productSupplier!.toLowerCase().includes(supplier)
           )
         );
       }
@@ -111,7 +113,7 @@ export default function AnnualReportV2Page() {
     }
 
     // Group sales by product + month
-    const salesGroupedMap = new Map<string, any>();
+    const salesGroupedMap = new Map<string, Partial<SalesTransaction>>();
     for (const item of filteredSales) {
       let amountToAdd = 0;
       if (useQuantity) {
@@ -141,8 +143,8 @@ export default function AnnualReportV2Page() {
 
       const existing = salesGroupedMap.get(compositeKey);
       if (existing) {
-        existing.totalInvoiceAmount += amountToAdd;
-        existing.cases = (existing.cases || 0) + (item.cases || 0);
+        existing.totalInvoiceAmount = (existing.totalInvoiceAmount ?? 0) + amountToAdd;
+        existing.cases = (existing.cases ?? 0) + (item.cases ?? 0);
       } else {
         salesGroupedMap.set(compositeKey, {
           productName: item.productName,
@@ -154,7 +156,7 @@ export default function AnnualReportV2Page() {
         });
       }
     }
-    const salesTransactions = Array.from(salesGroupedMap.values());
+    const salesTransactions = Array.from(salesGroupedMap.values()) as SalesTransaction[];
 
     // Filter purchases
     let filteredPurchases = rawPurchases;
@@ -198,7 +200,7 @@ export default function AnnualReportV2Page() {
     // Removed strict unitName filter to allow conversions
 
     // Group purchases by receiptNo
-    const purchaseGroupedMap = new Map<string, any>();
+    const purchaseGroupedMap = new Map<string, Partial<PurchaseTransaction>>();
     for (const item of filteredPurchases) {
       let amountToAdd = 0;
       if (useQuantity) {
@@ -216,8 +218,8 @@ export default function AnnualReportV2Page() {
 
       const existing = purchaseGroupedMap.get(item.receiptNo);
       if (existing) {
-        existing.totalReceiptAmount += amountToAdd;
-        existing.cases = (existing.cases || 0) + (item.cases || 0);
+        existing.totalReceiptAmount = (existing.totalReceiptAmount ?? 0) + amountToAdd;
+        existing.cases = (existing.cases ?? 0) + (item.cases ?? 0);
       } else {
         purchaseGroupedMap.set(item.receiptNo, {
           receiptNo: item.receiptNo,
@@ -228,7 +230,7 @@ export default function AnnualReportV2Page() {
         });
       }
     }
-    const purchaseTransactions = Array.from(purchaseGroupedMap.values());
+    const purchaseTransactions = Array.from(purchaseGroupedMap.values()) as PurchaseTransaction[];
 
     const monthlyData = aggregateMonthlyData(salesTransactions, purchaseTransactions);
     const summary = calculateSummary(monthlyData);

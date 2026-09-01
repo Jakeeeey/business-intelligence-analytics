@@ -96,7 +96,7 @@ export const purchaseColumns = (unitName?: string): ColumnDef<PurchaseTransactio
     cell: ({ row }) => (
       <div className="text-right">
         <span className="text-red-600 dark:text-red-400 font-medium tabular-nums">
-          {unitName ? row.original.totalReceiptAmount.toLocaleString() : formatCurrency(row.original.totalReceiptAmount)}
+          {unitName ? (row.original.totalReceiptAmount ?? 0).toLocaleString() : formatCurrency(row.original.totalReceiptAmount ?? 0)}
         </span>
       </div>
     ),

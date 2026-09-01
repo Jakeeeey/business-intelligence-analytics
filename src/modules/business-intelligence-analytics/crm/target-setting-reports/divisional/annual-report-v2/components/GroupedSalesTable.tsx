@@ -4,7 +4,6 @@ import * as React from "react";
 import {
   ColumnDef,
   ColumnFiltersState,
-  SortingState,
   VisibilityState,
   flexRender,
   getCoreRowModel,
@@ -40,7 +39,6 @@ import {
 import {
   ChevronLeft,
   ChevronRight,
-  ChevronDown,
   ChevronsLeft,
   ChevronsRight,
   Search,
@@ -123,6 +121,7 @@ export function GroupedSalesTable<TData, TValue>({
   });
   const [expanded, setExpanded] = React.useState<ExpandedState>({}); // All collapsed by default
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data,
     columns,
@@ -304,8 +303,8 @@ export function GroupedSalesTable<TData, TValue>({
                           const row = block.groupRow;
                           const monthName = row.getValue("monthYear") as string;
                           const leafRows = row.getLeafRows();
-                          const totalCases = leafRows.reduce((acc, curr) => acc + ((curr.original as any).cases || 0), 0);
-                          const totalAmount = leafRows.reduce((acc, curr) => acc + ((curr.original as any).totalInvoiceAmount || 0), 0);
+                          const totalCases = leafRows.reduce((acc, curr) => acc + (((curr.original as Record<string, number>).cases) || 0), 0);
+                          const totalAmount = leafRows.reduce((acc, curr) => acc + (((curr.original as Record<string, number>).totalInvoiceAmount) || 0), 0);
                           
                           return (
                             <TableRow
