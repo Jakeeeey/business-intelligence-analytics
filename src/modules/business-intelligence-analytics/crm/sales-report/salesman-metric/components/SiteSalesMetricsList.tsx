@@ -29,26 +29,25 @@ export function SiteSalesMetricsList({
 }: SiteSalesMetricsListProps) {
   if (loading) {
     return (
-      <div className="divide-y divide-border/60">
+      <div className="space-y-4 p-4">
         {Array.from({ length: 4 }).map((_, idx) => (
-          <div key={idx} className="bg-card grid grid-cols-1 md:grid-cols-12 gap-4 p-4 items-center animate-pulse border-l-4 border-transparent">
-            {/* Salesman Info */}
-            <div className="col-span-1 md:col-span-2 space-y-2">
-              <div className="h-4 bg-muted rounded w-3/4"></div>
-              <div className="h-3 bg-muted rounded w-1/2"></div>
-            </div>
-            {/* Core Metrics List */}
-            <div className="col-span-1 md:col-span-9 grid grid-cols-2 md:grid-cols-4 gap-4">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="space-y-2">
-                  <div className="h-3 bg-muted rounded w-1/2"></div>
-                  <div className="h-5 bg-muted rounded w-3/4"></div>
-                </div>
-              ))}
-            </div>
-            {/* Expander Toggle */}
-            <div className="col-span-1 md:col-span-1 flex justify-end">
-              <div className="h-8 w-20 bg-muted rounded"></div>
+          <div key={idx} className="group relative p-4 rounded-2xl border border-border/40 bg-muted/5 overflow-hidden animate-pulse">
+            <div className="flex flex-col gap-4">
+              <div className="flex justify-between items-start">
+                  <div className="space-y-2">
+                    <div className="h-4 bg-muted rounded w-32"></div>
+                    <div className="h-3 bg-muted rounded w-20"></div>
+                  </div>
+                  <div className="h-6 w-16 bg-muted rounded"></div>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="space-y-2">
+                    <div className="h-3 bg-muted rounded w-16"></div>
+                    <div className="h-5 bg-muted rounded w-24"></div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         ))}
@@ -58,14 +57,14 @@ export function SiteSalesMetricsList({
 
   if (rows.length === 0) {
     return (
-      <div className="p-8 text-center text-muted-foreground/60 text-sm font-medium">
+      <div className="p-12 text-center text-muted-foreground font-bold uppercase tracking-widest text-xs">
         No records found matching your filters.
       </div>
     );
   }
 
   return (
-    <div className="divide-y divide-border/60">
+    <div className="space-y-4 p-4">
       {rows.map((row) => (
         <SiteSalesRow
           key={row.salesmanId}

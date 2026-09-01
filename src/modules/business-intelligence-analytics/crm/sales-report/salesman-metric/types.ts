@@ -4,11 +4,16 @@ export interface SalesmanOption {
   salesmanName: string;
 }
 
+export interface SupervisorOption {
+  supervisorId: string;
+  supervisorName: string;
+}
+
 export type DatePreset = "today" | "this-week" | "this-month" | "this-year" | "custom";
 
 export interface SalesmanMetricFilters {
-  salesmanId: number | "";
-  salesmanCode: string;
+  supervisorIds: string[];
+  salesmanIds: number[];
   fiscalPeriod: string;
   startDate: string;
   endDate: string;
@@ -25,6 +30,14 @@ export interface MetricRow {
   // Metric 3: Frequency
   frequencyCount: number;
   frequencyAmount: number;
+  targetSales: number;
+  targetFrequency: number;
+  targetReach: number;
+  targetNewAccounts: number;
+  salesAchievement: number;
+  frequencyAchievement: number;
+  reachAchievement: number;
+  newAccountsAchievement: number;
   // Metric 4: New Accounts
   newAccounts: number;
   // Metric 5: Productive Outlets Target
