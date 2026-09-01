@@ -4,6 +4,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const API_BASE = (process.env.SPRING_API_BASE_URL ?? "").replace(/\/+$/, "");
+const DIRECTUS_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL || "").replace(/\/+$/, "");
+const DIRECTUS_TOKEN = process.env.DIRECTUS_STATIC_TOKEN || "";
 
 interface SalesPerformanceItem {
   divisionId?: number;
@@ -538,6 +540,31 @@ export async function GET(req: NextRequest) {
     300000 // Cache for 5 minutes
   );
 
+  // Fetch all salesman target settings for the target month
+  let allTargetSettings: Record<string, unknown>[] = [];
+  try {
+    const settingUrl = `${DIRECTUS_BASE}/items/salesman_target_setting?fields=salesman_id,volume,frequency,reach,new_accounts,productive_outlets,line_sales_target,basket_count_target,tactica_sku,date_range_from,date_range_to,status&limit=-1`;
+    const settingRes = await fetch(settingUrl, {
+      cache: "no-store",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${DIRECTUS_TOKEN}`,
+      }
+    });
+    if (settingRes.ok) {
+      const { data } = await settingRes.json();
+      const targetMonthStr = `${targetYear}-${String(targetMonth).padStart(2, '0')}`;
+      allTargetSettings = (data || []).filter((s: Record<string, unknown>) => {
+        if (s.status !== "Approved") return false;
+        const sFrom = (String(s.date_range_from) || "").substring(0, 7);
+        const sTo = (String(s.date_range_to) || "").substring(0, 7);
+        return targetMonthStr >= sFrom && targetMonthStr <= sTo;
+      });
+    }
+  } catch (err) {
+    console.error("Error fetching target settings:", err);
+  }
+
   // For each target salesman, fetch their metrics in chunks
   const rows: Record<string, unknown>[] = [];
   const chunkSize = 5;
@@ -605,98 +632,109 @@ export async function GET(req: NextRequest) {
 
         const newAccounts = filteredNewAcc.length;
 
+        // Find Target Settings early
+        const targetSetting = allTargetSettings.find(ts => Number(ts.salesman_id) === id);
+
         // Process Metric 5: Productive Outlets Target
-        let productiveOutletsTarget = 0;
+        const productiveOutletsTarget = targetSetting ? Number(targetSetting.productive_outlets || 0) : 0;
         let productiveOutletsActual = 0;
         let productiveOutletsAchievement = 0;
         let productiveOutletsStatus = "No Target Set";
+
         if (productiveOutlet) {
-          productiveOutletsTarget = Number(productiveOutlet.targetProductiveOutlets ?? 0);
           productiveOutletsActual = Number(productiveOutlet.actualProductiveOutlets ?? 0);
-          productiveOutletsAchievement = Number(productiveOutlet.achievementPercentage ?? 0);
-          productiveOutletsStatus = String(productiveOutlet.goalStatus ?? "No Target Set");
+        }
+
+        if (productiveOutletsTarget > 0) {
+          productiveOutletsAchievement = (productiveOutletsActual / productiveOutletsTarget) * 100;
+          productiveOutletsStatus = productiveOutletsAchievement >= 100 ? "Met Target" : "Below Target";
+        } else {
+          productiveOutletsAchievement = productiveOutletsActual > 0 ? 100 : 0;
+          productiveOutletsStatus = productiveOutletsTarget === 0 && productiveOutletsActual === 0 ? "No Target Set" : (productiveOutletsActual > 0 ? "Met Target" : "Below Target");
         }
 
         // Process Metric 6: Line Sales Target
-        let lineSalesTargetProductsPerReceipt = 0;
-        let lineSalesTargetReceiptCount = 0;
+        const lineSalesTargetProductsPerReceipt = 0; 
+        const lineSalesTargetReceiptCount = targetSetting ? Number(targetSetting.line_sales_target || 0) : 0;
         let lineSalesActualReceipts = 0;
         let lineSalesAchievement = 0;
-        let lineSalesStatus = "Below Target";
+        let lineSalesStatus = "No Target Set";
 
         if (Array.isArray(lineSales) && lineSales.length > 0) {
-          lineSalesTargetProductsPerReceipt = Number(lineSales[0].targetProductsPerReceipt ?? 0);
-          lineSalesTargetReceiptCount = Number(lineSales[0].targetReceiptCount ?? 0);
-          
           const validReceipts = lineSales.filter((item: LineSalesTarget) => item.invoiceNumber);
           lineSalesActualReceipts = validReceipts.length;
-
-          if (lineSalesTargetReceiptCount > 0) {
-            lineSalesAchievement = (lineSalesActualReceipts / lineSalesTargetReceiptCount) * 100;
-            lineSalesStatus = lineSalesAchievement >= 100 ? "Met Target" : "Below Target";
-          } else {
-            lineSalesAchievement = lineSalesActualReceipts > 0 ? 100 : 0;
-            lineSalesStatus = lineSalesTargetReceiptCount === 0 && lineSalesActualReceipts === 0 ? "No Target Set" : (lineSalesActualReceipts > 0 ? "Met Target" : "Below Target");
-          }
         } else if (lineSales && !Array.isArray(lineSales)) {
-          lineSalesTargetProductsPerReceipt = Number((lineSales as unknown as LineSalesTarget).targetProductsPerReceipt ?? 0);
-          lineSalesTargetReceiptCount = Number((lineSales as unknown as LineSalesTarget).targetReceiptCount ?? 0);
           lineSalesActualReceipts = Number((lineSales as unknown as LineSalesTarget).actualQualifiedReceipts ?? 0);
-          lineSalesAchievement = Number((lineSales as unknown as LineSalesTarget).achievementPercentage ?? 0);
-          lineSalesStatus = String((lineSales as unknown as LineSalesTarget).goalStatus ?? "Below Target");
+        }
+
+        if (lineSalesTargetReceiptCount > 0) {
+          lineSalesAchievement = (lineSalesActualReceipts / lineSalesTargetReceiptCount) * 100;
+          lineSalesStatus = lineSalesAchievement >= 100 ? "Met Target" : "Below Target";
+        } else {
+          lineSalesAchievement = lineSalesActualReceipts > 0 ? 100 : 0;
+          lineSalesStatus = lineSalesTargetReceiptCount === 0 && lineSalesActualReceipts === 0 ? "No Target Set" : (lineSalesActualReceipts > 0 ? "Met Target" : "Below Target");
         }
 
         // Process Metric 7: Basket Count Target
-        let basketCountTargetAmount = 0;
-        let basketCountTargetReceiptCount = 0;
+        const basketCountTargetAmount = 0; 
+        const basketCountTargetReceiptCount = targetSetting ? Number(targetSetting.basket_count_target || 0) : 0;
         let basketCountActualReceipts = 0;
         let basketCountAchievement = 0;
-        let basketCountStatus = "Below Target";
+        let basketCountStatus = "No Target Set";
 
         if (Array.isArray(basketCount) && basketCount.length > 0) {
-          basketCountTargetAmount = Number(basketCount[0].targetAmountPerReceipt ?? 0);
-          basketCountTargetReceiptCount = Number(basketCount[0].targetReceiptCount ?? 0);
-          
-          // Count receipts that actually have an invoice number and amount
           const validReceipts = basketCount.filter((item: BasketCountTarget) => item.invoiceNumber);
           basketCountActualReceipts = validReceipts.length;
-          
-          if (basketCountTargetReceiptCount > 0) {
-            basketCountAchievement = (basketCountActualReceipts / basketCountTargetReceiptCount) * 100;
-            basketCountStatus = basketCountAchievement >= 100 ? "Met Target" : "Below Target";
-          } else {
-            basketCountAchievement = basketCountActualReceipts > 0 ? 100 : 0;
-            basketCountStatus = basketCountTargetReceiptCount === 0 && basketCountActualReceipts === 0 ? "No Target Set" : (basketCountActualReceipts > 0 ? "Met Target" : "Below Target");
-          }
         } else if (basketCount && !Array.isArray(basketCount)) {
-          // Fallback in case it ever returns an object again
-          basketCountTargetAmount = Number((basketCount as unknown as BasketCountTarget).targetAmountPerReceipt ?? 0);
-          basketCountTargetReceiptCount = Number((basketCount as unknown as BasketCountTarget).targetReceiptCount ?? 0);
           basketCountActualReceipts = Number((basketCount as unknown as BasketCountTarget).actualQualifiedReceipts ?? 0);
-          basketCountAchievement = Number((basketCount as unknown as BasketCountTarget).achievementPercentage ?? 0);
-          basketCountStatus = String((basketCount as unknown as BasketCountTarget).goalStatus ?? "Below Target");
+        }
+
+        if (basketCountTargetReceiptCount > 0) {
+          basketCountAchievement = (basketCountActualReceipts / basketCountTargetReceiptCount) * 100;
+          basketCountStatus = basketCountAchievement >= 100 ? "Met Target" : "Below Target";
+        } else {
+          basketCountAchievement = basketCountActualReceipts > 0 ? 100 : 0;
+          basketCountStatus = basketCountTargetReceiptCount === 0 && basketCountActualReceipts === 0 ? "No Target Set" : (basketCountActualReceipts > 0 ? "Met Target" : "Below Target");
         }
 
         // Process Metric 8: Tactical SKU Target
-        let tacticalSkuTargetQty = 0;
+        const tacticalSkuTargetQty = targetSetting ? Number(targetSetting.tactica_sku || 0) : 0;
         let tacticalSkuActualQty = 0;
         let tacticalSkuAchievement = 0;
         let tacticalSkuStatus = "No Target Set";
 
-        tacticalSkuTargetQty = Array.isArray(tacticalSku)
-          ? tacticalSku.reduce((sum, item) => sum + Number(item.targetQuantity ?? 0), 0)
-          : 0;
-        tacticalSkuActualQty = Array.isArray(tacticalSku)
-          ? tacticalSku.reduce((sum, item) => sum + Number(item.actualQuantity ?? 0), 0)
-          : 0;
-        tacticalSkuAchievement = tacticalSkuTargetQty > 0
-          ? (tacticalSkuActualQty / tacticalSkuTargetQty) * 100
-          : (Array.isArray(tacticalSku) && tacticalSku.length > 0 ? Number(tacticalSku[0].quantityAchievementPercentage ?? 0) : 0);
+        if (Array.isArray(tacticalSku)) {
+          tacticalSkuActualQty = tacticalSku.reduce((sum, item) => sum + Number(item.actualQuantity ?? 0), 0);
+        }
 
-        const hasBelowTarget = Array.isArray(tacticalSku) && tacticalSku.some(item => String(item.quantityGoalStatus).toLowerCase().includes("below"));
-        tacticalSkuStatus = Array.isArray(tacticalSku) && tacticalSku.length > 0
-          ? (hasBelowTarget ? "Below Target" : "Met Target")
-          : "No Target Set";
+        if (tacticalSkuTargetQty > 0) {
+          tacticalSkuAchievement = (tacticalSkuActualQty / tacticalSkuTargetQty) * 100;
+          tacticalSkuStatus = tacticalSkuAchievement >= 100 ? "Met Target" : "Below Target";
+        } else {
+          tacticalSkuAchievement = tacticalSkuActualQty > 0 ? 100 : 0;
+          tacticalSkuStatus = tacticalSkuTargetQty === 0 && tacticalSkuActualQty === 0 ? "No Target Set" : (tacticalSkuActualQty > 0 ? "Met Target" : "Below Target");
+        }
+
+        const targetSales = targetSetting ? Number(targetSetting.volume || 0) : 0;
+        const targetFrequency = targetSetting ? Number(targetSetting.frequency || 0) : 0;
+        const targetReach = targetSetting ? Number(targetSetting.reach || 0) : 0;
+        const targetNewAccounts = targetSetting ? Number(targetSetting.new_accounts || 0) : 0;
+
+        const salesAchievement = targetSales > 0 
+          ? (salesPerformance / targetSales) * 100 
+          : (salesPerformance > 0 ? 100 : 0);
+          
+        const frequencyAchievement = targetFrequency > 0 
+          ? (freqCount / targetFrequency) * 100 
+          : (freqCount > 0 ? 100 : 0);
+
+        const reachAchievement = targetReach > 0 
+          ? (reach / targetReach) * 100 
+          : (reach > 0 ? 100 : 0);
+
+        const newAccountsAchievement = targetNewAccounts > 0 
+          ? (newAccounts / targetNewAccounts) * 100 
+          : (newAccounts > 0 ? 100 : 0);
 
         return {
           salesmanId: id,
@@ -706,6 +744,14 @@ export async function GET(req: NextRequest) {
           reach,
           frequencyCount: freqCount,
           frequencyAmount: freqAmount,
+          targetSales,
+          targetFrequency,
+          targetReach,
+          targetNewAccounts,
+          salesAchievement,
+          frequencyAchievement,
+          reachAchievement,
+          newAccountsAchievement,
           newAccounts,
           productiveOutletsTarget,
           productiveOutletsActual,
