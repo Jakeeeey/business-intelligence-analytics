@@ -17,6 +17,7 @@ import type { DashboardSummary } from "../types/annual-report.schema";
 interface AnnualReportV2KPICardsProps {
   summary?: DashboardSummary;
   isLoading: boolean;
+  unitName?: string;
 }
 
 const cards = [
@@ -51,6 +52,7 @@ const cards = [
 export function AnnualReportV2KPICards({
   summary,
   isLoading,
+  unitName,
 }: AnnualReportV2KPICardsProps) {
   if (isLoading) {
     return (
@@ -96,8 +98,8 @@ export function AnnualReportV2KPICards({
                     {summary.biasPercentage.toFixed(2)}%
                   </CardTitle>
                 ) : (
-                  <CardTitle className="text-lg sm:text-2xl font-semibold tabular-nums text-foreground @[250px]/card:text-3xl">
-                    {formatCurrencyDisplay(amount, 15)}
+                  <CardTitle className="text-lg sm:text-2xl font-semibold tabular-nums text-foreground @[250px]/card:text-3xl" title={unitName ? `${amount.toLocaleString()} ${unitName}` : undefined}>
+                    {unitName ? amount.toLocaleString(undefined, { maximumFractionDigits: 2 }) : formatCurrencyDisplay(amount, 15)}
                   </CardTitle>
                 )}
                 {trend > 0 && index === 2 && (

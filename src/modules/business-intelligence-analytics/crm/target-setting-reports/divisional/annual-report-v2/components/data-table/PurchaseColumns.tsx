@@ -26,7 +26,7 @@ function SortHeader({ column, label }: { column: Column<PurchaseTransaction, unk
   );
 }
 
-export const purchaseColumns: ColumnDef<PurchaseTransaction>[] = [
+export const purchaseColumns = (unitName?: string): ColumnDef<PurchaseTransaction>[] => [
   {
     accessorKey: "receiptNo",
     header: ({ column }) => <SortHeader column={column} label="Receipt No" />,
@@ -53,6 +53,21 @@ export const purchaseColumns: ColumnDef<PurchaseTransaction>[] = [
     meta: { label: "Receipt Date" },
   },
   {
+    id: "monthYear",
+    header: "Month",
+    accessorFn: (row) => {
+      const dateStr = row.receiptDate;
+      if (dateStr) {
+        const parsed = new Date(dateStr);
+        if (!isNaN(parsed.getTime())) {
+          return new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(parsed);
+        }
+      }
+      return "Unknown Date";
+    },
+    meta: { label: "Month" }
+  },
+  {
     accessorKey: "supplierName",
     header: ({ column }) => <SortHeader column={column} label="Supplier Name" />,
     meta: { label: "Supplier Name" },
@@ -65,7 +80,7 @@ export const purchaseColumns: ColumnDef<PurchaseTransaction>[] = [
       </div>
     ),
     cell: ({ row }) => (
-      <div className="text-right font-medium tabular-nums">
+      <div className="text-right font-medium tabular-nums text-emerald-600 dark:text-emerald-500">
         {row.original.cases?.toLocaleString() ?? 0}
       </div>
     ),
@@ -75,16 +90,16 @@ export const purchaseColumns: ColumnDef<PurchaseTransaction>[] = [
     accessorKey: "totalReceiptAmount",
     header: ({ column }) => (
       <div className="text-right">
-        <SortHeader column={column} label="Amount" />
+        <SortHeader column={column} label={unitName ? "Quantity" : "Amount"} />
       </div>
     ),
     cell: ({ row }) => (
       <div className="text-right">
         <span className="text-red-600 dark:text-red-400 font-medium tabular-nums">
-          {formatCurrency(row.original.totalReceiptAmount)}
+          {unitName ? (row.original.totalReceiptAmount ?? 0).toLocaleString() : formatCurrency(row.original.totalReceiptAmount ?? 0)}
         </span>
       </div>
     ),
-    meta: { label: "Amount" },
+    meta: { label: unitName ? "Quantity" : "Amount" },
   },
 ];

@@ -4,6 +4,8 @@ import React, { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Download, Table2, Receipt, FileText } from "lucide-react";
 import { DataTable } from "@/components/ui/new-data-table";
+import { GroupedPurchaseTable } from "./GroupedPurchaseTable";
+import { GroupedSalesTable } from "./GroupedSalesTable";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { columns as monthlyColumns } from "./data-table/Columns";
 import { salesColumns } from "./data-table/SalesColumns";
@@ -19,6 +21,7 @@ interface AnnualReportV2TableProps {
   salesData?: SalesTransaction[];
   purchaseData?: PurchaseTransaction[];
   isLoading: boolean;
+  unitName?: string;
 }
 
 export function AnnualReportV2Table({
@@ -26,8 +29,26 @@ export function AnnualReportV2Table({
   salesData = [],
   purchaseData = [],
   isLoading,
+  unitName,
 }: AnnualReportV2TableProps) {
   const [activeTab, setActiveTab] = useState("monthly");
+
+  const sortedPurchaseData = React.useMemo(() => {
+    return [...purchaseData].sort((a, b) => {
+      const dateA = a.receiptDate ? new Date(a.receiptDate).getTime() : 0;
+      const dateB = b.receiptDate ? new Date(b.receiptDate).getTime() : 0;
+      return dateA - dateB; // Ascending order
+    });
+  }, [purchaseData]);
+
+  const sortedSalesData = React.useMemo(() => {
+    return [...salesData].sort((a, b) => {
+      const dateA = a.invoiceDate ? new Date(a.invoiceDate).getTime() : 0;
+      const dateB = b.invoiceDate ? new Date(b.invoiceDate).getTime() : 0;
+      return dateA - dateB; // Ascending order
+    });
+  }, [salesData]);
+
   const handleExportCSV = useCallback(() => {
     let csvContent = "";
     let filename = "";
@@ -53,13 +74,11 @@ export function AnnualReportV2Table({
       ].join("\n");
       filename = `monthly-breakdown-${new Date().toISOString().split("T")[0]}.csv`;
     } else if (activeTab === "sales") {
-      const headers = ["Invoice No", "Invoice Date", "Customer Name", "Cases", "Total Invoice Amount"];
+      const headers = ["Product Name", "Cases", "Total Amount"];
       const rows = salesData.map((row) => [
-        row.invoiceNo,
-        row.invoiceDate,
-        `"${row.customerName.replace(/"/g, '""')}"`,
+        `"${(row.productName || "Unknown Product").replace(/"/g, '""')}"`,
         String(row.cases ?? 0),
-        row.totalInvoiceAmount.toFixed(2),
+        (row.totalInvoiceAmount ?? 0).toFixed(2),
       ]);
       csvContent = [
         headers.join(","),
@@ -77,9 +96,9 @@ export function AnnualReportV2Table({
       const rows = purchaseData.map((row) => [
         row.receiptNo,
         row.receiptDate,
-        `"${row.supplierName.replace(/"/g, '""')}"`,
+        `"${(row.supplierName || "Unknown Supplier").replace(/"/g, '""')}"`,
         String(row.cases ?? 0),
-        row.totalReceiptAmount.toFixed(2),
+        (row.totalReceiptAmount ?? 0).toFixed(2),
       ]);
       csvContent = [
         headers.join(","),
@@ -110,16 +129,16 @@ export function AnnualReportV2Table({
       <Tabs defaultValue="monthly" value={activeTab} onValueChange={setActiveTab} className="w-full">
         {/* Tabs + Export CSV on same row */}
         <div className="flex items-center justify-between gap-4 mb-4">
-          <TabsList className="w-fit">
-            <TabsTrigger value="monthly" className="flex items-center gap-2 whitespace-nowrap">
+          <TabsList className="w-fit bg-muted/60 p-1">
+            <TabsTrigger value="monthly" className="flex items-center gap-2 whitespace-nowrap data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all">
               <Table2 className="h-4 w-4" />
               Monthly Breakdown
             </TabsTrigger>
-            <TabsTrigger value="sales" className="flex items-center gap-2 whitespace-nowrap">
+            <TabsTrigger value="sales" className="flex items-center gap-2 whitespace-nowrap data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all">
               <FileText className="h-4 w-4" />
               Sales Report
             </TabsTrigger>
-            <TabsTrigger value="purchases" className="flex items-center gap-2 whitespace-nowrap">
+            <TabsTrigger value="purchases" className="flex items-center gap-2 whitespace-nowrap data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all">
               <Receipt className="h-4 w-4" />
               Purchase Report
             </TabsTrigger>
@@ -141,9 +160,9 @@ export function AnnualReportV2Table({
           </Button>
         </div>
 
-        <TabsContent value="monthly" className="m-0">
+        <TabsContent value="monthly" className="m-0 animate-in fade-in-50 zoom-in-[0.98] duration-300">
           <DataTable
-            columns={monthlyColumns}
+            columns={monthlyColumns(unitName)}
             data={data}
             searchKey="monthLabel"
             isLoading={isLoading}
@@ -152,25 +171,27 @@ export function AnnualReportV2Table({
           />
         </TabsContent>
 
-        <TabsContent value="sales" className="m-0">
-          <DataTable
-            columns={salesColumns}
-            data={salesData}
-            searchKey="customerName"
+        <TabsContent value="sales" className="m-0 animate-in fade-in-50 zoom-in-[0.98] duration-300">
+          <GroupedSalesTable
+            columns={salesColumns(unitName)}
+            data={sortedSalesData}
+            searchKey="productName"
             isLoading={isLoading}
             emptyTitle="No sales data available"
             emptyDescription="No sales transactions found for the selected period."
+            unitName={unitName}
           />
         </TabsContent>
 
-        <TabsContent value="purchases" className="m-0">
-          <DataTable
-            columns={purchaseColumns}
-            data={purchaseData}
+        <TabsContent value="purchases" className="m-0 animate-in fade-in-50 zoom-in-[0.98] duration-300">
+          <GroupedPurchaseTable
+            columns={purchaseColumns(unitName)}
+            data={sortedPurchaseData}
             searchKey="supplierName"
             isLoading={isLoading}
             emptyTitle="No purchase data available"
             emptyDescription="No purchase transactions found for the selected period."
+            unitName={unitName}
           />
         </TabsContent>
       </Tabs>

@@ -26,7 +26,7 @@ function SortHeader({ column, label }: { column: Column<MonthlyAggregate, unknow
   );
 }
 
-export const columns: ColumnDef<MonthlyAggregate>[] = [
+export const columns = (unitName?: string): ColumnDef<MonthlyAggregate>[] => [
   {
     accessorKey: "monthLabel",
     header: ({ column }) => <SortHeader column={column} label="Month" />,
@@ -38,7 +38,7 @@ export const columns: ColumnDef<MonthlyAggregate>[] = [
     header: ({ column }) => <SortHeader column={column} label="Total Sales" />,
     cell: ({ row }) => (
       <span className="text-blue-600 dark:text-blue-400 font-medium tabular-nums">
-        {formatCurrency(row.original.totalSales)}
+        {unitName ? row.original.totalSales.toLocaleString() : formatCurrency(row.original.totalSales)}
       </span>
     ),
     meta: { label: "Total Sales" },
@@ -48,7 +48,7 @@ export const columns: ColumnDef<MonthlyAggregate>[] = [
     header: ({ column }) => <SortHeader column={column} label="Total Purchases" />,
     cell: ({ row }) => (
       <span className="text-red-600 dark:text-red-400 font-medium tabular-nums">
-        {formatCurrency(row.original.totalPurchases)}
+        {unitName ? row.original.totalPurchases.toLocaleString() : formatCurrency(row.original.totalPurchases)}
       </span>
     ),
     meta: { label: "Total Purchases" },
@@ -69,7 +69,7 @@ export const columns: ColumnDef<MonthlyAggregate>[] = [
           ) : (
             <ArrowDown className="h-3 w-3" />
           )}
-          {formatCurrency(variance)}
+          {unitName ? variance.toLocaleString() : formatCurrency(variance)}
         </span>
       );
     },

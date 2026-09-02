@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import {
-  aggregateMonthlyData,
-  calculateSummary,
-} from "@/modules/business-intelligence-analytics/crm/target-setting-reports/divisional/annual-report-v2/utils/annual-report.utils";
+import fs from "fs";
+
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -37,11 +35,19 @@ interface NormalizedSales {
   invoiceNo: string;
   invoiceDate: string;
   customerName: string;
-  invoiceTotalAmount: number;
   productCategory: string;
-  productTotalAmount: number;
   productSupplier?: string;
+  grossAmount: number;
+  netAmount: number;
+  netOfReturns: number;
   cases?: number;
+  unitName?: string;
+  quantity?: number;
+  conversionToPieces?: number;
+  conversionToCases?: number;
+  productName?: string;
+  priceType?: string;
+  priceTypeAmount?: number;
 }
 
 interface NormalizedPurchase {
@@ -49,24 +55,42 @@ interface NormalizedPurchase {
   receiptDate: string;
   supplierName: string;
   productCategory: string;
-  totalReceiptAmount: number;
+  grossAmount: number;
+  netAmount: number;
+  netOfReturns: number;
   cases?: number;
+  unitName?: string;
+  conversionToPieces?: number;
+  conversionToCases?: number;
+  priceType?: string;
+  priceTypeAmount?: number;
 }
 
 function normalizeSales(items: Record<string, unknown>[]): NormalizedSales[] {
   const normalized: NormalizedSales[] = [];
   for (const item of items) {
-    const invoiceNo = pickString(item, ["invoiceNo", "invoice_no", "invoice_number"]);
+    const invoiceNo = pickString(item, ["receiptNo", "invoiceNo", "invoice_no", "invoice_number"]);
+    // Skip records with no invoiceNo, or where productId AND productName are both null (junk rows)
+    const productId = item.productId;
+    const rawProductName = item.productName ?? item.product_name ?? item.itemName;
+    if (!invoiceNo || (productId === null && !rawProductName)) continue;
     if (invoiceNo) {
       normalized.push({
         invoiceNo,
-        invoiceDate: pickString(item, ["invoiceDate", "invoice_date", "date", "transactionDate"]),
+        invoiceDate: pickString(item, ["date", "invoiceDate", "invoice_date", "transactionDate"]),
         customerName: pickString(item, ["customerName", "customer_name", "customer", "clientName"]),
-        invoiceTotalAmount: pickNumber(item, ["totalInvoiceAmount", "total_invoice_amount", "amount", "totalAmount", "total"]),
         productCategory: pickString(item, ["productCategory", "product_category", "category"]),
-        productSupplier: pickString(item, ["productSupplier", "product_supplier", "supplier"]),
-        productTotalAmount: pickNumber(item, ["productTotalAmount", "product_total_amount", "productSalesAmount", "productNetAmount", "totalProductAmount"]),
-        cases: pickNumber(item, ["productQuantity", "quantity"]),
+        productSupplier: pickString(item, ["supplierName", "productSupplier", "product_supplier", "supplier"]),
+        grossAmount: pickNumber(item, ["grossAmount"]),
+        netAmount: pickNumber(item, ["netAmount"]),
+        netOfReturns: pickNumber(item, ["netOfReturns"]),
+        cases: pickNumber(item, ["conversionToCases", "productQuantity", "quantity"]),
+        unitName: pickString(item, ["unitName", "uom", "unit_name", "unit"]),
+        quantity: pickNumber(item, ["quantityOfUnits", "quantity", "productQuantity", "qty", "receivedQuantity", "conversionToCases"]),
+        conversionToCases: pickNumber(item, ["conversionToCases"]),
+        productName: pickString(item, ["productName", "product_name", "product", "itemName", "item_name", "itemDescription", "description", "name"]),
+        priceType: pickString(item, ["priceTypeName", "priceType", "price_type"]),
+        priceTypeAmount: pickNumber(item, ["priceTypeAmount", "price_type_amount"]),
       });
     }
   }
@@ -78,17 +102,20 @@ function normalizePurchases(items: Record<string, unknown>[]): NormalizedPurchas
   for (const item of items) {
     const receiptNo = pickString(item, ["receiptNo", "receipt_no", "receipt_number", "docNo"]);
     if (receiptNo) {
-      const totalAmount = pickNumber(item, ["totalAmount", "amount", "totalReceiptAmount", "totalPayable"]) || 0;
-      const discountedAmount = pickNumber(item, ["discountedAmount", "discount"]) || 0;
-      const netAmount = totalAmount - discountedAmount;
-
       normalized.push({
         receiptNo,
-        receiptDate: pickString(item, ["receiptDate", "receipt_date", "date", "transactionDate"]),
+        receiptDate: pickString(item, ["date", "receiptDate", "receipt_date", "transactionDate"]),
         supplierName: pickString(item, ["supplierName", "supplier_name", "supplier", "vendorName"]),
         productCategory: pickString(item, ["productCategory", "product_category", "category"]),
-        totalReceiptAmount: netAmount,
-        cases: pickNumber(item, ["receivedQuantity", "received_quantity"]),
+        grossAmount: pickNumber(item, ["grossAmount"]),
+        netAmount: pickNumber(item, ["netAmount"]),
+        netOfReturns: pickNumber(item, ["netOfReturns"]),
+        cases: pickNumber(item, ["conversionToCases", "receivedQuantity", "received_quantity"]),
+        unitName: pickString(item, ["unitName", "uom", "unit_name", "unit"]),
+        conversionToPieces: pickNumber(item, ["conversionToPieces"]),
+        conversionToCases: pickNumber(item, ["conversionToCases"]),
+        priceType: pickString(item, ["priceTypeName", "priceType", "price_type"]),
+        priceTypeAmount: pickNumber(item, ["priceTypeAmount", "price_type_amount"]),
       });
     }
   }
@@ -142,6 +169,8 @@ const globalForCache = globalThis as unknown as {
     customers: string[];
     suppliers: string[];
     categories: string[];
+    uoms: string[];
+    priceTypes: string[];
     expiry: number;
   }>;
 };
@@ -154,6 +183,7 @@ const NORMALIZED_CACHE = globalForCache.annualReportV2Cache || new Map<
     customers: string[];
     suppliers: string[];
     categories: string[];
+    priceTypes: string[];
     expiry: number;
   }
 >();
@@ -186,26 +216,23 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const dateFrom = searchParams.get("dateFrom") ?? "";
   const dateTo = searchParams.get("dateTo") ?? "";
-  const customerName = searchParams.get("customerName") ?? "";
-  const supplierName = searchParams.get("supplierName") ?? "";
-  const categoryName = searchParams.get("categoryName") ?? "";
 
   try {
     const baseUrl = SPRING_API_BASE_URL.replace(/\/+$/, "");
 
-    const salesUrl = new URL(`${baseUrl}/api/view-sales-report-itemized/filtered`);
+    const salesUrl = new URL(`${baseUrl}/api/view-sales-report-detailed/filter`);
     const purchaseUrl = new URL(`${baseUrl}/api/view-purchase-report-detailed/filter`);
 
     if (dateFrom) {
-      salesUrl.searchParams.set("startDate", dateFrom);
-      purchaseUrl.searchParams.set("receiptDateFrom", dateFrom);
+      salesUrl.searchParams.set("dateFrom", dateFrom);
+      purchaseUrl.searchParams.set("dateFrom", dateFrom);
     }
     if (dateTo) {
-      salesUrl.searchParams.set("endDate", dateTo);
-      purchaseUrl.searchParams.set("receiptDateTo", dateTo);
+      salesUrl.searchParams.set("dateTo", dateTo);
+      purchaseUrl.searchParams.set("dateTo", dateTo);
     }
 
-    const cacheKey = `v2.3:${dateFrom}:${dateTo}:${token}`;
+    const cacheKey = `v2.6:${dateFrom}:${dateTo}:${token}`;
     const now = Date.now();
     let cachedData = NORMALIZED_CACHE.get(cacheKey);
 
@@ -218,171 +245,63 @@ export async function GET(req: NextRequest) {
       const salesResult = await fetchWithErrorLogging(salesUrl.toString(), "Sales API", headers);
       const purchaseResult = await fetchWithErrorLogging(purchaseUrl.toString(), "Purchase API", headers);
 
+      try {
+        if (salesResult.data && salesResult.data.length > 0) {
+          fs.writeFileSync("C:/Users/Admin/.gemini/antigravity-ide/brain/2ab11339-0940-4694-b202-510b144f6340/scratch/raw_sales_item.json", JSON.stringify(salesResult.data[0], null, 2));
+          // Also write any records that have no productName
+          const nullProductItems = salesResult.data.filter((item: Record<string, unknown>) => !item.productName && !item.product_name && !item.itemName && !item.product);
+          if (nullProductItems.length > 0) {
+            fs.writeFileSync("C:/Users/Admin/.gemini/antigravity-ide/brain/2ab11339-0940-4694-b202-510b144f6340/scratch/null_product_items.json", JSON.stringify(nullProductItems.slice(0, 5), null, 2));
+          }
+        }
+      } catch {
+        // ignore debug write errors
+      }
+
       // Rebuild trigger
       const salesTransactions = normalizeSales(salesResult.data);
       const purchaseTransactions = normalizePurchases(purchaseResult.data);
 
-      const customers = [
-        ...new Set(salesTransactions.map((s) => s.customerName).filter(Boolean)),
-      ].sort((a, b) => a.localeCompare(b));
+      const uniqueCustomers = Array.from(new Set(salesTransactions.map((d) => d.customerName).filter(Boolean))).sort();
+      const salesSuppliers = salesTransactions.map((d) => d.productSupplier).filter(Boolean) as string[];
+      const purchaseSuppliers = purchaseTransactions.map((d) => d.supplierName).filter(Boolean) as string[];
+      const uniqueSuppliers = Array.from(new Set([...salesSuppliers, ...purchaseSuppliers])).sort();
+      const salesCategories = salesTransactions.map((d) => d.productCategory).filter(Boolean) as string[];
+      const purchaseCategories = purchaseTransactions.map((d) => d.productCategory).filter(Boolean) as string[];
+      const uniqueCategories = Array.from(new Set([...salesCategories, ...purchaseCategories])).sort();
       
-      const suppliers = [
-        ...new Set(
-          purchaseTransactions.map((s) => s.supplierName).filter(Boolean),
-        ),
-      ].sort((a, b) => a.localeCompare(b));
+      const salesUoms = salesTransactions.map((d) => d.unitName).filter(Boolean) as string[];
+      const purchaseUoms = purchaseTransactions.map((d) => d.unitName).filter(Boolean) as string[];
+      const uniqueUoms = Array.from(new Set([...salesUoms, ...purchaseUoms])).sort();
 
-      const categories = [
-        ...new Set([
-          ...salesTransactions.map((s) => s.productCategory),
-          ...purchaseTransactions.map((p) => p.productCategory),
-        ].filter(Boolean)),
-      ].sort((a, b) => a.localeCompare(b));
+      const salesPriceTypes = salesTransactions.map((d) => d.priceType).filter(Boolean) as string[];
+      const purchasePriceTypes = purchaseTransactions.map((d) => d.priceType).filter(Boolean) as string[];
+      const uniquePriceTypes = Array.from(new Set([...salesPriceTypes, ...purchasePriceTypes])).sort();
 
       cachedData = {
         sales: salesTransactions,
         purchases: purchaseTransactions,
-        customers,
-        suppliers,
-        categories,
-        expiry: now + 15 * 60 * 1000, // 15 mins TTL
+        customers: uniqueCustomers,
+        suppliers: uniqueSuppliers,
+        categories: uniqueCategories,
+        uoms: uniqueUoms,
+        priceTypes: uniquePriceTypes,
+        expiry: now + 5 * 60 * 1000,
       };
       
       NORMALIZED_CACHE.set(cacheKey, cachedData);
     }
 
-    // Filter sales items by customerName and categoryName
-    let filteredSalesItems = cachedData.sales;
-    if (customerName) {
-      filteredSalesItems = filteredSalesItems.filter((item) =>
-        item.customerName.toLowerCase().includes(customerName.toLowerCase())
-      );
-    }
-    if (categoryName) {
-      filteredSalesItems = filteredSalesItems.filter((item) =>
-        item.productCategory.toLowerCase() === categoryName.toLowerCase()
-      );
-    }
-    if (supplierName) {
-      filteredSalesItems = filteredSalesItems.filter((item) =>
-        item.productSupplier && item.productSupplier.toLowerCase().includes(supplierName.toLowerCase())
-      );
-    }
-
-    // Group items by invoiceNo to construct SalesTransaction[]
-    interface GroupedSalesTransaction {
-      invoiceNo: string;
-      invoiceDate: string;
-      customerName: string;
-      totalInvoiceAmount: number;
-      productCategory?: string;
-      productSupplier?: string;
-      cases?: number;
-    }
-    const salesGroupedMap = new Map<string, GroupedSalesTransaction>();
-    for (const item of filteredSalesItems) {
-      const amountToAdd = item.productTotalAmount || 0;
-      const existing = salesGroupedMap.get(item.invoiceNo);
-      if (existing) {
-        existing.totalInvoiceAmount += amountToAdd;
-        existing.cases = (existing.cases || 0) + (item.cases || 0);
-      } else {
-        salesGroupedMap.set(item.invoiceNo, {
-          invoiceNo: item.invoiceNo,
-          invoiceDate: item.invoiceDate,
-          customerName: item.customerName,
-          totalInvoiceAmount: amountToAdd,
-          productCategory: item.productCategory,
-          productSupplier: item.productSupplier,
-          cases: item.cases || 0,
-        });
-      }
-    }
-    const filteredSales = Array.from(salesGroupedMap.values());
-
-    // Filter purchases items by supplierName and categoryName
-    let filteredPurchasesItems = cachedData.purchases;
-
-    // In-memory date filtering safeguard because backend date filtering might have slight boundary gaps
-    if (dateFrom || dateTo) {
-      const from = dateFrom ? new Date(dateFrom) : null;
-      const to = dateTo ? new Date(dateTo + "T23:59:59.999") : null;
-      filteredPurchasesItems = filteredPurchasesItems.filter((item) => {
-        if (!item.receiptDate) return true;
-        const d = new Date(item.receiptDate);
-        if (from && d < from) return false;
-        if (to && d > to) return false;
-        return true;
-      });
-    }
-
-    if (supplierName) {
-      filteredPurchasesItems = filteredPurchasesItems.filter((item) =>
-        item.supplierName.toLowerCase().includes(supplierName.toLowerCase())
-      );
-    }
-    if (categoryName) {
-      filteredPurchasesItems = filteredPurchasesItems.filter((item) =>
-        item.productCategory.toLowerCase() === categoryName.toLowerCase()
-      );
-    }
-
-    // Group items by receiptNo to construct PurchaseTransaction[]
-    interface GroupedPurchaseTransaction {
-      receiptNo: string;
-      receiptDate: string;
-      supplierName: string;
-      totalReceiptAmount: number;
-      cases?: number;
-    }
-    const purchaseGroupedMap = new Map<string, GroupedPurchaseTransaction>();
-    for (const item of filteredPurchasesItems) {
-      const existing = purchaseGroupedMap.get(item.receiptNo);
-      if (existing) {
-        existing.totalReceiptAmount += item.totalReceiptAmount;
-        existing.cases = (existing.cases || 0) + (item.cases || 0);
-      } else {
-        purchaseGroupedMap.set(item.receiptNo, {
-          receiptNo: item.receiptNo,
-          receiptDate: item.receiptDate,
-          supplierName: item.supplierName,
-          totalReceiptAmount: item.totalReceiptAmount,
-          cases: item.cases || 0,
-        });
-      }
-    }
-    const filteredPurchases = Array.from(purchaseGroupedMap.values());
-
-    const monthlyData = aggregateMonthlyData(filteredSales, filteredPurchases);
-
-    if (monthlyData.length === 0) {
-      return NextResponse.json({
-        summary: {
-          totalSales: 0,
-          totalPurchases: 0,
-          netVariance: 0,
-          biasPercentage: 0,
-        },
-        monthlyData: [],
-        salesTransactions: [],
-        purchaseTransactions: [],
-        customers: cachedData.customers,
-        suppliers: cachedData.suppliers,
-        categories: cachedData.categories,
-        ok: true,
-      });
-    }
-
-    const summary = calculateSummary(monthlyData);
-
     return NextResponse.json({
-      summary,
-      monthlyData,
-      salesTransactions: filteredSales,
-      purchaseTransactions: filteredPurchases,
+      summary: { totalSales: 0, totalPurchases: 0, netVariance: 0, biasPercentage: 0 },
+      monthlyData: [], // monthlyData and summary will be calculated on client side
+      salesTransactions: cachedData.sales,
+      purchaseTransactions: cachedData.purchases,
       customers: cachedData.customers,
       suppliers: cachedData.suppliers,
       categories: cachedData.categories,
+      uoms: cachedData.uoms,
+      priceTypes: cachedData.priceTypes,
       ok: true,
     });
   } catch (error) {
