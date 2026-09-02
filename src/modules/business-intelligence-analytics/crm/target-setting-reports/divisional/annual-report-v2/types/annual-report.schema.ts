@@ -16,6 +16,8 @@ export const SalesTransactionSchema = z.object({
   cases: z.number().optional(),
   conversionToPieces: z.number().optional(),
   conversionToCases: z.number().optional(),
+  priceType: z.string().optional(),
+  priceTypeAmount: z.number().optional(),
 });
 
 export type SalesTransaction = z.infer<typeof SalesTransactionSchema>;
@@ -34,6 +36,8 @@ export const PurchaseTransactionSchema = z.object({
   cases: z.number().optional(),
   conversionToPieces: z.number().optional(),
   conversionToCases: z.number().optional(),
+  priceType: z.string().optional(),
+  priceTypeAmount: z.number().optional(),
 });
 
 export type PurchaseTransaction = z.infer<typeof PurchaseTransactionSchema>;
@@ -78,6 +82,7 @@ export const DashboardResponseSchema = z.object({
   suppliers: z.array(z.string()).optional(),
   categories: z.array(z.string()).optional(),
   uoms: z.array(z.string()).optional(),
+  priceTypes: z.array(z.string()).optional(),
 });
 
 export type DashboardResponse = z.infer<typeof DashboardResponseSchema>;
@@ -89,6 +94,7 @@ export const AnnualReportV2FiltersSchema = z.object({
   supplierName: z.string().optional(),
   year: z.string().optional(),
   categoryName: z.string().optional(),
+  priceType: z.string().optional(),
 });
 
 export type AnnualReportV2Filters = z.infer<typeof AnnualReportV2FiltersSchema>;

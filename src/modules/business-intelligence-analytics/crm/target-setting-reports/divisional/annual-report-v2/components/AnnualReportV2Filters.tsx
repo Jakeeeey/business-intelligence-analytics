@@ -26,17 +26,19 @@ interface AnnualReportV2FiltersProps {
   suppliers: string[];
   categories: string[];
   uoms: string[];
+  priceTypes: string[];
 }
 
 export function AnnualReportV2Filters({
   suppliers,
   categories = [],
   uoms = [],
+  priceTypes = [],
 }: AnnualReportV2FiltersProps) {
   const { filters, setFilter, resetFilters } = useAnnualReportV2Filters();
 
-  const hasActiveFilters = filters.customerName || filters.supplierName || filters.categoryName || filters.month || filters.unitName;
-  const activeCount = [filters.customerName, filters.supplierName, filters.categoryName, filters.month, filters.unitName].filter(Boolean).length;
+  const hasActiveFilters = filters.customerName || filters.supplierName || filters.categoryName || filters.month || filters.unitName || filters.priceType;
+  const activeCount = [filters.customerName, filters.supplierName, filters.categoryName, filters.month, filters.unitName, filters.priceType].filter(Boolean).length;
 
 
   const supplierOptions = React.useMemo(
@@ -55,6 +57,10 @@ export function AnnualReportV2Filters({
       })
       .map((u) => ({ label: u, value: u })),
     [uoms],
+  );
+  const priceTypeOptions = React.useMemo(
+    () => priceTypes.map((p) => ({ label: p, value: p })),
+    [priceTypes],
   );
 
   return (
@@ -176,9 +182,33 @@ export function AnnualReportV2Filters({
         className="w-40 h-8 text-xs"
       />
 
+      <MultiSelect
+        mode="multi"
+        placeholder="Price Type"
+        options={priceTypeOptions}
+        value={
+          filters.priceType === "NONE"
+            ? []
+            : filters.priceType
+            ? filters.priceType.split("|")
+            : priceTypes
+        }
+        onChange={(next) => {
+          if (next.length === 0) {
+            setFilter("priceType", "NONE");
+          } else if (next.length === priceTypes.length) {
+            setFilter("priceType", "");
+          } else {
+            setFilter("priceType", next.join("|"));
+          }
+        }}
+        className="w-40 h-8 text-xs"
+      />
+
       <Select
         value={filters.amountType}
         onValueChange={(v) => setFilter("amountType", v)}
+        disabled={!!filters.priceType && filters.priceType !== "NONE"}
       >
         <SelectTrigger className="w-32 h-8 text-xs">
           <SelectValue placeholder="Amount Type" />

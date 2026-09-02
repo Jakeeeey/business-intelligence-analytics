@@ -39,6 +39,7 @@ export default function AnnualReportV2Page() {
   const suppliers = useMemo(() => data?.suppliers ?? [], [data]);
   const categories = useMemo(() => data?.categories ?? [], [data]);
   const uoms = useMemo(() => data?.uoms ?? [], [data]);
+  const priceTypes = useMemo(() => data?.priceTypes ?? [], [data]);
 
   // Apply client-side filters
   const filteredData = useMemo(() => {
@@ -61,10 +62,12 @@ export default function AnnualReportV2Page() {
       : [];
     const customerName = filters.customerName?.toLowerCase();
     const categoryName = filters.categoryName?.toLowerCase();
-    const unitName = filters.unitName?.toLowerCase();
     const supplierName = filters.supplierName?.toLowerCase();
-    const amountType = filters.amountType || "netAmount";
-    const useQuantity = !!unitName;
+    const unitName = filters.unitName?.toLowerCase();
+    const priceType = filters.priceType;
+    const amountType = filters.amountType;
+
+    const useQuantity = unitName === "pieces" || unitName === "box";
 
     // Filter sales
     let filteredSales = rawSales;
@@ -98,6 +101,13 @@ export default function AnnualReportV2Page() {
         );
       }
     }
+    
+    if (priceType) {
+      const selectedPriceTypes = priceType.split("|").map((s) => s.trim()).filter(Boolean);
+      filteredSales = filteredSales.filter((item) =>
+        item.priceType && selectedPriceTypes.includes(item.priceType)
+      );
+    }
 
     // In-memory date boundary filtering for sales
     if (filters.dateFrom || filters.dateTo) {
@@ -124,6 +134,9 @@ export default function AnnualReportV2Page() {
         } else {
           amountToAdd = item.quantity || 0;
         }
+      }
+      else if (priceType) {
+        amountToAdd = item.priceTypeAmount || 0;
       }
       else if (amountType === "grossAmount") amountToAdd = item.grossAmount || 0;
       else if (amountType === "netOfReturns") amountToAdd = item.netOfReturns || 0;
@@ -197,6 +210,13 @@ export default function AnnualReportV2Page() {
         selectedCategories.some((cat) => item.productCategory?.toLowerCase().includes(cat))
       );
     }
+    
+    if (priceType) {
+      const selectedPriceTypes = priceType.split("|").map((s) => s.trim()).filter(Boolean);
+      filteredPurchases = filteredPurchases.filter((item) =>
+        item.priceType && selectedPriceTypes.includes(item.priceType)
+      );
+    }
     // Removed strict unitName filter to allow conversions
 
     // Group purchases by receiptNo
@@ -211,6 +231,9 @@ export default function AnnualReportV2Page() {
         } else {
           amountToAdd = item.quantity || 0;
         }
+      }
+      else if (priceType) {
+        amountToAdd = item.priceTypeAmount || 0;
       }
       else if (amountType === "grossAmount") amountToAdd = item.grossAmount || 0;
       else if (amountType === "netOfReturns") amountToAdd = item.netOfReturns || 0;
@@ -250,6 +273,7 @@ export default function AnnualReportV2Page() {
     filters.unitName,
     filters.supplierName,
     filters.amountType,
+    filters.priceType,
     filters.dateFrom,
     filters.dateTo,
   ]);
@@ -294,6 +318,7 @@ export default function AnnualReportV2Page() {
             suppliers={suppliers}
             categories={categories}
             uoms={uoms}
+            priceTypes={priceTypes}
           />
         </div>
       </div>

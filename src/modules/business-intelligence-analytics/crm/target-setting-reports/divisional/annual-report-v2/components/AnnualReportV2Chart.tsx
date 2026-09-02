@@ -96,20 +96,14 @@ function makeLabelRenderer(
     const val = Number(value);
     
     const otherVal = index !== undefined ? (chartData[index]?.[otherKey] ?? 0) : 0;
-    const isLow = val < maxValue * 0.12;
-
-    if (isLow) {
-      // Near bottom edge — push sideways to prevent clipping or overlapping with axis
-      const labelX = isSellOut ? cx - 28 : cx + 28;
-      const anchor = isSellOut ? "end" : "start";
-      return renderLabel(text, labelX, cy + 4, anchor);
-    }
 
     // Determine position based on relative value
     let isHigher = val > otherVal;
     
-    // Tie-breaker if values are exactly equal
-    if (val === otherVal) {
+    // Tie-breaker if values are very close (within 5% of max value)
+    const diff = Math.abs(val - otherVal);
+    const isVeryClose = diff < maxValue * 0.05;
+    if (isVeryClose) {
       isHigher = isSellOut; // sellOut goes up, sellIn goes down
     }
 
@@ -207,7 +201,7 @@ export function AnnualReportV2Chart({ data, isLoading, unitName }: AnnualReportV
           <LineChart
             accessibilityLayer
             data={chartData}
-            margin={{ left: 12, right: 40, top: 32, bottom: 4 }}
+            margin={{ left: 16, right: 24, top: 32, bottom: 24 }}
           >
             <CartesianGrid vertical={false} />
             <XAxis

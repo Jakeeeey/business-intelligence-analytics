@@ -14,6 +14,7 @@ export interface AnnualReportV2Filters {
   year: string;
   month: string;
   amountType: string;
+  priceType: string;
 }
 
 interface AnnualReportV2FilterContextValue {
@@ -49,6 +50,7 @@ export function AnnualReportV2FilterProvider({
       supplierName: searchParams.get("supplierName") ?? "",
       categoryName: searchParams.get("categoryName") ?? "",
       unitName: searchParams.get("unitName") ?? "",
+      priceType: searchParams.get("priceType") ?? "",
     };
   });
 
@@ -88,6 +90,7 @@ export function AnnualReportV2FilterProvider({
       ...prev,
       month: "",
       amountType: "netAmount",
+      priceType: "",
       customerName: "",
       supplierName: "",
       categoryName: "",

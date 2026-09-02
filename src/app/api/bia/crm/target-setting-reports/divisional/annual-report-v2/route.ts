@@ -46,6 +46,8 @@ interface NormalizedSales {
   conversionToPieces?: number;
   conversionToCases?: number;
   productName?: string;
+  priceType?: string;
+  priceTypeAmount?: number;
 }
 
 interface NormalizedPurchase {
@@ -58,9 +60,10 @@ interface NormalizedPurchase {
   netOfReturns: number;
   cases?: number;
   unitName?: string;
-  quantity?: number;
   conversionToPieces?: number;
   conversionToCases?: number;
+  priceType?: string;
+  priceTypeAmount?: number;
 }
 
 function normalizeSales(items: Record<string, unknown>[]): NormalizedSales[] {
@@ -84,9 +87,10 @@ function normalizeSales(items: Record<string, unknown>[]): NormalizedSales[] {
         cases: pickNumber(item, ["conversionToCases", "productQuantity", "quantity"]),
         unitName: pickString(item, ["unitName", "uom", "unit_name", "unit"]),
         quantity: pickNumber(item, ["quantityOfUnits", "quantity", "productQuantity", "qty", "receivedQuantity", "conversionToCases"]),
-        conversionToPieces: pickNumber(item, ["conversionToPieces"]),
         conversionToCases: pickNumber(item, ["conversionToCases"]),
         productName: pickString(item, ["productName", "product_name", "product", "itemName", "item_name", "itemDescription", "description", "name"]),
+        priceType: pickString(item, ["priceTypeName", "priceType", "price_type"]),
+        priceTypeAmount: pickNumber(item, ["priceTypeAmount", "price_type_amount"]),
       });
     }
   }
@@ -108,9 +112,10 @@ function normalizePurchases(items: Record<string, unknown>[]): NormalizedPurchas
         netOfReturns: pickNumber(item, ["netOfReturns"]),
         cases: pickNumber(item, ["conversionToCases", "receivedQuantity", "received_quantity"]),
         unitName: pickString(item, ["unitName", "uom", "unit_name", "unit"]),
-        quantity: pickNumber(item, ["quantityOfUnits", "quantity", "receivedQuantity", "received_quantity", "qty", "conversionToCases"]),
         conversionToPieces: pickNumber(item, ["conversionToPieces"]),
         conversionToCases: pickNumber(item, ["conversionToCases"]),
+        priceType: pickString(item, ["priceTypeName", "priceType", "price_type"]),
+        priceTypeAmount: pickNumber(item, ["priceTypeAmount", "price_type_amount"]),
       });
     }
   }
@@ -165,6 +170,7 @@ const globalForCache = globalThis as unknown as {
     suppliers: string[];
     categories: string[];
     uoms: string[];
+    priceTypes: string[];
     expiry: number;
   }>;
 };
@@ -177,6 +183,7 @@ const NORMALIZED_CACHE = globalForCache.annualReportV2Cache || new Map<
     customers: string[];
     suppliers: string[];
     categories: string[];
+    priceTypes: string[];
     expiry: number;
   }
 >();
@@ -255,38 +262,31 @@ export async function GET(req: NextRequest) {
       const salesTransactions = normalizeSales(salesResult.data);
       const purchaseTransactions = normalizePurchases(purchaseResult.data);
 
-      const customers = [
-        ...new Set(salesTransactions.map((s) => s.customerName).filter(Boolean)),
-      ].sort((a, b) => a.localeCompare(b));
+      const uniqueCustomers = Array.from(new Set(salesTransactions.map((d) => d.customerName).filter(Boolean))).sort();
+      const salesSuppliers = salesTransactions.map((d) => d.productSupplier).filter(Boolean) as string[];
+      const purchaseSuppliers = purchaseTransactions.map((d) => d.supplierName).filter(Boolean) as string[];
+      const uniqueSuppliers = Array.from(new Set([...salesSuppliers, ...purchaseSuppliers])).sort();
+      const salesCategories = salesTransactions.map((d) => d.productCategory).filter(Boolean) as string[];
+      const purchaseCategories = purchaseTransactions.map((d) => d.productCategory).filter(Boolean) as string[];
+      const uniqueCategories = Array.from(new Set([...salesCategories, ...purchaseCategories])).sort();
       
-      const suppliers = [
-        ...new Set(
-          purchaseTransactions.map((s) => s.supplierName).filter(Boolean),
-        ),
-      ].sort((a, b) => a.localeCompare(b));
+      const salesUoms = salesTransactions.map((d) => d.unitName).filter(Boolean) as string[];
+      const purchaseUoms = purchaseTransactions.map((d) => d.unitName).filter(Boolean) as string[];
+      const uniqueUoms = Array.from(new Set([...salesUoms, ...purchaseUoms])).sort();
 
-      const categories = [
-        ...new Set([
-          ...salesTransactions.map((s) => s.productCategory),
-          ...purchaseTransactions.map((p) => p.productCategory),
-        ].filter(Boolean)),
-      ].sort((a, b) => a.localeCompare(b));
-
-      const uoms = [
-        ...new Set([
-          ...salesTransactions.map((s) => s.unitName),
-          ...purchaseTransactions.map((p) => p.unitName),
-        ].filter(Boolean)),
-      ].sort((a, b) => (a as string).localeCompare(b as string)) as string[];
+      const salesPriceTypes = salesTransactions.map((d) => d.priceType).filter(Boolean) as string[];
+      const purchasePriceTypes = purchaseTransactions.map((d) => d.priceType).filter(Boolean) as string[];
+      const uniquePriceTypes = Array.from(new Set([...salesPriceTypes, ...purchasePriceTypes])).sort();
 
       cachedData = {
         sales: salesTransactions,
         purchases: purchaseTransactions,
-        customers,
-        suppliers,
-        categories,
-        uoms,
-        expiry: now + 15 * 60 * 1000,
+        customers: uniqueCustomers,
+        suppliers: uniqueSuppliers,
+        categories: uniqueCategories,
+        uoms: uniqueUoms,
+        priceTypes: uniquePriceTypes,
+        expiry: now + 5 * 60 * 1000,
       };
       
       NORMALIZED_CACHE.set(cacheKey, cachedData);
@@ -301,6 +301,7 @@ export async function GET(req: NextRequest) {
       suppliers: cachedData.suppliers,
       categories: cachedData.categories,
       uoms: cachedData.uoms,
+      priceTypes: cachedData.priceTypes,
       ok: true,
     });
   } catch (error) {
