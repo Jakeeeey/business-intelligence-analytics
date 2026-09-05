@@ -12,11 +12,19 @@ function getFiscalPeriodRange(fiscalPeriod: string): { start: string; end: strin
   return { start, end };
 }
 
+export interface SalesmanMaster {
+  id: number;
+  salesman_name: string;
+  salesman_code: string;
+  operation?: { operation_name: string } | null;
+}
+
 export function useSalesmanMetric(isAdmin: boolean = false, userId: string = "") {
   const [salesmen, setSalesmen] = React.useState<SalesmanOption[]>([]);
   const [supervisors, setSupervisors] = React.useState<{ supervisorId: string; supervisorName: string }[]>([]);
   const [salesmanMappings, setSalesmanMappings] = React.useState<{ salesman_id: number; supervisor_per_division_id: number }[]>([]);
   const [supervisorToDivisionMap, setSupervisorToDivisionMap] = React.useState<Map<string, number[]>>(new Map());
+  const [salesmanMaster, setSalesmanMaster] = React.useState<SalesmanMaster[]>([]);
 
   const [localFilters, setLocalFilters] = React.useState<SalesmanMetricFilters>(() => {
     const today = new Date();
@@ -119,6 +127,10 @@ export function useSalesmanMetric(isAdmin: boolean = false, userId: string = "")
         
         if (json.salesmanMappings && Array.isArray(json.salesmanMappings)) {
           setSalesmanMappings(json.salesmanMappings);
+        }
+        
+        if (json.salesmanMaster && Array.isArray(json.salesmanMaster)) {
+          setSalesmanMaster(json.salesmanMaster);
         }
       } catch (err) {
         console.error("Failed to load supervisors:", err);
@@ -377,6 +389,7 @@ export function useSalesmanMetric(isAdmin: boolean = false, userId: string = "")
   return {
     supervisors,
     salesmen: displaySalesmen,
+    salesmanMaster,
     localFilters,
     appliedFilters,
     loading,

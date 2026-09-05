@@ -57,7 +57,7 @@ export async function GET() {
 
     // 3. Fetch all salesman names and codes for detail
     const salesmanRes = await fetchDirectus(
-      "items/salesman?fields=id,salesman_name,salesman_code&limit=-1"
+      "items/salesman?fields=id,salesman_name,salesman_code,operation.operation_name&limit=-1"
     );
     const salesmanData = salesmanRes.data || [];
 

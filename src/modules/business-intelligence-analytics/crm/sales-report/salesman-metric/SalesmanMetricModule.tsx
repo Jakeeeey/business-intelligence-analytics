@@ -20,6 +20,7 @@ export default function SalesmanMetricModule({ isAdmin = false, userId = "" }: {
   const {
     supervisors,
     salesmen,
+    salesmanMaster,
     localFilters,
     appliedFilters,
     loading,
@@ -55,6 +56,22 @@ export default function SalesmanMetricModule({ isAdmin = false, userId = "" }: {
     handleViewLineSalesDetail,
     handleViewTacticalSkuDetail,
   } = useSalesmanMetric(isAdmin, userId);
+
+  const bookingRows = React.useMemo(() => {
+    return rows.filter((r) => {
+      const sm = salesmanMaster.find((m) => m.id === r.salesmanId);
+      const opName = sm?.operation?.operation_name?.toUpperCase() || "";
+      return opName.includes("BOOKING");
+    });
+  }, [rows, salesmanMaster]);
+
+  const siteSalesRows = React.useMemo(() => {
+    return rows.filter((r) => {
+      const sm = salesmanMaster.find((m) => m.id === r.salesmanId);
+      const opName = sm?.operation?.operation_name?.toUpperCase() || "";
+      return opName.includes("SITE SALES");
+    });
+  }, [rows, salesmanMaster]);
 
   return (
     <div className="space-y-8 p-6 min-h-screen bg-background text-foreground">
@@ -92,7 +109,7 @@ export default function SalesmanMetricModule({ isAdmin = false, userId = "" }: {
 
       {/* 2. Booking Metrics */}
       <BookingMetricsGrid
-        rows={rows}
+        rows={bookingRows}
         loading={loading}
         onViewSupplierBreakdown={handleViewSupplierBreakdown}
         onViewFrequencyDetail={handleViewFrequencyDetail}
@@ -107,7 +124,7 @@ export default function SalesmanMetricModule({ isAdmin = false, userId = "" }: {
         </CardHeader>
         <CardContent className="p-0">
           <SiteSalesMetricsList
-            rows={rows}
+            rows={siteSalesRows}
             loading={loading}
             onViewSupplierBreakdown={handleViewSupplierBreakdown}
             onViewReachBreakdown={handleViewReachBreakdown}
