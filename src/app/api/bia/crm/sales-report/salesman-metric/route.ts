@@ -23,6 +23,7 @@ interface SalesPerformanceItem {
   storeTypeLabel?: string;
   storeName?: string;
   netAmount?: number;
+  salesType?: number;
 }
 
 interface FrequencyReportItem {
@@ -37,6 +38,7 @@ interface FrequencyReportItem {
   transactionDate?: string;
   invoiceNo?: string;
   netAmount?: number;
+  salesType?: number;
 }
 
 interface NewAccountItem {
@@ -183,7 +185,7 @@ export async function GET(req: NextRequest) {
 
     const cacheKey = token ? `lookups_${token}_${startDate}_${endDate}` : undefined;
     const allSalesData = await safeFetch<SalesPerformanceItem[] | null>(
-      `${API_BASE}/api/view-sales-performance/all?startDate=${startDate}&endDate=${endDate}`,
+      `${API_BASE}/api/view-sales-performance-by-channel/all?startDate=${startDate}&endDate=${endDate}`,
       null,
       token,
       cacheKey,
@@ -262,7 +264,7 @@ export async function GET(req: NextRequest) {
 
     const cacheKey = token ? `supplier_${token}_${startDate}_${endDate}` : undefined;
     const allSalesData = await safeFetch<SalesPerformanceItem[] | null>(
-      `${API_BASE}/api/view-sales-performance/all?startDate=${startDate}&endDate=${endDate}`, 
+      `${API_BASE}/api/view-sales-performance-by-channel/all?startDate=${startDate}&endDate=${endDate}`, 
       null, 
       token,
       cacheKey,
@@ -483,7 +485,7 @@ export async function GET(req: NextRequest) {
   // 1. Fetch sales performance list to identify salesmen we need to report on
   const salesCacheKey = token ? `report_sales_${token}_${startDate}_${endDate}` : undefined;
   const allSalesData = await safeFetch<SalesPerformanceItem[] | null>(
-    `${API_BASE}/api/view-sales-performance/all?startDate=${startDate}&endDate=${endDate}`,
+    `${API_BASE}/api/view-sales-performance-by-channel/all?startDate=${startDate}&endDate=${endDate}`,
     null,
     token,
     salesCacheKey,
@@ -576,7 +578,7 @@ export async function GET(req: NextRequest) {
         const id = sm.salesmanId;
         const code = encodeURIComponent(sm.salesmanCode);
 
-        const freqUrl = `${API_BASE}/api/view-salesman-frequency-report/filter?startDate=${startDate}&endDate=${endDate}&salesmanId=${id}&salesmanCode=${code}`;
+        const freqUrl = `${API_BASE}/api/view-salesman-frequency-report-by-channel/filter?startDate=${startDate}&endDate=${endDate}&salesmanId=${id}&salesmanCode=${code}`;
         const newAccUrl = `${API_BASE}/api/v-salesman-new-account/filter?startDate=${startDate}&endDate=${endDate}&salesmanId=${id}&salesmanCode=${code}`;
         const productiveOutletUrl = `${API_BASE}/api/salesman-productive-outlet-target?salesmanId=${id}&targetMonth=${targetMonth}&targetYear=${targetYear}`;
         const lineSalesUrl = `${API_BASE}/api/salesman-line-sales-target-setting?salesmanId=${id}&targetMonth=${targetMonth}&targetYear=${targetYear}`;
@@ -595,15 +597,27 @@ export async function GET(req: NextRequest) {
 
         const reachData = Array.isArray(allReachData) ? allReachData.find(r => r.salesmanId === id) : null;
 
-        // Process Metric 1: Sales Performance
-        const salesPerformance = allSalesData
-          .filter((x) => {
-            const matchedSalesman = Number(x.salesmanId) === id;
-            if (!matchedSalesman) return false;
-            if (!x.transactionDate) return false;
-            return x.transactionDate >= startDate && x.transactionDate <= endDate;
-          })
-          .reduce((sum: number, x) => sum + (Number(x.netAmount) || 0), 0);
+        // Filter sales data early
+        const smSalesData = allSalesData.filter((x) => {
+          const matchedSalesman = Number(x.salesmanId) === id;
+          if (!matchedSalesman) return false;
+          if (!x.transactionDate) return false;
+          return x.transactionDate >= startDate && x.transactionDate <= endDate;
+        });
+
+        const uniqueSalesTypes = Array.from(new Set([
+          ...smSalesData.map(x => x.salesType),
+          ...(Array.isArray(freqData) ? freqData.map(x => x.salesType) : [])
+        ])).filter(x => x !== undefined && x !== null) as number[];
+
+        if (uniqueSalesTypes.length === 0) {
+          uniqueSalesTypes.push(0);
+        }
+
+        return uniqueSalesTypes.map((st) => {
+          const salesPerformance = smSalesData
+            .filter(x => st === 0 || x.salesType === st)
+            .reduce((sum: number, x) => sum + (Number(x.netAmount) || 0), 0);
 
         // Process Metric 2: Reach
         const reach = reachData ? Number(reachData.totalReach ?? 0) : 0;
@@ -612,7 +626,8 @@ export async function GET(req: NextRequest) {
         const filteredFreq = Array.isArray(freqData)
           ? freqData.filter((x) => {
               const date = x.transactionDate || x.fiscalPeriod;
-              return date ? (date >= startDate && date <= endDate) : true;
+              const matchType = st === 0 || x.salesType === st;
+              return matchType && (date ? (date >= startDate && date <= endDate) : true);
             })
           : [];
 
@@ -771,11 +786,14 @@ export async function GET(req: NextRequest) {
           tacticalSkuActualQty,
           tacticalSkuAchievement,
           tacticalSkuStatus,
+          salesType: st === 0 ? null : st
         };
-      })
-    );
-    rows.push(...chunkRows);
-  }
+      });
+    })
+  );
+
+  rows.push(...chunkRows.flat());
+}
 
   return json({
     success: true,
