@@ -59,6 +59,9 @@ export default function SalesmanMetricModule({ isAdmin = false, userId = "" }: {
 
   const bookingRows = React.useMemo(() => {
     return rows.filter((r) => {
+      if (r.salesType !== null && r.salesType !== undefined) {
+        return r.salesType === 1 || r.salesType === 19 || r.salesType === 20;
+      }
       const sm = salesmanMaster.find((m) => m.id === r.salesmanId);
       const opName = sm?.operation?.operation_name?.toUpperCase() || "";
       return opName.includes("BOOKING");
@@ -67,6 +70,9 @@ export default function SalesmanMetricModule({ isAdmin = false, userId = "" }: {
 
   const siteSalesRows = React.useMemo(() => {
     return rows.filter((r) => {
+      if (r.salesType !== null && r.salesType !== undefined) {
+        return r.salesType === 3;
+      }
       const sm = salesmanMaster.find((m) => m.id === r.salesmanId);
       const opName = sm?.operation?.operation_name?.toUpperCase() || "";
       return opName.includes("SITE SALES");

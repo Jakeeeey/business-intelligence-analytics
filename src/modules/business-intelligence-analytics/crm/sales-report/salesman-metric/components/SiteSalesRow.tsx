@@ -104,11 +104,11 @@ export function SiteSalesRow({
         </div>
 
         {/* Core Metrics List */}
-        <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+        <div className="flex-1 flex overflow-x-auto gap-4 md:gap-6 pb-2 snap-x snap-mandatory scrollbar-hide">
           {/* Sales Perf */}
           <div 
             onClick={() => onViewSupplierBreakdown?.(row.salesmanId, row.salesmanName)}
-            className="flex flex-col cursor-pointer group/stat bg-muted/5 p-3 rounded-xl hover:bg-blue-500/5 transition-colors border border-transparent hover:border-blue-500/20"
+            className="flex flex-col cursor-pointer group/stat bg-muted/5 p-3 rounded-xl hover:bg-blue-500/5 transition-colors border border-transparent hover:border-blue-500/20 snap-start shrink-0 min-w-[200px] flex-1"
           >
             <div className="flex items-center justify-between mb-2">
               <span className="text-[9px] font-black uppercase text-muted-foreground/60 tracking-widest flex items-center gap-1">
@@ -130,7 +130,7 @@ export function SiteSalesRow({
           {/* Reach */}
           <div 
             onClick={() => !isZeroState && onViewReachBreakdown?.(row.salesmanId, row.salesmanCode, row.salesmanName)}
-            className={`flex flex-col group/stat bg-muted/5 p-3 rounded-xl transition-colors border border-transparent ${isZeroState ? 'opacity-60 cursor-default' : 'cursor-pointer hover:bg-purple-500/5 hover:border-purple-500/20'}`}
+            className={`flex flex-col group/stat bg-muted/5 p-3 rounded-xl transition-colors border border-transparent snap-start shrink-0 min-w-[200px] flex-1 ${isZeroState ? 'opacity-60 cursor-default' : 'cursor-pointer hover:bg-purple-500/5 hover:border-purple-500/20'}`}
           >
             <div className="flex items-center justify-between mb-2">
               <span className="text-[9px] font-black uppercase text-muted-foreground/60 tracking-widest flex items-center gap-1">
@@ -152,7 +152,7 @@ export function SiteSalesRow({
           {/* Frequency */}
           <div 
             onClick={() => !isZeroState && onViewFrequencyDetail?.(row.salesmanId, row.salesmanCode, row.salesmanName)}
-            className={`flex flex-col group/stat bg-muted/5 p-3 rounded-xl transition-colors border border-transparent ${isZeroState ? 'opacity-60 cursor-default' : 'cursor-pointer hover:bg-emerald-500/5 hover:border-emerald-500/20'}`}
+            className={`flex flex-col group/stat bg-muted/5 p-3 rounded-xl transition-colors border border-transparent snap-start shrink-0 min-w-[200px] flex-1 ${isZeroState ? 'opacity-60 cursor-default' : 'cursor-pointer hover:bg-emerald-500/5 hover:border-emerald-500/20'}`}
           >
             <div className="flex items-center justify-between mb-2">
               <span className="text-[9px] font-black uppercase text-muted-foreground/60 tracking-widest flex items-center gap-1">
@@ -174,7 +174,7 @@ export function SiteSalesRow({
           {/* New Accounts */}
           <div 
             onClick={() => !isZeroState && onViewNewAccountsDetail?.(row.salesmanId, row.salesmanCode, row.salesmanName)}
-            className={`flex flex-col group/stat bg-muted/5 p-3 rounded-xl transition-colors border border-transparent ${isZeroState ? 'opacity-60 cursor-default' : 'cursor-pointer hover:bg-amber-500/5 hover:border-amber-500/20'}`}
+            className={`flex flex-col group/stat bg-muted/5 p-3 rounded-xl transition-colors border border-transparent snap-start shrink-0 min-w-[200px] flex-1 ${isZeroState ? 'opacity-60 cursor-default' : 'cursor-pointer hover:bg-amber-500/5 hover:border-amber-500/20'}`}
           >
             <div className="flex items-center justify-between mb-2">
               <span className="text-[9px] font-black uppercase text-muted-foreground/60 tracking-widest flex items-center gap-1">

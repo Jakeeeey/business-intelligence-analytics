@@ -62,4 +62,5 @@ export interface MetricRow {
   tacticalSkuActualQty: number;
   tacticalSkuAchievement: number;
   tacticalSkuStatus: string;
+  salesType?: number | null;
 }
