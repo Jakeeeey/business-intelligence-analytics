@@ -86,7 +86,7 @@ export function MultiSelect(props: Props) {
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent className="w-(--radix-popover-trigger-width) p-0" align="start">
+      <PopoverContent className="min-w-[var(--radix-popover-trigger-width)] w-auto max-w-[400px] p-0" align="start">
         <Command>
           <CommandInput placeholder="Search..." />
           {mode === "multi" && (
@@ -127,7 +127,7 @@ export function MultiSelect(props: Props) {
                       />
                     ) : null}
 
-                    <span className="truncate">{opt.label}</span>
+                    <span className="break-words leading-tight text-xs py-0.5">{opt.label}</span>
 
                     {/* ✅ OPTIONAL subtle indicator for SINGLE without checkbox (right check) */}
                     {mode === "single" && selected ? (
