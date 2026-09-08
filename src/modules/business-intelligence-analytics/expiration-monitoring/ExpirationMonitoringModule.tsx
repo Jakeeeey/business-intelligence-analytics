@@ -45,7 +45,7 @@ export default function ExpirationMonitoringModule() {
         lots={lots}
         batches={batches}
         filters={filters}
-        setFilters={() => {}} // internal state handles this, apply pushes changes
+
         searchQuery={searchQuery}
         onSearchQueryChange={setSearchQuery}
         onApplyFilters={handleApplyFilters}
