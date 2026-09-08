@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { fetchReconciliationData } from '../providers/fetchProvider';
 import { ReconciliationData } from '../types';
 
-export function useRevenueReconciliation() {
+export function usePOSIRemittance() {
   const [data, setData] = useState<ReconciliationData | null>(null);
   const [suppliersList, setSuppliersList] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(false);
@@ -59,7 +59,7 @@ export function useRevenueReconciliation() {
 
   const fetchSuppliers = async () => {
     try {
-      const res = await fetch('/api/bia/revenue-reconciliation/suppliers');
+      const res = await fetch('/api/bia/po-si-remittance/suppliers');
       if (res.ok) {
         const json = await res.json();
         const dataArray = Array.isArray(json) ? json : (Array.isArray(json?.data) ? json.data : []);
@@ -89,7 +89,8 @@ export function useRevenueReconciliation() {
     setLoading(true);
     try {
       const result = await fetchReconciliationData(startDate, endDate);
-      setData(result);
+      const actualData = 'data' in result ? (result as { data: unknown }).data : result;
+      setData(actualData as ReconciliationData);
     } catch (error) {
       console.error(error);
     }
@@ -128,9 +129,9 @@ export function useRevenueReconciliation() {
       });
     }
 
-    // Always mathematically calculate absolute variances based on the final totals
-    metrics.variancePoVsSi = Math.abs(metrics.po - metrics.si);
-    metrics.varianceSiVsRemittance = Math.abs(metrics.si - metrics.remittance);
+    // Always mathematically calculate variances based on the final totals (allowing negatives)
+    metrics.variancePoVsSi = metrics.po - metrics.si;
+    metrics.varianceSiVsRemittance = metrics.si - metrics.remittance;
     metrics.totalVariance = metrics.variancePoVsSi + metrics.varianceSiVsRemittance;
   }
 

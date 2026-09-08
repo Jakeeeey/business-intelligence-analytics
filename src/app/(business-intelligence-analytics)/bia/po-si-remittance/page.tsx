@@ -13,7 +13,7 @@ import { NavUser } from "@/components/shared/app-sidebar/nav-user";
 import { cookies } from "next/headers";
 
 // Import the module we created
-import RevenueReconciliationModule from "@/modules/business-intelligence-analytics/revenue-reconciliation/RevenueReconciliationModule";
+import POSIRemittanceModule from "@/modules/business-intelligence-analytics/po-si-remittance/POSIRemittanceModule";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -102,7 +102,7 @@ export default async function Page() {
                 <BreadcrumbSeparator className="hidden md:block shrink-0" />
                 <BreadcrumbItem className="min-w-0 overflow-hidden">
                   <BreadcrumbPage className="truncate max-w-[56vw] sm:max-w-[60vw] md:max-w-none">
-                    Revenue Reconciliation
+                    PO-SI-Remittance
                   </BreadcrumbPage>
                 </BreadcrumbItem>
               </BreadcrumbList>
@@ -117,16 +117,9 @@ export default async function Page() {
 
       {/* Main content scroll area */}
       <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-4 space-y-4">
-        {/* <div className="flex flex-col gap-1">
-          <h1 className="text-3xl font-black tracking-tighter text-foreground">
-            Revenue Reconciliation
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Reconcile Purchase Orders, Sales Invoices, and Remittances with filters by Supplier and Date.
-          </p>
-        </div> */}
-
-        <RevenueReconciliationModule />
+        <div className="flex flex-col h-full bg-background rounded-tl-3xl p-6 border-l border-t border-border/40 overflow-hidden relative">
+          <POSIRemittanceModule />
+        </div>
       </main>
     </div>
   );

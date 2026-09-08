@@ -14,7 +14,7 @@ export const fetchReconciliationData = async (
     params.append('supplierId', supplierId);
   }
 
-  const response = await fetch(`/api/bia/revenue-reconciliation?${params.toString()}`);
+  const response = await fetch(`/api/bia/po-si-remittance?${params.toString()}`);
   
   if (!response.ok) {
     throw new Error('Failed to fetch reconciliation data');
