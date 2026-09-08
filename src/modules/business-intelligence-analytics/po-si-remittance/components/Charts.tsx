@@ -8,6 +8,7 @@ interface ChartsProps {
     remittance: number;
     variancePoVsSi: number;
     varianceSiVsRemittance: number;
+    variancePoVsRemittance: number;
     totalVariance: number;
   };
 }
@@ -24,6 +25,7 @@ export function Charts({ metrics }: ChartsProps) {
 
   const varianceData = [
     { name: 'PO vs SI', variance: metrics.variancePoVsSi, fill: '#f59e0b' },
+    { name: 'PO vs Remittance', variance: metrics.variancePoVsRemittance, fill: '#d946ef' },
     { name: 'SI vs Remittance', variance: metrics.varianceSiVsRemittance, fill: '#f43f5e' },
     { name: 'Total Variance', variance: metrics.totalVariance, fill: '#6366f1' }
   ];

@@ -13,18 +13,25 @@ export function usePOSIRemittance() {
   const [selectedSuppliers, setSelectedSuppliers] = useState<string[]>([]);
   const [hasInitializedSuppliers, setHasInitializedSuppliers] = useState(false);
 
-  useEffect(() => {
-    if (datePreset !== 'custom') {
-      const now = new Date();
-      const formatDate = (d: Date) => d.toISOString().split('T')[0];
-      
-      let start = new Date();
-      let end = new Date();
+  const formatLocal = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
 
-      switch (datePreset) {
+  const handleDatePresetChange = (preset: string) => {
+    setDatePreset(preset);
+    
+    if (preset !== 'custom') {
+      const now = new Date();
+      let start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      let end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+      switch (preset) {
         case 'all-time':
-          start = new Date('2000-01-01');
-          end = new Date('2099-12-31');
+          start = new Date(2000, 0, 1);
+          end = new Date(2099, 11, 31);
           break;
         case 'today':
           break;
@@ -37,10 +44,10 @@ export function usePOSIRemittance() {
           end.setDate(now.getDate() - 1);
           break;
         case 'this-week':
-          const day = now.getDay() || 7; // Get current day number, converting Sun. to 7
-          if (day !== 1) start.setHours(-24 * (day - 1)); // Set to Monday
+          const day = now.getDay() || 7; // Convert Sun (0) to 7
+          start.setDate(now.getDate() - (day - 1)); // Monday
           end = new Date(start);
-          end.setDate(start.getDate() + 6); // Set to Sunday
+          end.setDate(start.getDate() + 6); // Sunday
           break;
         case 'this-month':
           start = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -52,10 +59,24 @@ export function usePOSIRemittance() {
           break;
       }
       
-      setStartDate(formatDate(start));
-      setEndDate(formatDate(end));
+      const newStart = formatLocal(start);
+      const newEnd = formatLocal(end);
+      
+      setStartDate(newStart);
+      setEndDate(newEnd);
+      
+      // Auto-fetch with the new dates immediately
+      setLoading(true);
+      fetchReconciliationData(newStart, newEnd)
+        .then(result => {
+          const actualData = 'data' in result ? (result as { data: unknown }).data : result;
+          setData(actualData as ReconciliationData);
+        })
+        .catch(err => console.error(err))
+        .finally(() => setLoading(false));
     }
-  }, [datePreset]);
+  };
+
 
   const fetchSuppliers = async () => {
     try {
@@ -111,6 +132,7 @@ export function usePOSIRemittance() {
     remittance: 0,
     variancePoVsSi: 0,
     varianceSiVsRemittance: 0,
+    variancePoVsRemittance: 0,
     totalVariance: 0,
   };
 
@@ -132,6 +154,7 @@ export function usePOSIRemittance() {
     // Always mathematically calculate variances based on the final totals (allowing negatives)
     metrics.variancePoVsSi = metrics.po - metrics.si;
     metrics.varianceSiVsRemittance = metrics.si - metrics.remittance;
+    metrics.variancePoVsRemittance = metrics.po - metrics.remittance;
     metrics.totalVariance = metrics.variancePoVsSi + metrics.varianceSiVsRemittance;
   }
 
@@ -153,7 +176,7 @@ export function usePOSIRemittance() {
     data,
     loading,
     datePreset,
-    setDatePreset,
+    setDatePreset: handleDatePresetChange,
     startDate,
     setStartDate,
     endDate,

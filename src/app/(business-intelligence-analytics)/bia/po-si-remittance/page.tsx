@@ -117,7 +117,7 @@ export default async function Page() {
 
       {/* Main content scroll area */}
       <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-4 space-y-4">
-        <div className="flex flex-col h-full bg-background rounded-tl-3xl p-6 border-l border-t border-border/40 overflow-hidden relative">
+        <div className="flex flex-col min-h-full bg-background rounded-tl-3xl p-6 border-l border-t border-border/40 relative">
           <POSIRemittanceModule />
         </div>
       </main>
