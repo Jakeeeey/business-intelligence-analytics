@@ -12,8 +12,8 @@ import { NavUser } from "@/components/shared/app-sidebar/nav-user";
 
 import { cookies } from "next/headers";
 
-// Import the module we created
-import RevenueReconciliationModule from "@/modules/business-intelligence-analytics/revenue-reconciliation/RevenueReconciliationModule";
+// ✅ Wire the module you asked for
+import { ExpirationMonitoringModule } from "@/modules/business-intelligence-analytics/expiration-monitoring";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -76,15 +76,17 @@ function buildHeaderUserFromToken(token: string | null | undefined) {
 }
 
 export default async function Page() {
+  // ✅ Next.js 16: cookies() is async
   const cookieStore = await cookies();
   const token = cookieStore.get(COOKIE_NAME)?.value ?? null;
 
   const headerUser = buildHeaderUserFromToken(token);
 
   return (
+    // ✅ This fills the RIGHT column provided by SidebarInset (which is now fixed-height).
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-      {/* Topbar fixed in place */}
-      <header className="relative z-10 flex h-14 shrink-0 items-center justify-between border-b shadow-xs bg-background sm:h-16 overflow-hidden">
+      {/* ✅ Topbar is fixed in place because ONLY <main> scrolls */}
+      <header className="relative z-10 flex h-14 shrink-0 items-center justify-between border-b shadow-sm bg-background sm:h-16 overflow-hidden">
         <div className="flex h-full min-w-0 items-center gap-2 px-3 sm:px-4 overflow-hidden">
           <SidebarTrigger className="-ml-1 shrink-0" />
 
@@ -102,7 +104,7 @@ export default async function Page() {
                 <BreadcrumbSeparator className="hidden md:block shrink-0" />
                 <BreadcrumbItem className="min-w-0 overflow-hidden">
                   <BreadcrumbPage className="truncate max-w-[56vw] sm:max-w-[60vw] md:max-w-none">
-                    Revenue Reconciliation
+                    Expiration Monitoring
                   </BreadcrumbPage>
                 </BreadcrumbItem>
               </BreadcrumbList>
@@ -115,18 +117,9 @@ export default async function Page() {
         </div>
       </header>
 
-      {/* Main content scroll area */}
-      <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-4 space-y-4">
-        {/* <div className="flex flex-col gap-1">
-          <h1 className="text-3xl font-black tracking-tighter text-foreground">
-            Revenue Reconciliation
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Reconcile Purchase Orders, Sales Invoices, and Remittances with filters by Supplier and Date.
-          </p>
-        </div> */}
-
-        <RevenueReconciliationModule />
+      {/* ✅ Only content scrolls inside RIGHT column */}
+      <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-2 sm:p-4">
+        <ExpirationMonitoringModule />
       </main>
     </div>
   );

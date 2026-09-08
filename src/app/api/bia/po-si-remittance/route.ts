@@ -10,15 +10,15 @@ export async function GET(request: Request) {
   }
 
   const baseUrl = process.env.SPRING_API_BASE_URL || 'http://localhost:8080';
-  
+
   try {
     const params = new URLSearchParams({
       startDate,
       endDate,
     });
-    
+
     const token = request.headers.get('cookie')?.split('; ').find(row => row.startsWith('vos_access_token='))?.split('=')[1];
-    
+
     const headers: HeadersInit = {};
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
@@ -33,7 +33,7 @@ export async function GET(request: Request) {
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error('Error fetching unified revenue reconciliation data:', error);
+    console.error('Error fetching unified PO-SI-Remittance data:', error);
     return NextResponse.json({ error: 'Failed to fetch data' }, { status: 500 });
   }
 }
