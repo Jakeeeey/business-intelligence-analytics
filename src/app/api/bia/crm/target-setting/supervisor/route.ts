@@ -157,13 +157,18 @@ function toNum(v: unknown) {
   return Number.isFinite(n) ? n : 0;
 }
 
-async function getSupplierTargetAmount(params: { fiscalPeriod: string; supplierId: number }) {
+async function getSupplierTargetAmount(params: { fiscalPeriod: string; supplierId: number; tssId?: number }) {
   const url = new URL(`${UPSTREAM}/items/target_setting_supplier`);
   url.searchParams.set("limit", "-1");
   url.searchParams.set("fields", "id,fiscal_period,supplier_id,target_amount,status");
-  url.searchParams.set("filter[fiscal_period][_eq]", params.fiscalPeriod);
-  url.searchParams.set("filter[supplier_id][_eq]", String(params.supplierId));
-  url.searchParams.set("sort", "-id");
+  
+  if (params.tssId) {
+    url.searchParams.set("filter[id][_eq]", String(params.tssId));
+  } else {
+    url.searchParams.set("filter[fiscal_period][_eq]", params.fiscalPeriod);
+    url.searchParams.set("filter[supplier_id][_eq]", String(params.supplierId));
+    url.searchParams.set("sort", "-id");
+  }
 
   const r = await upstreamJson(url.toString());
   if (!r.ok) return { ok: false as const, status: r.status, error: r };
@@ -177,12 +182,17 @@ async function getSupplierTargetAmount(params: { fiscalPeriod: string; supplierI
   };
 }
 
-async function getExistingAllocations(params: { fiscalPeriod: string; supplierId: number }) {
+async function getExistingAllocations(params: { fiscalPeriod: string; supplierId: number; tssId?: number }) {
   const url = new URL(`${UPSTREAM}/items/target_setting_salesman`);
   url.searchParams.set("limit", "-1");
   url.searchParams.set("fields", "id,target_amount,fiscal_period,supplier_id,status");
-  url.searchParams.set("filter[fiscal_period][_eq]", params.fiscalPeriod);
-  url.searchParams.set("filter[supplier_id][_eq]", String(params.supplierId));
+  
+  if (params.tssId) {
+    url.searchParams.set("filter[ts_supervisor_id][tss_id][_eq]", String(params.tssId));
+  } else {
+    url.searchParams.set("filter[fiscal_period][_eq]", params.fiscalPeriod);
+    url.searchParams.set("filter[supplier_id][_eq]", String(params.supplierId));
+  }
 
   const r = await upstreamJson(url.toString());
   if (!r.ok) return { ok: false as const, status: r.status, error: r };
@@ -194,8 +204,9 @@ async function enforceNotExceedSupplierTarget(args: {
   supplierId: number;
   newAmount: number;
   editingId?: number | null;
+  tssId?: number;
 }) {
-  const targetRes = await getSupplierTargetAmount({ fiscalPeriod: args.fiscalPeriod, supplierId: args.supplierId });
+  const targetRes = await getSupplierTargetAmount({ fiscalPeriod: args.fiscalPeriod, supplierId: args.supplierId, tssId: args.tssId });
   if (!targetRes.ok) {
     return NextResponse.json(
       {
@@ -216,7 +227,7 @@ async function enforceNotExceedSupplierTarget(args: {
     );
   }
 
-  const allocRes = await getExistingAllocations({ fiscalPeriod: args.fiscalPeriod, supplierId: args.supplierId });
+  const allocRes = await getExistingAllocations({ fiscalPeriod: args.fiscalPeriod, supplierId: args.supplierId, tssId: args.tssId });
   if (!allocRes.ok) {
     return NextResponse.json(
       {
@@ -402,10 +413,15 @@ export async function POST(req: NextRequest) {
     fiscalPeriod: String(body.fiscal_period),
     supplierId: Number(body.supplier_id),
     newAmount: toNum(body.target_amount),
+    tssId: body.tss_id ? Number(body.tss_id) : undefined,
   });
   if (guard) return guard;
 
-  const targetRes = await getSupplierTargetAmount({ fiscalPeriod: String(body.fiscal_period), supplierId: Number(body.supplier_id) });
+  const targetRes = await getSupplierTargetAmount({ 
+    fiscalPeriod: String(body.fiscal_period), 
+    supplierId: Number(body.supplier_id),
+    tssId: body.tss_id ? Number(body.tss_id) : undefined
+  });
   if (!targetRes.ok) return NextResponse.json(targetRes.error, { status: targetRes.status });
   
   if (targetRes.status !== "DRAFT") {
@@ -418,7 +434,9 @@ export async function POST(req: NextRequest) {
   const resolved = await resolveTsSupervisorId({ userId: sub, tssId: targetRes.id });
   if (!resolved.ok) return NextResponse.json(resolved.error, { status: resolved.status });
 
-  const payload = { ...body, ts_supervisor_id: resolved.id };
+  const cleanBody = { ...body };
+  delete cleanBody.tss_id;
+  const payload = { ...cleanBody, ts_supervisor_id: resolved.id };
   return proxy(req, `/items/target_setting_salesman`, "POST", payload);
 }
 
@@ -442,17 +460,26 @@ export async function PATCH(req: NextRequest) {
     supplierId: Number(body.supplier_id),
     newAmount: toNum(body.target_amount),
     editingId: Number(id),
+    tssId: body.tss_id ? Number(body.tss_id) : undefined,
   });
   if (guard) return guard;
 
-  const targetRes = await getSupplierTargetAmount({ fiscalPeriod: String(body.fiscal_period), supplierId: Number(body.supplier_id) });
+  const targetRes = await getSupplierTargetAmount({ 
+    fiscalPeriod: String(body.fiscal_period), 
+    supplierId: Number(body.supplier_id),
+    tssId: body.tss_id ? Number(body.tss_id) : undefined
+  });
   if (!targetRes.ok) return NextResponse.json(targetRes.error, { status: targetRes.status });
 
   if (!targetRes.id) {
     return NextResponse.json({ error: "Supplier target record not found." }, { status: 400 });
   }
 
-  const allocRes = await getExistingAllocations({ fiscalPeriod: String(body.fiscal_period), supplierId: Number(body.supplier_id) });
+  const allocRes = await getExistingAllocations({ 
+    fiscalPeriod: String(body.fiscal_period), 
+    supplierId: Number(body.supplier_id),
+    tssId: body.tss_id ? Number(body.tss_id) : undefined
+  });
   if (allocRes.ok) {
     const existing = (allocRes.rows as Record<string, unknown>[]).find((r) => Number(r.id) === Number(id));
     if (existing && existing.status !== "DRAFT") {
@@ -463,7 +490,9 @@ export async function PATCH(req: NextRequest) {
   const resolved = await resolveTsSupervisorId({ userId: sub, tssId: targetRes.id });
   if (!resolved.ok) return NextResponse.json(resolved.error, { status: resolved.status });
 
-  const payload = { ...body, ts_supervisor_id: resolved.id };
+  const cleanBody = { ...body };
+  delete cleanBody.tss_id;
+  const payload = { ...cleanBody, ts_supervisor_id: resolved.id };
   return proxy(req, `/items/target_setting_salesman/${encodeURIComponent(id)}`, "PATCH", payload);
 }
 
