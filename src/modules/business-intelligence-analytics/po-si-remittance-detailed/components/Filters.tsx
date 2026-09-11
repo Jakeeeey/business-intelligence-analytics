@@ -49,17 +49,6 @@ export function Filters({
 }: FiltersProps) {
   const [openDropdown, setOpenDropdown] = useState(false);
 
-  const presets = [
-    { value: 'all-time', label: 'All Time' },
-    { value: 'yesterday', label: 'Yesterday' },
-    { value: 'today', label: 'Today' },
-    { value: 'tomorrow', label: 'Tomorrow' },
-    { value: 'this-week', label: 'This Week' },
-    { value: 'this-month', label: 'This Month' },
-    { value: 'this-year', label: 'This Year' },
-    { value: 'custom', label: 'Custom' }
-  ];
-
   return (
     <div className="flex flex-wrap gap-6 items-end w-full bg-card p-4 rounded-xl border shadow-sm">
       {/* Quick Range Section */}
