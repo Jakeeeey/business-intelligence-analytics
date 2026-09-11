@@ -51,7 +51,7 @@ export function DetailedTable({ rows, summary }: DetailedTableProps) {
                 <td className="px-6 py-4 font-medium text-right">{formatCurrency(row.remittanceAmount)}</td>
                 <td className="px-6 py-4 font-medium text-right text-[#f43f5e]">{formatCurrency(row.unfulfilledAmount)}</td>
                 <td className="px-6 py-4 font-medium text-right text-[#f43f5e]">{formatCurrency(row.returnAmount)}</td>
-                <td className="px-6 py-4 font-medium text-right text-[#e11d48]">{formatCurrency(row.computedShortage)}</td>
+                <td className="px-6 py-4 font-medium text-right text-[#e11d48]">{formatCurrency(row.shortage)}</td>
                 <td className="px-6 py-4 font-medium text-right text-[#f59e0b]">{formatCurrency(row.variance)}</td>
               </tr>
             ))
@@ -68,7 +68,7 @@ export function DetailedTable({ rows, summary }: DetailedTableProps) {
               <td className="px-6 py-4 text-right">{formatCurrency(summary.totalRemittanceAmount)}</td>
               <td className="px-6 py-4 text-right text-[#f43f5e]">{formatCurrency(summary.totalUnfulfilledAmount)}</td>
               <td className="px-6 py-4 text-right text-[#f43f5e]">{formatCurrency(summary.totalReturnAmount)}</td>
-              <td className="px-6 py-4 text-right text-[#e11d48]">{formatCurrency(summary.totalComputedShortage)}</td>
+              <td className="px-6 py-4 text-right text-[#e11d48]">{formatCurrency(summary.totalShortage)}</td>
               <td className="px-6 py-4 text-right text-[#f59e0b]">{formatCurrency(summary.totalVariance)}</td>
             </tr>
           </tfoot>
