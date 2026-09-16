@@ -93,7 +93,7 @@ export function ReachDetailModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[700px] w-full max-h-[85vh] flex flex-col overflow-hidden bg-background/95 backdrop-blur-xl border-border/40 shadow-2xl p-6">
+      <DialogContent className="sm:max-w-fit sm:min-w-[700px] max-w-[95vw] w-full max-h-[85vh] flex flex-col overflow-hidden bg-background/95 backdrop-blur-xl border-border/40 shadow-2xl p-6">
         <DialogHeader className="border-b border-border/40 pb-4 flex-shrink-0">
           <div className="flex justify-between items-start pr-6">
             <div>

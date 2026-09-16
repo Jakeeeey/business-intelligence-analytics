@@ -3,7 +3,6 @@ import { cookies } from "next/headers";
 import {
   aggregateMonthlyData,
   calculateSummary,
-  filterSalesByCustomer,
   filterPurchasesBySupplier,
 } from "@/modules/business-intelligence-analytics/crm/target-setting-reports/divisional/annual-report/utils/annual-report.utils";
 
@@ -39,7 +38,9 @@ interface NormalizedSales {
   invoiceNo: string;
   invoiceDate: string;
   customerName: string;
-  totalInvoiceAmount: number;
+  invoiceTotalAmount: number;
+  productCategory: string;
+  productTotalAmount: number;
 }
 
 interface NormalizedPurchase {
@@ -50,19 +51,21 @@ interface NormalizedPurchase {
 }
 
 function normalizeSales(items: Record<string, unknown>[]): NormalizedSales[] {
-  const uniqueInvoices = new Map<string, NormalizedSales>();
+  const normalized: NormalizedSales[] = [];
   for (const item of items) {
     const invoiceNo = pickString(item, ["invoiceNo", "invoice_no", "invoice_number"]);
-    if (invoiceNo && !uniqueInvoices.has(invoiceNo)) {
-      uniqueInvoices.set(invoiceNo, {
+    if (invoiceNo) {
+      normalized.push({
         invoiceNo,
         invoiceDate: pickString(item, ["invoiceDate", "invoice_date", "date", "transactionDate"]),
         customerName: pickString(item, ["customerName", "customer_name", "customer", "clientName"]),
-        totalInvoiceAmount: pickNumber(item, ["totalInvoiceAmount", "total_invoice_amount", "amount", "totalAmount", "total"]),
+        invoiceTotalAmount: pickNumber(item, ["totalInvoiceAmount", "total_invoice_amount", "amount", "totalAmount", "total"]),
+        productCategory: pickString(item, ["productCategory", "product_category", "category"]),
+        productTotalAmount: pickNumber(item, ["productTotalAmount", "product_total_amount", "productSalesAmount", "productNetAmount", "totalProductAmount"]),
       });
     }
   }
-  return Array.from(uniqueInvoices.values());
+  return normalized;
 }
 
 function normalizePurchases(items: Record<string, unknown>[]): NormalizedPurchase[] {
@@ -126,6 +129,7 @@ const NORMALIZED_CACHE = new Map<string, {
   purchases: NormalizedPurchase[];
   customers: string[];
   suppliers: string[];
+  categories: string[];
   expiry: number;
 }>();
 
@@ -155,6 +159,7 @@ export async function GET(req: NextRequest) {
   const dateTo = searchParams.get("dateTo") ?? "";
   const customerName = searchParams.get("customerName") ?? "";
   const supplierName = searchParams.get("supplierName") ?? "";
+  const categoryName = searchParams.get("categoryName") ?? "";
 
   try {
     const baseUrl = SPRING_API_BASE_URL.replace(/\/+$/, "");
@@ -199,18 +204,64 @@ export async function GET(req: NextRequest) {
         ),
       ].sort((a, b) => a.localeCompare(b));
 
+      const categories = [
+        ...new Set(
+          salesTransactions.map((s) => s.productCategory).filter(Boolean),
+        ),
+      ].sort((a, b) => a.localeCompare(b));
+
       cachedData = {
         sales: salesTransactions,
         purchases: purchaseTransactions,
         customers,
         suppliers,
+        categories,
         expiry: now + 15 * 60 * 1000, // 15 mins TTL
       };
       
       NORMALIZED_CACHE.set(cacheKey, cachedData);
     }
 
-    const filteredSales = filterSalesByCustomer(cachedData.sales, customerName);
+    // Filter sales items by customerName and categoryName
+    let filteredSalesItems = cachedData.sales;
+    if (customerName) {
+      filteredSalesItems = filteredSalesItems.filter((item) =>
+        item.customerName.toLowerCase().includes(customerName.toLowerCase())
+      );
+    }
+    if (categoryName) {
+      filteredSalesItems = filteredSalesItems.filter((item) =>
+        item.productCategory.toLowerCase() === categoryName.toLowerCase()
+      );
+    }
+
+    // Group items by invoiceNo to construct SalesTransaction[]
+    interface GroupedSalesTransaction {
+      invoiceNo: string;
+      invoiceDate: string;
+      customerName: string;
+      totalInvoiceAmount: number;
+      productCategory?: string;
+    }
+    const salesGroupedMap = new Map<string, GroupedSalesTransaction>();
+    for (const item of filteredSalesItems) {
+      const existing = salesGroupedMap.get(item.invoiceNo);
+      if (existing) {
+        if (categoryName) {
+          existing.totalInvoiceAmount += item.productTotalAmount;
+        }
+      } else {
+        salesGroupedMap.set(item.invoiceNo, {
+          invoiceNo: item.invoiceNo,
+          invoiceDate: item.invoiceDate,
+          customerName: item.customerName,
+          totalInvoiceAmount: categoryName ? item.productTotalAmount : item.invoiceTotalAmount,
+          productCategory: item.productCategory,
+        });
+      }
+    }
+    const filteredSales = Array.from(salesGroupedMap.values());
+
     const filteredPurchases = filterPurchasesBySupplier(
       cachedData.purchases,
       supplierName,
@@ -231,6 +282,7 @@ export async function GET(req: NextRequest) {
         purchaseTransactions: [],
         customers: cachedData.customers,
         suppliers: cachedData.suppliers,
+        categories: cachedData.categories,
         ok: true,
       });
     }
@@ -244,6 +296,7 @@ export async function GET(req: NextRequest) {
       purchaseTransactions: filteredPurchases,
       customers: cachedData.customers,
       suppliers: cachedData.suppliers,
+      categories: cachedData.categories,
       ok: true,
     });
   } catch (error) {
