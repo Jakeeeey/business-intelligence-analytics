@@ -10,11 +10,12 @@ export function Charts({ summary }: ChartsProps) {
   if (!summary) return null;
 
   const volumeData = [
-    { name: 'SO/PO', value: summary.totalPoAmount, fill: '#3b82f6' },
-    { name: 'PDP', value: summary.totalCustomerPoAmount, fill: '#8b5cf6' },
-    { name: 'CLDTO', value: summary.totalAllocatedAmount, fill: '#14b8a6' },
-    { name: 'DP', value: summary.totalSiAmount, fill: '#10b981' },
-    { name: 'Remitted', value: summary.totalRemittanceAmount, fill: '#f59e0b' },
+    { name: 'SO', value: summary.totalPoAmount, fill: '#3b82f6' },
+    { name: 'PO', value: summary.totalCustomerPoAmount, fill: '#f59e0b' },
+    { name: 'PDP', value: summary.totalAllocatedAmount, fill: '#06b6d4' },
+    { name: 'CLDTO', value: summary.totalCldtoAmount, fill: '#14b8a6' },
+    { name: 'DP', value: summary.totalSiAmount, fill: '#84cc16' },
+    { name: 'Remitted', value: summary.totalRemittanceAmount, fill: '#8b5cf6' },
   ];
 
   const discrepancyData = [

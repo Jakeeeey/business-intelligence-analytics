@@ -1,9 +1,10 @@
 export interface POSIRemittanceDetailedAPIResponse {
   supplierId: number;
   date: string;
-  poAmount: number;          // SO/PO
-  customerPoAmount: number;  // PDP
-  allocatedAmount: number;   // CLDTO
+  customerPoAmount: number;  // PO
+  poAmount: number;          // SO
+  allocatedAmount: number;   // PDP
+  cldtoAmount: number;       // CLDTO
   siAmount: number;          // DP
   remittanceAmount: number;  // REMITTED
   unfulfilledAmount: number; // UNF
@@ -13,13 +14,14 @@ export interface POSIRemittanceDetailedAPIResponse {
 
 export interface DetailedMetricRow extends POSIRemittanceDetailedAPIResponse {
   supplierName: string;
-  variance: number;          // SO/PO - Remitted
+  variance: number;          // Remitted - PO
 }
 
 export interface DetailedMetricsSummary {
   totalPoAmount: number;
   totalCustomerPoAmount: number;
   totalAllocatedAmount: number;
+  totalCldtoAmount: number;
   totalSiAmount: number;
   totalRemittanceAmount: number;
   totalUnfulfilledAmount: number;
