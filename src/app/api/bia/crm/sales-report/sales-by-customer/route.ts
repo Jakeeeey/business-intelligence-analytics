@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import process from "node:process";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
