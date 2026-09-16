@@ -90,7 +90,10 @@ export function useSalesmanAllocation() {
 
   const supplierTargetRow = React.useMemo(() => {
     if (!fiscalPeriod || supplierId == null) return null;
-    return tsSuppliers.find((r) => r.fiscal_period === fiscalPeriod && r.supplier_id === supplierId) ?? null;
+    const matches = tsSuppliers.filter((r) => r.fiscal_period === fiscalPeriod && r.supplier_id === supplierId);
+    if (!matches.length) return null;
+    // Get the latest one (highest ID) to ensure consistency with supplierOptions and server logic
+    return matches.reduce((prev, curr) => (curr.id > prev.id ? curr : prev));
   }, [tsSuppliers, fiscalPeriod, supplierId]);
 
   const supplierTargetAmount = React.useMemo(() => toNum(supplierTargetRow?.target_amount), [supplierTargetRow]);
@@ -158,12 +161,16 @@ export function useSalesmanAllocation() {
       return;
     }
     try {
-      const r = await listSalesmanAllocations({ fiscal_period: fiscalPeriod, supplier_id: supplierId });
+      const r = await listSalesmanAllocations({ 
+        fiscal_period: fiscalPeriod, 
+        supplier_id: supplierId,
+        tss_id: supplierTargetRow?.id 
+      });
       setRows(r);
     } catch (e) {
       toast.error(errMsg(e));
     }
-  }, [fiscalPeriod, supplierId]);
+  }, [fiscalPeriod, supplierId, supplierTargetRow]);
 
   React.useEffect(() => {
     refreshRows();
@@ -314,6 +321,7 @@ export function useSalesmanAllocation() {
       salesman_id: salesmanId,
       target_amount: amt,
       status: "DRAFT",
+      tss_id: supplierTargetRow?.id,
     };
 
     try {

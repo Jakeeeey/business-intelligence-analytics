@@ -61,12 +61,17 @@ export async function listDivisions(): Promise<DivisionRow[]> {
 export async function listSalesmanAllocations(params: {
   fiscal_period: string;
   supplier_id: number;
+  tss_id?: number;
 }): Promise<TargetSettingSalesmanRow[]> {
   const qp = new URLSearchParams();
   qp.set("resource", "allocations");
   qp.set("limit", "-1");
-  qp.set("filter[fiscal_period][_eq]", params.fiscal_period);
-  qp.set("filter[supplier_id][_eq]", String(params.supplier_id));
+  if (params.tss_id) {
+    qp.set("filter[ts_supervisor_id][tss_id][_eq]", String(params.tss_id));
+  } else {
+    qp.set("filter[fiscal_period][_eq]", params.fiscal_period);
+    qp.set("filter[supplier_id][_eq]", String(params.supplier_id));
+  }
   const r = await j<{ data: TargetSettingSalesmanRow[] }>(`${BASE}?${qp.toString()}`);
   return r.data ?? [];
 }

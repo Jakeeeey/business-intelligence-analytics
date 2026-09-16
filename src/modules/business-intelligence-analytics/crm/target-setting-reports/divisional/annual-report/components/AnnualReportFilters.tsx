@@ -25,16 +25,18 @@ const YEAR_OPTIONS = Array.from({ length: 7 }, (_, i) =>
 interface AnnualReportFiltersProps {
   customers: string[];
   suppliers: string[];
+  categories: string[];
 }
 
 export function AnnualReportFilters({
   customers,
   suppliers,
+  categories = [],
 }: AnnualReportFiltersProps) {
   const { filters, setFilter, resetFilters } = useAnnualReportFilters();
 
-  const hasActiveFilters = filters.customerName || filters.supplierName || filters.month;
-  const activeCount = [filters.customerName, filters.supplierName, filters.month].filter(Boolean).length;
+  const hasActiveFilters = filters.customerName || filters.supplierName || filters.categoryName || filters.month;
+  const activeCount = [filters.customerName, filters.supplierName, filters.categoryName, filters.month].filter(Boolean).length;
 
   const customerOptions = React.useMemo(
     () => customers.map((c) => ({ label: c, value: c })),
@@ -43,6 +45,10 @@ export function AnnualReportFilters({
   const supplierOptions = React.useMemo(
     () => suppliers.map((s) => ({ label: s, value: s })),
     [suppliers],
+  );
+  const categoryOptions = React.useMemo(
+    () => categories.map((c) => ({ label: c, value: c })),
+    [categories],
   );
 
   return (
@@ -107,6 +113,17 @@ export function AnnualReportFilters({
         value={filters.supplierName ? [filters.supplierName] : []}
         onChange={(next) =>
           setFilter("supplierName", next.length > 0 ? next[0] : "")
+        }
+        className="w-40 h-8 text-xs"
+      />
+
+      <MultiSelect
+        mode="single"
+        placeholder="Category"
+        options={categoryOptions}
+        value={filters.categoryName ? [filters.categoryName] : []}
+        onChange={(next) =>
+          setFilter("categoryName", next.length > 0 ? next[0] : "")
         }
         className="w-40 h-8 text-xs"
       />
