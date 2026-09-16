@@ -19,12 +19,13 @@ export function DetailedTable({ rows, summary }: DetailedTableProps) {
           <tr>
             <th className="px-6 py-4 font-medium">Supplier</th>
             <th className="px-6 py-4 font-medium">Date</th>
-            <th className="px-6 py-4 font-medium text-right">SO/PO</th>
+            <th className="px-6 py-4 font-medium text-right">SO</th>
+            <th className="px-6 py-4 font-medium text-right">PO</th>
             <th className="px-6 py-4 font-medium text-right">PDP</th>
             <th className="px-6 py-4 font-medium text-right">CLDTO</th>
             <th className="px-6 py-4 font-medium text-right">DP</th>
             <th className="px-6 py-4 font-medium text-right">REMITTED</th>
-            <th className="px-6 py-4 font-medium text-right">UNF</th>
+            <th className="px-6 py-4 font-medium text-right">UNFULFILLED</th>
             <th className="px-6 py-4 font-medium text-right">RETURN</th>
             <th className="px-6 py-4 font-medium text-right">SHORTAGE</th>
             <th className="px-6 py-4 font-medium text-right">VARIANCE</th>
@@ -33,7 +34,7 @@ export function DetailedTable({ rows, summary }: DetailedTableProps) {
         <tbody>
           {rows.length === 0 ? (
             <tr>
-              <td colSpan={11} className="px-6 py-8 text-center text-muted-foreground">
+              <td colSpan={12} className="px-6 py-8 text-center text-muted-foreground">
                 No data available for the selected filters.
               </td>
             </tr>
@@ -47,6 +48,7 @@ export function DetailedTable({ rows, summary }: DetailedTableProps) {
                 <td className="px-6 py-4 font-medium text-right">{formatCurrency(row.poAmount)}</td>
                 <td className="px-6 py-4 font-medium text-right">{formatCurrency(row.customerPoAmount)}</td>
                 <td className="px-6 py-4 font-medium text-right">{formatCurrency(row.allocatedAmount)}</td>
+                <td className="px-6 py-4 font-medium text-right">{formatCurrency(row.cldtoAmount)}</td>
                 <td className="px-6 py-4 font-medium text-right">{formatCurrency(row.siAmount)}</td>
                 <td className="px-6 py-4 font-medium text-right">{formatCurrency(row.remittanceAmount)}</td>
                 <td className="px-6 py-4 font-medium text-right text-[#f43f5e]">{formatCurrency(row.unfulfilledAmount)}</td>
@@ -64,6 +66,7 @@ export function DetailedTable({ rows, summary }: DetailedTableProps) {
               <td className="px-6 py-4 text-right">{formatCurrency(summary.totalPoAmount)}</td>
               <td className="px-6 py-4 text-right">{formatCurrency(summary.totalCustomerPoAmount)}</td>
               <td className="px-6 py-4 text-right">{formatCurrency(summary.totalAllocatedAmount)}</td>
+              <td className="px-6 py-4 text-right">{formatCurrency(summary.totalCldtoAmount)}</td>
               <td className="px-6 py-4 text-right">{formatCurrency(summary.totalSiAmount)}</td>
               <td className="px-6 py-4 text-right">{formatCurrency(summary.totalRemittanceAmount)}</td>
               <td className="px-6 py-4 text-right text-[#f43f5e]">{formatCurrency(summary.totalUnfulfilledAmount)}</td>

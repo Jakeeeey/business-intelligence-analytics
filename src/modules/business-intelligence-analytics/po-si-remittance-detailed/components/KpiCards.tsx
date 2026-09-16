@@ -7,7 +7,7 @@ interface KpiCardsProps {
   summary?: DetailedMetricsSummary;
 }
 
-type CardKey = 'so' | 'pdp' | 'cldto' | 'dp' | 'remitted' | 'unf' | 'return' | 'shortage' | 'variance' | null;
+type CardKey = 'so' | 'po' | 'pdp' | 'cldto' | 'dp' | 'remitted' | 'unf' | 'return' | 'shortage' | 'variance' | null;
 
 export function KpiCards({ summary }: KpiCardsProps) {
   const [hoveredCard, setHoveredCard] = useState<CardKey>(null);
@@ -16,8 +16,9 @@ export function KpiCards({ summary }: KpiCardsProps) {
 
   const metrics = {
     so: summary.totalPoAmount,
-    pdp: summary.totalCustomerPoAmount,
-    cldto: summary.totalAllocatedAmount,
+    po: summary.totalCustomerPoAmount,
+    pdp: summary.totalAllocatedAmount,
+    cldto: summary.totalCldtoAmount,
     dp: summary.totalSiAmount,
     remitted: summary.totalRemittanceAmount,
     unf: summary.totalUnfulfilledAmount,
@@ -33,14 +34,15 @@ export function KpiCards({ summary }: KpiCardsProps) {
   const getActiveCards = (hovered: CardKey): CardKey[] => {
     switch (hovered) {
       case 'so': return ['so', 'variance'];
+      case 'po': return ['po'];
       case 'pdp': return ['pdp'];
       case 'cldto': return ['cldto'];
-      case 'dp': return ['dp', 'shortage'];
-      case 'remitted': return ['remitted', 'variance', 'shortage'];
-      case 'unf': return ['unf', 'shortage'];
-      case 'return': return ['return', 'shortage'];
+      case 'dp': return ['dp'];
+      case 'remitted': return ['remitted'];
+      case 'unf': return ['unf'];
+      case 'return': return ['return'];
       case 'shortage': return ['shortage', 'dp', 'remitted', 'unf', 'return'];
-      case 'variance': return ['variance', 'so', 'remitted'];
+      case 'variance': return ['variance', 'po', 'remitted'];
       default: return [];
     }
   };
@@ -63,6 +65,8 @@ export function KpiCards({ summary }: KpiCardsProps) {
   return (
     <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 mt-6">
       <div 
+        onMouseEnter={() => setHoveredCard('so')}
+        onMouseLeave={() => setHoveredCard(null)}
         className={`bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-950/20 dark:to-blue-900/10 border-l-4 border-l-blue-500 ${getCardClass('so')}`}
       >
         <div className="absolute top-0 right-0 w-16 h-16 bg-blue-500/10 rounded-bl-full -mr-8 -mt-8 transition-transform duration-300 group-hover:scale-150" />
@@ -73,6 +77,20 @@ export function KpiCards({ summary }: KpiCardsProps) {
       </div>
 
       <div 
+        onMouseEnter={() => setHoveredCard('po')}
+        onMouseLeave={() => setHoveredCard(null)}
+        className={`bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-950/20 dark:to-amber-900/10 border-l-4 border-l-amber-500 ${getCardClass('po')}`}
+      >
+        <div className="absolute top-0 right-0 w-16 h-16 bg-amber-500/10 rounded-bl-full -mr-8 -mt-8 transition-transform duration-300 group-hover:scale-150" />
+        <h3 className="text-sm font-semibold tracking-tight text-amber-800 dark:text-amber-300">PO</h3>
+        <p title={formatCurrency(metrics.po)} className="text-lg xl:text-base 2xl:text-xl tracking-tighter font-black mt-2 text-amber-950 dark:text-amber-100 whitespace-nowrap overflow-hidden text-ellipsis">
+          {formatCurrency(metrics.po)}
+        </p>
+      </div>
+
+      <div 
+        onMouseEnter={() => setHoveredCard('pdp')}
+        onMouseLeave={() => setHoveredCard(null)}
         className={`bg-gradient-to-br from-cyan-50 to-cyan-100/50 dark:from-cyan-950/20 dark:to-cyan-900/10 border-l-4 border-l-cyan-500 ${getCardClass('pdp')}`}
       >
         <div className="absolute top-0 right-0 w-16 h-16 bg-cyan-500/10 rounded-bl-full -mr-8 -mt-8 transition-transform duration-300 group-hover:scale-150" />
@@ -83,6 +101,8 @@ export function KpiCards({ summary }: KpiCardsProps) {
       </div>
 
       <div 
+        onMouseEnter={() => setHoveredCard('cldto')}
+        onMouseLeave={() => setHoveredCard(null)}
         className={`bg-gradient-to-br from-teal-50 to-teal-100/50 dark:from-teal-950/20 dark:to-teal-900/10 border-l-4 border-l-teal-500 ${getCardClass('cldto')}`}
       >
         <div className="absolute top-0 right-0 w-16 h-16 bg-teal-500/10 rounded-bl-full -mr-8 -mt-8 transition-transform duration-300 group-hover:scale-150" />
@@ -93,6 +113,8 @@ export function KpiCards({ summary }: KpiCardsProps) {
       </div>
 
       <div 
+        onMouseEnter={() => setHoveredCard('dp')}
+        onMouseLeave={() => setHoveredCard(null)}
         className={`bg-gradient-to-br from-lime-50 to-lime-100/50 dark:from-lime-950/20 dark:to-lime-900/10 border-l-4 border-l-lime-500 ${getCardClass('dp')}`}
       >
         <div className="absolute top-0 right-0 w-16 h-16 bg-lime-500/10 rounded-bl-full -mr-8 -mt-8 transition-transform duration-300 group-hover:scale-150" />
@@ -103,6 +125,8 @@ export function KpiCards({ summary }: KpiCardsProps) {
       </div>
 
       <div 
+        onMouseEnter={() => setHoveredCard('remitted')}
+        onMouseLeave={() => setHoveredCard(null)}
         className={`bg-gradient-to-br from-violet-50 to-violet-100/50 dark:from-violet-950/20 dark:to-violet-900/10 border-l-4 border-l-violet-500 ${getCardClass('remitted')}`}
       >
         <div className="absolute top-0 right-0 w-16 h-16 bg-violet-500/10 rounded-bl-full -mr-8 -mt-8 transition-transform duration-300 group-hover:scale-150" />
@@ -113,16 +137,20 @@ export function KpiCards({ summary }: KpiCardsProps) {
       </div>
 
       <div 
+        onMouseEnter={() => setHoveredCard('unf')}
+        onMouseLeave={() => setHoveredCard(null)}
         className={`bg-gradient-to-br from-orange-50 to-orange-100/50 dark:from-orange-950/20 dark:to-orange-900/10 border-l-4 border-l-orange-500 ${getCardClass('unf')}`}
       >
         <div className="absolute top-0 right-0 w-16 h-16 bg-orange-500/10 rounded-bl-full -mr-8 -mt-8 transition-transform duration-300 group-hover:scale-150" />
-        <h3 className="text-sm font-semibold tracking-tight text-orange-800 dark:text-orange-300">UNF</h3>
+        <h3 className="text-sm font-semibold tracking-tight text-orange-800 dark:text-orange-300">UNFULFILLED</h3>
         <p title={formatCurrency(metrics.unf)} className="text-lg xl:text-base 2xl:text-xl tracking-tighter font-black mt-2 text-orange-950 dark:text-orange-100 whitespace-nowrap overflow-hidden text-ellipsis">
           {formatCurrency(metrics.unf)}
         </p>
       </div>
 
       <div 
+        onMouseEnter={() => setHoveredCard('return')}
+        onMouseLeave={() => setHoveredCard(null)}
         className={`bg-gradient-to-br from-red-50 to-red-100/50 dark:from-red-950/20 dark:to-red-900/10 border-l-4 border-l-red-500 ${getCardClass('return')}`}
       >
         <div className="absolute top-0 right-0 w-16 h-16 bg-red-500/10 rounded-bl-full -mr-8 -mt-8 transition-transform duration-300 group-hover:scale-150" />
