@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import process from "node:process";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,7 +21,8 @@ export async function GET(req: NextRequest) {
             );
         }
 
-        const springBaseUrl = process.env.SPRING_API_BASE_URL;
+        const env = (process as unknown as { env: Record<string, string | undefined> }).env;
+        const springBaseUrl = env.SPRING_API_BASE_URL;
         if (!springBaseUrl) {
             return NextResponse.json(
                 { error: "SPRING_API_BASE_URL is not configured in local environment" },
