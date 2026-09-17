@@ -29,6 +29,7 @@ export async function fetchPurchaseReport(
     if (filters.endDate) sp.set("endDate", filters.endDate);
     if (filters.supplierId && filters.supplierId !== "ALL") sp.set("supplierId", filters.supplierId);
     if (filters.branchId && filters.branchId !== "ALL") sp.set("branchId", filters.branchId);
+    if (filters.productId && filters.productId !== "ALL") sp.set("productId", filters.productId);
     if (filters.status && filters.status !== "ALL") sp.set("status", filters.status);
 
     return http<PurchaseReportResponse>(`/api/bia/scm/purchases/purchase-report?${sp.toString()}`);

@@ -87,9 +87,10 @@ export async function GET(req: NextRequest) {
     // LOOKUPS MODE
     // ==========================================
     if (mode === "lookups") {
-        const [supRes, brRes] = await Promise.all([
+        const [supRes, brRes, prodRes] = await Promise.all([
             fetchAllItems("suppliers", "id,supplier_name,supplier_shortcut"),
             fetchAllItems("branches", "id,branch_name,branch_code"),
+            fetchAllItems("products", "product_id,product_name,product_code"),
         ]);
 
         const suppliers = supRes.ok
@@ -107,10 +108,20 @@ export async function GET(req: NextRequest) {
               }))
             : [];
 
+        const products = prodRes.ok
+            ? prodRes.data
+                  .map((p) => ({
+                      id: Number(p.product_id),
+                      name: String(p.product_name || `Product #${p.product_id}`).trim(),
+                      code: String(p.product_code || "").trim(),
+                  }))
+                  .sort((a, b) => a.name.localeCompare(b.name))
+            : [];
+
         return json({
             success: true,
             message: "OK",
-            data: { suppliers, branches },
+            data: { suppliers, branches, products },
         });
     }
 
@@ -122,6 +133,7 @@ export async function GET(req: NextRequest) {
     const filterSupplierId = sp.get("supplierId");
     const filterBranchId = sp.get("branchId");
     const filterStatus = sp.get("status"); // "ALL" | "FULLY_RECEIVED" | "PARTIALLY_RECEIVED" | "PENDING"
+    const filterProductId = sp.get("productId");
 
     const [poRes, porRes, supRes, brRes, prodRes] = await Promise.all([
         fetchAllItems(
@@ -186,7 +198,7 @@ export async function GET(req: NextRequest) {
         }
     }
 
-    // Process and Filter Purchase Orders
+    // Process Purchase Orders
     const allOrders = poRes.ok ? poRes.data : [];
     const processedOrders = allOrders.map((po) => {
         const poId = Number(po.purchase_order_id);
@@ -261,6 +273,10 @@ export async function GET(req: NextRequest) {
         if (filterSupplierId && filterSupplierId !== "ALL" && String(po.supplierId) !== filterSupplierId) return false;
         if (filterBranchId && filterBranchId !== "ALL" && String(po.branchId) !== filterBranchId) return false;
         if (filterStatus && filterStatus !== "ALL" && po.status !== filterStatus) return false;
+        if (filterProductId && filterProductId !== "ALL") {
+            const hasProduct = po.receivingItems.some((item) => String(item.productId) === filterProductId);
+            if (!hasProduct) return false;
+        }
         return true;
     });
 
@@ -342,6 +358,53 @@ export async function GET(req: NextRequest) {
         }))
         .sort((a, b) => b.amount - a.amount);
 
+    // Compute Product Breakdown
+    const productAggMap = new Map<
+        number,
+        {
+            productId: number;
+            productName: string;
+            productCode: string;
+            totalQuantity: number;
+            totalAmount: number;
+            deliveriesCount: number;
+            latestReceiptDate: string;
+        }
+    >();
+
+    filteredOrders.forEach((po) => {
+        po.receivingItems.forEach((item) => {
+            if (filterProductId && filterProductId !== "ALL" && String(item.productId) !== filterProductId) return;
+            if (!productAggMap.has(item.productId)) {
+                productAggMap.set(item.productId, {
+                    productId: item.productId,
+                    productName: item.productName,
+                    productCode: item.productCode,
+                    totalQuantity: 0,
+                    totalAmount: 0,
+                    deliveriesCount: 0,
+                    latestReceiptDate: item.receiptDate || "—",
+                });
+            }
+            const curr = productAggMap.get(item.productId)!;
+            curr.totalQuantity += item.receivedQuantity;
+            curr.totalAmount += item.totalAmount;
+            curr.deliveriesCount += 1;
+            if (item.receiptDate && item.receiptDate !== "—") {
+                if (curr.latestReceiptDate === "—" || item.receiptDate > curr.latestReceiptDate) {
+                    curr.latestReceiptDate = item.receiptDate;
+                }
+            }
+        });
+    });
+
+    const productBreakdown = Array.from(productAggMap.values())
+        .map((p) => ({
+            ...p,
+            averageUnitPrice: p.totalQuantity > 0 ? p.totalAmount / p.totalQuantity : 0,
+        }))
+        .sort((a, b) => b.totalAmount - a.totalAmount);
+
     // Compute Timeline Trend
     const timelineMap = new Map<string, { date: string; ordered: number; received: number }>();
     filteredOrders.forEach((po) => {
@@ -377,9 +440,12 @@ export async function GET(req: NextRequest) {
                 pendingCount,
                 topSupplier: supplierBreakdown[0]?.supplierName || "N/A",
                 topSupplierAmount: supplierBreakdown[0]?.orderedAmount || 0,
+                topProduct: productBreakdown[0]?.productName || "N/A",
+                topProductAmount: productBreakdown[0]?.totalAmount || 0,
             },
             supplierBreakdown,
             branchDistribution,
+            productBreakdown,
             timeline,
             purchaseOrders: filteredOrders.sort((a, b) => b.poDate.localeCompare(a.poDate)),
             totalCount: filteredOrders.length,

@@ -8,6 +8,7 @@ import {
     FilterX,
     Building2,
     Store,
+    Package,
     Search,
     CheckCircle2,
 } from "lucide-react";
@@ -124,7 +125,7 @@ export const PurchaseReportFilters: React.FC<PurchaseReportFiltersProps> = ({
             </div>
 
             {/* Row 2: Selectors and Inputs */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-3">
                 {/* Start Date */}
                 <div className="space-y-1">
                     <label className="text-[11px] font-medium text-muted-foreground flex items-center gap-1">
@@ -197,10 +198,33 @@ export const PurchaseReportFilters: React.FC<PurchaseReportFiltersProps> = ({
                     </Select>
                 </div>
 
+                {/* Product Filter */}
+                <div className="space-y-1">
+                    <label className="text-[11px] font-medium text-muted-foreground flex items-center gap-1">
+                        <Package className="h-3 w-3" /> Product
+                    </label>
+                    <Select
+                        value={filters.productId}
+                        onValueChange={(val) => onChange((prev) => ({ ...prev, productId: val }))}
+                    >
+                        <SelectTrigger className="h-9 text-xs bg-background border-input">
+                            <SelectValue placeholder="All Products" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-popover text-popover-foreground border-border max-h-60">
+                            <SelectItem value="ALL">All Products</SelectItem>
+                            {lookups.products.map((p) => (
+                                <SelectItem key={p.id} value={String(p.id)}>
+                                    {p.name}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+
                 {/* Receiving Status Filter */}
                 <div className="space-y-1">
                     <label className="text-[11px] font-medium text-muted-foreground flex items-center gap-1">
-                        <CheckCircle2 className="h-3 w-3" /> Receiving Status
+                        <CheckCircle2 className="h-3 w-3" /> Status
                     </label>
                     <Select
                         value={filters.status}
@@ -221,11 +245,11 @@ export const PurchaseReportFilters: React.FC<PurchaseReportFiltersProps> = ({
                 {/* Search */}
                 <div className="space-y-1">
                     <label className="text-[11px] font-medium text-muted-foreground flex items-center gap-1">
-                        <Search className="h-3 w-3" /> Search Orders
+                        <Search className="h-3 w-3" /> Search
                     </label>
                     <Input
                         type="text"
-                        placeholder="PO #, reference, supplier..."
+                        placeholder="PO #, item, vendor..."
                         value={filters.searchQuery}
                         onChange={(e) => onChange((prev) => ({ ...prev, searchQuery: e.target.value }))}
                         className="h-9 text-xs bg-background border-input"
