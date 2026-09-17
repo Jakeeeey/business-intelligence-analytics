@@ -7,6 +7,7 @@ import {
     BarChart3,
     Building2,
     ShoppingBag,
+    Package,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -15,11 +16,13 @@ import { PurchaseReportFilters } from "./components/PurchaseReportFilters";
 import { PurchaseReportKpis } from "./components/PurchaseReportKpis";
 import { PurchaseReportCharts } from "./components/PurchaseReportCharts";
 import { SupplierBreakdownTable } from "./components/SupplierBreakdownTable";
+import { ProductBreakdownTable } from "./components/ProductBreakdownTable";
 import { PurchaseOrderTable } from "./components/PurchaseOrderTable";
 import { PurchaseOrderDetailModal } from "./components/PurchaseOrderDetailModal";
 import {
     exportPurchaseOrdersCsv,
     exportSupplierBreakdownCsv,
+    exportProductBreakdownCsv,
 } from "./utils/exportCsv";
 
 export default function PurchaseReportModule() {
@@ -50,6 +53,16 @@ export default function PurchaseReportModule() {
         supplierSortField,
         supplierSortOrder,
         handleSupplierSort,
+        sortedProducts,
+        paginatedProducts,
+        productPage,
+        setProductPage,
+        productPageSize,
+        setProductPageSize,
+        totalProductPages,
+        productSortField,
+        productSortOrder,
+        handleProductSort,
         loadData,
         resetFilters,
     } = usePurchaseReport();
@@ -59,6 +72,11 @@ export default function PurchaseReportModule() {
             exportSupplierBreakdownCsv(
                 sortedSuppliers,
                 `supplier_purchases_${filters.startDate || "all"}_to_${filters.endDate || "all"}.csv`
+            );
+        } else if (activeTab === "products") {
+            exportProductBreakdownCsv(
+                sortedProducts,
+                `product_purchases_${filters.startDate || "all"}_to_${filters.endDate || "all"}.csv`
             );
         } else {
             exportPurchaseOrdersCsv(
@@ -130,6 +148,14 @@ export default function PurchaseReportModule() {
                             </TabsTrigger>
 
                             <TabsTrigger
+                                value="products"
+                                className="text-xs font-semibold gap-1.5 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs rounded-lg px-3 py-1.5"
+                            >
+                                <Package className="h-3.5 w-3.5" />
+                                <span>Products ({reportData.productBreakdown?.length || 0})</span>
+                            </TabsTrigger>
+
+                            <TabsTrigger
                                 value="orders"
                                 className="text-xs font-semibold gap-1.5 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs rounded-lg px-3 py-1.5"
                             >
@@ -144,6 +170,7 @@ export default function PurchaseReportModule() {
                         <PurchaseReportCharts
                             timeline={reportData.timeline}
                             suppliers={reportData.supplierBreakdown}
+                            products={reportData.productBreakdown}
                             branches={reportData.branchDistribution}
                         />
                     </TabsContent>
@@ -157,6 +184,26 @@ export default function PurchaseReportModule() {
                             onSort={handleSupplierSort}
                             onSelectSupplier={(id) => {
                                 setFilters((prev) => ({ ...prev, supplierId: String(id) }));
+                                setActiveTab("orders");
+                            }}
+                        />
+                    </TabsContent>
+
+                    {/* Tab 3: Products Breakdown */}
+                    <TabsContent value="products" className="space-y-4 m-0 outline-none">
+                        <ProductBreakdownTable
+                            data={paginatedProducts}
+                            totalCount={sortedProducts.length}
+                            currentPage={productPage}
+                            pageSize={productPageSize}
+                            totalPages={totalProductPages}
+                            sortField={productSortField}
+                            sortOrder={productSortOrder}
+                            onSort={handleProductSort}
+                            onPageChange={setProductPage}
+                            onPageSizeChange={setProductPageSize}
+                            onSelectProduct={(id) => {
+                                setFilters((prev) => ({ ...prev, productId: String(id) }));
                                 setActiveTab("orders");
                             }}
                         />

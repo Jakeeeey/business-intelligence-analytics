@@ -17,16 +17,20 @@ import {
     Area,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Package, Award } from "lucide-react";
 import {
     BranchDistributionItem,
     PurchaseTimelineItem,
     SupplierBreakdownItem,
+    ProductBreakdownItem,
 } from "../types";
 
 interface PurchaseReportChartsProps {
     timeline: PurchaseTimelineItem[];
     suppliers: SupplierBreakdownItem[];
     branches: BranchDistributionItem[];
+    products?: ProductBreakdownItem[];
 }
 
 const PALETTE = ["#3b82f6", "#10b981", "#8b5cf6", "#f59e0b", "#ec4899", "#06b6d4", "#f97316", "#6366f1"];
@@ -37,10 +41,19 @@ function formatCompact(val: number): string {
     return `₱${val}`;
 }
 
+function formatCurrency(val: number): string {
+    return new Intl.NumberFormat("en-PH", {
+        style: "currency",
+        currency: "PHP",
+        maximumFractionDigits: 0,
+    }).format(val);
+}
+
 export const PurchaseReportCharts: React.FC<PurchaseReportChartsProps> = ({
     timeline,
     suppliers,
     branches,
+    products = [],
 }) => {
     // Top 8 Suppliers by Ordered Amount
     const topSuppliers = useMemo(() => {
@@ -52,6 +65,10 @@ export const PurchaseReportCharts: React.FC<PurchaseReportChartsProps> = ({
             fulfillment: s.fulfillmentRate,
         }));
     }, [suppliers]);
+
+    const topProducts = useMemo(() => {
+        return products.slice(0, 5);
+    }, [products]);
 
     return (
         <div className="space-y-4">
@@ -274,6 +291,81 @@ export const PurchaseReportCharts: React.FC<PurchaseReportChartsProps> = ({
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Row 3: Top Purchased Products Ranking */}
+            {topProducts.length > 0 && (
+                <Card className="border-border/70 bg-card/80 shadow-xs backdrop-blur-sm">
+                    <CardHeader className="pb-3">
+                        <div className="flex items-center gap-2">
+                            <div className="p-2 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400">
+                                <Package className="h-5 w-5" />
+                            </div>
+                            <div>
+                                <CardTitle className="text-base font-bold text-foreground">
+                                    Highest Value Products Received
+                                </CardTitle>
+                                <CardDescription className="text-xs text-muted-foreground">
+                                    Top items by total delivery value across all purchase orders
+                                </CardDescription>
+                            </div>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                        <div className="space-y-2.5">
+                            {topProducts.map((prod, index) => {
+                                const rank = index + 1;
+                                const isTop3 = rank <= 3;
+                                const rankBadgeClass =
+                                    rank === 1
+                                        ? "bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30"
+                                        : rank === 2
+                                        ? "bg-slate-400/20 text-slate-600 dark:text-slate-300 border-slate-400/30"
+                                        : rank === 3
+                                        ? "bg-amber-700/20 text-amber-700 dark:text-amber-500 border-amber-700/30"
+                                        : "bg-muted text-muted-foreground border-border/50";
+
+                                return (
+                                    <div
+                                        key={prod.productId}
+                                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-xl border border-border/50 bg-muted/10 hover:bg-muted/30 transition-colors"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div
+                                                className={`h-7 w-7 rounded-lg flex items-center justify-center font-bold text-xs border shrink-0 ${rankBadgeClass}`}
+                                            >
+                                                {isTop3 ? <Award className="h-3.5 w-3.5" /> : rank}
+                                            </div>
+                                            <div>
+                                                <p className="font-semibold text-sm text-foreground">
+                                                    {prod.productName}
+                                                </p>
+                                                <p className="text-xs text-muted-foreground font-mono">
+                                                    {prod.productCode && prod.productCode !== "—" ? prod.productCode : `ID: ${prod.productId}`}{" "}
+                                                    • {prod.totalQuantity.toLocaleString()} units • {prod.deliveriesCount} deliveries
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-3">
+                                            <div className="text-right">
+                                                <p className="text-sm font-bold font-mono text-emerald-600 dark:text-emerald-400">
+                                                    {formatCurrency(prod.totalAmount)}
+                                                </p>
+                                                <p className="text-[11px] text-muted-foreground font-mono">
+                                                    Avg: {formatCurrency(prod.averageUnitPrice)}/unit
+                                                </p>
+                                            </div>
+                                            <Badge variant="secondary" className="font-mono text-xs hidden sm:inline-flex">
+                                                {prod.deliveriesCount} POs
+                                            </Badge>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
         </div>
     );
 };

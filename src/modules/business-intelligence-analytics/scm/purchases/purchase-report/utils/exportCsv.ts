@@ -1,4 +1,8 @@
-import { PurchaseOrderItem, SupplierBreakdownItem } from "../types";
+import {
+    PurchaseOrderItem,
+    SupplierBreakdownItem,
+    ProductBreakdownItem,
+} from "../types";
 
 export function exportPurchaseOrdersCsv(items: PurchaseOrderItem[], filename = "purchase_orders_report.csv") {
     if (items.length === 0) return;
@@ -60,6 +64,33 @@ export function exportSupplierBreakdownCsv(items: SupplierBreakdownItem[], filen
         i.receivedAmount.toFixed(2),
         i.pendingAmount.toFixed(2),
         i.fulfillmentRate.toFixed(2),
+    ]);
+
+    const csvContent = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    downloadBlob(csvContent, filename);
+}
+
+export function exportProductBreakdownCsv(items: ProductBreakdownItem[], filename = "products_purchased_summary.csv") {
+    if (items.length === 0) return;
+
+    const headers = [
+        "Product Name",
+        "Product Code",
+        "Total Quantity Received",
+        "Average Unit Price (PHP)",
+        "Total Amount Received (PHP)",
+        "Deliveries Count",
+        "Latest Receipt Date",
+    ];
+
+    const rows = items.map((i) => [
+        `"${(i.productName || "").replace(/"/g, '""')}"`,
+        `"${(i.productCode || "").replace(/"/g, '""')}"`,
+        i.totalQuantity,
+        i.averageUnitPrice.toFixed(2),
+        i.totalAmount.toFixed(2),
+        i.deliveriesCount,
+        i.latestReceiptDate,
     ]);
 
     const csvContent = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");

@@ -51,6 +51,7 @@ export function usePurchaseReport() {
         endDate: defaultRange.endDate,
         supplierId: "ALL",
         branchId: "ALL",
+        productId: "ALL",
         status: "ALL",
         searchQuery: "",
     });
@@ -63,6 +64,7 @@ export function usePurchaseReport() {
     const [lookups, setLookups] = useState<PurchaseReportLookups>({
         suppliers: [],
         branches: [],
+        products: [],
     });
 
     const [reportData, setReportData] = useState<PurchaseReportResponse | null>(null);
@@ -79,6 +81,12 @@ export function usePurchaseReport() {
     // Sorting for Supplier Breakdown table
     const [supplierSortField, setSupplierSortField] = useState<"orderedAmount" | "receivedAmount" | "fulfillmentRate" | "poCount">("orderedAmount");
     const [supplierSortOrder, setSupplierSortOrder] = useState<"asc" | "desc">("desc");
+
+    // Sorting and pagination for Products table
+    const [productSortField, setProductSortField] = useState<"totalAmount" | "totalQuantity" | "productName">("totalAmount");
+    const [productSortOrder, setProductSortOrder] = useState<"asc" | "desc">("desc");
+    const [productPage, setProductPage] = useState<number>(1);
+    const [productPageSize, setProductPageSize] = useState<number>(15);
 
     // Load lookups on mount
     useEffect(() => {
@@ -103,6 +111,7 @@ export function usePurchaseReport() {
             const data = await fetchPurchaseReport(filters);
             setReportData(data);
             setPoPage(1);
+            setProductPage(1);
         } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : "Failed to load purchase report";
             setError(msg);
@@ -129,6 +138,7 @@ export function usePurchaseReport() {
             endDate,
             supplierId: "ALL",
             branchId: "ALL",
+            productId: "ALL",
             status: "ALL",
             searchQuery: "",
         });
@@ -198,6 +208,48 @@ export function usePurchaseReport() {
         }
     };
 
+    // Filtered & Sorted Products
+    const sortedProducts = useMemo(() => {
+        if (!reportData?.productBreakdown) return [];
+        const q = filters.searchQuery.trim().toLowerCase();
+        let items = reportData.productBreakdown;
+
+        if (q) {
+            items = items.filter(
+                (p) =>
+                    p.productName.toLowerCase().includes(q) ||
+                    p.productCode.toLowerCase().includes(q)
+            );
+        }
+
+        return [...items].sort((a, b) => {
+            const valA = a[productSortField];
+            const valB = b[productSortField];
+            if (typeof valA === "number" && typeof valB === "number") {
+                return productSortOrder === "asc" ? valA - valB : valB - valA;
+            }
+            return productSortOrder === "asc"
+                ? String(valA).localeCompare(String(valB))
+                : String(valB).localeCompare(String(valA));
+        });
+    }, [reportData?.productBreakdown, filters.searchQuery, productSortField, productSortOrder]);
+
+    const paginatedProducts = useMemo(() => {
+        const start = (productPage - 1) * productPageSize;
+        return sortedProducts.slice(start, start + productPageSize);
+    }, [sortedProducts, productPage, productPageSize]);
+
+    const totalProductPages = Math.max(1, Math.ceil(sortedProducts.length / productPageSize));
+
+    const handleProductSort = (field: "totalAmount" | "totalQuantity" | "productName") => {
+        if (productSortField === field) {
+            setProductSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+        } else {
+            setProductSortField(field);
+            setProductSortOrder("desc");
+        }
+    };
+
     return {
         filters,
         setFilters,
@@ -225,6 +277,16 @@ export function usePurchaseReport() {
         supplierSortField,
         supplierSortOrder,
         handleSupplierSort,
+        sortedProducts,
+        paginatedProducts,
+        productPage,
+        setProductPage,
+        productPageSize,
+        setProductPageSize,
+        totalProductPages,
+        productSortField,
+        productSortOrder,
+        handleProductSort,
         loadData,
         resetFilters,
     };

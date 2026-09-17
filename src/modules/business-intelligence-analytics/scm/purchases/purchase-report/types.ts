@@ -48,6 +48,17 @@ export interface SupplierBreakdownItem {
     fulfillmentRate: number;
 }
 
+export interface ProductBreakdownItem {
+    productId: number;
+    productName: string;
+    productCode: string;
+    totalQuantity: number;
+    totalAmount: number;
+    averageUnitPrice: number;
+    deliveriesCount: number;
+    latestReceiptDate: string;
+}
+
 export interface BranchDistributionItem {
     branchId: number;
     branchName: string;
@@ -74,17 +85,21 @@ export interface PurchaseReportKpis {
     pendingCount: number;
     topSupplier: string;
     topSupplierAmount: number;
+    topProduct: string;
+    topProductAmount: number;
 }
 
 export interface PurchaseReportLookups {
     suppliers: Array<{ id: number; name: string }>;
     branches: Array<{ id: number; name: string; code: string }>;
+    products: Array<{ id: number; name: string; code: string }>;
 }
 
 export interface PurchaseReportResponse {
     kpis: PurchaseReportKpis;
     supplierBreakdown: SupplierBreakdownItem[];
     branchDistribution: BranchDistributionItem[];
+    productBreakdown: ProductBreakdownItem[];
     timeline: PurchaseTimelineItem[];
     purchaseOrders: PurchaseOrderItem[];
     totalCount: number;
@@ -95,6 +110,7 @@ export interface PurchaseReportFiltersState {
     endDate: string;
     supplierId: string;
     branchId: string;
+    productId: string;
     status: string;
     searchQuery: string;
 }
