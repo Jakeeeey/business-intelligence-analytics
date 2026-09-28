@@ -19,8 +19,8 @@ export function DetailedTable({ rows, summary }: DetailedTableProps) {
           <tr>
             <th className="px-6 py-4 font-medium">Supplier</th>
             <th className="px-6 py-4 font-medium">Date</th>
-            <th className="px-6 py-4 font-medium text-right">SO</th>
             <th className="px-6 py-4 font-medium text-right">PO</th>
+            <th className="px-6 py-4 font-medium text-right">SO</th>
             <th className="px-6 py-4 font-medium text-right">PDP</th>
             <th className="px-6 py-4 font-medium text-right">CLDTO</th>
             <th className="px-6 py-4 font-medium text-right">DP</th>
