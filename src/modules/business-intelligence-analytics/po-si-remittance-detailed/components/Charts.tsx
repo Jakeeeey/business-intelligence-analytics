@@ -10,8 +10,8 @@ export function Charts({ summary }: ChartsProps) {
   if (!summary) return null;
 
   const volumeData = [
-    { name: 'SO', value: summary.totalPoAmount, fill: '#3b82f6' },
-    { name: 'PO', value: summary.totalCustomerPoAmount, fill: '#f59e0b' },
+    { name: 'PO', value: summary.totalPoAmount, fill: '#3b82f6' },
+    { name: 'SO', value: summary.totalCustomerPoAmount, fill: '#f59e0b' },
     { name: 'PDP', value: summary.totalAllocatedAmount, fill: '#06b6d4' },
     { name: 'CLDTO', value: summary.totalCldtoAmount, fill: '#14b8a6' },
     { name: 'DP', value: summary.totalSiAmount, fill: '#84cc16' },
