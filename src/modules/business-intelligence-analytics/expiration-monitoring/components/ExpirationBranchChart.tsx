@@ -43,6 +43,10 @@ export function ExpirationBranchChart({ data }: ExpirationBranchChartProps) {
     return sortedArray;
   }, [data]);
 
+  const totalValue = React.useMemo(() => {
+    return chartData.reduce((acc, item) => acc + item.value, 0);
+  }, [chartData]);
+
   const COLORS = [
     "hsl(var(--primary))",
     "hsl(var(--destructive))",
@@ -91,16 +95,23 @@ export function ExpirationBranchChart({ data }: ExpirationBranchChartProps) {
                 textTransform: 'uppercase'
               }}
               itemStyle={{ color: 'hsl(var(--foreground))' }}
-              formatter={(value: number) => [
-                new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }).format(value),
-                "Total Cost"
-              ]}
+              formatter={(value: number) => {
+                const currency = new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }).format(value);
+                const pct = totalValue > 0 ? ((value / totalValue) * 100).toFixed(1) : "0.0";
+                return [`${currency} (${pct}%)`, "Total Cost"];
+              }}
             />
             <Legend 
               verticalAlign="bottom" 
               height={36} 
               iconType="circle"
               wrapperStyle={{ fontSize: '10px', fontWeight: 'bold' }}
+              formatter={(value: string) => {
+                const item = chartData.find((d) => d.name === value);
+                const itemVal = item ? item.value : 0;
+                const pct = totalValue > 0 ? ((itemVal / totalValue) * 100).toFixed(1) : "0.0";
+                return `${value} (${pct}%)`;
+              }}
             />
           </PieChart>
         </ResponsiveContainer>
