@@ -139,6 +139,7 @@ export function usePOSIRemittanceDetailed() {
     let totalPoAmount = 0;
     let totalCustomerPoAmount = 0;
     let totalAllocatedAmount = 0;
+    let totalCldtoAmount = 0;
     let totalSiAmount = 0;
     let totalRemittanceAmount = 0;
     let totalUnfulfilledAmount = 0;
@@ -155,17 +156,19 @@ export function usePOSIRemittanceDetailed() {
         const poAmount = Number(item.poAmount) || 0;
         const customerPoAmount = Number(item.customerPoAmount) || 0;
         const allocatedAmount = Number(item.allocatedAmount) || 0;
+        const cldtoAmount = Number(item.cldtoAmount) || 0;
         const siAmount = Number(item.siAmount) || 0;
         const remittanceAmount = Number(item.remittanceAmount) || 0;
         const unfulfilledAmount = Number(item.unfulfilledAmount) || 0;
         const returnAmount = Number(item.returnAmount) || 0;
         const shortage = Number(item.shortage) || 0;
 
-        const variance = poAmount - remittanceAmount;
+        const variance = remittanceAmount - customerPoAmount;
 
         totalPoAmount += poAmount;
         totalCustomerPoAmount += customerPoAmount;
         totalAllocatedAmount += allocatedAmount;
+        totalCldtoAmount += cldtoAmount;
         totalSiAmount += siAmount;
         totalRemittanceAmount += remittanceAmount;
         totalUnfulfilledAmount += unfulfilledAmount;
@@ -178,6 +181,7 @@ export function usePOSIRemittanceDetailed() {
           poAmount,
           customerPoAmount,
           allocatedAmount,
+          cldtoAmount,
           siAmount,
           remittanceAmount,
           unfulfilledAmount,
@@ -194,6 +198,7 @@ export function usePOSIRemittanceDetailed() {
         totalPoAmount,
         totalCustomerPoAmount,
         totalAllocatedAmount,
+        totalCldtoAmount,
         totalSiAmount,
         totalRemittanceAmount,
         totalUnfulfilledAmount,
