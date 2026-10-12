@@ -80,6 +80,10 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    if (records.length > 0) {
+      // First record logged here previously
+    }
+
     return NextResponse.json(records);
   } catch (error: unknown) {
     const msg =

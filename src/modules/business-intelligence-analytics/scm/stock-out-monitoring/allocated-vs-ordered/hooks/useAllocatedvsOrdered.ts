@@ -10,6 +10,7 @@ import type {
   AllocationByPeriod,
   ProductAllocationSummary,
   SupplierAllocationSummary,
+  CustomerAllocationSummary,
   OrderAllocationSummary,
   Granularity,
   DateRangePreset,
@@ -581,6 +582,66 @@ export function useAllocatedvsOrdered() {
     }));
   }, [filteredData]);
 
+  // ── Customer summaries ────────────────────────────────────────────────────
+  const customerSummaries = React.useMemo<CustomerAllocationSummary[]>(() => {
+    const map = new Map<
+      string,
+      Omit<
+        CustomerAllocationSummary,
+        "rank" | "percentShare" | "allocationRate"
+      > & { orderIds: Set<number> }
+    >();
+
+    for (const r of filteredData) {
+      const cId = r.customerCode || r.customer_code || "UNKNOWN";
+      const cName = r.customerName || r.customer_name || "Unknown Customer";
+      const lineGap = getDerivedGap(r);
+      const e = map.get(cId);
+      if (e) {
+        e.totalOrdered += r.orderedQuantity;
+        e.totalAllocated += r.allocatedQuantity;
+        e.allocationGap += lineGap;
+        e.netAmount += r.netAmount;
+        e.orderIds.add(r.orderId);
+      } else {
+        map.set(cId, {
+          customerCode: cId,
+          customerName: cName,
+          totalOrdered: r.orderedQuantity,
+          totalAllocated: r.allocatedQuantity,
+          allocationGap: lineGap,
+          orderCount: 1,
+          netAmount: r.netAmount,
+          orderIds: new Set([r.orderId]),
+        });
+      }
+    }
+
+    const list = [...map.values()].map((c) => ({
+      customerCode: c.customerCode,
+      customerName: c.customerName,
+      totalOrdered: c.totalOrdered,
+      totalAllocated: c.totalAllocated,
+      allocationGap: c.allocationGap,
+      allocationRate:
+        c.totalOrdered > 0 ? (c.totalAllocated / c.totalOrdered) * 100 : 0,
+      orderCount: c.orderIds.size,
+      netAmount: c.netAmount,
+      rank: 0,
+      percentShare: 0,
+    }));
+
+    list.sort((a, b) => b.allocationGap - a.allocationGap);
+    const totalGap = list.reduce((s, p) => s + p.allocationGap, 0);
+
+    return list.map((c, i) => ({
+      ...c,
+      rank: i + 1,
+      percentShare: totalGap > 0 ? (c.allocationGap / totalGap) * 100 : 0,
+    }));
+  }, [filteredData]);
+
+
   // ── Canonical order summaries (deduplicated) ──────────────────────────────
   const orderSummaries = React.useMemo<OrderAllocationSummary[]>(() => {
     const map = new Map<
@@ -829,6 +890,7 @@ export function useAllocatedvsOrdered() {
     kpis,
     productSummaries,
     supplierSummaries,
+    customerSummaries,
     orderSummaries,
     shortageSummaries,
     allocationByPeriod,

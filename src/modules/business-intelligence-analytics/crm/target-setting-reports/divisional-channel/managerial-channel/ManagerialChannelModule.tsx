@@ -51,7 +51,7 @@ function ManagerialSupplierContent() {
     // Store Type Detail Modal State
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
-    const salesmanDetailData = useMemo(() => {
+    const channelDetailData = useMemo(() => {
         if (!selectedChannel) return [];
         return rawData.filter(d =>
             (d.storeTypeLabel || "Unknown Store Type").toUpperCase() === (selectedChannel || "").toUpperCase() &&
@@ -59,8 +59,12 @@ function ManagerialSupplierContent() {
         );
     }, [rawData, selectedChannel, selectedDivision]);
 
-    const [channelTargets, setChannelTargets] = useState<Record<string, number>>({});
+    const handleChannelClick = (channelName: string) => {
+        setSelectedChannel(channelName);
+        setIsDetailModalOpen(true);
+    };
 
+    const [channelTargets, setChannelTargets] = useState<Record<string, number>>({});
     // Fetch Channel (Store Type) targets for the Division
     useEffect(() => {
         const loadTargets = async () => {
@@ -135,7 +139,6 @@ function ManagerialSupplierContent() {
             divisionSummary: { totalActual, totalTarget, achievement: totalTarget > 0 ? (totalActual / totalTarget) * 100 : 0 }
         };
     }, [rawData, selectedDivision, channelTargets]);
-
 
     const formatPHP = (val: number) => new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 0 }).format(val);
     const formatShort = (val: number) => {
@@ -272,10 +275,8 @@ function ManagerialSupplierContent() {
                                 layout="vertical" 
                                 margin={{ left: 20, right: 100, bottom: 20 }}
                                 onClick={(data) => {
-                                    if (data && data.activePayload) {
-                                        const channelName = data.activePayload[0].payload.name;
-                                        setSelectedChannel(channelName);
-                                        setIsDetailModalOpen(true);
+                                    if (data && data.activePayload && data.activePayload.length) {
+                                        handleChannelClick(data.activePayload[0].payload.name);
                                     }
                                 }}
                                 style={{ cursor: 'pointer' }}
@@ -386,10 +387,7 @@ function ManagerialSupplierContent() {
                                     <div 
                                         key={i} 
                                         className="group relative p-4 rounded-2xl border border-border/40 bg-muted/5 hover:bg-primary/5 hover:border-primary/20 transition-all duration-300 cursor-pointer overflow-hidden"
-                                        onClick={() => {
-                                            setSelectedChannel(item.name);
-                                            setIsDetailModalOpen(true);
-                                        }}
+                                        onClick={() => handleChannelClick(item.name)}
                                     >
                                         {/* Background Decoration */}
                                         <div className="absolute -right-4 -bottom-4 opacity-[0.03] group-hover:opacity-[0.08] transition-opacity">
@@ -450,10 +448,10 @@ function ManagerialSupplierContent() {
                     setIsDetailModalOpen(false);
                     setSelectedChannel(null);
                 }}
-                data={salesmanDetailData}
-                ids={Array.from(new Set(salesmanDetailData.map(d => Number(d.salesmanId)).filter(Boolean)))}
+                data={channelDetailData}
+                ids={Array.from(new Set(channelDetailData.map(d => Number(d.salesmanId)).filter(Boolean)))}
                 channelName={selectedChannel || ""}
-                supplierName=""
+                supplierName="ALL SUPPLIERS"
                 periodLabel={`${fromMonth} to ${toMonth}`}
                 startDate={format(startOfMonth(parseISO(fromMonth + "-01")), "yyyy-MM-dd")}
                 endDate={format(endOfMonth(parseISO(toMonth + "-01")), "yyyy-MM-dd")}

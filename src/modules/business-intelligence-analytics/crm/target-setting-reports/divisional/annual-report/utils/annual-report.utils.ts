@@ -33,7 +33,7 @@ export function aggregateMonthlyData(
 
   for (const t of sales) {
     try {
-      const date = parseISO(t.invoiceDate);
+      const date = parseISO(t.invoiceDate ?? "");
       const key = `${date.getFullYear()}-${date.getMonth() + 1}`;
       const entry = monthlyMap.get(key) ?? { sales: 0, purchases: 0 };
       entry.sales += t.totalInvoiceAmount;
@@ -45,7 +45,7 @@ export function aggregateMonthlyData(
 
   for (const t of purchases) {
     try {
-      const date = parseISO(t.receiptDate);
+      const date = parseISO(t.receiptDate ?? "");
       const key = `${date.getFullYear()}-${date.getMonth() + 1}`;
       const entry = monthlyMap.get(key) ?? { sales: 0, purchases: 0 };
       entry.purchases += t.totalReceiptAmount;
@@ -158,7 +158,7 @@ export function filterSalesByCustomer(
 ): SalesTransaction[] {
   if (!customerName) return transactions;
   return transactions.filter((t) =>
-    t.customerName.toLowerCase().includes(customerName.toLowerCase()),
+    t.customerName?.toLowerCase().includes(customerName.toLowerCase()) ?? false,
   );
 }
 
@@ -174,7 +174,7 @@ export function filterPurchasesBySupplier(
 ): PurchaseTransaction[] {
   if (!supplierName) return transactions;
   return transactions.filter((t) =>
-    t.supplierName.toLowerCase().includes(supplierName.toLowerCase()),
+    t.supplierName?.toLowerCase().includes(supplierName.toLowerCase()) ?? false,
   );
 }
 

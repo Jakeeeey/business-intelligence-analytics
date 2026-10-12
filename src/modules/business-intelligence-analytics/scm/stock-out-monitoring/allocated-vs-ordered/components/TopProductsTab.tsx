@@ -694,20 +694,20 @@ export function TopProductsTab({ productSummaries, filteredData }: Props) {
             {/* table-layout: fixed prevents column width shifting on sort */}
             <table className="w-full text-sm" style={{ tableLayout: "fixed" }}>
               <colgroup>
-                <col style={{ width: 36 }} /> {/* expand */}
-                <col style={{ width: 230 }} /> {/* Product */}
-                <col style={{ width: 120 }} /> {/* Brand */}
-                <col style={{ width: 120 }} /> {/* Category */}
-                <col style={{ width: 64 }} /> {/* Unit */}
-                <col style={{ width: 90 }} /> {/* Ordered */}
-                <col style={{ width: 90 }} /> {/* Allocated */}
-                <col style={{ width: 80 }} /> {/* Gap */}
-                <col style={{ width: 80 }} /> {/* Rate */}
-                <col style={{ width: 110 }} /> {/* Net Amount */}
+                <col style={{ width: 36 }} />
+                <col style={{ width: 230 }} />
+                <col style={{ width: 120 }} />
+                <col style={{ width: 120 }} />
+                <col style={{ width: 64 }} />
+                <col style={{ width: 90 }} />
+                <col style={{ width: 90 }} />
+                <col style={{ width: 80 }} />
+                <col style={{ width: 80 }} />
+                <col style={{ width: 110 }} />
               </colgroup>
               <thead>
                 <tr className="border-b  bg-muted/30">
-                  <th className="py-3 pl-3" /> {/* expand col */}
+                  <th className="py-3 pl-3" />
                   <th
                     className="py-3 pl-4 px-2 text-left font-medium text-muted-foreground cursor-pointer hover:text-foreground select-none"
                     onClick={() => handleSort("productName")}
@@ -810,7 +810,6 @@ export function TopProductsTab({ productSummaries, filteredData }: Props) {
                   const lines = linesByProduct.get(row.productId) ?? [];
                   return (
                     <React.Fragment key={row.productId}>
-                      {/* ── Parent row ── */}
                       <tr
                         className={[
                           "border-b dark:border-zinc-800 hover:bg-muted/30 transition-colors cursor-pointer select-none",
@@ -890,7 +889,6 @@ export function TopProductsTab({ productSummaries, filteredData }: Props) {
                         </td>
                       </tr>
 
-                      {/* ── Expanded order lines ── */}
                       {isExpanded && (
                         <tr className="border-b dark:border-zinc-800 bg-muted/10">
                           <td colSpan={10} className="p-0">
@@ -900,20 +898,15 @@ export function TopProductsTab({ productSummaries, filteredData }: Props) {
                                 style={{ tableLayout: "fixed", minWidth: 700 }}
                               >
                                 <colgroup>
-                                  <col style={{ width: 100 }} /> {/* Brand */}
-                                  <col style={{ width: 110 }} />{" "}
-                                  {/* Category */}
-                                  <col style={{ width: 200 }} />{" "}
-                                  {/* Product Name */}
-                                  <col style={{ width: 55 }} /> {/* Unit */}
-                                  <col style={{ width: 90 }} />{" "}
-                                  {/* Net Price */}
-                                  <col style={{ width: 65 }} /> {/* Ordered */}
-                                  <col style={{ width: 65 }} />{" "}
-                                  {/* Allocated */}
-                                  <col style={{ width: 55 }} /> {/* Gap */}
-                                  <col style={{ width: 100 }} />{" "}
-                                  {/* Variance Amount */}
+                                  <col style={{ width: 100 }} />
+                                  <col style={{ width: 110 }} />
+                                  <col style={{ width: 200 }} />
+                                  <col style={{ width: 55 }} />
+                                  <col style={{ width: 90 }} />
+                                  <col style={{ width: 65 }} />
+                                  <col style={{ width: 65 }} />
+                                  <col style={{ width: 55 }} />
+                                  <col style={{ width: 100 }} />
                                 </colgroup>
                                 <thead>
                                   <tr className="border-b  text-muted-foreground">

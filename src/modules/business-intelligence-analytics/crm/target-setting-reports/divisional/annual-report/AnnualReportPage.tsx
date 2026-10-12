@@ -26,6 +26,7 @@ export default function AnnualReportPage() {
     if (filters.dateTo) params.dateTo = filters.dateTo;
     if (filters.customerName) params.customerName = filters.customerName;
     if (filters.supplierName) params.supplierName = filters.supplierName;
+    if (filters.categoryName) params.categoryName = filters.categoryName;
     if (filters.year) params.year = filters.year;
     if (filters.month) params.month = filters.month;
     return params;
@@ -37,6 +38,7 @@ export default function AnnualReportPage() {
   const summary = useMemo(() => data?.summary, [data]);
   const customers = useMemo(() => data?.customers ?? [], [data]);
   const suppliers = useMemo(() => data?.suppliers ?? [], [data]);
+  const categories = useMemo(() => data?.categories ?? [], [data]);
   const salesTransactions = useMemo(() => data?.salesTransactions ?? [], [data]);
   const purchaseTransactions = useMemo(() => data?.purchaseTransactions ?? [], [data]);
 
@@ -74,7 +76,7 @@ export default function AnnualReportPage() {
           </p>
         </div>
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full sm:w-auto">
-          <AnnualReportFilters customers={customers} suppliers={suppliers} />
+          <AnnualReportFilters customers={customers} suppliers={suppliers} categories={categories} />
           <Button
             variant="ghost"
             size="icon"

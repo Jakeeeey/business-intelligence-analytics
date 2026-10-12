@@ -1,10 +1,12 @@
 import { z } from "zod";
 
 export const SalesTransactionSchema = z.object({
-  invoiceNo: z.string(),
-  invoiceDate: z.string(),
-  customerName: z.string(),
+  invoiceNo: z.string().optional(),
+  invoiceDate: z.string().optional(),
+  customerName: z.string().optional(),
+  productName: z.string().optional(),
   totalInvoiceAmount: z.number(),
+  productCategory: z.string().optional(),
 });
 
 export type SalesTransaction = z.infer<typeof SalesTransactionSchema>;
@@ -56,6 +58,7 @@ export const DashboardResponseSchema = z.object({
   purchaseTransactions: z.array(PurchaseTransactionSchema).optional(),
   customers: z.array(z.string()).optional(),
   suppliers: z.array(z.string()).optional(),
+  categories: z.array(z.string()).optional(),
 });
 
 export type DashboardResponse = z.infer<typeof DashboardResponseSchema>;
@@ -66,6 +69,7 @@ export const AnnualReportFiltersSchema = z.object({
   customerName: z.string().optional(),
   supplierName: z.string().optional(),
   year: z.string().optional(),
+  categoryName: z.string().optional(),
 });
 
 export type AnnualReportFilters = z.infer<typeof AnnualReportFiltersSchema>;

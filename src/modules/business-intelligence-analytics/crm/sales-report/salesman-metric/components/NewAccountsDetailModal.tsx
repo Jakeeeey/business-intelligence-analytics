@@ -121,7 +121,7 @@ export function NewAccountsDetailModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[750px] w-full max-h-[90vh] flex flex-col overflow-hidden bg-background/95 backdrop-blur-xl border-border/40 shadow-2xl p-6">
+      <DialogContent className="sm:max-w-fit sm:min-w-[750px] max-w-[95vw] w-full max-h-[90vh] flex flex-col overflow-hidden bg-background/95 backdrop-blur-xl border-border/40 shadow-2xl p-6">
         <DialogHeader className="border-b border-border/40 pb-4 flex-shrink-0">
           <div className="flex justify-between items-start pr-6">
             <div>
@@ -152,23 +152,23 @@ export function NewAccountsDetailModal({
         ) : (
           <>
             <div className="grid grid-cols-2 gap-4 my-4 flex-shrink-0">
-              <Card className="bg-card/30 border-muted/40 shadow-sm backdrop-blur-sm">
-                <CardHeader className="py-2.5 px-4">
+              <Card className="bg-card/30 border-muted/40 shadow-sm backdrop-blur-sm py-2 gap-1">
+                <CardHeader className="py-2 px-3">
                   <CardTitle className="text-[9px] font-black text-muted-foreground uppercase tracking-[0.2em]">New Registrations</CardTitle>
                 </CardHeader>
-                <CardContent className="px-4 pb-2.5">
+                <CardContent className="px-3 pb-2">
                   <div className="text-2xl font-black text-primary tracking-tighter">
                     {accounts.length}
                   </div>
                 </CardContent>
               </Card>
-              <Card className="bg-card/30 border-muted/40 shadow-sm backdrop-blur-sm">
-                <CardHeader className="py-2.5 px-4">
+              <Card className="bg-card/30 border-muted/40 shadow-sm backdrop-blur-sm py-2 gap-1">
+                <CardHeader className="py-2 px-3">
                   <CardTitle className="text-[9px] font-black text-muted-foreground uppercase tracking-[0.2em] flex items-center gap-2">
                     <Milestone className="h-3 w-3 text-primary" /> Latest Entry
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="px-4 pb-2.5">
+                <CardContent className="px-3 pb-2">
                   <div className="text-sm font-black tracking-tight text-foreground">
                     {accounts.length > 0 ? accounts[0].customerName : "N/A"}
                   </div>
@@ -216,7 +216,7 @@ export function NewAccountsDetailModal({
                         <TableCell className="py-3">
                           <span className="text-xs text-muted-foreground/85 flex items-center gap-1 font-medium">
                             <MapPin className="h-3.5 w-3.5 text-muted-foreground/60 flex-shrink-0" />
-                            <span className="truncate max-w-[150px]">
+                            <span>
                               {[item.city, item.province].filter(Boolean).join(", ") || "N/A"}
                             </span>
                           </span>

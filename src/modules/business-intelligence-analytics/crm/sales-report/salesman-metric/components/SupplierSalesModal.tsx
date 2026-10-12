@@ -92,7 +92,7 @@ export function SupplierSalesModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px] w-full max-h-[85vh] flex flex-col overflow-hidden bg-background/95 backdrop-blur-xl border-border/40 shadow-2xl p-6">
+      <DialogContent className="sm:max-w-fit sm:min-w-[600px] max-w-[95vw] w-full max-h-[85vh] flex flex-col overflow-hidden bg-background/95 backdrop-blur-xl border-border/40 shadow-2xl p-6">
         <DialogHeader className="border-b border-border/40 pb-4 flex-shrink-0">
           <div className="flex justify-between items-start pr-6">
             <div>
@@ -123,24 +123,24 @@ export function SupplierSalesModal({
         ) : (
           <>
             <div className="grid grid-cols-2 gap-4 my-4 flex-shrink-0">
-              <Card className="bg-card/30 border-muted/40 shadow-sm backdrop-blur-sm">
-                <CardHeader className="py-2.5 px-4">
+              <Card className="bg-card/30 border-muted/40 shadow-sm backdrop-blur-sm py-2 gap-1">
+                <CardHeader className="py-2 px-3">
                   <CardTitle className="text-[9px] font-black text-muted-foreground uppercase tracking-[0.2em]">Total Sales</CardTitle>
                 </CardHeader>
-                <CardContent className="px-4 pb-2.5">
+                <CardContent className="px-3 pb-2">
                   <div className="text-2xl font-black text-emerald-500 tracking-tighter">
                     {formatPHP(totalSales)}
                   </div>
                 </CardContent>
               </Card>
-              <Card className="bg-card/30 border-muted/40 shadow-sm backdrop-blur-sm">
-                <CardHeader className="py-2.5 px-4">
+              <Card className="bg-card/30 border-muted/40 shadow-sm backdrop-blur-sm py-2 gap-1">
+                <CardHeader className="py-2 px-3">
                   <CardTitle className="text-[9px] font-black text-muted-foreground uppercase tracking-[0.2em] flex items-center gap-2">
                     <TrendingUp className="h-3 w-3 text-primary" /> Top Supplier
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="px-4 pb-2.5">
-                  <div className="text-sm font-black tracking-tight text-foreground truncate max-w-[200px]">
+                <CardContent className="px-3 pb-2">
+                  <div className="text-2xl font-black tracking-tight text-foreground">
                     {data.length > 0 ? data[0].supplierName : "N/A"}
                   </div>
                 </CardContent>

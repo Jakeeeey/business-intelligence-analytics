@@ -10,6 +10,7 @@ import { KpiCards } from "./components/KpiCards";
 import { OverviewTab } from "./components/OverviewTab";
 import { TopProductsTab } from "./components/TopProductsTab";
 import { SuppliersTab } from "./components/SuppliersTab";
+import { CustomersTab } from "./components/CustomersTab";
 import { OrdersTab } from "./components/OrdersTab";
 
 export default function AllocatedvsOrderedModule() {
@@ -73,9 +74,10 @@ export default function AllocatedvsOrderedModule() {
               onValueChange={setActiveTab}
               className="space-y-4"
             >
-              <TabsList className="grid w-full grid-cols-4 ">
+              <TabsList className="grid w-full grid-cols-5 ">
                 <TabsTrigger value="overview">Allocation Overview</TabsTrigger>
                 <TabsTrigger value="suppliers">Supplier Allocation</TabsTrigger>
+                <TabsTrigger value="customers">Customer Allocation</TabsTrigger>
                 <TabsTrigger value="products">Product Allocation</TabsTrigger>
                 <TabsTrigger value="orders">Allocation Details</TabsTrigger>
               </TabsList>
@@ -97,6 +99,13 @@ export default function AllocatedvsOrderedModule() {
               <TabsContent value="suppliers">
                 <SuppliersTab
                   supplierSummaries={hook.supplierSummaries}
+                  allRecords={hook.filteredData}
+                />
+              </TabsContent>
+
+              <TabsContent value="customers">
+                <CustomersTab
+                  customerSummaries={hook.customerSummaries}
                   allRecords={hook.filteredData}
                 />
               </TabsContent>

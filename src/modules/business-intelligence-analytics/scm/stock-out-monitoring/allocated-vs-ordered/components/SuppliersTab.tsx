@@ -964,7 +964,6 @@ export function SuppliersTab({ supplierSummaries, allRecords }: Props) {
                           ₱{numFmt(row.netAmount)}
                         </td>
                       </tr>
-                      {/* ── Drill-down row ── */}
                       {drillDownSupplier === row.supplierName && (
                         <tr
                           key={`drill-${row.supplierId}`}

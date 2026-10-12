@@ -76,6 +76,9 @@ export default async function Page() {
     const token = cookieStore.get(COOKIE_NAME)?.value ?? null;
 
     const headerUser = buildHeaderUserFromToken(token);
+    const payload = token ? decodeJwtPayload(token) : null;
+    const isAdmin = payload?.role === "ADMIN";
+    const userId = payload?.sub ? String(payload.sub) : "";
 
     return (
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
@@ -119,7 +122,7 @@ export default async function Page() {
             </header>
 
             <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-2 sm:p-4">
-                <SalesmanMetricModule />
+                <SalesmanMetricModule isAdmin={isAdmin} userId={userId} />
             </main>
         </div>
     );

@@ -47,7 +47,7 @@ export type UpsertSalesmanAllocationPayload = {
   salesman_id: number;
   target_amount: number;
   status: StatusCode;
-  // server injects ts_supervisor_id
+  tss_id?: number; // server injects ts_supervisor_id, but uses tss_id to find the right target
 };
 
 /* -------- Hierarchy log (NEW) -------- */

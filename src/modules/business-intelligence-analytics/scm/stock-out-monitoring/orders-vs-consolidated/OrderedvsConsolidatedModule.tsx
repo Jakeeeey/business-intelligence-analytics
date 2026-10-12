@@ -10,6 +10,7 @@ import { KpiCards } from "./components/KpiCards";
 import { OverviewTab } from "./components/OverviewTab";
 import { TopProductsTab } from "./components/TopProductsTab";
 import { SuppliersTab } from "./components/SuppliersTab";
+import { CustomersTab } from "./components/CustomersTab";
 import { OrdersTab } from "./components/OrdersTab";
 
 export default function OrderedvsConsolidatedModule() {
@@ -36,10 +37,12 @@ export default function OrderedvsConsolidatedModule() {
         uniqueBrands={hook.uniqueBrands}
         uniqueCategories={hook.uniqueCategories}
         uniqueStatuses={hook.uniqueStatuses}
+        uniqueCustomers={hook.uniqueCustomers}
         supplierCounts={hook.supplierCounts}
         brandCounts={hook.brandCounts}
         categoryCounts={hook.categoryCounts}
         statusCounts={hook.statusCounts}
+        customerCounts={hook.customerCounts}
       />
 
       {/* Data loaded */}
@@ -71,9 +74,10 @@ export default function OrderedvsConsolidatedModule() {
               onValueChange={setActiveTab}
               className="space-y-4"
             >
-              <TabsList className="grid w-full grid-cols-4 ">
+              <TabsList className="grid w-full grid-cols-5 ">
                 <TabsTrigger value="overview">Overview</TabsTrigger>
                 <TabsTrigger value="suppliers">Supplier Insights</TabsTrigger>
+                <TabsTrigger value="customers">Customer Insights</TabsTrigger>
                 <TabsTrigger value="products">Product Insights</TabsTrigger>
                 <TabsTrigger value="orders">Order Details</TabsTrigger>
               </TabsList>
@@ -96,6 +100,10 @@ export default function OrderedvsConsolidatedModule() {
 
               <TabsContent value="suppliers">
                 <SuppliersTab supplierSummaries={hook.supplierSummaries} />
+              </TabsContent>
+
+              <TabsContent value="customers">
+                <CustomersTab customerSummaries={hook.customerSummaries} />
               </TabsContent>
 
               <TabsContent value="products">

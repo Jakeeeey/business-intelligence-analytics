@@ -2,12 +2,13 @@
 "use client";
 
 import * as React from "react";
-import { Check, ChevronDown, Square } from "lucide-react";
+import { Check, ChevronDown } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export type MultiSelectOption = {
   label: string;
@@ -59,6 +60,14 @@ export function MultiSelect(props: Props) {
     setOpen(false);
   }
 
+  function selectAll() {
+    onChange(options.map((o) => o.value));
+  }
+
+  function deselectAll() {
+    onChange([]);
+  }
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -77,9 +86,19 @@ export function MultiSelect(props: Props) {
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent className="w-(--radix-popover-trigger-width) p-0" align="start">
+      <PopoverContent className="min-w-[var(--radix-popover-trigger-width)] w-auto max-w-[400px] p-0" align="start">
         <Command>
           <CommandInput placeholder="Search..." />
+          {mode === "multi" && (
+            <div className="flex items-center justify-between px-2 py-1 border-b border-border/50">
+              <Button type="button" variant="ghost" size="sm" onClick={selectAll} className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground">
+                Select All
+              </Button>
+              <Button type="button" variant="ghost" size="sm" onClick={deselectAll} className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground">
+                Clear All
+              </Button>
+            </div>
+          )}
           <CommandList>
             <CommandEmpty>No results found.</CommandEmpty>
 
@@ -102,14 +121,13 @@ export function MultiSelect(props: Props) {
                   >
                     {/* ✅ SHOW CHECKBOX ONLY WHEN MULTI */}
                     {mode === "multi" ? (
-                      selected ? (
-                        <Check className="h-4 w-4" />
-                      ) : (
-                        <Square className="h-4 w-4 opacity-50" />
-                      )
+                      <Checkbox
+                        checked={selected}
+                        className="mr-2 border-gray-400 dark:border-gray-500"
+                      />
                     ) : null}
 
-                    <span className="truncate">{opt.label}</span>
+                    <span className="break-words leading-tight text-xs py-0.5">{opt.label}</span>
 
                     {/* ✅ OPTIONAL subtle indicator for SINGLE without checkbox (right check) */}
                     {mode === "single" && selected ? (

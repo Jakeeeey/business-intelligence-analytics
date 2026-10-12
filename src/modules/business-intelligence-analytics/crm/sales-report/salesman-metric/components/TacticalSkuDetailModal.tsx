@@ -118,7 +118,7 @@ export function TacticalSkuDetailModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[800px] w-full max-h-[90vh] flex flex-col overflow-hidden bg-background/95 backdrop-blur-xl border-border/40 shadow-2xl p-6">
+      <DialogContent className="sm:max-w-fit sm:min-w-[800px] max-w-[95vw] w-full max-h-[90vh] flex flex-col overflow-hidden bg-background/95 backdrop-blur-xl border-border/40 shadow-2xl p-6">
         <DialogHeader className="border-b border-border/40 pb-4 flex-shrink-0">
           <div className="flex justify-between items-start pr-6">
             <div>
@@ -149,23 +149,23 @@ export function TacticalSkuDetailModal({
         ) : (
           <>
             <div className="grid grid-cols-3 gap-4 my-6 flex-shrink-0">
-              <Card className="bg-card/30 border-muted/40 shadow-sm backdrop-blur-sm">
-                <CardHeader className="py-2.5 px-4">
+              <Card className="bg-card/30 border-muted/40 shadow-sm backdrop-blur-sm py-2 gap-1">
+                <CardHeader className="py-2 px-3">
                   <CardTitle className="text-[9px] font-black text-muted-foreground uppercase tracking-[0.2em]">Actual Total Qty</CardTitle>
                 </CardHeader>
-                <CardContent className="px-4 pb-2.5">
+                <CardContent className="px-3 pb-2">
                   <div className="text-3xl font-black text-foreground tracking-tighter">
                     {totalActualQty.toLocaleString()}
                   </div>
                 </CardContent>
               </Card>
-              <Card className="bg-card/30 border-muted/40 shadow-sm backdrop-blur-sm">
-                <CardHeader className="py-2.5 px-4 flex flex-row items-center justify-between">
+              <Card className="bg-card/30 border-muted/40 shadow-sm backdrop-blur-sm py-2 gap-1">
+                <CardHeader className="py-2 px-3 flex flex-row items-center justify-between">
                   <CardTitle className="text-[9px] font-black text-muted-foreground uppercase tracking-[0.2em] flex items-center gap-2">
                     <Target className="h-3 w-3 text-primary" /> Target Total Qty
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="px-4 pb-2.5 flex justify-between items-end">
+                <CardContent className="px-3 pb-2 flex justify-between items-end">
                   <div className="text-3xl font-black text-muted-foreground tracking-tighter">
                     {totalTargetQty.toLocaleString()}
                   </div>
@@ -176,11 +176,11 @@ export function TacticalSkuDetailModal({
                   </div>
                 </CardContent>
               </Card>
-              <Card className="bg-card/30 border-muted/40 shadow-sm backdrop-blur-sm">
-                <CardHeader className="py-2.5 px-4">
+              <Card className="bg-card/30 border-muted/40 shadow-sm backdrop-blur-sm py-2 gap-1">
+                <CardHeader className="py-2 px-3">
                   <CardTitle className="text-[9px] font-black text-muted-foreground uppercase tracking-[0.2em]">Total SKU Lines</CardTitle>
                 </CardHeader>
-                <CardContent className="px-4 pb-2.5">
+                <CardContent className="px-3 pb-2">
                   <div className="text-3xl font-black text-foreground tracking-tighter">
                     {data.length}
                   </div>

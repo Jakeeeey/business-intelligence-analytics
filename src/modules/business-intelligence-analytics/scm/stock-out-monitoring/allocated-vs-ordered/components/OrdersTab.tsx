@@ -199,16 +199,16 @@ export function OrdersTab({ orderSummaries, filteredData }: Props) {
             style={{ tableLayout: "fixed", minWidth: 960 }}
           >
             <colgroup>
-              <col style={{ width: 36 }} /> {/* expand toggle */}
-              <col style={{ width: 130 }} /> {/* Order No */}
-              <col style={{ width: 110 }} /> {/* Date */}
-              <col style={{ width: 130 }} /> {/* Status */}
-              <col style={{ width: 200 }} /> {/* Supplier */}
-              <col style={{ width: 90 }} /> {/* Ordered */}
-              <col style={{ width: 90 }} /> {/* Allocated */}
-              <col style={{ width: 80 }} /> {/* Gap */}
-              <col style={{ width: 80 }} /> {/* Rate */}
-              <col style={{ width: 110 }} /> {/* Net Amount */}
+              <col style={{ width: 36 }} />
+              <col style={{ width: 130 }} />
+              <col style={{ width: 110 }} />
+              <col style={{ width: 130 }} />
+              <col style={{ width: 200 }} />
+              <col style={{ width: 90 }} />
+              <col style={{ width: 90 }} />
+              <col style={{ width: 80 }} />
+              <col style={{ width: 80 }} />
+              <col style={{ width: 110 }} />
             </colgroup>
             <thead>
               <tr className="border-b  bg-muted/30">
@@ -276,7 +276,6 @@ export function OrdersTab({ orderSummaries, filteredData }: Props) {
                 const gapValue = row.allocationGap;
                 return (
                   <React.Fragment key={row.orderId}>
-                    {/* ── Parent row ── */}
                     <tr
                       className={[
                         "border-b dark:border-zinc-800 hover:bg-muted/30 transition-colors cursor-pointer select-none",
@@ -350,7 +349,6 @@ export function OrdersTab({ orderSummaries, filteredData }: Props) {
                       </td>
                     </tr>
 
-                    {/* ── Expanded product lines ── */}
                     {isExpanded && (
                       <tr className="border-b dark:border-zinc-800 bg-muted/10">
                         <td colSpan={10} className="p-0">
@@ -364,23 +362,14 @@ export function OrdersTab({ orderSummaries, filteredData }: Props) {
                             >
                               <colgroup>
                                 <col style={{ width: 100 }} />
-                                {/* Brand */}
                                 <col style={{ width: 110 }} />
-                                {/* Category */}
                                 <col style={{ width: 220 }} />
-                                {/* Product Name */}
                                 <col style={{ width: 55 }} />
-                                {/* Unit */}
                                 <col style={{ width: 80 }} />
-                                {/* Net Price */}
                                 <col style={{ width: 65 }} />
-                                {/* Ordered */}
                                 <col style={{ width: 65 }} />
-                                {/* Allocated */}
                                 <col style={{ width: 55 }} />
-                                {/* Gap */}
                                 <col style={{ width: 100 }} />
-                                {/* Variance Amount */}
                               </colgroup>
                               <thead>
                                 <tr className="border-b  text-muted-foreground">

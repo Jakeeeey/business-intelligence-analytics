@@ -31,10 +31,12 @@ type FiltersProps = {
   uniqueBrands: string[];
   uniqueCategories: string[];
   uniqueStatuses: string[];
+  uniqueCustomers: string[];
   supplierCounts?: Record<string, number>;
   brandCounts?: Record<string, number>;
   categoryCounts?: Record<string, number>;
   statusCounts?: Record<string, number>;
+  customerCounts?: Record<string, number>;
 };
 
 export function Filters({
@@ -44,16 +46,19 @@ export function Filters({
   uniqueBrands,
   uniqueCategories,
   uniqueStatuses,
+  uniqueCustomers,
   supplierCounts,
   brandCounts,
   categoryCounts,
   statusCounts,
+  customerCounts,
 }: FiltersProps) {
   // Search states
   const [supplierSearch, setSupplierSearch] = React.useState("");
   const [brandSearch, setBrandSearch] = React.useState("");
   const [categorySearch, setCategorySearch] = React.useState("");
   const [statusSearch, setStatusSearch] = React.useState("");
+  const [customerSearch, setCustomerSearch] = React.useState("");
 
   React.useEffect(() => {
     console.group("[Filters] options updated");
@@ -67,7 +72,7 @@ export function Filters({
   const handleMultiSelectChange = (
     field: keyof Pick<
       OrdersFilters,
-      "suppliers" | "brands" | "categories" | "statuses"
+      "suppliers" | "brands" | "categories" | "statuses" | "customers"
     >,
     value: string,
     checked: boolean,
@@ -82,7 +87,7 @@ export function Filters({
   const clearFilter = (
     field: keyof Pick<
       OrdersFilters,
-      "suppliers" | "brands" | "categories" | "statuses"
+      "suppliers" | "brands" | "categories" | "statuses" | "customers"
     >,
   ) => {
     onChange({ ...filters, [field]: [] });
@@ -93,6 +98,12 @@ export function Filters({
         s.toLowerCase().includes(supplierSearch.toLowerCase()),
       )
     : uniqueSuppliers;
+
+  const filteredCustomers = customerSearch
+    ? uniqueCustomers.filter((c) =>
+        c.toLowerCase().includes(customerSearch.toLowerCase()),
+      )
+    : uniqueCustomers;
 
   const filteredBrands = brandSearch
     ? uniqueBrands.filter((b) =>
@@ -157,7 +168,8 @@ export function Filters({
     filters.suppliers.length > 0 ||
     filters.brands.length > 0 ||
     filters.categories.length > 0 ||
-    filters.statuses.length > 0;
+    filters.statuses.length > 0 ||
+    filters.customers.length > 0;
 
   // Helper: format display ranges for presets (used in menu labels)
   const formatShort = (d: Date) =>
@@ -625,8 +637,89 @@ export function Filters({
             )}
           </div>
 
-          {/* Filter Dropdowns — 4-column grid matching PSP style */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {/* Filter Dropdowns — 5-column grid matching PSP style */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            {/* Customer */}
+            <div className="space-y-2">
+              <Label>Customer</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-between ">
+                    {filters.customers.length > 0
+                      ? `${filters.customers.length} selected`
+                      : "All Customers"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent
+                  className="w-80 max-w-[20rem] p-0 overflow-hidden"
+                  align="start"
+                >
+                  <div className="p-2 border-b ">
+                    <Input
+                      placeholder="Search customers..."
+                      value={customerSearch}
+                      onChange={(e) => setCustomerSearch(e.target.value)}
+                      className="h-8 "
+                    />
+                  </div>
+                  <ScrollArea className="h-64">
+                    <div className="p-2 space-y-1">
+                      {filteredCustomers.map((customer) => (
+                        <div
+                          key={customer}
+                          className="flex items-center justify-between px-2 py-1 hover:bg-muted rounded gap-2 w-75"
+                        >
+                          <div className="flex items-center space-x-2 min-w-0 flex-1 overflow-hidden">
+                            <Checkbox
+                              id={`customer-${customer}`}
+                              checked={filters.customers.includes(customer)}
+                              onCheckedChange={(c) =>
+                                handleMultiSelectChange(
+                                  "customers",
+                                  customer,
+                                  c as boolean,
+                                )
+                              }
+                            />
+                            <Label
+                              htmlFor={`customer-${customer}`}
+                              className="text-sm font-normal cursor-pointer truncate"
+                              title={customer}
+                            >
+                              {customer}
+                            </Label>
+                          </div>
+                          {customerCounts &&
+                            customerCounts[customer] !== undefined && (
+                              <Badge variant="secondary" className="text-[10px]">
+                                {customerCounts[customer]}
+                              </Badge>
+                            )}
+                        </div>
+                      ))}
+                      {filteredCustomers.length === 0 && (
+                        <p className="text-sm text-muted-foreground p-2 text-center">
+                          No customers found
+                        </p>
+                      )}
+                    </div>
+                  </ScrollArea>
+                  {filters.customers.length > 0 && (
+                    <div className="p-2 border-t bg-muted/50">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full h-8 text-xs"
+                        onClick={() => clearFilter("customers")}
+                      >
+                        Clear selection
+                      </Button>
+                    </div>
+                  )}
+                </PopoverContent>
+              </Popover>
+            </div>
+
             {/* Supplier */}
             <div className="space-y-2">
               <Label>Supplier</Label>
@@ -953,6 +1046,22 @@ export function Filters({
                       onChange({
                         ...filters,
                         suppliers: filters.suppliers.filter((x) => x !== s),
+                      })
+                    }
+                    className="ml-1"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              ))}
+              {filters.customers.map((c) => (
+                <Badge key={`cus-${c}`} variant="secondary">
+                  Customer: {c}
+                  <button
+                    onClick={() =>
+                      onChange({
+                        ...filters,
+                        customers: filters.customers.filter((x) => x !== c),
                       })
                     }
                     className="ml-1"
