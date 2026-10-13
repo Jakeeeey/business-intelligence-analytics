@@ -347,7 +347,7 @@ function SupervisorKPIContent() {
                                             {selectedSupervisor ? "Personnel" : "Supervisor"}
                                         </p>
                                     </th>
-                                    <th className="sticky left-[240px] top-0 z-50 bg-background/95 backdrop-blur-sm p-6 text-center border-b border-r min-w-[140px]">
+                                    <th className="sticky left-[240px] top-0 z-50 bg-background/95 backdrop-blur-sm p-6 text-center border-b border-r min-w-[170px]">
                                         <p className="text-[10px] uppercase tracking-[0.2em] font-black text-emerald-500">Overall Achievement</p>
                                     </th>
                                     {suppliers.map(sup => (
@@ -387,19 +387,70 @@ function SupervisorKPIContent() {
                                             </td>
 
                                             <td 
-                                                className="sticky left-[240px] z-40 bg-background/95 backdrop-blur-sm p-4 border-r border-b group-hover:bg-accent hover:bg-accent/80 transition-all cursor-pointer"
+                                                className="sticky left-[240px] z-40 bg-background/95 backdrop-blur-sm p-3 border-r border-b group-hover:bg-accent hover:bg-accent/80 transition-all cursor-pointer"
                                                 onClick={() => handleCellClick(person.name, "ALL", person.ids)}
                                             >
-                                                <div className="space-y-1">
-                                                    <div className="flex justify-between items-center text-[10px] font-black">
-                                                        <span className="text-emerald-500">{formatShort(personalTotal.amount)}</span>
-                                                        <span className="text-primary/60">{totalCount} B.A.</span>
-                                                        <span className={totalAchievement >= 100 ? "text-emerald-500" : "text-amber-500"}>{totalAchievement.toFixed(0)}%</span>
-                                                    </div>
-                                                    <div className="relative">
-                                                        <Progress value={Math.min(totalAchievement, 100)} className="h-1" />
-                                                    </div>
-                                                </div>
+                                                <TooltipProvider>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <div className="space-y-1">
+                                                                <div className="flex justify-between items-center text-[10px] font-black gap-1">
+                                                                    <span className="text-emerald-500 font-bold" title={`Sales: ${formatPHP(personalTotal.amount)}`}>
+                                                                        {formatShort(personalTotal.amount)}
+                                                                    </span>
+                                                                    <span className="text-muted-foreground font-semibold text-[9px]" title={`Total Target: ${formatPHP(personalTotal.target)}`}>
+                                                                        / {formatShort(personalTotal.target)} Tgt
+                                                                    </span>
+                                                                    <span className="text-primary/60 text-[9px]">{totalCount} B.A.</span>
+                                                                    <span className={totalAchievement >= 100 ? "text-emerald-500 font-bold" : "text-amber-500 font-bold"}>
+                                                                        {totalAchievement.toFixed(0)}%
+                                                                    </span>
+                                                                </div>
+                                                                <div className="relative">
+                                                                    <Progress value={Math.min(totalAchievement, 100)} className="h-1" />
+                                                                </div>
+                                                            </div>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent className="bg-black text-white p-4 rounded-xl border border-white/10 shadow-2xl min-w-[220px]">
+                                                            <div className="space-y-3">
+                                                                <div className="flex justify-between items-start">
+                                                                    <div>
+                                                                        <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Overall Summary</p>
+                                                                        <p className="text-sm font-bold">{person.name}</p>
+                                                                    </div>
+                                                                    {personalTotal.target > 0 && (
+                                                                        <Badge variant={personalTotal.amount >= personalTotal.target ? "default" : "destructive"}>
+                                                                            {personalTotal.amount >= personalTotal.target ? "HIT" : "MISS"}
+                                                                        </Badge>
+                                                                    )}
+                                                                </div>
+                                                                <div className="grid grid-cols-3 gap-2 border-t border-white/10 pt-2">
+                                                                    <div>
+                                                                        <p className="text-[8px] uppercase font-bold text-muted-foreground">Total Sales</p>
+                                                                        <p className="text-xs font-mono font-bold">{formatPHP(personalTotal.amount)}</p>
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-[8px] uppercase font-bold text-muted-foreground">Buying A/C</p>
+                                                                        <p className="text-xs font-mono font-bold text-blue-400">{totalCount}</p>
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-[8px] uppercase font-bold text-muted-foreground">Total Quota</p>
+                                                                        <p className="text-xs font-mono font-bold text-emerald-400">
+                                                                            {personalTotal.target > 0 ? formatPHP(personalTotal.target) : "No target"}
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="space-y-1">
+                                                                    <div className="flex justify-between text-[10px] font-bold">
+                                                                        <span>OVERALL ACHIEVEMENT</span>
+                                                                        <span>{totalAchievement.toFixed(0)}%</span>
+                                                                    </div>
+                                                                    <Progress value={Math.min(totalAchievement, 100)} className="h-1" />
+                                                                </div>
+                                                            </div>
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                </TooltipProvider>
                                             </td>
 
                                             {suppliers.map(sup => {
