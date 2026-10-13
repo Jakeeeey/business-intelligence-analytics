@@ -24,6 +24,7 @@ import SalesOrderForApprovalCard from "./components/SalesOrderForApprovalCard";
 import AccountsReceivableDetailedCard from "./components/AccountsReceivableDetailedCard";
 import SalesOrderDraftCard from "./components/SalesOrderDraftCard";
 import SalesOrderPendingCard from "./components/SalesOrderPendingCard";
+import SalesOrderInvoiceCard from "./components/SalesOrderInvoiceCard";
 
 function formatCardTitle(key: string): string {
     return key
@@ -45,38 +46,9 @@ function getCardIcon(key: string) {
 const CARDS_CACHE_KEY = "bia_my_dashboard_cards";
 
 export default function MyDashboardModule({ className = "" }: MyDashboardProps) {
-    const [cards, setCards] = useState<DashboardCardItem[]>(() => {
-        if (typeof window === "undefined") return [];
-        try {
-            const raw = sessionStorage.getItem(CARDS_CACHE_KEY);
-            if (raw) {
-                const parsed = JSON.parse(raw);
-                if (Array.isArray(parsed.cards)) {
-                    return parsed.cards;
-                }
-            }
-        } catch {
-            // ignore cache parse error
-        }
-        return [];
-    });
-    const [hasWildcardAccess, setHasWildcardAccess] = useState<boolean>(() => {
-        if (typeof window === "undefined") return false;
-        try {
-            const raw = sessionStorage.getItem(CARDS_CACHE_KEY);
-            if (raw) {
-                const parsed = JSON.parse(raw);
-                return Boolean(parsed.hasWildcardAccess);
-            }
-        } catch {
-            // ignore
-        }
-        return false;
-    });
-    const [loading, setLoading] = useState<boolean>(() => {
-        if (typeof window === "undefined") return true;
-        return !sessionStorage.getItem(CARDS_CACHE_KEY);
-    });
+    const [cards, setCards] = useState<DashboardCardItem[]>([]);
+    const [hasWildcardAccess, setHasWildcardAccess] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
 
     const fetchCards = useCallback(async (isManualRefresh = false) => {
@@ -112,6 +84,20 @@ export default function MyDashboardModule({ className = "" }: MyDashboardProps) 
     }, []);
 
     useEffect(() => {
+        // Hydrate from sessionStorage immediately on client mount to prevent SSR mismatch
+        try {
+            const raw = sessionStorage.getItem(CARDS_CACHE_KEY);
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                if (Array.isArray(parsed.cards)) {
+                    setCards(parsed.cards);
+                    setHasWildcardAccess(Boolean(parsed.hasWildcardAccess));
+                    setLoading(false);
+                }
+            }
+        } catch {
+            // ignore cache parse issues
+        }
         fetchCards();
     }, [fetchCards]);
 
@@ -248,6 +234,18 @@ export default function MyDashboardModule({ className = "" }: MyDashboardProps) 
                                             ) {
                                                 return (
                                                     <SalesOrderPendingCard
+                                                        key={card.id}
+                                                        card={card}
+                                                    />
+                                                );
+                                            }
+
+                                            if (
+                                                card.key === "sales-order-invoice" ||
+                                                card.key === "sales_order_invoice"
+                                            ) {
+                                                return (
+                                                    <SalesOrderInvoiceCard
                                                         key={card.id}
                                                         card={card}
                                                     />
