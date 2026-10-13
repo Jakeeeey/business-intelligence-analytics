@@ -75,14 +75,4 @@ export const columns = (unitName?: string): ColumnDef<MonthlyAggregate>[] => [
     },
     meta: { label: "Variance" },
   },
-  {
-    accessorKey: "biasPercentage",
-    header: ({ column }) => <SortHeader column={column} label="Bias %" />,
-    cell: ({ row }) => (
-      <span className="font-mono tabular-nums text-muted-foreground">
-        {row.original.biasPercentage.toFixed(2)}%
-      </span>
-    ),
-    meta: { label: "Bias %" },
-  },
 ];
