@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MyDashboardProps, DashboardCardItem, CardsApiResponse } from "./types";
 import SalesOrderForApprovalCard from "./components/SalesOrderForApprovalCard";
+import AccountsReceivableDetailedCard from "./components/AccountsReceivableDetailedCard";
 
 function formatCardTitle(key: string): string {
     return key
@@ -166,6 +167,13 @@ export default function MyDashboardModule({ className = "" }: MyDashboardProps) 
                             card.key === "sales_order_for_approval"
                         ) {
                             return <SalesOrderForApprovalCard key={card.id} card={card} />;
+                        }
+
+                        if (
+                            card.key === "accounts-receivable-detailed" ||
+                            card.key === "accounts_receivable_detailed"
+                        ) {
+                            return <AccountsReceivableDetailedCard key={card.id} card={card} />;
                         }
 
                         return (
