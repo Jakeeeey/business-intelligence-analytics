@@ -6,6 +6,18 @@ export const dynamic = "force-dynamic";
 
 const COOKIE_NAME = "vos_access_token";
 
+interface CachedApprovalPayload {
+    data: {
+        count: number;
+        totalAmount: number;
+        status: string;
+    };
+    timestamp: number;
+}
+
+let serverApprovalCache: CachedApprovalPayload | null = null;
+const SERVER_CACHE_TTL_MS = 60000; // 60s default server TTL
+
 export async function GET(request: NextRequest) {
     const cookieStore = await cookies();
     const token =
@@ -14,6 +26,11 @@ export async function GET(request: NextRequest) {
 
     if (!token) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const force = request.nextUrl.searchParams.get("force") === "true";
+    if (!force && serverApprovalCache && Date.now() - serverApprovalCache.timestamp < SERVER_CACHE_TTL_MS) {
+        return NextResponse.json(serverApprovalCache.data);
     }
 
     const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/+$/, "");
@@ -35,7 +52,7 @@ export async function GET(request: NextRequest) {
         const res = await fetch(query, {
             method: "GET",
             headers,
-            next: { revalidate: 0 },
+            cache: "no-store",
         });
 
         if (!res.ok) {
@@ -48,11 +65,15 @@ export async function GET(request: NextRequest) {
         const count = Number(agg.count?.order_id ?? 0);
         const totalAmount = Number(agg.sum?.total_amount ?? 0);
 
-        return NextResponse.json({
+        const payload = {
             count,
             totalAmount,
             status: "For Approval",
-        });
+        };
+
+        serverApprovalCache = { data: payload, timestamp: Date.now() };
+
+        return NextResponse.json(payload);
     } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);
         console.error("[Sales Order For Approval Metric] Error:", message);

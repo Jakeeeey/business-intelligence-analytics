@@ -198,11 +198,14 @@ export default function SalesOrderForApprovalCard({ card }: SalesOrderForApprova
     );
 
     const fetchMetric = useCallback(
-        async (showSpinner = false) => {
+        async (showSpinner = false, forceRefresh = false) => {
             if (showSpinner) setLoading(true);
             setError(null);
             try {
-                const res = await fetch("/api/bia/my-dashboard/metrics/sales-order-for-approval", {
+                const url = forceRefresh
+                    ? "/api/bia/my-dashboard/metrics/sales-order-for-approval?force=true"
+                    : "/api/bia/my-dashboard/metrics/sales-order-for-approval";
+                const res = await fetch(url, {
                     cache: "no-store",
                 });
                 if (!res.ok) {
@@ -296,7 +299,7 @@ export default function SalesOrderForApprovalCard({ card }: SalesOrderForApprova
                             payload.event === "create" ||
                             payload.event === "update"
                         ) {
-                            fetchMetric(false);
+                            fetchMetric(false, true);
                         }
                     } catch {
                         // ignore non-json messages

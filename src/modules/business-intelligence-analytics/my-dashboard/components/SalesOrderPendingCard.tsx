@@ -198,11 +198,14 @@ export default function SalesOrderPendingCard({ card }: SalesOrderPendingCardPro
     );
 
     const fetchMetric = useCallback(
-        async (showSpinner = false) => {
+        async (showSpinner = false, forceRefresh = false) => {
             if (showSpinner) setLoading(true);
             setError(null);
             try {
-                const res = await fetch("/api/bia/my-dashboard/metrics/sales-order-pending", {
+                const url = forceRefresh
+                    ? "/api/bia/my-dashboard/metrics/sales-order-pending?force=true"
+                    : "/api/bia/my-dashboard/metrics/sales-order-pending";
+                const res = await fetch(url, {
                     cache: "no-store",
                 });
                 if (!res.ok) {
@@ -296,7 +299,7 @@ export default function SalesOrderPendingCard({ card }: SalesOrderPendingCardPro
                             payload.event === "create" ||
                             payload.event === "update"
                         ) {
-                            fetchMetric(false);
+                            fetchMetric(false, true);
                         }
                     } catch {
                         // ignore non-json messages

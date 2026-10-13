@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
     LayoutDashboard,
     Info,
@@ -42,13 +42,44 @@ function getCardIcon(key: string) {
     return <BarChart3 className="h-4 w-4" />;
 }
 
+const CARDS_CACHE_KEY = "bia_my_dashboard_cards";
+
 export default function MyDashboardModule({ className = "" }: MyDashboardProps) {
-    const [cards, setCards] = useState<DashboardCardItem[]>([]);
-    const [hasWildcardAccess, setHasWildcardAccess] = useState(false);
-    const [loading, setLoading] = useState(true);
+    const [cards, setCards] = useState<DashboardCardItem[]>(() => {
+        if (typeof window === "undefined") return [];
+        try {
+            const raw = sessionStorage.getItem(CARDS_CACHE_KEY);
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                if (Array.isArray(parsed.cards)) {
+                    return parsed.cards;
+                }
+            }
+        } catch {
+            // ignore cache parse error
+        }
+        return [];
+    });
+    const [hasWildcardAccess, setHasWildcardAccess] = useState<boolean>(() => {
+        if (typeof window === "undefined") return false;
+        try {
+            const raw = sessionStorage.getItem(CARDS_CACHE_KEY);
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                return Boolean(parsed.hasWildcardAccess);
+            }
+        } catch {
+            // ignore
+        }
+        return false;
+    });
+    const [loading, setLoading] = useState<boolean>(() => {
+        if (typeof window === "undefined") return true;
+        return !sessionStorage.getItem(CARDS_CACHE_KEY);
+    });
     const [refreshing, setRefreshing] = useState(false);
 
-    const fetchCards = async (isManualRefresh = false) => {
+    const fetchCards = useCallback(async (isManualRefresh = false) => {
         if (isManualRefresh) setRefreshing(true);
         try {
             const res = await fetch("/api/bia/my-dashboard/cards", {
@@ -56,23 +87,33 @@ export default function MyDashboardModule({ className = "" }: MyDashboardProps) 
             });
             if (res.ok) {
                 const data: CardsApiResponse = await res.json();
-                setCards(data.cards || []);
-                setHasWildcardAccess(Boolean(data.hasWildcardAccess));
+                const fetchedCards = data.cards || [];
+                const wildcard = Boolean(data.hasWildcardAccess);
+                setCards(fetchedCards);
+                setHasWildcardAccess(wildcard);
+                try {
+                    sessionStorage.setItem(
+                        CARDS_CACHE_KEY,
+                        JSON.stringify({ cards: fetchedCards, hasWildcardAccess: wildcard, timestamp: Date.now() })
+                    );
+                } catch {
+                    // ignore quota errors
+                }
             } else {
-                setCards([]);
+                setCards((prev) => (prev.length > 0 ? prev : []));
             }
         } catch (err) {
             console.error("[MyDashboardModule] Fetch error:", err);
-            setCards([]);
+            setCards((prev) => (prev.length > 0 ? prev : []));
         } finally {
             setLoading(false);
             if (isManualRefresh) setRefreshing(false);
         }
-    };
+    }, []);
 
     useEffect(() => {
         fetchCards();
-    }, []);
+    }, [fetchCards]);
 
     return (
         <div className={`flex flex-col gap-6 p-4 sm:p-6 min-h-[calc(100vh-8rem)] ${className}`}>
