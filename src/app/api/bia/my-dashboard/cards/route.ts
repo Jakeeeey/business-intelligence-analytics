@@ -40,6 +40,44 @@ interface DashboardCard {
     key: string;
     description?: string | null;
     order_index?: number;
+    is_web_socket?: boolean;
+    has_ringtone?: boolean;
+    has_popup?: boolean;
+    cached?: boolean;
+    cached_time?: number | null;
+    created_at?: string | null;
+    updated_at?: string | null;
+    created_by?: number | null;
+    updated_by?: number | null;
+}
+
+function parseBit(val: unknown): boolean {
+    if (val === null || val === undefined) return false;
+    if (typeof val === "boolean") return val;
+    if (typeof val === "number") return val === 1;
+    if (typeof val === "object" && val !== null) {
+        const obj = val as Record<string, unknown>;
+        if (obj.type === "Buffer" && Array.isArray(obj.data)) return obj.data[0] === 1;
+    }
+    return val === "1" || val === 1;
+}
+
+function normalizeCard(raw: Record<string, unknown>): DashboardCard {
+    return {
+        id: Number(raw.id),
+        key: String(raw.key || ""),
+        description: raw.description ? String(raw.description) : null,
+        order_index: raw.order_index ? Number(raw.order_index) : undefined,
+        is_web_socket: parseBit(raw.is_web_socket),
+        has_ringtone: parseBit(raw.has_ringtone),
+        has_popup: parseBit(raw.has_popup),
+        cached: parseBit(raw.cached),
+        cached_time: raw.cached_time !== null && raw.cached_time !== undefined ? Number(raw.cached_time) : null,
+        created_at: raw.created_at ? String(raw.created_at) : null,
+        updated_at: raw.updated_at ? String(raw.updated_at) : null,
+        created_by: raw.created_by ? Number(raw.created_by) : null,
+        updated_by: raw.updated_by ? Number(raw.updated_by) : null,
+    };
 }
 
 export async function GET(request: NextRequest) {
@@ -123,7 +161,8 @@ export async function GET(request: NextRequest) {
             }
 
             const allCardsJson = await allCardsRes.json();
-            const allCards: DashboardCard[] = allCardsJson.data || [];
+            const rawAllCards: Record<string, unknown>[] = allCardsJson.data || [];
+            const allCards: DashboardCard[] = rawAllCards.map(normalizeCard);
             const widgetCards = allCards.filter((c) => c.key !== "all");
 
             return NextResponse.json({
@@ -168,7 +207,8 @@ export async function GET(request: NextRequest) {
         }
 
         const cardsJson = await cardsRes.json();
-        const cards: DashboardCard[] = cardsJson.data || [];
+        const rawCards: Record<string, unknown>[] = cardsJson.data || [];
+        const cards: DashboardCard[] = rawCards.map(normalizeCard);
 
         // Sort by user's order_index
         cards.sort((a, b) => (cardOrderMap.get(a.id) ?? 0) - (cardOrderMap.get(b.id) ?? 0));
