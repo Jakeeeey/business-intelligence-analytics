@@ -84,16 +84,16 @@ function showDesktopNotification(title: string, body: string) {
 }
 
 export default function SalesOrderDraftCard({ card }: SalesOrderDraftCardProps) {
-    const isCacheEnabled = card.cached !== false;
+    const isCacheEnabled = card.cached !== false && (card.cached as unknown) !== 0;
     const cacheTtlMs =
         typeof card.cached_time === "number" && card.cached_time > 0
             ? card.cached_time > 10000
                 ? card.cached_time
                 : card.cached_time * 1000
             : 60 * 1000;
-    const isRingEnabled = card.has_ringtone !== false;
-    const isPopupEnabled = card.has_popup !== false;
-    const isWsEnabled = card.is_web_socket !== false;
+    const isRingEnabled = card.has_ringtone === true || (card.has_ringtone as unknown) === 1;
+    const isPopupEnabled = card.has_popup === true || (card.has_popup as unknown) === 1;
+    const isWsEnabled = card.is_web_socket === true || (card.is_web_socket as unknown) === 1;
     const pollIntervalMs =
         typeof card.cached_time === "number" && card.cached_time > 0
             ? Math.max(5, card.cached_time > 10000 ? Math.floor(card.cached_time / 1000) : card.cached_time) * 1000
@@ -244,6 +244,7 @@ export default function SalesOrderDraftCard({ card }: SalesOrderDraftCardProps) 
         let ws: WebSocket | null = null;
         let isMounted = true;
         let pollTimer: ReturnType<typeof setInterval> | null = null;
+        let connectTimeout: ReturnType<typeof setTimeout> | null = null;
 
         const tryConnectWs = () => {
             if (!isWsEnabled) return;
@@ -253,7 +254,22 @@ export default function SalesOrderDraftCard({ card }: SalesOrderDraftCardProps) 
                 const wsUrl = baseUrl.replace(/^http/, "ws") + "/websocket";
                 ws = new WebSocket(wsUrl);
 
+                connectTimeout = setTimeout(() => {
+                    if (ws && ws.readyState === WebSocket.CONNECTING) {
+                        try {
+                            ws.close();
+                        } catch {
+                            // ignore
+                        }
+                        if (isMounted) setWsConnected(false);
+                    }
+                }, 3000);
+
                 ws.onopen = () => {
+                    if (connectTimeout) {
+                        clearTimeout(connectTimeout);
+                        connectTimeout = null;
+                    }
                     if (!isMounted) return;
                     setWsConnected(true);
                     try {
@@ -288,13 +304,25 @@ export default function SalesOrderDraftCard({ card }: SalesOrderDraftCardProps) 
                 };
 
                 ws.onclose = () => {
+                    if (connectTimeout) {
+                        clearTimeout(connectTimeout);
+                        connectTimeout = null;
+                    }
                     if (isMounted) setWsConnected(false);
                 };
 
                 ws.onerror = () => {
+                    if (connectTimeout) {
+                        clearTimeout(connectTimeout);
+                        connectTimeout = null;
+                    }
                     if (isMounted) setWsConnected(false);
                 };
             } catch {
+                if (connectTimeout) {
+                    clearTimeout(connectTimeout);
+                    connectTimeout = null;
+                }
                 if (isMounted) setWsConnected(false);
             }
         };
@@ -309,6 +337,7 @@ export default function SalesOrderDraftCard({ card }: SalesOrderDraftCardProps) 
 
         return () => {
             isMounted = false;
+            if (connectTimeout) clearTimeout(connectTimeout);
             if (pollTimer) clearInterval(pollTimer);
             if (ws) {
                 try {

@@ -160,70 +160,96 @@ export default function MyDashboardModule({ className = "" }: MyDashboardProps) 
                     </CardContent>
                 </Card>
             ) : (
-                /* Assigned Cards Grid */
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-                    {cards.map((card) => {
-                        if (
-                            card.key === "sales-order-for-approval" ||
-                            card.key === "sales_order_for_approval"
-                        ) {
-                            return <SalesOrderForApprovalCard key={card.id} card={card} />;
-                        }
+                /* Assigned Cards Container */
+                <div className="space-y-4 sm:space-y-5">
+                    {/* Compact KPI Cards Row (e.g. Sales Orders Approval & Draft side-by-side) */}
+                    {(() => {
+                        const isFullWidthCard = (key: string) =>
+                            key === "accounts-receivable-detailed" ||
+                            key === "accounts_receivable_detailed";
 
-                        if (
-                            card.key === "sales-order-draft" ||
-                            card.key === "sales_order_draft"
-                        ) {
-                            return <SalesOrderDraftCard key={card.id} card={card} />;
-                        }
-
-                        if (
-                            card.key === "accounts-receivable-detailed" ||
-                            card.key === "accounts_receivable_detailed"
-                        ) {
-                            return <AccountsReceivableDetailedCard key={card.id} card={card} />;
-                        }
+                        const compactCards = cards.filter((c) => !isFullWidthCard(c.key));
+                        const fullWidthCards = cards.filter((c) => isFullWidthCard(c.key));
 
                         return (
-                            <Card
-                                key={card.id}
-                                className="flex flex-col border-border bg-card shadow-sm hover:shadow-md transition-shadow"
-                            >
-                                <CardHeader className="pb-3">
-                                    <div className="flex items-center justify-between gap-2">
-                                        <div className="flex items-center gap-2 min-w-0">
-                                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary dark:bg-primary/20">
-                                                {getCardIcon(card.key)}
-                                            </div>
-                                            <CardTitle className="text-base font-semibold truncate text-foreground">
-                                                {formatCardTitle(card.key)}
-                                            </CardTitle>
-                                        </div>
-                                        <Badge
-                                            variant="secondary"
-                                            className="shrink-0 text-[11px] font-mono uppercase bg-muted text-muted-foreground"
-                                        >
-                                            #{card.id}
-                                        </Badge>
+                            <>
+                                {compactCards.length > 0 && (
+                                    <div className="flex flex-wrap items-start gap-4 sm:gap-5">
+                                        {compactCards.map((card) => {
+                                            if (
+                                                card.key === "sales-order-for-approval" ||
+                                                card.key === "sales_order_for_approval"
+                                            ) {
+                                                return (
+                                                    <SalesOrderForApprovalCard
+                                                        key={card.id}
+                                                        card={card}
+                                                    />
+                                                );
+                                            }
+
+                                            if (
+                                                card.key === "sales-order-draft" ||
+                                                card.key === "sales_order_draft"
+                                            ) {
+                                                return (
+                                                    <SalesOrderDraftCard
+                                                        key={card.id}
+                                                        card={card}
+                                                    />
+                                                );
+                                            }
+
+                                            return (
+                                                <Card
+                                                    key={card.id}
+                                                    className="flex flex-col border-border bg-card shadow-sm hover:shadow-md transition-shadow w-full max-w-[200px] sm:max-w-[210px] aspect-square"
+                                                >
+                                                    <CardHeader className="p-3 pb-1">
+                                                        <div className="flex items-center justify-between gap-1.5">
+                                                            <div className="flex items-center gap-1.5 min-w-0">
+                                                                <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary dark:bg-primary/20">
+                                                                    {getCardIcon(card.key)}
+                                                                </div>
+                                                                <CardTitle className="text-xs font-semibold truncate text-foreground">
+                                                                    {formatCardTitle(card.key)}
+                                                                </CardTitle>
+                                                            </div>
+                                                            <Badge
+                                                                variant="secondary"
+                                                                className="shrink-0 text-[9px] font-mono uppercase px-1 py-0 bg-muted text-muted-foreground"
+                                                            >
+                                                                #{card.id}
+                                                            </Badge>
+                                                        </div>
+                                                    </CardHeader>
+                                                    <CardContent className="p-3 pt-0 flex-1 flex flex-col justify-center text-center">
+                                                        <span className="text-xs font-medium text-muted-foreground">
+                                                            {formatCardTitle(card.key)}
+                                                        </span>
+                                                        <span className="text-[10px] text-muted-foreground/70 mt-0.5">
+                                                            Active
+                                                        </span>
+                                                    </CardContent>
+                                                </Card>
+                                            );
+                                        })}
                                     </div>
-                                    <CardDescription className="text-xs text-muted-foreground line-clamp-2 mt-1">
-                                        {card.description || "Active dashboard card metric."}
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent className="flex-1 flex flex-col justify-between pt-0">
-                                    <div className="rounded-lg border border-border/60 bg-muted/20 dark:bg-muted/10 p-4 min-h-[120px] flex flex-col items-center justify-center text-center">
-                                        <BarChart3 className="h-8 w-8 text-muted-foreground/40 mb-2" />
-                                        <span className="text-xs font-medium text-muted-foreground">
-                                            {formatCardTitle(card.key)} Widget
-                                        </span>
-                                        <span className="text-[11px] text-muted-foreground/70 mt-0.5">
-                                            Metric data container
-                                        </span>
+                                )}
+
+                                {fullWidthCards.length > 0 && (
+                                    <div className="space-y-4 sm:space-y-5">
+                                        {fullWidthCards.map((card) => (
+                                            <AccountsReceivableDetailedCard
+                                                key={card.id}
+                                                card={card}
+                                            />
+                                        ))}
                                     </div>
-                                </CardContent>
-                            </Card>
+                                )}
+                            </>
                         );
-                    })}
+                    })()}
                 </div>
             )}
         </div>

@@ -101,7 +101,9 @@ export default function AccountsReceivableDetailedCard({
 
   const fetchMetric = useCallback(
     async (forceRefresh = false) => {
-      setLoading(true);
+      if (forceRefresh || !data) {
+        setLoading(true);
+      }
       setError(null);
       try {
         const url = forceRefresh
@@ -131,7 +133,7 @@ export default function AccountsReceivableDetailedCard({
         setLoading(false);
       }
     },
-    [isCacheEnabled]
+    [isCacheEnabled, data]
   );
 
   useEffect(() => {
