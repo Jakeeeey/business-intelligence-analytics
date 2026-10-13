@@ -23,6 +23,7 @@ import { MyDashboardProps, DashboardCardItem, CardsApiResponse } from "./types";
 import SalesOrderForApprovalCard from "./components/SalesOrderForApprovalCard";
 import AccountsReceivableDetailedCard from "./components/AccountsReceivableDetailedCard";
 import SalesOrderDraftCard from "./components/SalesOrderDraftCard";
+import SalesOrderPendingCard from "./components/SalesOrderPendingCard";
 
 function formatCardTitle(key: string): string {
     return key
@@ -194,6 +195,18 @@ export default function MyDashboardModule({ className = "" }: MyDashboardProps) 
                                             ) {
                                                 return (
                                                     <SalesOrderDraftCard
+                                                        key={card.id}
+                                                        card={card}
+                                                    />
+                                                );
+                                            }
+
+                                            if (
+                                                card.key === "sales-order-pending" ||
+                                                card.key === "sales_order_pending"
+                                            ) {
+                                                return (
+                                                    <SalesOrderPendingCard
                                                         key={card.id}
                                                         card={card}
                                                     />
