@@ -107,6 +107,105 @@ export function Filters(props: FiltersProps) {
     });
   };
 
+  const selectAll = (key: keyof STTReportFilters, items: string[]) => {
+    const current = new Set(filters[key] as string[]);
+    items.forEach((item) => current.add(item));
+    onChange({
+      ...filters,
+      [key]: Array.from(current),
+    });
+  };
+
+  const unselectAll = (key: keyof STTReportFilters, items: string[]) => {
+    const toRemove = new Set(items);
+    const updated = (filters[key] as string[]).filter((x) => !toRemove.has(x));
+    onChange({
+      ...filters,
+      [key]: updated,
+    });
+  };
+
+  const [expandedCategories, setExpandedCategories] = React.useState<
+    Record<string, boolean>
+  >({});
+
+  const toggleExpand = (cat: string) => {
+    setExpandedCategories((prev) => ({ ...prev, [cat]: !prev[cat] }));
+  };
+
+  const renderCategoryBadges = (
+    label: string,
+    key: keyof STTReportFilters,
+    selected: string[],
+    allItems: string[],
+  ) => {
+    if (selected.length === 0) return null;
+
+    const isAll = allItems.length > 0 && selected.length === allItems.length;
+    const isExpanded = !!expandedCategories[key];
+    const displayItems = isExpanded ? selected : selected.slice(0, 5);
+    const remainingCount = selected.length - 5;
+
+    return (
+      <div key={key} className="flex flex-wrap items-center gap-2 text-xs">
+        <span className="font-semibold text-muted-foreground min-w-[70px]">
+          {label}:
+        </span>
+        {isAll ? (
+          <Badge
+            variant="secondary"
+            className="gap-1 text-xs font-normal"
+          >
+            <span>All ({selected.length})</span>
+            <button
+              type="button"
+              onClick={() => clearFilter(key)}
+              className="ml-1 text-muted-foreground hover:text-foreground inline-flex items-center"
+              title={`Clear all ${label.toLowerCase()}s`}
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </Badge>
+        ) : (
+          <>
+            {displayItems.map((item) => (
+              <Badge
+                key={item}
+                variant="secondary"
+                className="gap-1 text-xs font-normal"
+              >
+                <span>{item}</span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    onChange({
+                      ...filters,
+                      [key]: (filters[key] as string[]).filter((x) => x !== item),
+                    })
+                  }
+                  className="ml-1 text-muted-foreground hover:text-foreground inline-flex items-center"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            ))}
+            {selected.length > 5 && (
+              <Button
+                type="button"
+                variant="outline"
+                size="xs"
+                onClick={() => toggleExpand(key)}
+                className="h-5 px-1.5 text-xs text-muted-foreground hover:text-foreground rounded-full"
+              >
+                {isExpanded ? "Show less" : `+${remainingCount} more`}
+              </Button>
+            )}
+          </>
+        )}
+      </div>
+    );
+  };
+
   return (
     <Card className="">
       <CardContent className="p-4">
@@ -238,13 +337,35 @@ export function Filters(props: FiltersProps) {
                   className="w-80 p-0 "
                   align="start"
                 >
-                  <div className="p-2 border-b  ">
+                  <div className="p-2 border-b space-y-2">
                     <Input
                       placeholder="Search branches..."
                       value={branchSearch}
                       onChange={(e) => setBranchSearch(e.target.value)}
-                      className="h-8 "
+                      className="h-8"
                     />
+                    <div className="flex items-center justify-between">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="xs"
+                        className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+                        onClick={() => selectAll("branches", filteredBranches)}
+                        disabled={filteredBranches.length === 0}
+                      >
+                        Select All
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="xs"
+                        className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+                        onClick={() => unselectAll("branches", filteredBranches)}
+                        disabled={filteredBranches.length === 0}
+                      >
+                        Unselect All
+                      </Button>
+                    </div>
                   </div>
                   <ScrollArea className="h-64">
                     <div className="p-2 space-y-1 ">
@@ -302,13 +423,35 @@ export function Filters(props: FiltersProps) {
                   className="w-80 p-0 "
                   align="start"
                 >
-                  <div className="p-2 border-b  ">
+                  <div className="p-2 border-b space-y-2">
                     <Input
                       placeholder="Search salesmen..."
                       value={salesmanSearch}
                       onChange={(e) => setSalesmanSearch(e.target.value)}
-                      className="h-8 "
+                      className="h-8"
                     />
+                    <div className="flex items-center justify-between">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="xs"
+                        className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+                        onClick={() => selectAll("salesmen", filteredSalesmen)}
+                        disabled={filteredSalesmen.length === 0}
+                      >
+                        Select All
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="xs"
+                        className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+                        onClick={() => unselectAll("salesmen", filteredSalesmen)}
+                        disabled={filteredSalesmen.length === 0}
+                      >
+                        Unselect All
+                      </Button>
+                    </div>
                   </div>
                   <ScrollArea className="h-64">
                     <div className="p-2 space-y-1 ">
@@ -366,13 +509,35 @@ export function Filters(props: FiltersProps) {
                   className="w-80 p-0 "
                   align="start"
                 >
-                  <div className="p-2 border-b  ">
+                  <div className="p-2 border-b space-y-2">
                     <Input
                       placeholder="Search statuses..."
                       value={statusSearch}
                       onChange={(e) => setStatusSearch(e.target.value)}
-                      className="h-8 "
+                      className="h-8"
                     />
+                    <div className="flex items-center justify-between">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="xs"
+                        className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+                        onClick={() => selectAll("statuses", filteredStatuses)}
+                        disabled={filteredStatuses.length === 0}
+                      >
+                        Select All
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="xs"
+                        className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+                        onClick={() => unselectAll("statuses", filteredStatuses)}
+                        disabled={filteredStatuses.length === 0}
+                      >
+                        Unselect All
+                      </Button>
+                    </div>
                   </div>
                   <ScrollArea className="h-64">
                     <div className="p-2 space-y-1 ">
@@ -430,13 +595,35 @@ export function Filters(props: FiltersProps) {
                   className="w-80 p-0 "
                   align="start"
                 >
-                  <div className="p-2 border-b  ">
+                  <div className="p-2 border-b space-y-2">
                     <Input
                       placeholder="Search suppliers..."
                       value={supplierSearch}
                       onChange={(e) => setSupplierSearch(e.target.value)}
-                      className="h-8 "
+                      className="h-8"
                     />
+                    <div className="flex items-center justify-between">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="xs"
+                        className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+                        onClick={() => selectAll("suppliers", filteredSuppliers)}
+                        disabled={filteredSuppliers.length === 0}
+                      >
+                        Select All
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="xs"
+                        className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+                        onClick={() => unselectAll("suppliers", filteredSuppliers)}
+                        disabled={filteredSuppliers.length === 0}
+                      >
+                        Unselect All
+                      </Button>
+                    </div>
                   </div>
                   <ScrollArea className="h-64">
                     <div className="p-2 space-y-1 ">
@@ -482,73 +669,54 @@ export function Filters(props: FiltersProps) {
             filters.salesmen.length > 0 ||
             filters.statuses.length > 0 ||
             filters.suppliers.length > 0) && (
-            <div className="space-y-2">
-              <Label>Active Filters</Label>
-              <div className="flex flex-wrap gap-2">
-                {filters.branches.map((b) => (
-                  <Badge key={b} variant="secondary">
-                    Branch: {b}
-                    <button
-                      onClick={() =>
-                        onChange({
-                          ...filters,
-                          branches: filters.branches.filter((x) => x !== b),
-                        })
-                      }
-                      className="ml-1"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                ))}
-                {filters.salesmen.map((s) => (
-                  <Badge key={s} variant="secondary">
-                    Salesman: {s}
-                    <button
-                      onClick={() =>
-                        onChange({
-                          ...filters,
-                          salesmen: filters.salesmen.filter((x) => x !== s),
-                        })
-                      }
-                      className="ml-1"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                ))}
-                {filters.statuses.map((s) => (
-                  <Badge key={s} variant="secondary">
-                    Status: {s}
-                    <button
-                      onClick={() =>
-                        onChange({
-                          ...filters,
-                          statuses: filters.statuses.filter((x) => x !== s),
-                        })
-                      }
-                      className="ml-1"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                ))}
-                {filters.suppliers.map((s) => (
-                  <Badge key={s} variant="secondary">
-                    Supplier: {s}
-                    <button
-                      onClick={() =>
-                        onChange({
-                          ...filters,
-                          suppliers: filters.suppliers.filter((x) => x !== s),
-                        })
-                      }
-                      className="ml-1"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                ))}
+            <div className="space-y-2 pt-2 border-t">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-medium text-muted-foreground">
+                  Active Filters
+                </Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="xs"
+                  onClick={() =>
+                    onChange({
+                      ...filters,
+                      branches: [],
+                      salesmen: [],
+                      statuses: [],
+                      suppliers: [],
+                    })
+                  }
+                  className="h-6 px-2 text-xs text-muted-foreground hover:text-destructive"
+                >
+                  Clear All Filters
+                </Button>
+              </div>
+              <div className="space-y-2">
+                {renderCategoryBadges(
+                  "Branch",
+                  "branches",
+                  filters.branches,
+                  uniqueBranches,
+                )}
+                {renderCategoryBadges(
+                  "Salesman",
+                  "salesmen",
+                  filters.salesmen,
+                  uniqueSalesmen,
+                )}
+                {renderCategoryBadges(
+                  "Status",
+                  "statuses",
+                  filters.statuses,
+                  uniqueStatuses,
+                )}
+                {renderCategoryBadges(
+                  "Supplier",
+                  "suppliers",
+                  filters.suppliers,
+                  uniqueSuppliers,
+                )}
               </div>
             </div>
           )}
