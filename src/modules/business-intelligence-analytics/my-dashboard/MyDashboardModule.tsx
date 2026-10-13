@@ -20,6 +20,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MyDashboardProps, DashboardCardItem, CardsApiResponse } from "./types";
+import SalesOrderForApprovalCard from "./components/SalesOrderForApprovalCard";
 
 function formatCardTitle(key: string): string {
     return key
@@ -114,16 +115,15 @@ export default function MyDashboardModule({ className = "" }: MyDashboardProps) 
             {/* Content Section */}
             {loading ? (
                 /* Loading Skeletons */
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
                     {[1, 2, 3].map((i) => (
-                        <Card key={i} className="border-border bg-card shadow-sm animate-pulse">
-                            <CardHeader className="space-y-2 pb-4">
-                                <div className="h-4 w-1/3 bg-muted rounded" />
-                                <div className="h-3 w-2/3 bg-muted rounded" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="h-32 w-full bg-muted/60 rounded-md" />
-                            </CardContent>
+                        <Card key={i} className="border-border bg-card shadow-sm animate-pulse p-4 space-y-3">
+                            <div className="flex items-center justify-between">
+                                <div className="h-4 w-28 bg-muted rounded" />
+                                <div className="h-4 w-16 bg-muted rounded" />
+                            </div>
+                            <div className="h-8 w-20 bg-muted/80 rounded my-1" />
+                            <div className="h-9 w-full bg-muted/50 rounded-lg" />
                         </Card>
                     ))}
                 </div>
@@ -159,46 +159,55 @@ export default function MyDashboardModule({ className = "" }: MyDashboardProps) 
                 </Card>
             ) : (
                 /* Assigned Cards Grid */
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
-                    {cards.map((card) => (
-                        <Card
-                            key={card.id}
-                            className="flex flex-col border-border bg-card shadow-sm hover:shadow-md transition-shadow"
-                        >
-                            <CardHeader className="pb-3">
-                                <div className="flex items-center justify-between gap-2">
-                                    <div className="flex items-center gap-2 min-w-0">
-                                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary dark:bg-primary/20">
-                                            {getCardIcon(card.key)}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+                    {cards.map((card) => {
+                        if (
+                            card.key === "sales-order-for-approval" ||
+                            card.key === "sales_order_for_approval"
+                        ) {
+                            return <SalesOrderForApprovalCard key={card.id} card={card} />;
+                        }
+
+                        return (
+                            <Card
+                                key={card.id}
+                                className="flex flex-col border-border bg-card shadow-sm hover:shadow-md transition-shadow"
+                            >
+                                <CardHeader className="pb-3">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary dark:bg-primary/20">
+                                                {getCardIcon(card.key)}
+                                            </div>
+                                            <CardTitle className="text-base font-semibold truncate text-foreground">
+                                                {formatCardTitle(card.key)}
+                                            </CardTitle>
                                         </div>
-                                        <CardTitle className="text-base font-semibold truncate text-foreground">
-                                            {formatCardTitle(card.key)}
-                                        </CardTitle>
+                                        <Badge
+                                            variant="secondary"
+                                            className="shrink-0 text-[11px] font-mono uppercase bg-muted text-muted-foreground"
+                                        >
+                                            #{card.id}
+                                        </Badge>
                                     </div>
-                                    <Badge
-                                        variant="secondary"
-                                        className="shrink-0 text-[11px] font-mono uppercase bg-muted text-muted-foreground"
-                                    >
-                                        #{card.id}
-                                    </Badge>
-                                </div>
-                                <CardDescription className="text-xs text-muted-foreground line-clamp-2 mt-1">
-                                    {card.description || "Active dashboard card metric."}
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent className="flex-1 flex flex-col justify-between pt-0">
-                                <div className="rounded-lg border border-border/60 bg-muted/20 dark:bg-muted/10 p-4 min-h-[120px] flex flex-col items-center justify-center text-center">
-                                    <BarChart3 className="h-8 w-8 text-muted-foreground/40 mb-2" />
-                                    <span className="text-xs font-medium text-muted-foreground">
-                                        {formatCardTitle(card.key)} Widget
-                                    </span>
-                                    <span className="text-[11px] text-muted-foreground/70 mt-0.5">
-                                        Metric data container
-                                    </span>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    ))}
+                                    <CardDescription className="text-xs text-muted-foreground line-clamp-2 mt-1">
+                                        {card.description || "Active dashboard card metric."}
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent className="flex-1 flex flex-col justify-between pt-0">
+                                    <div className="rounded-lg border border-border/60 bg-muted/20 dark:bg-muted/10 p-4 min-h-[120px] flex flex-col items-center justify-center text-center">
+                                        <BarChart3 className="h-8 w-8 text-muted-foreground/40 mb-2" />
+                                        <span className="text-xs font-medium text-muted-foreground">
+                                            {formatCardTitle(card.key)} Widget
+                                        </span>
+                                        <span className="text-[11px] text-muted-foreground/70 mt-0.5">
+                                            Metric data container
+                                        </span>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        );
+                    })}
                 </div>
             )}
         </div>

@@ -124,9 +124,10 @@ export async function GET(request: NextRequest) {
 
             const allCardsJson = await allCardsRes.json();
             const allCards: DashboardCard[] = allCardsJson.data || [];
+            const widgetCards = allCards.filter((c) => c.key !== "all");
 
             return NextResponse.json({
-                cards: allCards,
+                cards: widgetCards.length > 0 ? widgetCards : allCards,
                 hasWildcardAccess: true,
             });
         }
