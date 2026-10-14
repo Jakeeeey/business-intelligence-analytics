@@ -22,6 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { MyDashboardProps, DashboardCardItem, CardsApiResponse } from "./types";
 import SalesOrderForApprovalCard from "./components/SalesOrderForApprovalCard";
 import AccountsReceivableDetailedCard from "./components/AccountsReceivableDetailedCard";
+import AccountsPayableDetailedCard from "./components/AccountsPayableDetailedCard";
 import SalesOrderDraftCard from "./components/SalesOrderDraftCard";
 import SalesOrderPendingCard from "./components/SalesOrderPendingCard";
 import SalesOrderInvoiceCard from "./components/SalesOrderInvoiceCard";
@@ -195,7 +196,9 @@ export default function MyDashboardModule({ className = "" }: MyDashboardProps) 
                     {(() => {
                         const isFullWidthCard = (key: string) =>
                             key === "accounts-receivable-detailed" ||
-                            key === "accounts_receivable_detailed";
+                            key === "accounts_receivable_detailed" ||
+                            key === "accounts-payable-detailed" ||
+                            key === "accounts_payable_detailed";
 
                         const compactCards = cards.filter((c) => !isFullWidthCard(c.key));
                         const fullWidthCards = cards.filter((c) => isFullWidthCard(c.key));
@@ -304,12 +307,25 @@ export default function MyDashboardModule({ className = "" }: MyDashboardProps) 
 
                                 {fullWidthCards.length > 0 && (
                                     <div className="space-y-4 sm:space-y-5">
-                                        {fullWidthCards.map((card) => (
-                                            <AccountsReceivableDetailedCard
-                                                key={card.id}
-                                                card={card}
-                                            />
-                                        ))}
+                                        {fullWidthCards.map((card) => {
+                                            if (
+                                                card.key === "accounts-payable-detailed" ||
+                                                card.key === "accounts_payable_detailed"
+                                            ) {
+                                                return (
+                                                    <AccountsPayableDetailedCard
+                                                        key={card.id}
+                                                        card={card}
+                                                    />
+                                                );
+                                            }
+                                            return (
+                                                <AccountsReceivableDetailedCard
+                                                    key={card.id}
+                                                    card={card}
+                                                />
+                                            );
+                                        })}
                                     </div>
                                 )}
                             </>

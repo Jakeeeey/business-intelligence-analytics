@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import {
   WalletCards,
   ArrowUpRight,
@@ -79,7 +79,9 @@ export default function AccountsReceivableDetailedCard({
 
   const fetchMetric = useCallback(
     async (forceRefresh = false) => {
-      setLoading(true);
+      if (forceRefresh || !data) {
+        setLoading(true);
+      }
       setError(null);
       try {
         const url = forceRefresh
@@ -97,10 +99,9 @@ export default function AccountsReceivableDetailedCard({
 
         if (isCacheEnabled) {
           try {
-            sessionStorage.setItem(
-              CACHE_KEY,
-              JSON.stringify({ data: json, timestamp: Date.now() })
-            );
+            const entry = JSON.stringify({ data: json, timestamp: Date.now() });
+            localStorage.setItem(CACHE_KEY, entry);
+            sessionStorage.setItem(CACHE_KEY, entry);
           } catch {
             // ignore quota issues
           }
@@ -116,14 +117,18 @@ export default function AccountsReceivableDetailedCard({
         setLoading(false);
       }
     },
-    [isCacheEnabled]
+    [isCacheEnabled, data]
   );
 
+  const hasMountCheckedRef = useRef(false);
   useEffect(() => {
+    if (hasMountCheckedRef.current) return;
+    hasMountCheckedRef.current = true;
+
     let hasCachedData = false;
     if (isCacheEnabled && typeof window !== "undefined") {
       try {
-        const raw = sessionStorage.getItem(CACHE_KEY);
+        const raw = localStorage.getItem(CACHE_KEY) || sessionStorage.getItem(CACHE_KEY);
         if (raw) {
           const parsed = JSON.parse(raw);
           if (parsed.timestamp && Date.now() - parsed.timestamp < cacheTtlMs) {
