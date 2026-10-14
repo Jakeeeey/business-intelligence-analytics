@@ -73,37 +73,13 @@ export default function AccountsReceivableDetailedCard({
         : card.cached_time * 1000
       : 360000;
 
-  // Initialize from cache if valid to eliminate loading delay
-  const [data, setData] = useState<AccountsReceivableMetricData | null>(() => {
-    if (typeof window === "undefined" || !isCacheEnabled) return null;
-    try {
-      const raw = sessionStorage.getItem(CACHE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed.timestamp && Date.now() - parsed.timestamp < cacheTtlMs) {
-          return parsed.data as AccountsReceivableMetricData;
-        }
-        if (!parsed.timestamp && typeof parsed.totalReceivable === "number") {
-          return parsed as AccountsReceivableMetricData;
-        }
-      }
-    } catch {
-      // ignore
-    }
-    return null;
-  });
-
-  const [loading, setLoading] = useState<boolean>(() => {
-    if (typeof window === "undefined" || !isCacheEnabled) return true;
-    return !sessionStorage.getItem(CACHE_KEY);
-  });
+  const [data, setData] = useState<AccountsReceivableMetricData | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchMetric = useCallback(
     async (forceRefresh = false) => {
-      if (forceRefresh || !data) {
-        setLoading(true);
-      }
+      setLoading(true);
       setError(null);
       try {
         const url = forceRefresh
@@ -111,7 +87,10 @@ export default function AccountsReceivableDetailedCard({
           : "/api/bia/my-dashboard/metrics/accounts-receivable-detailed";
         const res = await fetch(url, { cache: "no-store" });
         if (!res.ok) {
-          throw new Error("Failed to load accounts receivable metric");
+          const errData = await res.json().catch(() => null);
+          const errMessage =
+            errData?.message || errData?.error || `HTTP ${res.status}`;
+          throw new Error(errMessage);
         }
         const json: AccountsReceivableMetricData = await res.json();
         setData(json);
@@ -128,19 +107,44 @@ export default function AccountsReceivableDetailedCard({
         }
       } catch (err) {
         console.error("[AccountsReceivableDetailedCard] Fetch error:", err);
-        setError("Unable to load accounts receivable data");
+        const errMsg =
+          err instanceof Error
+            ? err.message
+            : "Unable to load accounts receivable data";
+        setError(errMsg);
       } finally {
         setLoading(false);
       }
     },
-    [isCacheEnabled, data]
+    [isCacheEnabled]
   );
 
   useEffect(() => {
-    if (!data) {
+    let hasCachedData = false;
+    if (isCacheEnabled && typeof window !== "undefined") {
+      try {
+        const raw = sessionStorage.getItem(CACHE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed.timestamp && Date.now() - parsed.timestamp < cacheTtlMs) {
+            setData(parsed.data as AccountsReceivableMetricData);
+            setLoading(false);
+            hasCachedData = true;
+          } else if (!parsed.timestamp && typeof parsed.totalReceivable === "number") {
+            setData(parsed as AccountsReceivableMetricData);
+            setLoading(false);
+            hasCachedData = true;
+          }
+        }
+      } catch {
+        // ignore cache parse issues
+      }
+    }
+
+    if (!hasCachedData) {
       fetchMetric(false);
     }
-  }, [fetchMetric, data]);
+  }, [fetchMetric, isCacheEnabled, cacheTtlMs]);
 
   const totalAgingBucketsSum =
     data && data.overdueAmount > 0
@@ -230,9 +234,19 @@ export default function AccountsReceivableDetailedCard({
             <p className="text-xs">Aggregating accounts receivable portfolio...</p>
           </div>
         ) : error ? (
-          <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-2.5 text-xs text-destructive dark:border-destructive/40">
-            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-            <span>{error}</span>
+          <div className="flex items-center justify-between gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-2.5 text-xs text-destructive dark:border-destructive/40">
+            <div className="flex items-center gap-2 min-w-0">
+              <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{error}</span>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fetchMetric(true)}
+              className="h-6 px-2 text-[10px] shrink-0 dark:border-destructive/40"
+            >
+              Retry
+            </Button>
           </div>
         ) : !data ? null : (
           <div className="space-y-2.5">
