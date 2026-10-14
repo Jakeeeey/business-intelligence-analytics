@@ -242,9 +242,13 @@ export default function SalesOrderForApprovalCard({ card }: SalesOrderForApprova
         [handleNewArrivalDetection, isCacheEnabled]
     );
 
-    // Initial fetch on mount
+    // Initial fetch on mount (run once)
+    const initialFetchedRef = useRef(false);
     useEffect(() => {
-        fetchMetric(data === null);
+        if (!initialFetchedRef.current) {
+            initialFetchedRef.current = true;
+            fetchMetric(data === null);
+        }
     }, [fetchMetric, data]);
 
     // Real-time synchronization (WebSocket if enabled, plus smart heartbeat polling)
@@ -300,9 +304,9 @@ export default function SalesOrderForApprovalCard({ card }: SalesOrderForApprova
                     try {
                         const payload = JSON.parse(event.data);
                         if (
-                            payload.type === "subscription" ||
                             payload.event === "create" ||
-                            payload.event === "update"
+                            payload.event === "update" ||
+                            payload.event === "delete"
                         ) {
                             fetchMetric(false, true);
                         }
@@ -339,10 +343,11 @@ export default function SalesOrderForApprovalCard({ card }: SalesOrderForApprova
             tryConnectWs();
         }
 
-        // Heartbeat polling aligned with cached_time configuration
+        // If WebSockets are active, poll less aggressively (60s) as fallback
+        const effectivePollInterval = isWsEnabled ? Math.max(60000, pollIntervalMs) : pollIntervalMs;
         pollTimer = setInterval(() => {
             fetchMetric(false);
-        }, pollIntervalMs);
+        }, effectivePollInterval);
 
         return () => {
             isMounted = false;
