@@ -15,8 +15,8 @@ export function KpiCards({ summary }: KpiCardsProps) {
   if (!summary) return null;
 
   const metrics = {
-    so: summary.totalPoAmount,
-    po: summary.totalCustomerPoAmount,
+    po: summary.totalPoAmount,
+    so: summary.totalCustomerPoAmount,
     pdp: summary.totalAllocatedAmount,
     cldto: summary.totalCldtoAmount,
     dp: summary.totalSiAmount,
@@ -42,7 +42,7 @@ export function KpiCards({ summary }: KpiCardsProps) {
       case 'unf': return ['unf'];
       case 'return': return ['return'];
       case 'shortage': return ['shortage', 'dp', 'remitted', 'unf', 'return'];
-      case 'variance': return ['variance', 'po', 'remitted'];
+      case 'variance': return ['variance', 'so', 'remitted'];
       default: return [];
     }
   };
@@ -65,26 +65,26 @@ export function KpiCards({ summary }: KpiCardsProps) {
   return (
     <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 mt-6">
       <div 
-        onMouseEnter={() => setHoveredCard('so')}
+        onMouseEnter={() => setHoveredCard('po')}
         onMouseLeave={() => setHoveredCard(null)}
-        className={`bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-950/20 dark:to-blue-900/10 border-l-4 border-l-blue-500 ${getCardClass('so')}`}
+        className={`bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-950/20 dark:to-blue-900/10 border-l-4 border-l-blue-500 ${getCardClass('po')}`}
       >
         <div className="absolute top-0 right-0 w-16 h-16 bg-blue-500/10 rounded-bl-full -mr-8 -mt-8 transition-transform duration-300 group-hover:scale-150" />
-        <h3 className="text-sm font-semibold tracking-tight text-blue-800 dark:text-blue-300">SO</h3>
-        <p title={formatCurrency(metrics.so)} className="text-lg xl:text-base 2xl:text-xl tracking-tighter font-black mt-2 text-blue-950 dark:text-blue-100 whitespace-nowrap overflow-hidden text-ellipsis">
-          {formatCurrency(metrics.so)}
+        <h3 className="text-sm font-semibold tracking-tight text-blue-800 dark:text-blue-300">PO</h3>
+        <p title={formatCurrency(metrics.po)} className="text-lg xl:text-base 2xl:text-xl tracking-tighter font-black mt-2 text-blue-950 dark:text-blue-100 whitespace-nowrap overflow-hidden text-ellipsis">
+          {formatCurrency(metrics.po)}
         </p>
       </div>
 
       <div 
-        onMouseEnter={() => setHoveredCard('po')}
+        onMouseEnter={() => setHoveredCard('so')}
         onMouseLeave={() => setHoveredCard(null)}
-        className={`bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-950/20 dark:to-amber-900/10 border-l-4 border-l-amber-500 ${getCardClass('po')}`}
+        className={`bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-950/20 dark:to-amber-900/10 border-l-4 border-l-amber-500 ${getCardClass('so')}`}
       >
         <div className="absolute top-0 right-0 w-16 h-16 bg-amber-500/10 rounded-bl-full -mr-8 -mt-8 transition-transform duration-300 group-hover:scale-150" />
-        <h3 className="text-sm font-semibold tracking-tight text-amber-800 dark:text-amber-300">PO</h3>
-        <p title={formatCurrency(metrics.po)} className="text-lg xl:text-base 2xl:text-xl tracking-tighter font-black mt-2 text-amber-950 dark:text-amber-100 whitespace-nowrap overflow-hidden text-ellipsis">
-          {formatCurrency(metrics.po)}
+        <h3 className="text-sm font-semibold tracking-tight text-amber-800 dark:text-amber-300">SO</h3>
+        <p title={formatCurrency(metrics.so)} className="text-lg xl:text-base 2xl:text-xl tracking-tighter font-black mt-2 text-amber-950 dark:text-amber-100 whitespace-nowrap overflow-hidden text-ellipsis">
+          {formatCurrency(metrics.so)}
         </p>
       </div>
 
