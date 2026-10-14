@@ -24,7 +24,8 @@ export async function GET(request: NextRequest) {
         request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ||
         cookieStore.get(COOKIE_NAME)?.value;
 
-    if (!token) {
+    const isAuthDisabled = process.env.NEXT_PUBLIC_AUTH_DISABLED === "true";
+    if (!token && !isAuthDisabled) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -57,6 +58,10 @@ export async function GET(request: NextRequest) {
 
         if (!res.ok) {
             console.error("[Sales Order For Consolidation Metric] Directus error:", res.status);
+            if (serverConsolidationCache) {
+                console.warn("[Sales Order For Consolidation Metric] Directus error, returning stale server cache");
+                return NextResponse.json(serverConsolidationCache.data);
+            }
             return NextResponse.json({ error: "Failed to fetch metric" }, { status: res.status });
         }
 
@@ -77,6 +82,10 @@ export async function GET(request: NextRequest) {
     } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);
         console.error("[Sales Order For Consolidation Metric] Error:", message);
+        if (serverConsolidationCache) {
+            console.warn("[Sales Order For Consolidation Metric] Returning stale server cache due to error:", message);
+            return NextResponse.json(serverConsolidationCache.data);
+        }
         return NextResponse.json({ error: "Internal Server Error", message }, { status: 500 });
     }
 }
