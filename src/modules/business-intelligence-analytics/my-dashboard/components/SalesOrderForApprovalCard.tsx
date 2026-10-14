@@ -356,7 +356,7 @@ export default function SalesOrderForApprovalCard({ card }: SalesOrderForApprova
     return (
         <a
             href="/crm/customer-hub/sales-order-approval"
-            className="block w-full max-w-[200px] sm:max-w-[210px] aspect-square no-underline text-inherit focus:outline-none select-none"
+            className="block w-full aspect-square no-underline text-inherit focus:outline-none select-none"
         >
             <Card
                 className={`flex flex-col border border-border/80 bg-gradient-to-br from-card via-card to-muted/20 shadow-xs hover:shadow-md hover:border-amber-500/60 transition-all duration-300 overflow-hidden py-0 gap-0 dark:border-zinc-800 w-full h-full aspect-square justify-between cursor-pointer group ${
