@@ -9,6 +9,7 @@ import {
     Activity,
     TrendingUp,
     RefreshCw,
+    Receipt,
 } from "lucide-react";
 import {
     Card,
@@ -23,6 +24,7 @@ import { MyDashboardProps, DashboardCardItem, CardsApiResponse } from "./types";
 import SalesOrderForApprovalCard from "./components/SalesOrderForApprovalCard";
 import AccountsReceivableDetailedCard from "./components/AccountsReceivableDetailedCard";
 import AccountsPayableDetailedCard from "./components/AccountsPayableDetailedCard";
+import CompanyExpenseReportCard from "./components/CompanyExpenseReportCard";
 import SalesOrderDraftCard from "./components/SalesOrderDraftCard";
 import SalesOrderPendingCard from "./components/SalesOrderPendingCard";
 import SalesOrderInvoiceCard from "./components/SalesOrderInvoiceCard";
@@ -41,6 +43,9 @@ function getCardIcon(key: string) {
     }
     if (lower.includes("activity") || lower.includes("lead")) {
         return <Activity className="h-4 w-4" />;
+    }
+    if (lower.includes("expense") || lower.includes("disbursement")) {
+        return <Receipt className="h-4 w-4" />;
     }
     return <BarChart3 className="h-4 w-4" />;
 }
@@ -206,7 +211,7 @@ export default function MyDashboardModule({ className = "" }: MyDashboardProps) 
                         return (
                             <>
                                 {compactCards.length > 0 && (
-                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 grid-flow-dense">
                                         {compactCards.map((card) => {
                                             if (
                                                 card.key === "sales-order-for-approval" ||
@@ -262,6 +267,18 @@ export default function MyDashboardModule({ className = "" }: MyDashboardProps) 
                                             ) {
                                                 return (
                                                     <SalesOrderForConsolidationCard
+                                                        key={card.id}
+                                                        card={card}
+                                                    />
+                                                );
+                                            }
+
+                                            if (
+                                                card.key === "company-expense-report" ||
+                                                card.key === "company_expense_report"
+                                            ) {
+                                                return (
+                                                    <CompanyExpenseReportCard
                                                         key={card.id}
                                                         card={card}
                                                     />
