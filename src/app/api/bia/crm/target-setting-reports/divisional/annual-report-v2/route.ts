@@ -87,6 +87,7 @@ function normalizeSales(items: Record<string, unknown>[]): NormalizedSales[] {
         cases: pickNumber(item, ["conversionToCases", "productQuantity", "quantity"]),
         unitName: pickString(item, ["unitName", "uom", "unit_name", "unit"]),
         quantity: pickNumber(item, ["quantityOfUnits", "quantity", "productQuantity", "qty", "receivedQuantity", "conversionToCases"]),
+        conversionToPieces: pickNumber(item, ["conversionToPieces", "conversion_to_pieces"]),
         conversionToCases: pickNumber(item, ["conversionToCases"]),
         productName: pickString(item, ["productName", "product_name", "product", "itemName", "item_name", "itemDescription", "description", "name"]),
         priceType: pickString(item, ["priceTypeName", "priceType", "price_type"]),
@@ -232,7 +233,7 @@ export async function GET(req: NextRequest) {
       purchaseUrl.searchParams.set("dateTo", dateTo);
     }
 
-    const cacheKey = `v2.6:${dateFrom}:${dateTo}:${token}`;
+    const cacheKey = `v2.7:${dateFrom}:${dateTo}:${token}`;
     const now = Date.now();
     let cachedData = NORMALIZED_CACHE.get(cacheKey);
 

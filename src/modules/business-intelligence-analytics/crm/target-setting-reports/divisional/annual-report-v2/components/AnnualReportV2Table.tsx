@@ -59,14 +59,12 @@ export function AnnualReportV2Table({
         "Total Sales",
         "Total Purchases",
         "Variance",
-        "Bias %",
       ];
       const rows = data.map((row) => [
         row.monthLabel,
         row.totalSales.toFixed(2),
         row.totalPurchases.toFixed(2),
         row.variance.toFixed(2),
-        row.biasPercentage.toFixed(2),
       ]);
       csvContent = [
         headers.join(","),
