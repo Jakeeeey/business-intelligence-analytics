@@ -27,6 +27,7 @@ import AccountsReceivableDetailedCard from "./components/AccountsReceivableDetai
 import AccountsPayableDetailedCard from "./components/AccountsPayableDetailedCard";
 import CompanyExpenseReportCard from "./components/CompanyExpenseReportCard";
 import CompanyPayrollCutoffProgressCard from "./components/CompanyPayrollCutoffProgressCard";
+import HoldingsPayrollCutoffProgressCard from "./components/HoldingsPayrollCutoffProgressCard";
 import SalesOrderDraftCard from "./components/SalesOrderDraftCard";
 import SalesOrderPendingCard from "./components/SalesOrderPendingCard";
 import SalesOrderInvoiceCard from "./components/SalesOrderInvoiceCard";
@@ -283,6 +284,18 @@ export default function MyDashboardModule({ className = "" }: MyDashboardProps) 
                                             ) {
                                                 return (
                                                     <CompanyPayrollCutoffProgressCard
+                                                        key={card.id}
+                                                        card={card}
+                                                    />
+                                                );
+                                            }
+
+                                            if (
+                                                card.key === "holdings-payroll-cutoff-progress" ||
+                                                card.key === "holdings_payroll_cutoff_progress"
+                                            ) {
+                                                return (
+                                                    <HoldingsPayrollCutoffProgressCard
                                                         key={card.id}
                                                         card={card}
                                                     />
