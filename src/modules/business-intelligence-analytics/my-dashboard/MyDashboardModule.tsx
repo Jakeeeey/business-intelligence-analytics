@@ -202,22 +202,9 @@ export default function MyDashboardModule({ className = "" }: MyDashboardProps) 
             ) : (
                 /* Assigned Cards Container */
                 <div className="space-y-4 sm:space-y-5">
-                    {/* Compact KPI Cards Row (e.g. Sales Orders Approval & Draft side-by-side) */}
-                    {(() => {
-                        const isFullWidthCard = (key: string) =>
-                            key === "accounts-receivable-detailed" ||
-                            key === "accounts_receivable_detailed" ||
-                            key === "accounts-payable-detailed" ||
-                            key === "accounts_payable_detailed";
-
-                        const compactCards = cards.filter((c) => !isFullWidthCard(c.key));
-                        const fullWidthCards = cards.filter((c) => isFullWidthCard(c.key));
-
-                        return (
-                            <>
-                                {compactCards.length > 0 && (
-                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 grid-flow-dense">
-                                        {compactCards.map((card) => {
+                    {/* Dashboard Cards Grid */}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 grid-flow-dense">
+                        {cards.map((card) => {
                                             if (
                                                 card.key === "sales-order-for-approval" ||
                                                 card.key === "sales_order_for_approval"
@@ -302,6 +289,30 @@ export default function MyDashboardModule({ className = "" }: MyDashboardProps) 
                                                 );
                                             }
 
+                                            if (
+                                                card.key === "accounts-receivable-detailed" ||
+                                                card.key === "accounts_receivable_detailed"
+                                            ) {
+                                                return (
+                                                    <AccountsReceivableDetailedCard
+                                                        key={card.id}
+                                                        card={card}
+                                                    />
+                                                );
+                                            }
+
+                                            if (
+                                                card.key === "accounts-payable-detailed" ||
+                                                card.key === "accounts_payable_detailed"
+                                            ) {
+                                                return (
+                                                    <AccountsPayableDetailedCard
+                                                        key={card.id}
+                                                        card={card}
+                                                    />
+                                                );
+                                            }
+
                                             return (
                                                 <Card
                                                     key={card.id}
@@ -337,34 +348,6 @@ export default function MyDashboardModule({ className = "" }: MyDashboardProps) 
                                             );
                                         })}
                                     </div>
-                                )}
-
-                                {fullWidthCards.length > 0 && (
-                                    <div className="space-y-4 sm:space-y-5">
-                                        {fullWidthCards.map((card) => {
-                                            if (
-                                                card.key === "accounts-payable-detailed" ||
-                                                card.key === "accounts_payable_detailed"
-                                            ) {
-                                                return (
-                                                    <AccountsPayableDetailedCard
-                                                        key={card.id}
-                                                        card={card}
-                                                    />
-                                                );
-                                            }
-                                            return (
-                                                <AccountsReceivableDetailedCard
-                                                    key={card.id}
-                                                    card={card}
-                                                />
-                                            );
-                                        })}
-                                    </div>
-                                )}
-                            </>
-                        );
-                    })()}
                 </div>
             )}
         </div>

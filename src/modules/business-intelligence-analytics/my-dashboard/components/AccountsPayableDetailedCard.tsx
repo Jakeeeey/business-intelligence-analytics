@@ -206,9 +206,9 @@ export default function AccountsPayableDetailedCard({
       : 0;
 
   return (
-    <Card className="col-span-full flex flex-col border border-border/80 bg-gradient-to-br from-card via-card to-muted/20 shadow-xs transition-all duration-300 hover:shadow-sm dark:border-zinc-800 dark:from-zinc-900/90 dark:via-zinc-900/70 dark:to-zinc-950/90 overflow-hidden py-0 gap-0">
+    <Card className="col-span-2 sm:col-span-3 md:col-span-4 lg:col-span-4 row-span-2 flex flex-col border border-border/80 bg-gradient-to-br from-card via-card to-muted/20 shadow-xs transition-all duration-300 hover:shadow-sm dark:border-zinc-800 dark:from-zinc-900/90 dark:via-zinc-900/70 dark:to-zinc-950/90 overflow-hidden py-0 gap-0 h-full justify-between">
       {/* Top Sky / Indigo / Amber Gradient Bar */}
-      <div className="h-0.5 w-full bg-gradient-to-r from-sky-500 via-indigo-500 to-amber-500" />
+      <div className="h-0.5 w-full bg-gradient-to-r from-sky-500 via-indigo-500 to-amber-500 shrink-0" />
 
       {/* Header - Compact without excess padding */}
       <div className="px-3.5 py-2 sm:px-4 sm:py-2 border-b border-border/40 dark:border-zinc-800/60 flex flex-wrap items-center justify-between gap-2">
@@ -261,7 +261,7 @@ export default function AccountsPayableDetailedCard({
       </div>
 
       {/* Content */}
-      <div className="px-3.5 py-2.5 sm:px-4 sm:py-3">
+      <div className="px-3.5 py-2 sm:px-4 sm:py-2.5 flex-1 flex flex-col justify-between overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-6 gap-2 text-muted-foreground">
             <Spinner className="h-4 w-4 text-primary" />
