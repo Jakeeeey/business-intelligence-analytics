@@ -10,6 +10,7 @@ import {
     TrendingUp,
     RefreshCw,
     Receipt,
+    CalendarCheck2,
 } from "lucide-react";
 import {
     Card,
@@ -25,6 +26,7 @@ import SalesOrderForApprovalCard from "./components/SalesOrderForApprovalCard";
 import AccountsReceivableDetailedCard from "./components/AccountsReceivableDetailedCard";
 import AccountsPayableDetailedCard from "./components/AccountsPayableDetailedCard";
 import CompanyExpenseReportCard from "./components/CompanyExpenseReportCard";
+import CompanyPayrollCutoffProgressCard from "./components/CompanyPayrollCutoffProgressCard";
 import SalesOrderDraftCard from "./components/SalesOrderDraftCard";
 import SalesOrderPendingCard from "./components/SalesOrderPendingCard";
 import SalesOrderInvoiceCard from "./components/SalesOrderInvoiceCard";
@@ -46,6 +48,9 @@ function getCardIcon(key: string) {
     }
     if (lower.includes("expense") || lower.includes("disbursement")) {
         return <Receipt className="h-4 w-4" />;
+    }
+    if (lower.includes("payroll") || lower.includes("cutoff")) {
+        return <CalendarCheck2 className="h-4 w-4" />;
     }
     return <BarChart3 className="h-4 w-4" />;
 }
@@ -279,6 +284,18 @@ export default function MyDashboardModule({ className = "" }: MyDashboardProps) 
                                             ) {
                                                 return (
                                                     <CompanyExpenseReportCard
+                                                        key={card.id}
+                                                        card={card}
+                                                    />
+                                                );
+                                            }
+
+                                            if (
+                                                card.key === "company-payroll-cutoff-progress" ||
+                                                card.key === "company_payroll_cutoff_progress"
+                                            ) {
+                                                return (
+                                                    <CompanyPayrollCutoffProgressCard
                                                         key={card.id}
                                                         card={card}
                                                     />
