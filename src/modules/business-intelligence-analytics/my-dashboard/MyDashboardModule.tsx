@@ -11,6 +11,7 @@ import {
     RefreshCw,
     Receipt,
     CalendarCheck2,
+    Truck,
 } from "lucide-react";
 import {
     Card,
@@ -28,6 +29,7 @@ import AccountsPayableDetailedCard from "./components/AccountsPayableDetailedCar
 import CompanyExpenseReportCard from "./components/CompanyExpenseReportCard";
 import CompanyPayrollCutoffProgressCard from "./components/CompanyPayrollCutoffProgressCard";
 import HoldingsPayrollCutoffProgressCard from "./components/HoldingsPayrollCutoffProgressCard";
+import DriverKPICard from "./components/DriverKPICard";
 import SalesOrderDraftCard from "./components/SalesOrderDraftCard";
 import SalesOrderPendingCard from "./components/SalesOrderPendingCard";
 import SalesOrderInvoiceCard from "./components/SalesOrderInvoiceCard";
@@ -52,6 +54,9 @@ function getCardIcon(key: string) {
     }
     if (lower.includes("payroll") || lower.includes("cutoff")) {
         return <CalendarCheck2 className="h-4 w-4" />;
+    }
+    if (lower.includes("driver") || lower.includes("logistics")) {
+        return <Truck className="h-4 w-4" />;
     }
     return <BarChart3 className="h-4 w-4" />;
 }
@@ -296,6 +301,18 @@ export default function MyDashboardModule({ className = "" }: MyDashboardProps) 
                                             ) {
                                                 return (
                                                     <HoldingsPayrollCutoffProgressCard
+                                                        key={card.id}
+                                                        card={card}
+                                                    />
+                                                );
+                                            }
+
+                                            if (
+                                                card.key === "driver-kpi" ||
+                                                card.key === "driver_kpi"
+                                            ) {
+                                                return (
+                                                    <DriverKPICard
                                                         key={card.id}
                                                         card={card}
                                                     />
