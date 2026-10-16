@@ -9,6 +9,8 @@ import {
     Activity,
     TrendingUp,
     RefreshCw,
+    Receipt,
+    CalendarCheck2,
 } from "lucide-react";
 import {
     Card,
@@ -22,6 +24,10 @@ import { Badge } from "@/components/ui/badge";
 import { MyDashboardProps, DashboardCardItem, CardsApiResponse } from "./types";
 import SalesOrderForApprovalCard from "./components/SalesOrderForApprovalCard";
 import AccountsReceivableDetailedCard from "./components/AccountsReceivableDetailedCard";
+import AccountsPayableDetailedCard from "./components/AccountsPayableDetailedCard";
+import CompanyExpenseReportCard from "./components/CompanyExpenseReportCard";
+import CompanyPayrollCutoffProgressCard from "./components/CompanyPayrollCutoffProgressCard";
+import HoldingsPayrollCutoffProgressCard from "./components/HoldingsPayrollCutoffProgressCard";
 import SalesOrderDraftCard from "./components/SalesOrderDraftCard";
 import SalesOrderPendingCard from "./components/SalesOrderPendingCard";
 import SalesOrderInvoiceCard from "./components/SalesOrderInvoiceCard";
@@ -40,6 +46,12 @@ function getCardIcon(key: string) {
     }
     if (lower.includes("activity") || lower.includes("lead")) {
         return <Activity className="h-4 w-4" />;
+    }
+    if (lower.includes("expense") || lower.includes("disbursement")) {
+        return <Receipt className="h-4 w-4" />;
+    }
+    if (lower.includes("payroll") || lower.includes("cutoff")) {
+        return <CalendarCheck2 className="h-4 w-4" />;
     }
     return <BarChart3 className="h-4 w-4" />;
 }
@@ -191,20 +203,9 @@ export default function MyDashboardModule({ className = "" }: MyDashboardProps) 
             ) : (
                 /* Assigned Cards Container */
                 <div className="space-y-4 sm:space-y-5">
-                    {/* Compact KPI Cards Row (e.g. Sales Orders Approval & Draft side-by-side) */}
-                    {(() => {
-                        const isFullWidthCard = (key: string) =>
-                            key === "accounts-receivable-detailed" ||
-                            key === "accounts_receivable_detailed";
-
-                        const compactCards = cards.filter((c) => !isFullWidthCard(c.key));
-                        const fullWidthCards = cards.filter((c) => isFullWidthCard(c.key));
-
-                        return (
-                            <>
-                                {compactCards.length > 0 && (
-                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
-                                        {compactCards.map((card) => {
+                    {/* Dashboard Cards Grid */}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 grid-flow-dense">
+                        {cards.map((card) => {
                                             if (
                                                 card.key === "sales-order-for-approval" ||
                                                 card.key === "sales_order_for_approval"
@@ -265,6 +266,66 @@ export default function MyDashboardModule({ className = "" }: MyDashboardProps) 
                                                 );
                                             }
 
+                                            if (
+                                                card.key === "company-expense-report" ||
+                                                card.key === "company_expense_report"
+                                            ) {
+                                                return (
+                                                    <CompanyExpenseReportCard
+                                                        key={card.id}
+                                                        card={card}
+                                                    />
+                                                );
+                                            }
+
+                                            if (
+                                                card.key === "company-payroll-cutoff-progress" ||
+                                                card.key === "company_payroll_cutoff_progress"
+                                            ) {
+                                                return (
+                                                    <CompanyPayrollCutoffProgressCard
+                                                        key={card.id}
+                                                        card={card}
+                                                    />
+                                                );
+                                            }
+
+                                            if (
+                                                card.key === "holdings-payroll-cutoff-progress" ||
+                                                card.key === "holdings_payroll_cutoff_progress"
+                                            ) {
+                                                return (
+                                                    <HoldingsPayrollCutoffProgressCard
+                                                        key={card.id}
+                                                        card={card}
+                                                    />
+                                                );
+                                            }
+
+                                            if (
+                                                card.key === "accounts-receivable-detailed" ||
+                                                card.key === "accounts_receivable_detailed"
+                                            ) {
+                                                return (
+                                                    <AccountsReceivableDetailedCard
+                                                        key={card.id}
+                                                        card={card}
+                                                    />
+                                                );
+                                            }
+
+                                            if (
+                                                card.key === "accounts-payable-detailed" ||
+                                                card.key === "accounts_payable_detailed"
+                                            ) {
+                                                return (
+                                                    <AccountsPayableDetailedCard
+                                                        key={card.id}
+                                                        card={card}
+                                                    />
+                                                );
+                                            }
+
                                             return (
                                                 <Card
                                                     key={card.id}
@@ -300,21 +361,6 @@ export default function MyDashboardModule({ className = "" }: MyDashboardProps) 
                                             );
                                         })}
                                     </div>
-                                )}
-
-                                {fullWidthCards.length > 0 && (
-                                    <div className="space-y-4 sm:space-y-5">
-                                        {fullWidthCards.map((card) => (
-                                            <AccountsReceivableDetailedCard
-                                                key={card.id}
-                                                card={card}
-                                            />
-                                        ))}
-                                    </div>
-                                )}
-                            </>
-                        );
-                    })()}
                 </div>
             )}
         </div>

@@ -28,42 +28,15 @@ async function fetchDirectusPage<T>(url: string, headers: Record<string, string>
   return (json.data || []) as T[];
 }
 
-async function fetchAllChunked<T>(
-  baseUrl: string,
-  idField: string,
-  ids: (number | string)[],
-  headers: Record<string, string>,
-  chunkSize = 300,
-  concurrency = 5
-): Promise<T[]> {
-  if (ids.length === 0) return [];
-  const separator = baseUrl.includes("?") ? "&" : "?";
-  const chunks: (number | string)[][] = [];
-  for (let i = 0; i < ids.length; i += chunkSize) {
-    chunks.push(ids.slice(i, i + chunkSize));
-  }
-
-  const results: T[] = [];
-  for (let i = 0; i < chunks.length; i += concurrency) {
-    const batch = chunks.slice(i, i + concurrency);
-    const batchResults = await Promise.all(
-      batch.map((chunk) =>
-        fetchDirectusPage<T>(`${baseUrl}${separator}filter[${idField}][_in]=${chunk.join(",")}`, headers).catch(
-          () => [] as T[]
-        )
-      )
-    );
-    results.push(...batchResults.flat());
-  }
-  return results;
-}
-
 interface CachedARPayload {
   data: Record<string, unknown>;
   timestamp: number;
 }
 
-let serverARCache: CachedARPayload | null = null;
+declare global {
+  var __serverARCache: CachedARPayload | undefined;
+}
+
 const SERVER_CACHE_TTL_MS = 360000; // 360,000 ms (6 minutes)
 
 export async function GET(request: NextRequest) {
@@ -72,13 +45,15 @@ export async function GET(request: NextRequest) {
     request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ||
     cookieStore.get(COOKIE_NAME)?.value;
 
-  if (!token) {
+  const isAuthDisabled = process.env.NEXT_PUBLIC_AUTH_DISABLED === "true";
+  if (!token && !isAuthDisabled) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const force = request.nextUrl.searchParams.get("force") === "true";
-  if (!force && serverARCache && Date.now() - serverARCache.timestamp < SERVER_CACHE_TTL_MS) {
-    return NextResponse.json(serverARCache.data);
+  const cached = globalThis.__serverARCache;
+  if (!force && cached && Date.now() - cached.timestamp < SERVER_CACHE_TTL_MS) {
+    return NextResponse.json(cached.data);
   }
 
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/+$/, "");
@@ -121,7 +96,7 @@ export async function GET(request: NextRequest) {
 
     const allInvoices: AnyRec[] = [];
     let offset = 0;
-    const pageSize = 500;
+    const pageSize = 1000;
 
     while (true) {
       const pageUrl = `${baseUrl}/items/sales_invoice?fields=${invoiceFields}&${invoiceFilterQuery}&limit=${pageSize}&offset=${offset}`;
@@ -161,34 +136,24 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const invoiceIds = allInvoices.map((i) => Number(i.invoice_id)).filter(Boolean);
-
-    // 3. Concurrently fetch linked payments, returns, memos, and variances chunked by invoiceIds
+    // 3. Concurrently fetch all linked adjustments in 4 single parallel requests (tables have < 1000 total rows)
     const [payments, returns, memos, unfulfilled] = await Promise.all([
-      fetchAllChunked<AnyRec>(
+      fetchDirectusPage<AnyRec>(
         `${baseUrl}/items/sales_invoice_payments?limit=-1&fields=invoice_id,paid_amount`,
-        "invoice_id",
-        invoiceIds,
         headers
-      ),
-      fetchAllChunked<AnyRec>(
+      ).catch(() => [] as AnyRec[]),
+      fetchDirectusPage<AnyRec>(
         `${baseUrl}/items/sales_invoice_sales_return?limit=-1&fields=invoice_no,amount`,
-        "invoice_no",
-        invoiceIds,
         headers
-      ),
-      fetchAllChunked<AnyRec>(
+      ).catch(() => [] as AnyRec[]),
+      fetchDirectusPage<AnyRec>(
         `${baseUrl}/items/customer_memo_invoices?limit=-1&fields=invoice_id,amount,memo_id.type,memo_id.status`,
-        "invoice_id",
-        invoiceIds,
         headers
-      ),
-      fetchAllChunked<AnyRec>(
+      ).catch(() => [] as AnyRec[]),
+      fetchDirectusPage<AnyRec>(
         `${baseUrl}/items/unfulfilled_sales_transaction?limit=-1&fields=sales_invoice_id,variance_amount`,
-        "sales_invoice_id",
-        invoiceIds,
         headers
-      ),
+      ).catch(() => [] as AnyRec[]),
     ]);
 
     // Aggregate lookups
@@ -422,12 +387,16 @@ export async function GET(request: NextRequest) {
       topSalesmen,
     };
 
-    serverARCache = { data: payload, timestamp: Date.now() };
+    globalThis.__serverARCache = { data: payload, timestamp: Date.now() };
 
     return NextResponse.json(payload);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("[AR Detailed Metric API] Error:", message);
+    if (globalThis.__serverARCache) {
+      console.warn("[AR Detailed Metric API] Returning stale cache due to error:", message);
+      return NextResponse.json(globalThis.__serverARCache.data);
+    }
     return NextResponse.json({ error: "Internal Server Error", message }, { status: 500 });
   }
 }

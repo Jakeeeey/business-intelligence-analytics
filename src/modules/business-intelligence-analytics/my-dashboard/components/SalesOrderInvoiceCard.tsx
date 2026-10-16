@@ -208,7 +208,10 @@ export default function SalesOrderInvoiceCard({ card }: SalesOrderInvoiceCardPro
                     cache: "no-store",
                 });
                 if (!res.ok) {
-                    throw new Error("Failed to load metric");
+                    const errData = await res.json().catch(() => null);
+                    const errMessage =
+                        errData?.message || errData?.error || `HTTP ${res.status}`;
+                    throw new Error(errMessage);
                 }
                 const json: SalesOrderInvoiceMetricData = await res.json();
                 setData(json);
@@ -228,7 +231,9 @@ export default function SalesOrderInvoiceCard({ card }: SalesOrderInvoiceCardPro
                 handleNewArrivalDetection(json.count);
             } catch (err) {
                 console.error("[SalesOrderInvoiceCard] Fetch error:", err);
-                setError("Unable to load data");
+                const errMsg =
+                    err instanceof Error ? err.message : "Unable to load data";
+                setError(errMsg);
             } finally {
                 if (showSpinner) setLoading(false);
             }
@@ -236,9 +241,13 @@ export default function SalesOrderInvoiceCard({ card }: SalesOrderInvoiceCardPro
         [handleNewArrivalDetection, isCacheEnabled]
     );
 
-    // Initial fetch on mount
+    // Initial fetch on mount (run once)
+    const initialFetchedRef = useRef(false);
     useEffect(() => {
-        fetchMetric(data === null);
+        if (!initialFetchedRef.current) {
+            initialFetchedRef.current = true;
+            fetchMetric(data === null);
+        }
     }, [fetchMetric, data]);
 
     // Real-time synchronization
@@ -294,9 +303,9 @@ export default function SalesOrderInvoiceCard({ card }: SalesOrderInvoiceCardPro
                     try {
                         const payload = JSON.parse(event.data);
                         if (
-                            payload.type === "subscription" ||
                             payload.event === "create" ||
-                            payload.event === "update"
+                            payload.event === "update" ||
+                            payload.event === "delete"
                         ) {
                             fetchMetric(false, true);
                         }
@@ -333,9 +342,11 @@ export default function SalesOrderInvoiceCard({ card }: SalesOrderInvoiceCardPro
             tryConnectWs();
         }
 
+        // If WebSockets are active, poll less aggressively (60s) as fallback
+        const effectivePollInterval = isWsEnabled ? Math.max(60000, pollIntervalMs) : pollIntervalMs;
         pollTimer = setInterval(() => {
             fetchMetric(false);
-        }, pollIntervalMs);
+        }, effectivePollInterval);
 
         return () => {
             isMounted = false;
@@ -410,9 +421,22 @@ export default function SalesOrderInvoiceCard({ card }: SalesOrderInvoiceCardPro
                             <span className="text-[10px]">Loading...</span>
                         </div>
                     ) : error && !data ? (
-                        <div className="flex items-center gap-1 p-1.5 rounded-md border border-destructive/20 bg-destructive/10 text-destructive text-[10px]">
-                            <AlertCircle className="h-3 w-3 shrink-0" />
-                            <span className="truncate">{error}</span>
+                        <div className="flex flex-col items-center gap-1 p-1.5 rounded-md border border-destructive/20 bg-destructive/10 text-destructive text-[10px] w-full">
+                            <div className="flex items-center gap-1 max-w-full">
+                                <AlertCircle className="h-3 w-3 shrink-0" />
+                                <span className="truncate">{error}</span>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    fetchMetric(true, true);
+                                }}
+                                className="text-[9px] underline hover:no-underline font-semibold cursor-pointer"
+                            >
+                                Retry
+                            </button>
                         </div>
                     ) : (
                         <div>
