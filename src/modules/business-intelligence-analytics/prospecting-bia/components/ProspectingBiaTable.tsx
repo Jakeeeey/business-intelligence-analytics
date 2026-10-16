@@ -14,17 +14,13 @@ import { Badge } from "@/components/ui/badge";
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
 import { MapPin } from "lucide-react";
 
-type GroupedItem = {
-  id: number;
-  salesmanName: string;
-  province: string;
-  storeTypeName: string;
-  customerName: string;
-  probability: string;
-};
+import type { ProspectGroupedItem } from "../types";
+import { ProspectStatusBadge } from "./ProspectStatusBadge";
+import { ProbabilityBadge } from "./ProbabilityBadge";
 
 type ProspectingBiaTableProps = {
-  data: GroupedItem[];
+  data: ProspectGroupedItem[];
+  onSelectCustomer: (id: number) => void;
 };
 
 const toTitleCase = (str: string) => {
@@ -81,32 +77,10 @@ const getStoreTypeBadge = (storeTypeName: string) => {
   }
 };
 
-const getProbabilityBadge = (probStr: string) => {
-  const num = parseFloat(probStr.replace("%", ""));
-  if (isNaN(num)) return <Badge variant="secondary">{probStr}</Badge>;
+const HEAD_CELL =
+  "font-bold text-foreground border-r border-b border-border px-4 py-3 sticky top-0 bg-muted/90 backdrop-blur-xs z-10";
 
-  if (num >= 70) {
-    return (
-      <Badge className="bg-emerald-500/10 hover:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/20 font-bold px-2 py-0.5 rounded-full select-none">
-        {probStr}
-      </Badge>
-    );
-  } else if (num >= 40) {
-    return (
-      <Badge className="bg-amber-500/10 hover:bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/20 font-bold px-2 py-0.5 rounded-full select-none">
-        {probStr}
-      </Badge>
-    );
-  } else {
-    return (
-      <Badge className="bg-red-500/10 hover:bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/20 font-bold px-2 py-0.5 rounded-full select-none">
-        {probStr}
-      </Badge>
-    );
-  }
-};
-
-export default function ProspectingBiaTable({ data }: ProspectingBiaTableProps) {
+export default function ProspectingBiaTable({ data, onSelectCustomer }: ProspectingBiaTableProps) {
   // Pre-calculate rowspans for Salesman, Area (Province), and Store Type
   const rowSpans = React.useMemo(() => {
     const salesmanSpans: number[] = new Array(data.length).fill(0);
@@ -182,21 +156,12 @@ export default function ProspectingBiaTable({ data }: ProspectingBiaTableProps) 
           <Table className="w-full border-collapse">
             <TableHeader className="relative z-10">
               <TableRow className="hover:bg-transparent bg-muted/25">
-                <TableHead className="font-bold text-foreground border-r border-b border-border px-4 py-3 w-1/5 sticky top-0 bg-muted/90 backdrop-blur-xs z-10">
-                  Salesman
-                </TableHead>
-                <TableHead className="font-bold text-foreground border-r border-b border-border px-4 py-3 w-1/5 sticky top-0 bg-muted/90 backdrop-blur-xs z-10">
-                  Area (Province)
-                </TableHead>
-                <TableHead className="font-bold text-foreground border-r border-b border-border px-4 py-3 w-1/5 sticky top-0 bg-muted/90 backdrop-blur-xs z-10">
-                  Store Type
-                </TableHead>
-                <TableHead className="font-bold text-foreground border-r border-b border-border px-4 py-3 w-1/5 sticky top-0 bg-muted/90 backdrop-blur-xs z-10">
-                  Customer Name
-                </TableHead>
-                <TableHead className="font-bold text-foreground border-b border-border px-4 py-3 w-1/5 sticky top-0 bg-muted/90 backdrop-blur-xs z-10">
-                  Probability
-                </TableHead>
+                <TableHead className={`${HEAD_CELL} w-[17%]`}>Salesman</TableHead>
+                <TableHead className={`${HEAD_CELL} w-[15%]`}>Area (Province)</TableHead>
+                <TableHead className={`${HEAD_CELL} w-[16%]`}>Store Type</TableHead>
+                <TableHead className={`${HEAD_CELL} w-[24%]`}>Customer Name</TableHead>
+                <TableHead className={`${HEAD_CELL} w-[12%]`}>Probability</TableHead>
+                <TableHead className={`${HEAD_CELL} w-[16%] border-r-0`}>Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -204,10 +169,11 @@ export default function ProspectingBiaTable({ data }: ProspectingBiaTableProps) 
                 const salesmanSpan = rowSpans.salesmanSpans[idx];
                 const provinceSpan = rowSpans.provinceSpans[idx];
                 const storeTypeSpan = rowSpans.storeTypeSpans[idx];
+                const customerLabel = toTitleCase(item.customerName);
 
                 return (
                   <TableRow
-                    key={idx}
+                    key={item.id}
                     className="hover:bg-muted/10 transition-colors duration-150 border-b border-border last:border-0"
                   >
                     {/* Salesman column with rowSpan */}
@@ -220,7 +186,7 @@ export default function ProspectingBiaTable({ data }: ProspectingBiaTableProps) 
                           <div className="flex items-center justify-center h-8 w-8 rounded-full bg-primary/10 text-primary font-black text-xs shrink-0 select-none border border-primary/20">
                             {getInitials(item.salesmanName)}
                           </div>
-                          <span className="font-bold text-sm text-foreground tracking-tight block">
+                          <span className="font-bold text-sm text-foreground tracking-tight block truncate" title={toTitleCase(item.salesmanName)}>
                             {toTitleCase(item.salesmanName)}
                           </span>
                         </div>
@@ -235,7 +201,7 @@ export default function ProspectingBiaTable({ data }: ProspectingBiaTableProps) 
                       >
                         <div className="flex items-center gap-1.5 text-muted-foreground">
                           <MapPin className="h-3.5 w-3.5 text-primary shrink-0" />
-                          <span className="text-xs font-semibold text-foreground/80">
+                          <span className="text-xs font-semibold text-foreground/80 truncate" title={toTitleCase(item.province)}>
                             {toTitleCase(item.province)}
                           </span>
                         </div>
@@ -252,14 +218,27 @@ export default function ProspectingBiaTable({ data }: ProspectingBiaTableProps) 
                       </TableCell>
                     )}
 
-                    {/* Customer Name column */}
-                    <TableCell className="align-middle font-medium text-foreground border-r border-b border-border px-4 py-3">
-                      {toTitleCase(item.customerName)}
+                    {/* Customer Name column — the entire cell opens the detail dialog */}
+                    <TableCell className="align-middle border-r border-b border-border p-0">
+                      <button
+                        type="button"
+                        onClick={() => onSelectCustomer(item.id)}
+                        title={customerLabel}
+                        aria-label={`View details for ${customerLabel}`}
+                        className="flex h-full w-full items-center px-4 py-3 text-left font-medium text-foreground underline-offset-4 transition-colors hover:bg-muted/40 hover:text-primary focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
+                      >
+                        <span className="min-w-0 truncate">{customerLabel}</span>
+                      </button>
                     </TableCell>
 
                     {/* Probability column */}
+                    <TableCell className="align-middle border-r border-b border-border px-4 py-3">
+                      <ProbabilityBadge value={item.probability} />
+                    </TableCell>
+
+                    {/* Status column */}
                     <TableCell className="align-middle border-b border-border px-4 py-3">
-                      {getProbabilityBadge(item.probability)}
+                      <ProspectStatusBadge status={item.status} />
                     </TableCell>
                   </TableRow>
                 );
