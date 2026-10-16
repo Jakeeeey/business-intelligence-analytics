@@ -5,7 +5,7 @@ import {
     Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList, ComposedChart, Scatter
 } from 'recharts';
 import {
-    Filter, Loader2, Calendar, ChevronRight, User2, ArrowLeft, LayoutDashboard, Trophy, Coins, TrendingUp, TrendingDown, AlertCircle
+    Filter, Loader2, Calendar, ChevronRight, LayoutDashboard, Trophy, Coins, TrendingUp, TrendingDown, AlertCircle
 } from "lucide-react";
 import { format, startOfMonth, endOfMonth, parseISO } from "date-fns";
 import { useSearchParams } from "next/navigation";
@@ -14,7 +14,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 import { fetchManagerialData, fetchDynamicTargets } from "./providers/fetchProvider";
@@ -48,55 +47,11 @@ function ManagerialSupplierContent() {
     const [selectedSupplier, setSelectedSupplier] = useState<string | null>(null);
 
     const [rawData, setRawData] = useState<VSalesPerformanceDataDto[]>([]);
-    type TargetItem = { fiscal_period: string; supplier_id?: number; salesman_id?: number; target_amount?: number; };
-    const [targets, setTargets] = useState<{ supplierTargets: TargetItem[], salesmanTargets: TargetItem[] }>({ supplierTargets: [], salesmanTargets: [] });
+    type TargetItem = { fiscal_period: string; supplier_id?: number; target_amount?: number; };
+    const [targets, setTargets] = useState<{ supplierTargets: TargetItem[] }>({ supplierTargets: [] });
 
-    // Salesman Detail Modal State
+    // Breakdown Modal State
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-    const [selectedSalesmanForModal, setSelectedSalesmanForModal] = useState<string | null>(null);
-
-    const [salesmenMap, setSalesmenMap] = useState<Map<number, string>>(new Map());
-
-    // Load salesmen metadata
-    useEffect(() => {
-        const loadSalesmen = async () => {
-            try {
-                const res = await fetch("/api/bia/crm/target-setting/metadata/salesmen");
-                if (res.ok) {
-                    const json = await res.json();
-                    const list = json?.data || [];
-                    const map = new Map<number, string>();
-                    list.forEach((s: { id?: number | string; salesman_code?: string }) => {
-                        if (s.id && s.salesman_code) {
-                            map.set(Number(s.id), s.salesman_code);
-                        }
-                    });
-                    setSalesmenMap(map);
-                }
-            } catch (err) {
-                console.error("Failed to load salesmen metadata", err);
-            }
-        };
-        loadSalesmen();
-    }, []);
-
-    const latestSalesmanNameMap = useMemo(() => {
-        const nameMap = new Map<number, { name: string; date: string }>();
-        rawData.forEach(item => {
-            if (item.salesmanId && item.salesmanName) {
-                const current = nameMap.get(item.salesmanId);
-                const itemDate = item.transactionDate || "";
-                if (!current || itemDate > current.date) {
-                    nameMap.set(item.salesmanId, { name: item.salesmanName, date: itemDate });
-                }
-            }
-        });
-        const finalMap = new Map<number, string>();
-        nameMap.forEach((val, key) => {
-            finalMap.set(key, val.name);
-        });
-        return finalMap;
-    }, [rawData]);
 
     const supplierDetailData = useMemo(() => {
         if (!selectedSupplier) return [];
@@ -135,8 +90,7 @@ function ManagerialSupplierContent() {
                 const divItem = data.find(d => (d.divisionName || "").toUpperCase() === (selectedDivision || "").toUpperCase());
                 const targetData = await fetchDynamicTargets(start, end, divItem?.divisionId);
                 setTargets({
-                    supplierTargets: (targetData.supplierTargets as TargetItem[]) || [], 
-                    salesmanTargets: (targetData.salesmanTargets as TargetItem[]) || []
+                    supplierTargets: (targetData.supplierTargets as TargetItem[]) || []
                 });
             } catch (err) { console.error(err); }
         };
@@ -190,55 +144,7 @@ function ManagerialSupplierContent() {
         };
     }, [rawData, selectedDivision, fromMonth, toMonth, targets]);
 
-    // 3. Data Processing for Salesman (Level 2 - Drill Down)
-    const salesmanBreakdown = useMemo(() => {
-        if (!selectedSupplier) return [];
 
-        const start = parseISO(fromMonth + "-01");
-        const end = parseISO(toMonth + "-01");
-
-        const filtered = rawData.filter(d =>
-            (d.supplierName || "").toUpperCase() === (selectedSupplier || "").toUpperCase() &&
-            (d.divisionName || "").toUpperCase() === (selectedDivision || "").toUpperCase()
-        );
-
-        const supplierId = filtered[0]?.supplierId;
-
-        const salesmanMap = new Map<string, { sales: number, salesmanId: number }>();
-
-        filtered.forEach(item => {
-            const code = salesmenMap.get(Number(item.salesmanId)) || item.salesmanName || "Unknown Salesman";
-            const current = salesmanMap.get(code) || { sales: 0, salesmanId: item.salesmanId || 0 };
-            salesmanMap.set(code, {
-                sales: current.sales + (item.netAmount || 0),
-                salesmanId: item.salesmanId || 0
-            });
-        });
-
-        return Array.from(salesmanMap.entries())
-            .map(([code, data]) => {
-                const relevantSalesmanTargets = targets.salesmanTargets?.filter((t: TargetItem) => {
-                    const targetDate = parseISO(t.fiscal_period);
-                    return (
-                        t.salesman_id === data.salesmanId &&
-                        t.supplier_id === supplierId &&
-                        targetDate >= start &&
-                        targetDate <= end
-                    );
-                });
-
-                const target = relevantSalesmanTargets?.reduce((sum: number, t: TargetItem) => sum + (t.target_amount || 0), 0) || 0;
-
-                return {
-                    name: code.toUpperCase(),
-                    sales: data.sales,
-                    target,
-                    achievement: target > 0 ? (data.sales / target) * 100 : 0,
-                    status: target > 0 ? (data.sales >= target ? "HIT" : "MISS") : "SET"
-                };
-            })
-            .sort((a, b) => b.sales - a.sales);
-    }, [rawData, selectedSupplier, targets, selectedDivision, fromMonth, toMonth, salesmenMap]);
 
     const formatPHP = (val: number) => new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 0 }).format(val);
     const formatShort = (val: number) => {
