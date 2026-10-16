@@ -12,15 +12,45 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
-import { MapPin } from "lucide-react";
+import { CalendarClock, MapPin } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-import type { ProspectGroupedItem } from "../types";
+import type { ProspectGroupedItem, ProspectStatus } from "../types";
+import { formatPH, formatPHDayMonth } from "../utils/datetime";
+import {
+  FOLLOW_UP_TERMINAL_LABEL,
+  SCHEDULE_URGENCY_PILL,
+  formatScheduleRelative,
+  getScheduleUrgency,
+} from "../utils/schedule";
 import { ProspectStatusBadge } from "./ProspectStatusBadge";
 import { ProbabilityBadge } from "./ProbabilityBadge";
 
 type ProspectingBiaTableProps = {
   data: ProspectGroupedItem[];
   onSelectCustomer: (id: number) => void;
+  /** Schedule only matters for Contacted / All views. */
+  showSchedule: boolean;
+};
+
+/** Column widths, rebalanced depending on whether the Schedule column renders. */
+const COLUMN_WIDTHS = {
+  withSchedule: {
+    salesman: "w-[15%]",
+    area: "w-[13%]",
+    storeType: "w-[14%]",
+    customer: "w-[19%]",
+    probability: "w-[11%]",
+    status: "w-[12%]",
+  },
+  withoutSchedule: {
+    salesman: "w-[18%]",
+    area: "w-[15%]",
+    storeType: "w-[16%]",
+    customer: "w-[23%]",
+    probability: "w-[13%]",
+    status: "w-[15%]",
+  },
 };
 
 const toTitleCase = (str: string) => {
@@ -80,7 +110,78 @@ const getStoreTypeBadge = (storeTypeName: string) => {
 const HEAD_CELL =
   "font-bold text-foreground border-r border-b border-border px-4 py-3 sticky top-0 bg-muted/90 backdrop-blur-xs z-10";
 
-export default function ProspectingBiaTable({ data, onSelectCustomer }: ProspectingBiaTableProps) {
+/** Follow-up schedule cell — colour-coded by urgency (overdue / soon / later). */
+function ScheduleCell({
+  schedule,
+  nowMs,
+  status,
+}: {
+  schedule: string | null;
+  nowMs: number | null;
+  status: ProspectStatus;
+}) {
+  if (!schedule) {
+    return <span className="text-xs text-muted-foreground">—</span>;
+  }
+
+  // A finished follow-up states its outcome rather than a stale pending date.
+  const terminal = FOLLOW_UP_TERMINAL_LABEL[status];
+  if (terminal) {
+    return (
+      <Badge
+        variant="outline"
+        title={`Follow-up ${terminal.toLowerCase()} · was scheduled ${formatPH(schedule)}`}
+        className={cn(
+          "border font-semibold whitespace-nowrap",
+          status === "converted"
+            ? "border-success/30 bg-success/10 text-success"
+            : "border-border bg-muted text-muted-foreground"
+        )}
+      >
+        {terminal}
+      </Badge>
+    );
+  }
+
+  // Urgency applies whenever a follow-up is still live — a contacted prospect
+  // that carries a schedule counts too (legacy rows predating the follow-up status).
+  const actionable = status === "contacted" || status === "follow-up";
+  const urgency = actionable ? getScheduleUrgency(schedule, nowMs) : "none";
+  const relative = formatScheduleRelative(schedule, nowMs);
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+      <Badge
+        variant="outline"
+        title={relative ? `${formatPH(schedule)} (${relative})` : formatPH(schedule)}
+        className={cn("gap-1 border font-semibold whitespace-nowrap", SCHEDULE_URGENCY_PILL[urgency])}
+      >
+        <CalendarClock className="size-3" />
+        {formatPHDayMonth(schedule)}
+      </Badge>
+      {relative && (
+        <span
+          className={cn(
+            "text-[11px] whitespace-nowrap",
+            urgency === "overdue" ? "text-destructive" : "text-muted-foreground"
+          )}
+        >
+          {relative}
+        </span>
+      )}
+    </div>
+  );
+}
+
+export default function ProspectingBiaTable({ data, onSelectCustomer, showSchedule }: ProspectingBiaTableProps) {
+  const w = showSchedule ? COLUMN_WIDTHS.withSchedule : COLUMN_WIDTHS.withoutSchedule;
+
+  // "Now" captured after mount (keeps render pure) for schedule urgency.
+  const [nowMs, setNowMs] = React.useState<number | null>(null);
+  React.useEffect(() => {
+    setNowMs(Date.now());
+  }, []);
+
   // Pre-calculate rowspans for Salesman, Area (Province), and Store Type
   const rowSpans = React.useMemo(() => {
     const salesmanSpans: number[] = new Array(data.length).fill(0);
@@ -156,12 +257,15 @@ export default function ProspectingBiaTable({ data, onSelectCustomer }: Prospect
           <Table className="w-full border-collapse">
             <TableHeader className="relative z-10">
               <TableRow className="hover:bg-transparent bg-muted/25">
-                <TableHead className={`${HEAD_CELL} w-[17%]`}>Salesman</TableHead>
-                <TableHead className={`${HEAD_CELL} w-[15%]`}>Area (Province)</TableHead>
-                <TableHead className={`${HEAD_CELL} w-[16%]`}>Store Type</TableHead>
-                <TableHead className={`${HEAD_CELL} w-[24%]`}>Customer Name</TableHead>
-                <TableHead className={`${HEAD_CELL} w-[12%]`}>Probability</TableHead>
-                <TableHead className={`${HEAD_CELL} w-[16%] border-r-0`}>Status</TableHead>
+                <TableHead className={`${HEAD_CELL} ${w.salesman}`}>Salesman</TableHead>
+                <TableHead className={`${HEAD_CELL} ${w.area}`}>Area (Province)</TableHead>
+                <TableHead className={`${HEAD_CELL} ${w.storeType}`}>Store Type</TableHead>
+                <TableHead className={`${HEAD_CELL} ${w.customer}`}>Customer Name</TableHead>
+                <TableHead className={`${HEAD_CELL} ${w.probability}`}>Probability</TableHead>
+                <TableHead className={`${HEAD_CELL} ${w.status}${showSchedule ? "" : " border-r-0"}`}>Status</TableHead>
+                {showSchedule && (
+                  <TableHead className={`${HEAD_CELL} w-[16%] border-r-0`}>Schedule</TableHead>
+                )}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -237,9 +341,26 @@ export default function ProspectingBiaTable({ data, onSelectCustomer }: Prospect
                     </TableCell>
 
                     {/* Status column */}
-                    <TableCell className="align-middle border-b border-border px-4 py-3">
+                    <TableCell
+                      className={
+                        showSchedule
+                          ? "align-middle border-r border-b border-border px-4 py-3"
+                          : "align-middle border-b border-border px-4 py-3"
+                      }
+                    >
                       <ProspectStatusBadge status={item.status} />
                     </TableCell>
+
+                    {/* Schedule column — only where it is meaningful (Contacted / All) */}
+                    {showSchedule && (
+                      <TableCell className="align-middle border-b border-border px-4 py-3">
+                        <ScheduleCell
+                          schedule={item.schedule}
+                          nowMs={nowMs}
+                          status={item.status}
+                        />
+                      </TableCell>
+                    )}
                   </TableRow>
                 );
               })}

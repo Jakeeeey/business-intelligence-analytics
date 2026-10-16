@@ -26,17 +26,43 @@ export function phLocalToUtcIso(date: string, time: string): string | null {
 }
 
 /**
+ * Parses a stored UTC instant into a Date. Directus returns DATETIME values
+ * without a timezone suffix (they are stored as UTC), so a bare ISO string is
+ * normalized to UTC before parsing.
+ * @param {string | null} utcIso - A UTC ISO string.
+ * @returns {Date | null} The parsed instant, or null when absent/unparseable.
+ */
+export function toUtcDate(utcIso?: string | null): Date | null {
+  if (!utcIso) return null;
+  const hasZone = /([zZ]|[+-]\d{2}:?\d{2})$/.test(utcIso);
+  const d = new Date(hasZone ? utcIso : `${utcIso}Z`);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+/**
+ * Formats a stored UTC instant as a compact Philippine local day + month.
+ * @param {string | null} utcIso - A UTC ISO string.
+ * @returns {string} The formatted PH local day + month, or "—" when absent.
+ */
+export function formatPHDayMonth(utcIso?: string | null): string {
+  const d = toUtcDate(utcIso);
+  if (!d) return "—";
+  return new Intl.DateTimeFormat("en-PH", {
+    timeZone: "Asia/Manila",
+    month: "short",
+    day: "numeric",
+  }).format(d);
+}
+
+/**
  * Formats a stored UTC instant as Philippine local date + time for display.
- * Directus returns DATETIME values without a timezone suffix (even though they
- * are stored as UTC), so a bare ISO string is normalized to UTC before parsing.
  * @param {string | null} utcIso - A UTC ISO string.
  * @returns {string} The formatted PH local value, or the raw value when unparseable.
  */
 export function formatPH(utcIso?: string | null): string {
   if (!utcIso) return "—";
-  const hasZone = /([zZ]|[+-]\d{2}:?\d{2})$/.test(utcIso);
-  const d = new Date(hasZone ? utcIso : `${utcIso}Z`);
-  if (Number.isNaN(d.getTime())) return utcIso;
+  const d = toUtcDate(utcIso);
+  if (!d) return utcIso;
   return new Intl.DateTimeFormat("en-PH", {
     timeZone: "Asia/Manila",
     year: "numeric",
