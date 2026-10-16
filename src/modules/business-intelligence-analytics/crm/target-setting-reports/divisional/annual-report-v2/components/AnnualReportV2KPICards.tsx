@@ -8,7 +8,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { TrendingUp, TrendingDown, DollarSign, Percent, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { TrendingUp, TrendingDown, DollarSign, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import {
   formatCurrencyDisplay,
 } from "../utils/annual-report.utils";
@@ -42,11 +42,6 @@ const cards = [
     getTrend: (s: DashboardSummary) => Math.sign(s.netVariance) as -1 | 0 | 1,
     isAverage: true,
   },
-  {
-    title: "Bias Percentage",
-    icon: Percent,
-    isAverage: true,
-  },
 ];
 
 export function AnnualReportV2KPICards({
@@ -56,8 +51,8 @@ export function AnnualReportV2KPICards({
 }: AnnualReportV2KPICardsProps) {
   if (isLoading) {
     return (
-      <div className="grid grid-cols-2 auto-rows-min gap-4 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, i) => (
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {Array.from({ length: 3 }).map((_, i) => (
           <Card key={i}>
             <CardHeader>
               <Skeleton className="h-4 w-24" />
@@ -72,12 +67,11 @@ export function AnnualReportV2KPICards({
   if (!summary) return null;
 
   return (
-    <div className="grid grid-cols-2 auto-rows-min gap-4 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
       {cards.map((card, index) => {
         const Icon = card.icon;
-        const isBias = index === 3;
-        const amount = isBias ? 0 : card.getAmount!(summary);
-        const trend = isBias ? 0 : card.getTrend!(summary);
+        const amount = card.getAmount(summary);
+        const trend = card.getTrend(summary);
 
         return (
           <Card
@@ -93,15 +87,9 @@ export function AnnualReportV2KPICards({
               </div>
 
               <div className="flex items-baseline gap-2">
-                {isBias ? (
-                  <CardTitle className="text-lg sm:text-2xl font-semibold tabular-nums text-foreground @[250px]/card:text-3xl">
-                    {summary.biasPercentage.toFixed(2)}%
-                  </CardTitle>
-                ) : (
-                  <CardTitle className="text-lg sm:text-2xl font-semibold tabular-nums text-foreground @[250px]/card:text-3xl" title={unitName ? `${amount.toLocaleString()} ${unitName}` : undefined}>
-                    {unitName ? amount.toLocaleString(undefined, { maximumFractionDigits: 2 }) : formatCurrencyDisplay(amount, 15)}
-                  </CardTitle>
-                )}
+                <CardTitle className="text-lg sm:text-2xl font-semibold tabular-nums text-foreground @[250px]/card:text-3xl" title={unitName ? `${amount.toLocaleString()} ${unitName}` : undefined}>
+                  {unitName ? amount.toLocaleString(undefined, { maximumFractionDigits: 2 }) : formatCurrencyDisplay(amount, 15)}
+                </CardTitle>
                 {trend > 0 && index === 2 && (
                   <ArrowUpRight className="h-4 w-4 text-green-500 shrink-0" />
                 )}
