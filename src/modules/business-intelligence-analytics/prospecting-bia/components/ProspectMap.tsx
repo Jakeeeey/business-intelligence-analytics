@@ -52,7 +52,7 @@ export default function ProspectMap({ latitude, longitude, label, className }: P
     <MapContainer
       center={[latitude, longitude]}
       zoom={15}
-      scrollWheelZoom={false}
+      scrollWheelZoom
       className={className}
       style={{ height: "100%", width: "100%" }}
     >

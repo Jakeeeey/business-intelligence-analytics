@@ -21,12 +21,22 @@ import type {
 } from "./types";
 import { normalizeProspectStatus } from "./utils/prospect-status";
 
-type StatusTab = "all" | ProspectStatus;
+type StatusTab = "pending" | "contacted" | "converted" | "dropped" | "all";
 
-const STATUS_TABS: { value: StatusTab; label: string; dot: string; active: string }[] = [
+// `matches` lists the statuses a tab covers; null means "everything".
+// Contacted deliberately covers both `contacted` and `follow-up`, so a prospect
+// with a scheduled follow-up stays under the Contacted tab.
+const STATUS_TABS: {
+  value: StatusTab;
+  label: string;
+  matches: ProspectStatus[] | null;
+  dot: string;
+  active: string;
+}[] = [
   {
     value: "pending",
     label: "Pending",
+    matches: ["pending"],
     dot: "bg-info",
     active:
       "data-[state=active]:bg-info-bg data-[state=active]:text-info dark:data-[state=active]:bg-info-bg dark:data-[state=active]:text-info data-[state=active]:ring-info/30",
@@ -34,6 +44,7 @@ const STATUS_TABS: { value: StatusTab; label: string; dot: string; active: strin
   {
     value: "contacted",
     label: "Contacted",
+    matches: ["contacted", "follow-up"],
     dot: "bg-warning",
     active:
       "data-[state=active]:bg-warning-bg data-[state=active]:text-warning dark:data-[state=active]:bg-warning-bg dark:data-[state=active]:text-warning data-[state=active]:ring-warning/30",
@@ -41,6 +52,7 @@ const STATUS_TABS: { value: StatusTab; label: string; dot: string; active: strin
   {
     value: "converted",
     label: "Converted",
+    matches: ["converted"],
     dot: "bg-success",
     active:
       "data-[state=active]:bg-success-bg data-[state=active]:text-success dark:data-[state=active]:bg-success-bg dark:data-[state=active]:text-success data-[state=active]:ring-success/30",
@@ -48,6 +60,7 @@ const STATUS_TABS: { value: StatusTab; label: string; dot: string; active: strin
   {
     value: "dropped",
     label: "Dropped",
+    matches: ["dropped"],
     dot: "bg-destructive",
     active:
       "data-[state=active]:bg-destructive/10 data-[state=active]:text-destructive dark:data-[state=active]:bg-destructive/10 dark:data-[state=active]:text-destructive data-[state=active]:ring-destructive/30",
@@ -55,6 +68,7 @@ const STATUS_TABS: { value: StatusTab; label: string; dot: string; active: strin
   {
     value: "all",
     label: "All",
+    matches: null,
     dot: "bg-muted-foreground/50",
     active:
       "data-[state=active]:bg-primary/10 data-[state=active]:text-primary dark:data-[state=active]:bg-primary/10 dark:data-[state=active]:text-primary data-[state=active]:ring-primary/30",
@@ -127,11 +141,12 @@ export default function ProspectingBiaModule() {
         p.percentage === null || p.percentage === undefined || String(p.percentage).trim() === ""
           ? null
           : String(p.percentage);
+      const schedule = p.schedule ?? null;
 
-      const key = `${p.id}||${salesmanName}||${province}||${storeTypeName}||${customerName}||${probability}||${status}`;
+      const key = `${p.id}||${salesmanName}||${province}||${storeTypeName}||${customerName}||${probability}||${status}||${schedule ?? ""}`;
       if (!seen.has(key)) {
         seen.add(key);
-        list.push({ id: p.id, salesmanName, province, storeTypeName, customerName, probability, status });
+        list.push({ id: p.id, salesmanName, province, storeTypeName, customerName, probability, status, schedule });
       }
     }
 
@@ -155,12 +170,24 @@ export default function ProspectingBiaModule() {
 
   // Per-status counts for the tab labels
   const statusCounts = React.useMemo(() => {
-    const counts: Record<ProspectStatus, number> = { pending: 0, contacted: 0, converted: 0, dropped: 0 };
+    const counts: Record<ProspectStatus, number> = {
+      pending: 0,
+      contacted: 0,
+      "follow-up": 0,
+      converted: 0,
+      dropped: 0,
+    };
     for (const p of prospects) {
       counts[normalizeProspectStatus(p.prospect_status)] += 1;
     }
     return counts;
   }, [prospects]);
+
+  // Statuses covered by the active tab (null = all).
+  const activeMatches = React.useMemo(
+    () => STATUS_TABS.find((tab) => tab.value === statusTab)?.matches ?? null,
+    [statusTab]
+  );
 
   // Options for multi-select dropdown filters based on the combinations
   const filterOptions = React.useMemo(() => {
@@ -203,7 +230,7 @@ export default function ProspectingBiaModule() {
   // Filtered combinations (status tab + multi-select filters)
   const filteredData = React.useMemo(() => {
     return allCombinations.filter((item) => {
-      if (statusTab !== "all" && item.status !== statusTab) {
+      if (activeMatches !== null && !activeMatches.includes(item.status)) {
         return false;
       }
       if (selectedSalesmen.length > 0 && !selectedSalesmen.includes(item.salesmanName)) {
@@ -217,7 +244,7 @@ export default function ProspectingBiaModule() {
       }
       return true;
     });
-  }, [allCombinations, statusTab, selectedSalesmen, selectedAreas, selectedStoreTypes]);
+  }, [allCombinations, activeMatches, selectedSalesmen, selectedAreas, selectedStoreTypes]);
 
   // Prospect currently open in the detail dialog
   const selectedProspect = React.useMemo(
@@ -257,7 +284,9 @@ export default function ProspectingBiaModule() {
               <span className={cn("size-2 rounded-full", tab.dot)} aria-hidden />
               {tab.label}
               <span className="text-xs tabular-nums opacity-70">
-                {tab.value === "all" ? prospects.length : statusCounts[tab.value]}
+                {tab.matches === null
+                  ? prospects.length
+                  : tab.matches.reduce((sum, s) => sum + statusCounts[s], 0)}
               </span>
             </TabsTrigger>
           ))}
@@ -284,7 +313,11 @@ export default function ProspectingBiaModule() {
           <Spinner className="h-8 w-8 text-primary" />
         </div>
       ) : (
-        <ProspectingBiaTable data={filteredData} onSelectCustomer={setSelectedProspectId} />
+        <ProspectingBiaTable
+          data={filteredData}
+          onSelectCustomer={setSelectedProspectId}
+          showSchedule={statusTab === "contacted" || statusTab === "all"}
+        />
       )}
 
       {/* Detail + workflow dialog */}

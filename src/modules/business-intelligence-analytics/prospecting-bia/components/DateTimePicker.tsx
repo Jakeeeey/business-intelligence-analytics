@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { format } from "date-fns";
+import { CalendarClock, X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -11,19 +12,36 @@ const HOURS = Array.from({ length: 12 }, (_, i) => i + 1).reverse(); // 12 → 1
 const MINUTES = Array.from({ length: 12 }, (_, i) => i * 5); // 00 … 55
 const MERIDIEM = ["AM", "PM"] as const;
 
-const COLUMN = "h-[280px] overflow-y-auto overscroll-contain p-1";
-
 type DateTimePickerProps = {
   value: Date | undefined;
   onChange: (date: Date | undefined) => void;
   className?: string;
 };
 
+function TimeColumn({
+  label,
+  className,
+  children,
+}: {
+  label: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={cn("flex h-[268px] min-w-0 flex-col", className)}>
+      <div className="border-b bg-muted/40 py-1.5 text-center text-[10px] font-semibold tracking-wide uppercase text-muted-foreground">
+        {label}
+      </div>
+      <div className="flex-1 space-y-0.5 overflow-y-auto overscroll-contain p-1.5">{children}</div>
+    </div>
+  );
+}
+
 /**
- * Inline 12-hour date + time picker: a Calendar beside scrollable hour /
- * minute / AM-PM columns. Rendered inline (no popover) so it stays inside the
- * dialog's scroll-locked subtree — a portaled popover cannot be wheel-scrolled
- * while a modal dialog is open.
+ * Inline 12-hour date + time picker: a Calendar beside scrollable hour / minute /
+ * AM-PM columns, under a selected-value strip. Rendered inline (never in a
+ * popover) so it stays inside the dialog's scroll-locked subtree — a portaled
+ * popover cannot be wheel-scrolled while a modal dialog is open.
  */
 export function DateTimePicker({ value, onChange, className }: DateTimePickerProps) {
   const handleDateSelect = (date: Date | undefined) => {
@@ -39,8 +57,7 @@ export function DateTimePicker({ value, onChange, className }: DateTimePickerPro
 
     if (type === "hour") {
       const hour12 = parseInt(raw, 10);
-      const isPM = next.getHours() >= 12;
-      next.setHours((hour12 % 12) + (isPM ? 12 : 0));
+      next.setHours((hour12 % 12) + (next.getHours() >= 12 ? 12 : 0));
     } else if (type === "minute") {
       next.setMinutes(parseInt(raw, 10));
     } else {
@@ -56,16 +73,16 @@ export function DateTimePicker({ value, onChange, className }: DateTimePickerPro
   const isPM = value ? value.getHours() >= 12 : false;
 
   return (
-    <div className={cn("space-y-2", className)}>
-      <div className="flex flex-col gap-3 sm:flex-row">
+    <div className={cn("space-y-3", className)}>
+      <div className="grid gap-3 sm:grid-cols-[auto_minmax(0,1fr)]">
         <Calendar
           mode="single"
           selected={value}
           onSelect={handleDateSelect}
-          className="rounded-md border"
+          className="rounded-lg border p-2"
         />
-        <div className="flex h-[280px] w-fit divide-x rounded-md border">
-          <div className={cn(COLUMN, "w-14")}>
+        <div className="flex min-w-0 divide-x overflow-hidden rounded-lg border">
+          <TimeColumn label="Hour" className="flex-1">
             {HOURS.map((hour) => (
               <Button
                 key={hour}
@@ -78,8 +95,8 @@ export function DateTimePicker({ value, onChange, className }: DateTimePickerPro
                 {hour}
               </Button>
             ))}
-          </div>
-          <div className={cn(COLUMN, "w-14")}>
+          </TimeColumn>
+          <TimeColumn label="Min" className="flex-1">
             {MINUTES.map((minute) => (
               <Button
                 key={minute}
@@ -92,8 +109,8 @@ export function DateTimePicker({ value, onChange, className }: DateTimePickerPro
                 {minute.toString().padStart(2, "0")}
               </Button>
             ))}
-          </div>
-          <div className={cn(COLUMN, "w-16")}>
+          </TimeColumn>
+          <TimeColumn label="AM/PM" className="flex-1">
             {MERIDIEM.map((meridiem) => (
               <Button
                 key={meridiem}
@@ -106,12 +123,32 @@ export function DateTimePicker({ value, onChange, className }: DateTimePickerPro
                 {meridiem}
               </Button>
             ))}
-          </div>
+          </TimeColumn>
         </div>
       </div>
-      <p className="text-xs text-muted-foreground">
-        {value ? `Selected: ${format(value, "MM/dd/yyyy hh:mm aa")}` : "No date & time selected"}
-      </p>
+
+      <div className="flex min-h-10 items-center justify-between gap-2 rounded-lg border bg-muted/30 px-3 py-2">
+        <span className="flex min-w-0 items-center gap-2 text-sm">
+          <CalendarClock
+            className={cn("size-4 shrink-0", value ? "text-primary" : "text-muted-foreground")}
+          />
+          <span className={cn("truncate", value ? "font-semibold text-foreground" : "text-muted-foreground")}>
+            {value ? format(value, "MMMM d, yyyy · hh:mm aa") : "No date & time selected yet"}
+          </span>
+        </span>
+        {value && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="shrink-0 text-muted-foreground"
+            onClick={() => onChange(undefined)}
+          >
+            <X className="size-3.5" />
+            Clear
+          </Button>
+        )}
+      </div>
     </div>
   );
 }

@@ -1,8 +1,11 @@
 import { z } from "zod";
 
 // Prospect pipeline statuses. Stored on `customer_prospect.prospect_status`
-// (string(50)); reads are case-insensitive on the DB side, writes use these values.
-export const PROSPECT_STATUSES = ["pending", "contacted", "dropped", "converted"] as const;
+// (string(50), so new values need no schema change); reads are case-insensitive
+// on the DB side, writes use these values.
+// `follow-up` is a contacted prospect that has a next touchpoint scheduled, and
+// is shown together with `contacted` under the Contacted tab.
+export const PROSPECT_STATUSES = ["pending", "contacted", "follow-up", "converted", "dropped"] as const;
 
 export const ProspectStatusSchema = z.enum(PROSPECT_STATUSES);
 
@@ -108,6 +111,7 @@ export interface ProspectGroupedItem {
   customerName: string;
   probability: string | null;
   status: ProspectStatus;
+  schedule: string | null;
 }
 
 /** Body accepted by PATCH /api/bia/prospecting-bia/[id]. */
