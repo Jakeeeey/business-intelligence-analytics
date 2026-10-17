@@ -12,6 +12,7 @@ import {
     Receipt,
     CalendarCheck2,
     Truck,
+    Building2,
 } from "lucide-react";
 import {
     Card,
@@ -30,6 +31,7 @@ import CompanyExpenseReportCard from "./components/CompanyExpenseReportCard";
 import CompanyPayrollCutoffProgressCard from "./components/CompanyPayrollCutoffProgressCard";
 import HoldingsPayrollCutoffProgressCard from "./components/HoldingsPayrollCutoffProgressCard";
 import DriverKPICard from "./components/DriverKPICard";
+import DepartmentHeadSummaryCard from "./components/DepartmentHeadSummaryCard";
 import SalesOrderDraftCard from "./components/SalesOrderDraftCard";
 import SalesOrderPendingCard from "./components/SalesOrderPendingCard";
 import SalesOrderInvoiceCard from "./components/SalesOrderInvoiceCard";
@@ -57,6 +59,9 @@ function getCardIcon(key: string) {
     }
     if (lower.includes("driver") || lower.includes("logistics")) {
         return <Truck className="h-4 w-4" />;
+    }
+    if (lower.includes("department") || lower.includes("dept") || lower.includes("attendance")) {
+        return <Building2 className="h-4 w-4" />;
     }
     return <BarChart3 className="h-4 w-4" />;
 }
@@ -313,6 +318,20 @@ export default function MyDashboardModule({ className = "" }: MyDashboardProps) 
                                             ) {
                                                 return (
                                                     <DriverKPICard
+                                                        key={card.id}
+                                                        card={card}
+                                                    />
+                                                );
+                                            }
+
+                                            if (
+                                                card.key === "department-head" ||
+                                                card.key === "department_head" ||
+                                                card.key === "department-head-summary" ||
+                                                card.key === "department_head_summary"
+                                            ) {
+                                                return (
+                                                    <DepartmentHeadSummaryCard
                                                         key={card.id}
                                                         card={card}
                                                     />
