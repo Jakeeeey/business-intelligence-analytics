@@ -35,6 +35,7 @@ import DriverKPICard from "./components/DriverKPICard";
 import DepartmentHeadSummaryCard from "./components/DepartmentHeadSummaryCard";
 import CompanyAttendanceReportCard from "./components/CompanyAttendanceReportCard";
 import CompanyPunctualityReportCard from "./components/CompanyPunctualityReportCard";
+import CompanyPunctualityDetailedCard from "./components/CompanyPunctualityDetailedCard";
 import SalesOrderDraftCard from "./components/SalesOrderDraftCard";
 import SalesOrderPendingCard from "./components/SalesOrderPendingCard";
 import SalesOrderInvoiceCard from "./components/SalesOrderInvoiceCard";
@@ -372,6 +373,22 @@ export default function MyDashboardModule({ className = "" }: MyDashboardProps) 
                                             ) {
                                                 return (
                                                     <CompanyPunctualityReportCard
+                                                        key={card.id}
+                                                        card={card}
+                                                    />
+                                                );
+                                            }
+
+                                            if (
+                                                card.key === "company-punctuality-detailed" ||
+                                                card.key === "company_punctuality_detailed" ||
+                                                card.key === "company-punctuality-detailed-report" ||
+                                                card.key === "company_punctuality_detailed_report" ||
+                                                card.key === "punctuality-detailed" ||
+                                                card.key === "punctuality_detailed"
+                                            ) {
+                                                return (
+                                                    <CompanyPunctualityDetailedCard
                                                         key={card.id}
                                                         card={card}
                                                     />
