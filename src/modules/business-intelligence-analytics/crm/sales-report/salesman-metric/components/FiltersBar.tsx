@@ -60,8 +60,6 @@ export function FiltersBar({
     }));
   }, [salesmen]);
 
-  const activeValues = selectedSalesmanIds.map(String);
-
   // Convert fiscal period YYYY-MM-DD to YYYY-MM for the html month input
   const monthInputValue = React.useMemo(() => {
     if (!fiscalPeriod) return "";
