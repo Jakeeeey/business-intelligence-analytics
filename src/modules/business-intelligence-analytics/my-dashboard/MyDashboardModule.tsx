@@ -13,6 +13,7 @@ import {
     CalendarCheck2,
     Truck,
     Building2,
+    Clock,
 } from "lucide-react";
 import {
     Card,
@@ -33,6 +34,7 @@ import HoldingsPayrollCutoffProgressCard from "./components/HoldingsPayrollCutof
 import DriverKPICard from "./components/DriverKPICard";
 import DepartmentHeadSummaryCard from "./components/DepartmentHeadSummaryCard";
 import CompanyAttendanceReportCard from "./components/CompanyAttendanceReportCard";
+import CompanyPunctualityReportCard from "./components/CompanyPunctualityReportCard";
 import SalesOrderDraftCard from "./components/SalesOrderDraftCard";
 import SalesOrderPendingCard from "./components/SalesOrderPendingCard";
 import SalesOrderInvoiceCard from "./components/SalesOrderInvoiceCard";
@@ -60,6 +62,9 @@ function getCardIcon(key: string) {
     }
     if (lower.includes("attendance")) {
         return <Building2 className="h-4 w-4" />;
+    }
+    if (lower.includes("punctuality")) {
+        return <Clock className="h-4 w-4" />;
     }
     if (lower.includes("driver") || lower.includes("logistics")) {
         return <Truck className="h-4 w-4" />;
@@ -350,6 +355,23 @@ export default function MyDashboardModule({ className = "" }: MyDashboardProps) 
                                             ) {
                                                 return (
                                                     <CompanyAttendanceReportCard
+                                                        key={card.id}
+                                                        card={card}
+                                                    />
+                                                );
+                                            }
+
+                                            if (
+                                                card.key === "company-punctuality-report" ||
+                                                card.key === "company_punctuality_report" ||
+                                                card.key === "company-punctuality" ||
+                                                card.key === "company_punctuality" ||
+                                                card.key === "punctuality-report" ||
+                                                card.key === "punctuality_report" ||
+                                                card.key === "punctuality"
+                                            ) {
+                                                return (
+                                                    <CompanyPunctualityReportCard
                                                         key={card.id}
                                                         card={card}
                                                     />
