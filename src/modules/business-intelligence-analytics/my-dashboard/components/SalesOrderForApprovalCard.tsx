@@ -20,6 +20,13 @@ interface SalesOrderForApprovalCardProps {
 
 const CACHE_KEY = "bia_so_for_approval_cache";
 
+const pesoFmt = new Intl.NumberFormat("en-PH", {
+    style: "currency",
+    currency: "PHP",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+});
+
 /**
  * Synthesizes a crisp, audible notification chime using Web Audio API.
  * Requires zero external audio files and triggers cleanly in any browser.
@@ -440,13 +447,29 @@ export default function SalesOrderForApprovalCard({ card }: SalesOrderForApprova
                             </button>
                         </div>
                     ) : (
-                        <div>
-                            <div className="text-3xl sm:text-4xl font-black tracking-tight text-foreground font-mono leading-none tabular-nums group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
-                                {data?.count ?? 0}
+                        <div className="flex flex-col items-center justify-center w-full">
+                            <div className="flex flex-col items-center">
+                                <div className="text-2xl sm:text-3xl font-black tracking-tight text-foreground font-mono leading-none tabular-nums group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+                                    {data?.count ?? 0}
+                                </div>
+                                <span className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider mt-0.5">
+                                    Qty
+                                </span>
                             </div>
-                            <span className="text-[10px] font-medium text-muted-foreground block mt-1">
-                                For Approval
-                            </span>
+
+                            <div className="w-14 my-1.5 border-t border-border/60 dark:border-zinc-800" />
+
+                            <div className="flex flex-col items-center max-w-full px-1">
+                                <div
+                                    className="text-xs sm:text-sm font-bold text-foreground font-mono leading-none tabular-nums truncate max-w-full group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors"
+                                    title={pesoFmt.format(data?.totalAmount ?? 0)}
+                                >
+                                    {pesoFmt.format(data?.totalAmount ?? 0)}
+                                </div>
+                                <span className="text-[8px] font-medium text-muted-foreground uppercase tracking-wider mt-0.5">
+                                    Total Amount
+                                </span>
+                            </div>
                         </div>
                     )}
                 </div>

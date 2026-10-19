@@ -27,18 +27,20 @@ export function normalizeProspectStatus(raw: unknown): ProspectStatus {
 export const PROSPECT_STATUS_LABEL: Record<ProspectStatus, string> = {
   pending: "Pending",
   contacted: "Contacted",
+  "follow-up": "Follow-up",
   converted: "Converted",
   dropped: "Dropped",
 };
 
 /**
  * Solid status fill per status. Uses the same semantic tokens as the status
- * tabs (info / warning / success / destructive) so the hue matches, but filled
- * solid (with the token's foreground colour) for the table pills.
+ * tabs (info / primary / warning / success / destructive) so the hue matches,
+ * but filled solid (with the token's foreground colour) for the table pills.
  */
 export const PROSPECT_STATUS_PILL: Record<ProspectStatus, string> = {
   pending: "border-transparent bg-info text-info-foreground",
   contacted: "border-transparent bg-warning text-warning-foreground",
+  "follow-up": "border-transparent bg-primary text-primary-foreground",
   converted: "border-transparent bg-success text-success-foreground",
   dropped: "border-transparent bg-destructive text-destructive-foreground",
 };
