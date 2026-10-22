@@ -11,8 +11,11 @@ import {
     Key,
     Activity,
     ChevronDown,
+    Megaphone,
+    Trophy,
 } from "lucide-react";
 import { useThemeTransition } from "@/components/theme/ThemeTransitionOverlay";
+import { ChangePasswordModal } from "@/modules/shared/change-password/components/ChangePasswordModal";
 
 import {
     DropdownMenu,
@@ -32,12 +35,33 @@ import { cn } from "@/lib/utils";
 interface UserMenuProps {
     fullName: string;
     email: string;
+    isDealerOver?: boolean;
 }
 
-export function UserMenu({ fullName, email }: UserMenuProps) {
+export function UserMenu({ fullName, email, isDealerOver }: UserMenuProps) {
     const router = useRouter();
     const { theme } = useTheme();
     const { triggerTransition } = useThemeTransition();
+
+    const [announcementsCount, setAnnouncementsCount] = React.useState<number>(0);
+    const [isPasswordModalOpen, setIsPasswordModalOpen] = React.useState(false);
+
+    React.useEffect(() => {
+        const fetchCount = () => {
+            fetch("/api/announcements")
+                .then((res) => res.json())
+                .then((data) => {
+                    if (data.announcements) {
+                        setAnnouncementsCount(data.announcements.length);
+                    }
+                })
+                .catch((err) => console.error("Error fetching announcements count:", err));
+        };
+
+        fetchCount();
+        window.addEventListener("announcements-updated", fetchCount);
+        return () => window.removeEventListener("announcements-updated", fetchCount);
+    }, []);
 
     const initials = fullName
         .split(" ")
@@ -47,6 +71,12 @@ export function UserMenu({ fullName, email }: UserMenuProps) {
 
     const handleLogout = async () => {
         try {
+            try {
+                localStorage.removeItem("dealerover_salesman_ranking");
+                sessionStorage.removeItem("just_logged_in");
+            } catch {
+                // Ignore storage error
+            }
             await fetch("/api/auth/logout", { method: "POST" });
             router.push("/login");
             router.refresh();
@@ -81,7 +111,7 @@ export function UserMenu({ fullName, email }: UserMenuProps) {
                             <div className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)] animate-pulse" />
                         </div>
                     </div>
-                    
+
                     <div className="hidden flex-col items-start leading-none sm:flex">
                         <span className="text-[11px] font-black tracking-tight uppercase italic">{fullName}</span>
                         <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 opacity-60 mt-0.5 uppercase tracking-wider">{email.split('@')[0]}</span>
@@ -90,14 +120,14 @@ export function UserMenu({ fullName, email }: UserMenuProps) {
                     <ChevronDown className="h-3 w-3 text-slate-400 dark:text-slate-500" />
                 </button>
             </DropdownMenuTrigger>
-            
-            <DropdownMenuContent 
+
+            <DropdownMenuContent
                 className={cn(
                     "w-60 rounded-2xl border p-1 shadow-2xl backdrop-blur-3xl transition-all",
                     "bg-white/80 dark:bg-slate-950/80",
                     "border-slate-900/10 dark:border-white/10"
-                )} 
-                align="end" 
+                )}
+                align="end"
                 forceMount
             >
                 {/* Account Context Header */}
@@ -121,7 +151,7 @@ export function UserMenu({ fullName, email }: UserMenuProps) {
 
                 <DropdownMenuGroup>
                     {/* Dark Mode Switch */}
-                    <DropdownMenuItem 
+                    <DropdownMenuItem
                         className="group flex items-center justify-between rounded-xl px-2.5 py-2 cursor-pointer transition-all hover:bg-slate-900/5 dark:hover:bg-white/5 focus:bg-slate-900/5 dark:focus:bg-white/5"
                         onSelect={(e) => {
                             e.preventDefault();
@@ -134,22 +164,67 @@ export function UserMenu({ fullName, email }: UserMenuProps) {
                             </div>
                             <span className="text-[10px] font-bold uppercase tracking-wide">Interface Mode</span>
                         </div>
-                        <Switch 
-                            checked={isDark} 
+                        <Switch
+                            checked={isDark}
                             onCheckedChange={(checked) => triggerTransition(checked ? "dark" : "light")}
                             className="scale-[0.6] data-[state=checked]:bg-cyan-500"
                         />
                     </DropdownMenuItem>
+
+                    <DropdownMenuItem
+                        onClick={() => window.dispatchEvent(new CustomEvent("open-announcements"))}
+                        className="group flex items-center justify-between rounded-xl px-2.5 py-1.5 cursor-pointer transition-all hover:bg-slate-900/5 dark:hover:bg-white/5 mt-0.5 focus:bg-slate-900/5 dark:focus:bg-white/5"
+                    >
+                        <div className="flex items-center gap-2.5">
+                            <div className="p-1 rounded-lg bg-slate-100 dark:bg-white/5 border border-slate-900/5 dark:border-white/10 group-hover:border-cyan-500/30 transition-colors">
+                                <Megaphone className="h-3 w-3 text-slate-500 dark:text-slate-400" />
+                            </div>
+                            <div className="flex flex-col leading-none">
+                                <span className="text-[10px] font-bold uppercase tracking-wide">Announcements</span>
+                                <span className="text-[8px] font-bold text-slate-400 opacity-70 mt-0.5 uppercase tracking-[0.05em]">Memos</span>
+                            </div>
+                        </div>
+                        {announcementsCount > 0 && (
+                            <span className="flex h-4 min-w-[16px] px-1.5 items-center justify-center rounded-full bg-rose-500 text-[9px] font-black text-white shadow-sm leading-none animate-pulse">
+                                {announcementsCount}
+                            </span>
+                        )}
+                    </DropdownMenuItem>
+
                     
+                    {isDealerOver && (
+                        <DropdownMenuItem
+                            onClick={() => window.dispatchEvent(new CustomEvent("open-dealerover-salesman-rankings"))}
+                            className="group flex items-center justify-between rounded-xl px-2.5 py-1.5 cursor-pointer transition-all hover:bg-amber-500/10 dark:hover:bg-amber-500/10 mt-0.5 focus:bg-amber-500/10 dark:focus:bg-amber-500/10"
+                        >
+                            <div className="flex items-center gap-2.5">
+                                <div className="p-1 rounded-lg bg-amber-500/10 dark:bg-amber-500/20 border border-amber-500/20 group-hover:border-amber-500/40 transition-colors">
+                                    <Trophy className="h-3 w-3 text-amber-500" />
+                                </div>
+                                <div className="flex flex-col leading-none">
+                                    <span className="text-[10px] font-black uppercase tracking-wide text-amber-600 dark:text-amber-400">Salesman Rankings</span>
+                                    <span className="text-[8px] font-bold text-slate-400 opacity-70 mt-0.5 uppercase tracking-[0.05em]">Dealerover</span>
+                                </div>
+                            </div>
+                            <span className="flex h-4 px-1.5 items-center justify-center rounded-full bg-amber-500/20 text-[8px] font-black text-amber-600 dark:text-amber-400 border border-amber-500/30 uppercase tracking-widest">
+                                Top
+                            </span>
+                        </DropdownMenuItem>
+                    )}
+
                     {[
                         { icon: User, label: "Profile Blueprint", sub: "Settings" },
-                        { icon: Key, label: "Security Access", sub: "Auth" },
+                        { icon: Key, label: "Change Password", sub: "Auth" },
                         { icon: Activity, label: "Ops Activity", sub: "Log" },
                         { icon: Settings, label: "System Config", sub: "Prefs" },
                     ].map((item, i) => (
-                        <DropdownMenuItem 
+                        <DropdownMenuItem
                             key={i}
                             className="group flex items-center gap-2.5 rounded-xl px-2.5 py-1.5 cursor-pointer transition-all hover:bg-slate-900/5 dark:hover:bg-white/5 mt-0.5 focus:bg-slate-900/5 dark:focus:bg-white/5"
+                            onSelect={item.label === "Change Password" ? (e) => {
+                                e.preventDefault();
+                                setIsPasswordModalOpen(true);
+                            } : undefined}
                         >
                             <div className="p-1 rounded-lg bg-slate-100 dark:bg-white/5 border border-slate-900/5 dark:border-white/10 group-hover:border-slate-900/20 dark:group-hover:border-white/20 transition-colors">
                                 <item.icon className="h-3 w-3 text-slate-500 dark:text-slate-400" />
@@ -164,7 +239,7 @@ export function UserMenu({ fullName, email }: UserMenuProps) {
 
                 <div className="h-px bg-slate-900/5 dark:bg-white/5 mx-1.5 my-1" />
 
-                <DropdownMenuItem 
+                <DropdownMenuItem
                     onClick={handleLogout}
                     className="group flex items-center gap-2.5 rounded-xl px-2.5 py-2 cursor-pointer text-rose-500 transition-all hover:bg-rose-500/5 focus:bg-rose-500/5"
                 >
@@ -174,6 +249,11 @@ export function UserMenu({ fullName, email }: UserMenuProps) {
                     <span className="text-[10px] font-black uppercase tracking-widest">Terminate Session</span>
                 </DropdownMenuItem>
             </DropdownMenuContent>
+
+            <ChangePasswordModal
+                open={isPasswordModalOpen}
+                onOpenChange={setIsPasswordModalOpen}
+            />
         </DropdownMenu>
     );
 }

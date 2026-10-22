@@ -1,5 +1,16 @@
 import { z } from "zod";
 
+// Prospect pipeline statuses. Stored on `customer_prospect.prospect_status`
+// (string(50), so new values need no schema change); reads are case-insensitive
+// on the DB side, writes use these values.
+// `follow-up` is a contacted prospect that has a next touchpoint scheduled, and
+// is shown together with `contacted` under the Contacted tab.
+export const PROSPECT_STATUSES = ["pending", "contacted", "follow-up", "converted", "dropped"] as const;
+
+export const ProspectStatusSchema = z.enum(PROSPECT_STATUSES);
+
+export type ProspectStatus = z.infer<typeof ProspectStatusSchema>;
+
 export const SalesmanSchema = z.object({
   id: z.number(),
   employee_id: z.number().optional().nullable(),
@@ -67,10 +78,20 @@ export const CustomerProspectSchema = z.object({
   discount_type: z.number().optional().nullable(),
   otherDetails: z.string().optional().nullable(),
   classification: z.number().optional().nullable(),
-  prospect_status: z.enum(["pending", "approved", "rejected"]).default("pending"),
+  prospect_status: ProspectStatusSchema.default("pending"),
   latitude: z.union([z.number(), z.string()]).optional().nullable(),
   longitude: z.union([z.number(), z.string()]).optional().nullable(),
+  // GeoJSON point from the `location` column, e.g. { type: "Point", coordinates: [lng, lat] }.
+  location: z
+    .object({
+      type: z.string().optional().nullable(),
+      coordinates: z.array(z.number()).optional().nullable(),
+    })
+    .optional()
+    .nullable(),
   percentage: z.union([z.number(), z.string()]).optional().nullable(),
+  remarks: z.string().optional().nullable(),
+  schedule: z.string().optional().nullable(),
 });
 
 export type CustomerProspect = z.infer<typeof CustomerProspectSchema>;
@@ -79,4 +100,37 @@ export interface ProspectingDataPayload {
   customerProspects: CustomerProspect[];
   salesmen: Salesman[];
   storeTypes: StoreType[];
+}
+
+/** One flattened row of the grouped Prospecting BIA table. */
+export interface ProspectGroupedItem {
+  id: number;
+  salesmanName: string;
+  province: string;
+  storeTypeName: string;
+  customerName: string;
+  probability: string | null;
+  status: ProspectStatus;
+  schedule: string | null;
+}
+
+/** Body accepted by PATCH /api/bia/prospecting-bia/[id]. */
+export const UpdateProspectSchema = z.object({
+  prospect_status: ProspectStatusSchema,
+  // Required only when moving to "contacted"; optional/nullable otherwise.
+  percentage: z.union([z.number(), z.string()]).optional().nullable(),
+  // Marketing input captured when marking a prospect as contacted.
+  remarks: z.string().optional().nullable(),
+  // Philippine wall-clock "YYYY-MM-DDTHH:mm"; the route converts it to UTC.
+  schedule: z.string().optional().nullable(),
+});
+
+export type UpdateProspectInput = z.infer<typeof UpdateProspectSchema>;
+
+/** Uniform API envelope used across this module's routes. */
+export interface ApiResult<T = unknown> {
+  success: boolean;
+  data?: T;
+  message?: string;
+  errors?: Record<string, string[]>;
 }
