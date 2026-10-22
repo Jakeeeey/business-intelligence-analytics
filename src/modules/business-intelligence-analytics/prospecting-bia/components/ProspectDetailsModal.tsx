@@ -169,7 +169,7 @@ export function ProspectDetailsModal({
   const canFollowUp = status === "contacted" || status === "follow-up";
   const canDrop = status === "pending" || status === "contacted" || status === "follow-up";
   const canConvert = status === "contacted" || status === "follow-up";
-  const canToCustomer = status === "converted";
+  const canToCustomer = status === "converted" && prospect.customer_id == null;
 
   const confirmLabel: Record<WorkflowAction, string> = {
     contact: "Save & Mark Contacted",
@@ -217,7 +217,7 @@ export function ProspectDetailsModal({
       return;
     }
     if (action === "drop" && (await updateStatus(prospect.id, "dropped"))) afterSuccess();
-    if (action === "convert" && (await updateStatus(prospect.id, "converted"))) afterSuccess();
+    if (action === "convert" && (await convertToCustomer(prospect.id))) afterSuccess();
     if (action === "toCustomer" && (await convertToCustomer(prospect.id))) afterSuccess();
   };
 
@@ -386,6 +386,9 @@ export function ProspectDetailsModal({
               <dl className="grid grid-cols-2 gap-x-6 gap-y-4">
                 <Field label="Customer Code" value={text(prospect.customer_code)} />
                 <Field label="Type" value={text(prospect.type)} />
+                {prospect.customer_id != null && (
+                  <Field label="Customer ID" value={text(prospect.customer_id)} />
+                )}
                 <Field label="Probability" value={<ProbabilityBadge value={prospect.percentage} />} />
                 <Field label="Store Type" value={text(storeTypeName)} />
                 <Field label="Prospect Date" value={formatDateValue(prospect.prospect_date)} />
@@ -540,8 +543,10 @@ export function ProspectDetailsModal({
             <div className="w-full space-y-3">
               <p className="text-sm text-foreground">
                 {action === "drop" && "Drop this prospect? This cannot be undone."}
-                {action === "convert" && "Mark this prospect as converted?"}
-                {action === "toCustomer" && "Create a customer record from this prospect?"}
+                {action === "convert" &&
+                  "Convert this prospect? A customer record will be created and linked."}
+                {action === "toCustomer" &&
+                  "Create the missing customer record for this converted prospect?"}
               </p>
               <Separator />
               <div className="flex justify-end gap-2">

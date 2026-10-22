@@ -79,6 +79,7 @@ export const CustomerProspectSchema = z.object({
   otherDetails: z.string().optional().nullable(),
   classification: z.number().optional().nullable(),
   prospect_status: ProspectStatusSchema.default("pending"),
+  customer_id: z.number().optional().nullable(),
   latitude: z.union([z.number(), z.string()]).optional().nullable(),
   longitude: z.union([z.number(), z.string()]).optional().nullable(),
   // GeoJSON point from the `location` column, e.g. { type: "Point", coordinates: [lng, lat] }.
