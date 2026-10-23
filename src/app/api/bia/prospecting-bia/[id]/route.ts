@@ -38,6 +38,19 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
 
     const { prospect_status, percentage, remarks, schedule } = validation.data;
+
+    // Conversion must always create + link the customer row.
+    if (prospect_status === "converted") {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "Prospects must be finalized through the convert endpoint so a customer record is created.",
+        },
+        { status: 400 }
+      );
+    }
+
     const numericPercentage =
       percentage === null || percentage === undefined || percentage === ""
         ? null
