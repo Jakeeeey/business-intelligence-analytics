@@ -2,19 +2,18 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import {
-  IntercompanyLeaveData,
-  IntercompanyLeaveFilters,
-  IntercompanyLeaveKpis,
-  CompanyLeaveOtSummary,
-  EmployeeLeaveAndOtSummary,
+  IntercompanyOvertimeData,
+  IntercompanyOvertimeFilters,
+  IntercompanyOvertimeKpis,
+  CompanyOvertimeSummary,
+  EmployeeOvertimeSummary,
   DailyOtTrendPoint,
   StatusDistributionSegment,
   IntercompanyOvertimeRecord,
-  IntercompanyLeaveRecord,
-  LeaveSortField,
-  LeaveSortOrder,
+  OvertimeSortField,
+  OvertimeSortOrder,
 } from "../types";
-import { fetchIntercompanyLeaveData } from "../providers/fetchProvider";
+import { fetchIntercompanyOvertimeData } from "../providers/fetchProvider";
 
 function getMonthStartAndToday(): { startStr: string; todayStr: string } {
   const d = new Date();
@@ -28,36 +27,35 @@ function getMonthStartAndToday(): { startStr: string; todayStr: string } {
 }
 
 const { startStr, todayStr } = getMonthStartAndToday();
-const DEFAULT_FILTERS: IntercompanyLeaveFilters = {
+const DEFAULT_FILTERS: IntercompanyOvertimeFilters = {
   startDate: startStr,
   endDate: todayStr,
   dates: undefined,
   companyIds: [],
   departments: [],
   status: "ALL",
-  typeFilter: "ALL",
   search: "",
 };
 
-export function useIntercompanyLeave() {
-  const [data, setData] = useState<IntercompanyLeaveData | null>(null);
+export function useIntercompanyOvertime() {
+  const [data, setData] = useState<IntercompanyOvertimeData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [filters, setFilters] = useState<IntercompanyLeaveFilters>(DEFAULT_FILTERS);
-  const [sortField, setSortField] = useState<LeaveSortField>("approvedOtHours");
-  const [sortOrder, setSortOrder] = useState<LeaveSortOrder>("desc");
+  const [filters, setFilters] = useState<IntercompanyOvertimeFilters>(DEFAULT_FILTERS);
+  const [sortField, setSortField] = useState<OvertimeSortField>("approvedOtHours");
+  const [sortOrder, setSortOrder] = useState<OvertimeSortOrder>("desc");
   const [page, setPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(20);
 
-  const [selectedEmployee, setSelectedEmployee] = useState<EmployeeLeaveAndOtSummary | null>(null);
+  const [selectedEmployee, setSelectedEmployee] = useState<EmployeeOvertimeSummary | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState<boolean>(false);
 
   const loadData = useCallback(async (opts?: { force?: boolean }) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetchIntercompanyLeaveData({
+      const res = await fetchIntercompanyOvertimeData({
         startDate: filters.startDate,
         endDate: filters.endDate,
         dates: filters.dates,
@@ -65,8 +63,8 @@ export function useIntercompanyLeave() {
       });
       setData(res);
     } catch (err: unknown) {
-      console.error("[useIntercompanyLeave Error]", err);
-      const msg = err instanceof Error ? err.message : "Failed to load leave & overtime report";
+      console.error("[useIntercompanyOvertime Error]", err);
+      const msg = err instanceof Error ? err.message : "Failed to load overtime report";
       setError(msg);
     } finally {
       setLoading(false);
@@ -83,13 +81,12 @@ export function useIntercompanyLeave() {
       (filters.companyIds && filters.companyIds.length > 0) ||
       (filters.departments && filters.departments.length > 0) ||
       filters.status !== "ALL" ||
-      filters.typeFilter !== "ALL" ||
       Boolean(filters.search.trim())
     );
   }, [filters]);
 
   // Filtered Employee Summaries
-  const filteredEmployeeSummaries = useMemo<EmployeeLeaveAndOtSummary[]>(() => {
+  const filteredEmployeeSummaries = useMemo<EmployeeOvertimeSummary[]>(() => {
     if (!data?.employeeSummaries) return [];
 
     return data.employeeSummaries.filter((emp) => {
@@ -107,104 +104,89 @@ export function useIntercompanyLeave() {
         }
       }
 
-      // 3. Search query
-      if (filters.search && filters.search.trim()) {
-        const q = filters.search.toLowerCase().trim();
-        const mName = emp.name.toLowerCase().includes(q);
-        const mId = emp.employeeId.toLowerCase().includes(q);
-        const mCompany =
+      // 3. Status filter
+      if (filters.status !== "ALL") {
+        if (filters.status === "approved" && emp.approvedOtRequests === 0) return false;
+        if (filters.status === "pending" && emp.pendingOtRequests === 0) return false;
+        if (filters.status === "rejected" && emp.rejectedOtRequests === 0) return false;
+      }
+
+      // 4. Search query
+      if (filters.search.trim()) {
+        const q = filters.search.toLowerCase();
+        const matchesName = emp.name.toLowerCase().includes(q);
+        const matchesEmpId = emp.employeeId.toLowerCase().includes(q);
+        const matchesDept = emp.department.toLowerCase().includes(q);
+        const matchesPos = emp.position.toLowerCase().includes(q);
+        const matchesCo =
           emp.companyName.toLowerCase().includes(q) ||
           emp.companyCode.toLowerCase().includes(q);
-        const mDept = emp.department.toLowerCase().includes(q);
-        const mPos = emp.position.toLowerCase().includes(q);
-
-        if (!mName && !mId && !mCompany && !mDept && !mPos) {
+        if (!matchesName && !matchesEmpId && !matchesDept && !matchesPos && !matchesCo) {
           return false;
         }
       }
 
       return true;
     });
-  }, [data?.employeeSummaries, filters]);
+  }, [data, filters]);
 
   // Filtered Overtime Records
   const filteredOtRecords = useMemo<IntercompanyOvertimeRecord[]>(() => {
     if (!data?.overtimeRecords) return [];
 
     return data.overtimeRecords.filter((ot) => {
+      // 1. Company filter
       if (filters.companyIds && filters.companyIds.length > 0) {
         if (!filters.companyIds.includes(String(ot.companyId))) {
           return false;
         }
       }
+
+      // 2. Department filter
       if (filters.departments && filters.departments.length > 0) {
         if (!filters.departments.includes(ot.department)) {
           return false;
         }
       }
-      if (filters.status !== "ALL") {
-        if (ot.status !== filters.status.toLowerCase()) {
+
+      // 3. Status filter
+      if (filters.status !== "ALL" && ot.status !== filters.status) {
+        return false;
+      }
+
+      // 4. Search filter
+      if (filters.search.trim()) {
+        const q = filters.search.toLowerCase();
+        const matchesName = ot.name.toLowerCase().includes(q);
+        const matchesEmpId = ot.employeeId.toLowerCase().includes(q);
+        const matchesDept = ot.department.toLowerCase().includes(q);
+        const matchesPurpose = ot.purpose.toLowerCase().includes(q);
+        const matchesCo =
+          ot.companyName.toLowerCase().includes(q) ||
+          ot.companyCode.toLowerCase().includes(q);
+        if (!matchesName && !matchesEmpId && !matchesDept && !matchesPurpose && !matchesCo) {
           return false;
         }
       }
-      if (filters.search && filters.search.trim()) {
-        const q = filters.search.toLowerCase().trim();
-        const mName = ot.name.toLowerCase().includes(q);
-        const mId = ot.employeeId.toLowerCase().includes(q);
-        const mComp = ot.companyName.toLowerCase().includes(q) || ot.companyCode.toLowerCase().includes(q);
-        const mDept = ot.department.toLowerCase().includes(q);
-        const mPurp = ot.purpose.toLowerCase().includes(q);
-        if (!mName && !mId && !mComp && !mDept && !mPurp) return false;
-      }
+
       return true;
     });
-  }, [data?.overtimeRecords, filters]);
+  }, [data, filters]);
 
-  // Filtered Leave Records
-  const filteredLeaveRecords = useMemo<IntercompanyLeaveRecord[]>(() => {
-    if (!data?.leaveRecords) return [];
-
-    return data.leaveRecords.filter((lv) => {
-      if (filters.companyIds && filters.companyIds.length > 0) {
-        if (!filters.companyIds.includes(String(lv.companyId))) {
-          return false;
-        }
-      }
-      if (filters.departments && filters.departments.length > 0) {
-        if (!filters.departments.includes(lv.department)) {
-          return false;
-        }
-      }
-      if (filters.status !== "ALL") {
-        if (lv.status !== filters.status.toLowerCase()) {
-          return false;
-        }
-      }
-      if (filters.search && filters.search.trim()) {
-        const q = filters.search.toLowerCase().trim();
-        const mName = lv.name.toLowerCase().includes(q);
-        const mId = lv.employeeId.toLowerCase().includes(q);
-        const mComp = lv.companyName.toLowerCase().includes(q) || lv.companyCode.toLowerCase().includes(q);
-        const mDept = lv.department.toLowerCase().includes(q);
-        const mReason = lv.reason.toLowerCase().includes(q);
-        const mType = lv.leaveType.toLowerCase().includes(q);
-        if (!mName && !mId && !mComp && !mDept && !mReason && !mType) return false;
-      }
-      return true;
-    });
-  }, [data?.leaveRecords, filters]);
-
-  // Dynamic Filtered KPIs
-  const filteredKpis = useMemo<IntercompanyLeaveKpis | null>(() => {
+  // Recalculated dynamic KPIs
+  const filteredKpis = useMemo<IntercompanyOvertimeKpis | null>(() => {
     if (!data?.kpis) return null;
-    if (!hasActiveFilter) return data.kpis;
 
-    let otMins = 0;
-    let appOtMins = 0;
+    if (!hasActiveFilter) {
+      return data.kpis;
+    }
+
     let otReqs = 0;
     let appOtReqs = 0;
     let pendOtReqs = 0;
     let rejOtReqs = 0;
+    let otMins = 0;
+    let appOtMins = 0;
 
     filteredOtRecords.forEach((ot) => {
       otReqs++;
@@ -219,24 +201,8 @@ export function useIntercompanyLeave() {
       }
     });
 
-    let lvReqs = 0;
-    let appLvReqs = 0;
-    let appLvDays = 0;
-    let pendLvReqs = 0;
-
-    filteredLeaveRecords.forEach((lv) => {
-      lvReqs++;
-      if (lv.status === "approved") {
-        appLvReqs++;
-        appLvDays += lv.totalDays;
-      } else if (lv.status === "pending") {
-        pendLvReqs++;
-      }
-    });
-
     const uniqueCos = new Set<number>();
     filteredOtRecords.forEach((r) => uniqueCos.add(r.companyId));
-    filteredLeaveRecords.forEach((r) => uniqueCos.add(r.companyId));
     filteredEmployeeSummaries.forEach((r) => uniqueCos.add(r.companyId));
 
     const otApprovalRate = otReqs > 0 ? Math.round((appOtReqs / otReqs) * 100) : 0;
@@ -253,42 +219,48 @@ export function useIntercompanyLeave() {
       totalPendingOtRequests: pendOtReqs,
       totalRejectedOtRequests: rejOtReqs,
       otApprovalRate,
-      totalLeaveRequests: lvReqs,
-      totalApprovedLeaveRequests: appLvReqs,
-      totalApprovedLeaveDays: Math.round(appLvDays * 10) / 10,
-      totalPendingLeaveRequests: pendLvReqs,
       activeCompaniesCount: uniqueCos.size,
-      totalCompaniesCount: data.companiesList.length,
+      totalCompaniesCount: data.kpis.totalCompaniesCount,
       topOtEmployee: topEmp,
       topOtCompany: data.kpis.topOtCompany,
     };
-  }, [data, hasActiveFilter, filteredOtRecords, filteredLeaveRecords, filteredEmployeeSummaries]);
+  }, [data, hasActiveFilter, filteredOtRecords, filteredEmployeeSummaries]);
 
-  // Dynamic Filtered Company Summaries
-  const filteredCompanySummaries = useMemo<CompanyLeaveOtSummary[]>(() => {
+  // Filtered Company Summaries
+  const filteredCompanySummaries = useMemo<CompanyOvertimeSummary[]>(() => {
     if (!data?.companySummaries) return [];
-    if (!hasActiveFilter) return data.companySummaries;
 
-    // Filter to selected companies if company filter is active
-    if (filters.companyIds && filters.companyIds.length > 0) {
-      return data.companySummaries.filter((c) =>
-        filters.companyIds.includes(String(c.companyId))
+    const compSummaries = data.companySummaries;
+    const companyIds = filters.companyIds;
+
+    if (companyIds && companyIds.length > 0) {
+      return compSummaries.filter((c) =>
+        companyIds.includes(String(c.companyId))
       );
     }
 
-    return data.companySummaries;
-  }, [data?.companySummaries, hasActiveFilter, filters.companyIds]);
+    return compSummaries;
+  }, [data, filters.companyIds]);
 
-  // Dynamic Filtered Status Distribution
+  // Filtered Status Distribution
   const filteredStatusDistribution = useMemo<StatusDistributionSegment[]>(() => {
     if (!data?.statusDistribution) return [];
-    if (!hasActiveFilter) return data.statusDistribution;
-    if (!filteredKpis) return data.statusDistribution;
 
-    const total = filteredKpis.totalOtRequests + filteredKpis.totalLeaveRequests;
-    const approved = filteredKpis.totalApprovedOtRequests + filteredKpis.totalApprovedLeaveRequests;
-    const pending = filteredKpis.totalPendingOtRequests + filteredKpis.totalPendingLeaveRequests;
-    const rejected = Math.max(0, total - approved - pending);
+    if (!hasActiveFilter) {
+      return data.statusDistribution;
+    }
+
+    let approved = 0;
+    let pending = 0;
+    let rejected = 0;
+
+    filteredOtRecords.forEach((ot) => {
+      if (ot.status === "approved") approved++;
+      else if (ot.status === "pending") pending++;
+      else rejected++;
+    });
+
+    const total = approved + pending + rejected;
 
     return [
       {
@@ -307,49 +279,35 @@ export function useIntercompanyLeave() {
         name: "Rejected",
         count: rejected,
         percentage: total > 0 ? Math.round((rejected / total) * 100) : 0,
-        color: "#ef4444",
+        color: "#f43f5e",
       },
     ];
-  }, [data?.statusDistribution, hasActiveFilter, filteredKpis]);
+  }, [data, hasActiveFilter, filteredOtRecords]);
 
-  // Dynamic Filtered Daily Trends
+  // Filtered Daily Trends
   const filteredDailyTrends = useMemo<DailyOtTrendPoint[]>(() => {
     if (!data?.dailyTrends) return [];
-    if (!hasActiveFilter) return data.dailyTrends;
 
-    const tMap = new Map<
-      string,
-      { totalOtMinutes: number; approvedOtMinutes: number; otCount: number; leaveCount: number }
-    >();
+    if (!hasActiveFilter) {
+      return data.dailyTrends;
+    }
 
-    (data.dates || []).forEach((d) => {
-      tMap.set(d, { totalOtMinutes: 0, approvedOtMinutes: 0, otCount: 0, leaveCount: 0 });
-    });
+    const tMap = new Map<string, { totalOtMinutes: number; approvedOtMinutes: number; otCount: number; approvedCount: number }>();
 
     filteredOtRecords.forEach((ot) => {
       const cur = tMap.get(ot.requestDate) || {
         totalOtMinutes: 0,
         approvedOtMinutes: 0,
         otCount: 0,
-        leaveCount: 0,
+        approvedCount: 0,
       };
-      cur.otCount++;
       cur.totalOtMinutes += ot.durationMinutes;
+      cur.otCount++;
       if (ot.status === "approved") {
         cur.approvedOtMinutes += ot.durationMinutes;
+        cur.approvedCount++;
       }
       tMap.set(ot.requestDate, cur);
-    });
-
-    filteredLeaveRecords.forEach((lv) => {
-      const cur = tMap.get(lv.leaveStart) || {
-        totalOtMinutes: 0,
-        approvedOtMinutes: 0,
-        otCount: 0,
-        leaveCount: 0,
-      };
-      cur.leaveCount++;
-      tMap.set(lv.leaveStart, cur);
     });
 
     const result: DailyOtTrendPoint[] = [];
@@ -362,17 +320,17 @@ export function useIntercompanyLeave() {
         approvedOtMinutes: v.approvedOtMinutes,
         approvedOtHours: Math.round((v.approvedOtMinutes / 60) * 10) / 10,
         otRequestsCount: v.otCount,
-        leaveRequestsCount: v.leaveCount,
+        approvedRequestsCount: v.approvedCount,
       });
     });
 
     return result.sort((a, b) => a.date.localeCompare(b.date));
-  }, [data, hasActiveFilter, filteredOtRecords, filteredLeaveRecords]);
+  }, [data, hasActiveFilter, filteredOtRecords]);
 
   // Top 5 OT Contributors
   const filteredTopEmployees = useMemo(() => {
     return [...filteredEmployeeSummaries]
-      .filter((e) => e.totalOtHours > 0 || e.approvedLeaveDays > 0)
+      .filter((e) => e.totalOtHours > 0)
       .sort((a, b) => b.approvedOtHours - a.approvedOtHours)
       .slice(0, 5);
   }, [filteredEmployeeSummaries]);
@@ -408,8 +366,8 @@ export function useIntercompanyLeave() {
         case "approvedOtRequests":
           comparison = a.approvedOtRequests - b.approvedOtRequests;
           break;
-        case "approvedLeaveDays":
-          comparison = a.approvedLeaveDays - b.approvedLeaveDays;
+        case "approvalRate":
+          comparison = a.approvalRate - b.approvalRate;
           break;
       }
       return sortOrder === "asc" ? comparison : -comparison;
@@ -425,7 +383,7 @@ export function useIntercompanyLeave() {
     return sortedEmployeeSummaries.slice(start, start + pageSize);
   }, [sortedEmployeeSummaries, page, pageSize]);
 
-  const handleSort = (field: LeaveSortField) => {
+  const handleSort = (field: OvertimeSortField) => {
     if (sortField === field) {
       setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
     } else {
@@ -435,7 +393,7 @@ export function useIntercompanyLeave() {
     setPage(1);
   };
 
-  const handleOpenDetail = (emp: EmployeeLeaveAndOtSummary) => {
+  const handleOpenDetail = (emp: EmployeeOvertimeSummary) => {
     setSelectedEmployee(emp);
     setDetailModalOpen(true);
   };
@@ -459,7 +417,6 @@ export function useIntercompanyLeave() {
     sortedEmployeeSummaries,
     paginatedEmployeeSummaries,
     filteredOtRecords,
-    filteredLeaveRecords,
     filteredKpis: filteredKpis || data?.kpis,
     filteredCompanySummaries,
     filteredStatusDistribution,

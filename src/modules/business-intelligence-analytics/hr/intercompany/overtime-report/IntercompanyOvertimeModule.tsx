@@ -1,19 +1,22 @@
 "use client";
 
 import React, { useState } from "react";
-import { useIntercompanyLeave } from "./hooks/useIntercompanyLeave";
-import { LeaveKpiCards } from "./components/LeaveKpiCards";
-import { CompanyLeaveCards } from "./components/CompanyLeaveCards";
-import { LeaveCharts } from "./components/LeaveCharts";
-import { LeaveFilters } from "./components/LeaveFilters";
-import { EmployeeLeaveTable } from "./components/EmployeeLeaveTable";
-import { DetailedRequestsTable } from "./components/DetailedRequestsTable";
-import { LeaveDetailModal } from "./components/LeaveDetailModal";
-import { exportLeaveOtToCsv } from "./utils/exportCsv";
+import { useIntercompanyOvertime } from "./hooks/useIntercompanyOvertime";
+import { OvertimeKpiCards } from "./components/OvertimeKpiCards";
+import { CompanyOvertimeCards } from "./components/CompanyOvertimeCards";
+import { OvertimeCharts } from "./components/OvertimeCharts";
+import { OvertimeFilters } from "./components/OvertimeFilters";
+import { EmployeeOvertimeTable } from "./components/EmployeeOvertimeTable";
+import { DetailedOvertimeRequestsTable } from "./components/DetailedOvertimeRequestsTable";
+import { OvertimeDetailModal } from "./components/OvertimeDetailModal";
+import {
+  exportOvertimeEmployeesToCsv,
+  exportDetailedOvertimeToCsv,
+} from "./utils/exportCsv";
 import { AlertCircle, FileSpreadsheet, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-export function IntercompanyLeaveModule() {
+export function IntercompanyOvertimeModule() {
   const {
     data,
     loading,
@@ -23,7 +26,6 @@ export function IntercompanyLeaveModule() {
     sortedEmployeeSummaries,
     paginatedEmployeeSummaries,
     filteredOtRecords,
-    filteredLeaveRecords,
     filteredKpis,
     filteredCompanySummaries,
     filteredStatusDistribution,
@@ -44,7 +46,7 @@ export function IntercompanyLeaveModule() {
     handleOpenDetail,
     handleResetFilters,
     handleRefresh,
-  } = useIntercompanyLeave();
+  } = useIntercompanyOvertime();
 
   const [activeTab, setActiveTab] = useState<"summary" | "detailed">("summary");
 
@@ -53,10 +55,18 @@ export function IntercompanyLeaveModule() {
       filters.startDate && filters.endDate && filters.startDate !== filters.endDate
         ? `${filters.startDate}_to_${filters.endDate}`
         : filters.startDate || "all";
-    exportLeaveOtToCsv(
-      sortedEmployeeSummaries,
-      `intercompany_leave_overtime_${filenameDate}.csv`
-    );
+
+    if (activeTab === "summary") {
+      exportOvertimeEmployeesToCsv(
+        sortedEmployeeSummaries,
+        `intercompany_overtime_employees_${filenameDate}.csv`
+      );
+    } else {
+      exportDetailedOvertimeToCsv(
+        filteredOtRecords,
+        `intercompany_overtime_requests_${filenameDate}.csv`
+      );
+    }
   };
 
   const handleSelectCompanyCard = (companyIdStr: string) => {
@@ -95,7 +105,7 @@ export function IntercompanyLeaveModule() {
       )}
 
       {/* 1. Global Filter Controls */}
-      <LeaveFilters
+      <OvertimeFilters
         filters={filters}
         onChange={setFilters}
         companies={data?.companiesList || []}
@@ -107,12 +117,12 @@ export function IntercompanyLeaveModule() {
         onExport={handleExportCsv}
       />
 
-      {/* 2. Top Executive KPI Cards (Total Overtime, OT Requests, Approved OT, Leave Days, etc.) */}
-      {filteredKpis && <LeaveKpiCards kpis={filteredKpis} />}
+      {/* 2. Top Executive KPI Cards (Total Overtime Hours, Total OT Requests, Approved Overtime, Approval Rate %, etc.) */}
+      {filteredKpis && <OvertimeKpiCards kpis={filteredKpis} />}
 
       {/* 3. Intercompany Entity Cards (Clickable for dynamic filtering) */}
       {data?.companySummaries && data.companySummaries.length > 0 && (
-        <CompanyLeaveCards
+        <CompanyOvertimeCards
           companies={data.companySummaries}
           selectedCompanyIds={filters.companyIds}
           onSelectCompany={handleSelectCompanyCard}
@@ -125,7 +135,7 @@ export function IntercompanyLeaveModule() {
 
       {/* 4. Analytics Visualizations & Charts */}
       {data && (
-        <LeaveCharts
+        <OvertimeCharts
           companySummaries={filteredCompanySummaries}
           dailyTrends={filteredDailyTrends}
           statusDistribution={filteredStatusDistribution}
@@ -164,7 +174,7 @@ export function IntercompanyLeaveModule() {
               <FileSpreadsheet className="h-3.5 w-3.5 text-purple-500" />
               Individual Filings Log
               <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] bg-muted font-mono font-medium">
-                {filteredOtRecords.length + filteredLeaveRecords.length}
+                {filteredOtRecords.length}
               </span>
             </button>
           </div>
@@ -173,13 +183,13 @@ export function IntercompanyLeaveModule() {
             {activeTab === "summary" ? (
               <span>Aggregated employee overtime hours and request approvals</span>
             ) : (
-              <span>Full chronological list of submitted overtime and leave filings</span>
+              <span>Full chronological list of submitted overtime filings</span>
             )}
           </div>
         </div>
 
         {activeTab === "summary" ? (
-          <EmployeeLeaveTable
+          <EmployeeOvertimeTable
             records={paginatedEmployeeSummaries}
             totalRecords={totalRecords}
             page={page}
@@ -197,22 +207,19 @@ export function IntercompanyLeaveModule() {
             loading={loading}
           />
         ) : (
-          <DetailedRequestsTable
+          <DetailedOvertimeRequestsTable
             overtimeRecords={filteredOtRecords}
-            leaveRecords={filteredLeaveRecords}
-            typeFilter={filters.typeFilter}
             loading={loading}
           />
         )}
       </div>
 
-      {/* 6. Employee Details Modal */}
-      <LeaveDetailModal
+      {/* 6. Employee Overtime Details Modal */}
+      <OvertimeDetailModal
         employee={selectedEmployee}
         open={detailModalOpen}
         onOpenChange={setDetailModalOpen}
         overtimeRecords={data?.overtimeRecords || []}
-        leaveRecords={data?.leaveRecords || []}
       />
     </div>
   );

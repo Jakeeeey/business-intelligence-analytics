@@ -1,5 +1,4 @@
 export type RequestStatus = "approved" | "pending" | "rejected";
-export type RecordType = "overtime" | "leave";
 
 export interface IntercompanyOvertimeRecord {
   id: string; // `${companyId}-ot-${overtimeId}`
@@ -18,6 +17,7 @@ export interface IntercompanyOvertimeRecord {
   gender: string;
   avatar: string | null;
   requestDate: string;
+  schedTimeout: string | null;
   otFrom: string | null;
   otTo: string | null;
   durationMinutes: number;
@@ -31,37 +31,7 @@ export interface IntercompanyOvertimeRecord {
   filedAt: string | null;
 }
 
-export interface IntercompanyLeaveRecord {
-  id: string; // `${companyId}-leave-${leaveId}`
-  leaveId: number;
-  userId: number;
-  employeeId: string;
-  name: string;
-  firstName: string;
-  lastName: string;
-  companyId: number;
-  companyName: string;
-  companyCode: string;
-  department: string;
-  departmentId: number | null;
-  position: string;
-  gender: string;
-  avatar: string | null;
-  leaveType: string;
-  leaveStart: string;
-  leaveEnd: string;
-  totalDays: number;
-  reason: string;
-  remarks: string | null;
-  status: RequestStatus;
-  currentApprovalLevel: number;
-  approverId: number | null;
-  approvedAt: string | null;
-  filedAt: string | null;
-  isPaid: boolean;
-}
-
-export interface EmployeeLeaveAndOtSummary {
+export interface EmployeeOvertimeSummary {
   userId: number;
   employeeId: string;
   name: string;
@@ -71,7 +41,6 @@ export interface EmployeeLeaveAndOtSummary {
   department: string;
   position: string;
   avatar: string | null;
-  // Overtime metrics
   totalOtRequests: number;
   approvedOtRequests: number;
   pendingOtRequests: number;
@@ -80,40 +49,28 @@ export interface EmployeeLeaveAndOtSummary {
   totalOtHours: number;
   approvedOtMinutes: number;
   approvedOtHours: number;
-  // Leave metrics
-  totalLeaveRequests: number;
-  approvedLeaveRequests: number;
-  pendingLeaveRequests: number;
-  rejectedLeaveRequests: number;
-  totalLeaveDays: number;
-  approvedLeaveDays: number;
+  approvalRate: number; // percentage
 }
 
-export interface CompanyLeaveOtSummary {
+export interface CompanyOvertimeSummary {
   companyId: number;
   companyName: string;
   companyCode: string;
   status: "ACTIVE" | "OFFLINE" | "INACTIVE";
   totalEmployees: number;
-  // Overtime
   totalOtRequests: number;
   approvedOtRequests: number;
   pendingOtRequests: number;
+  rejectedOtRequests: number;
   totalOtMinutes: number;
   totalOtHours: number;
   approvedOtMinutes: number;
   approvedOtHours: number;
-  otApprovalRate: number; // %
-  // Leaves
-  totalLeaveRequests: number;
-  approvedLeaveRequests: number;
-  totalLeaveDays: number;
-  approvedLeaveDays: number;
+  otApprovalRate: number; // percentage
 }
 
-export interface IntercompanyLeaveKpis {
+export interface IntercompanyOvertimeKpis {
   totalEmployees: number;
-  // Overtime metrics (User explicitly requested)
   totalOtMinutes: number;
   totalOtHours: number;
   totalOtRequests: number;
@@ -123,12 +80,6 @@ export interface IntercompanyLeaveKpis {
   totalPendingOtRequests: number;
   totalRejectedOtRequests: number;
   otApprovalRate: number; // percentage
-  // Leave metrics
-  totalLeaveRequests: number;
-  totalApprovedLeaveRequests: number;
-  totalApprovedLeaveDays: number;
-  totalPendingLeaveRequests: number;
-  // Summary tags
   activeCompaniesCount: number;
   totalCompaniesCount: number;
   topOtEmployee?: string;
@@ -149,7 +100,7 @@ export interface DailyOtTrendPoint {
   approvedOtMinutes: number;
   approvedOtHours: number;
   otRequestsCount: number;
-  leaveRequestsCount: number;
+  approvedRequestsCount: number;
 }
 
 export interface StatusDistributionSegment {
@@ -159,34 +110,32 @@ export interface StatusDistributionSegment {
   color: string;
 }
 
-export interface IntercompanyLeaveData {
+export interface IntercompanyOvertimeData {
   startDate: string;
   endDate: string;
   dates: string[];
-  kpis: IntercompanyLeaveKpis;
-  companySummaries: CompanyLeaveOtSummary[];
-  employeeSummaries: EmployeeLeaveAndOtSummary[];
+  kpis: IntercompanyOvertimeKpis;
+  companySummaries: CompanyOvertimeSummary[];
+  employeeSummaries: EmployeeOvertimeSummary[];
   dailyTrends: DailyOtTrendPoint[];
   statusDistribution: StatusDistributionSegment[];
   overtimeRecords: IntercompanyOvertimeRecord[];
-  leaveRecords: IntercompanyLeaveRecord[];
   companiesList: CompanyFilterOption[];
   departmentsList: string[];
   statusesList: string[];
 }
 
-export interface IntercompanyLeaveFilters {
+export interface IntercompanyOvertimeFilters {
   startDate: string;
   endDate: string;
   dates?: string[];
   companyIds: string[];
   departments: string[];
   status: string; // "ALL" | RequestStatus
-  typeFilter: "ALL" | "overtime" | "leave";
   search: string;
 }
 
-export type LeaveSortField =
+export type OvertimeSortField =
   | "name"
   | "employeeId"
   | "company"
@@ -195,6 +144,6 @@ export type LeaveSortField =
   | "approvedOtHours"
   | "totalOtRequests"
   | "approvedOtRequests"
-  | "approvedLeaveDays";
+  | "approvalRate";
 
-export type LeaveSortOrder = "asc" | "desc";
+export type OvertimeSortOrder = "asc" | "desc";

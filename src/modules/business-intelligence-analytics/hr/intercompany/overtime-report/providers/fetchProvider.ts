@@ -1,11 +1,11 @@
-import { IntercompanyLeaveData, IntercompanyLeaveFilters } from "../types";
+import { IntercompanyOvertimeData, IntercompanyOvertimeFilters } from "../types";
 
-const API_BASE = "/api/bia/hr/intercompany/leave-report";
+const API_BASE = "/api/bia/hr/intercompany/overtime-report";
 
-export async function fetchIntercompanyLeaveData(
-  filters: Partial<IntercompanyLeaveFilters> & { force?: boolean },
+export async function fetchIntercompanyOvertimeData(
+  filters: Partial<IntercompanyOvertimeFilters> & { force?: boolean },
   signal?: AbortSignal
-): Promise<IntercompanyLeaveData> {
+): Promise<IntercompanyOvertimeData> {
   const query = new URLSearchParams();
   if (filters.startDate && filters.endDate) {
     query.append("startDate", filters.startDate);
@@ -32,7 +32,7 @@ export async function fetchIntercompanyLeaveData(
     throw new Error(
       errorData?.error ||
         errorData?.message ||
-        `Failed to fetch intercompany leave data (${res.status})`
+        `Failed to fetch intercompany overtime data (${res.status})`
     );
   }
 
