@@ -45,7 +45,12 @@ export default function IntercompanyAttendanceModule() {
   const handleExport = () => {
     if (!reportData || filteredRecords.length === 0) return;
     const dateStr = filters.date || new Date().toISOString().slice(0, 10);
-    const compTag = filters.companyId !== "ALL" ? `_comp_${filters.companyId}` : "_all_companies";
+    const compTag =
+      filters.companyIds && filters.companyIds.length > 0
+        ? `_${filters.companyIds.length}_companies`
+        : filters.companyId && filters.companyId !== "ALL"
+        ? `_comp_${filters.companyId}`
+        : "_all_companies";
     exportIntercompanyAttendanceCsv(
       filteredRecords,
       `intercompany_attendance_${dateStr}${compTag}.csv`
@@ -96,9 +101,27 @@ export default function IntercompanyAttendanceModule() {
       {reportData && reportData.companySummaries.length > 0 && (
         <CompanySummaryCards
           summaries={reportData.companySummaries}
-          selectedCompanyId={filters.companyId}
-          onSelectCompany={(companyId) =>
-            setFilters((prev) => ({ ...prev, companyId }))
+          selectedCompanyIds={filters.companyIds}
+          onToggleCompany={(companyId) =>
+            setFilters((prev) => {
+              const current = prev.companyIds || [];
+              const exists = current.includes(companyId);
+              const updated = exists
+                ? current.filter((id) => id !== companyId)
+                : [...current, companyId];
+              return {
+                ...prev,
+                companyIds: updated,
+                companyId: updated.length === 1 ? updated[0] : "ALL",
+              };
+            })
+          }
+          onClearCompanySelection={() =>
+            setFilters((prev) => ({
+              ...prev,
+              companyIds: [],
+              companyId: "ALL",
+            }))
           }
         />
       )}

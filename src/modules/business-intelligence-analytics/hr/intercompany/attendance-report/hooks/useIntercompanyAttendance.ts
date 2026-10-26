@@ -20,6 +20,8 @@ function getTodayString(): string {
 
 const DEFAULT_FILTERS: IntercompanyAttendanceFilters = {
   date: getTodayString(),
+  companyIds: [],
+  departments: [],
   companyId: "ALL",
   department: "ALL",
   attendanceStatus: "ALL",
@@ -95,20 +97,35 @@ export function useIntercompanyAttendance() {
   // Reset pagination when filter criteria change
   useEffect(() => {
     setPage(1);
-  }, [filters.companyId, filters.department, filters.attendanceStatus, filters.search]);
+  }, [
+    filters.companyIds,
+    filters.departments,
+    filters.companyId,
+    filters.department,
+    filters.attendanceStatus,
+    filters.search,
+  ]);
 
   // Filtered records
   const filteredRecords = useMemo(() => {
     if (!reportData) return [];
 
     return reportData.records.filter((rec) => {
-      // Company Filter
-      if (filters.companyId !== "ALL" && String(rec.companyId) !== filters.companyId) {
+      // Company Filter (Multi-select)
+      if (filters.companyIds && filters.companyIds.length > 0) {
+        if (!filters.companyIds.includes(String(rec.companyId))) {
+          return false;
+        }
+      } else if (filters.companyId && filters.companyId !== "ALL" && String(rec.companyId) !== filters.companyId) {
         return false;
       }
 
-      // Department Filter
-      if (filters.department !== "ALL" && rec.department !== filters.department) {
+      // Department Filter (Multi-select)
+      if (filters.departments && filters.departments.length > 0) {
+        if (!filters.departments.includes(rec.department)) {
+          return false;
+        }
+      } else if (filters.department && filters.department !== "ALL" && rec.department !== filters.department) {
         return false;
       }
 
@@ -210,12 +227,16 @@ export function useIntercompanyAttendance() {
   const currentKpis = useMemo(() => {
     if (!reportData) return null;
 
-    if (
-      filters.companyId === "ALL" &&
-      filters.department === "ALL" &&
-      filters.attendanceStatus === "ALL" &&
-      !filters.search.trim()
-    ) {
+    const hasCompanyFilter =
+      (filters.companyIds && filters.companyIds.length > 0) ||
+      (filters.companyId && filters.companyId !== "ALL");
+    const hasDeptFilter =
+      (filters.departments && filters.departments.length > 0) ||
+      (filters.department && filters.department !== "ALL");
+    const hasStatusFilter = filters.attendanceStatus !== "ALL";
+    const hasSearch = Boolean(filters.search.trim());
+
+    if (!hasCompanyFilter && !hasDeptFilter && !hasStatusFilter && !hasSearch) {
       return reportData.kpis;
     }
 
@@ -275,6 +296,8 @@ export function useIntercompanyAttendance() {
   const resetFilters = () => {
     setFilters({
       date: getTodayString(),
+      companyIds: [],
+      departments: [],
       companyId: "ALL",
       department: "ALL",
       attendanceStatus: "ALL",

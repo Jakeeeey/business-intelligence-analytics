@@ -86,9 +86,11 @@ export interface IntercompanyAttendanceData {
 
 export interface IntercompanyAttendanceFilters {
   date: string;
-  companyId: string; // 'ALL' or string id
-  department: string; // 'ALL' or department name
-  attendanceStatus: string; // 'ALL' | 'Present' | 'On Time' | 'Late' | 'Absent' | 'On Leave' | 'Filed Leave'
+  companyIds: string[]; // Multi-select company IDs, empty array = all
+  departments: string[]; // Multi-select department names, empty array = all
+  companyId?: string; // Optional legacy single-select fallback
+  department?: string; // Optional legacy single-select fallback
+  attendanceStatus: string; // 'ALL' | 'Present' | 'On Time' | 'Late' | 'Absent' | 'On Leave' | 'Filed Leave' | 'Leave Pending'
   search: string;
 }
 

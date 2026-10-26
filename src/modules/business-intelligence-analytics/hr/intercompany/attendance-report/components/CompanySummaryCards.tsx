@@ -8,15 +8,45 @@ import { CompanyAttendanceSummary } from "../types";
 
 interface CompanySummaryCardsProps {
   summaries: CompanyAttendanceSummary[];
-  selectedCompanyId: string;
-  onSelectCompany: (companyId: string) => void;
+  selectedCompanyIds?: string[];
+  selectedCompanyId?: string;
+  onToggleCompany?: (companyId: string) => void;
+  onSelectCompany?: (companyId: string) => void;
+  onClearCompanySelection?: () => void;
 }
 
 export function CompanySummaryCards({
   summaries,
-  selectedCompanyId,
+  selectedCompanyIds = [],
+  selectedCompanyId = "ALL",
+  onToggleCompany,
   onSelectCompany,
+  onClearCompanySelection,
 }: CompanySummaryCardsProps) {
+  const activeSelectedIds =
+    selectedCompanyIds.length > 0
+      ? selectedCompanyIds
+      : selectedCompanyId !== "ALL"
+      ? [selectedCompanyId]
+      : [];
+
+  const handleCardClick = (companyIdStr: string) => {
+    if (onToggleCompany) {
+      onToggleCompany(companyIdStr);
+    } else if (onSelectCompany) {
+      const isSelected = activeSelectedIds.includes(companyIdStr);
+      onSelectCompany(isSelected ? "ALL" : companyIdStr);
+    }
+  };
+
+  const handleClear = () => {
+    if (onClearCompanySelection) {
+      onClearCompanySelection();
+    } else if (onSelectCompany) {
+      onSelectCompany("ALL");
+    }
+  };
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
@@ -26,23 +56,24 @@ export function CompanySummaryCards({
             Subsidiary Companies Summary
           </h3>
           <span className="text-xs text-muted-foreground">
-            (Click card to filter personnel)
+            (Click cards to multi-filter companies)
           </span>
         </div>
-        {selectedCompanyId !== "ALL" && (
+        {activeSelectedIds.length > 0 && (
           <button
             type="button"
-            onClick={() => onSelectCompany("ALL")}
+            onClick={handleClear}
             className="text-xs font-semibold text-cyan-600 dark:text-cyan-400 hover:underline cursor-pointer"
           >
-            Show All Companies
+            Show All Companies ({activeSelectedIds.length} selected)
           </button>
         )}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
         {summaries.map((c) => {
-          const isSelected = selectedCompanyId === String(c.companyId);
+          const idStr = String(c.companyId);
+          const isSelected = activeSelectedIds.includes(idStr);
           const isOffline = c.status === "OFFLINE";
 
           return (
@@ -50,11 +81,11 @@ export function CompanySummaryCards({
               key={c.companyId}
               onClick={() => {
                 if (isOffline) return;
-                onSelectCompany(isSelected ? "ALL" : String(c.companyId));
+                handleCardClick(idStr);
               }}
               className={`border transition-all rounded-xl select-none cursor-pointer ${
                 isSelected
-                  ? "border-cyan-500 bg-cyan-500/5 ring-1 ring-cyan-500 shadow-sm"
+                  ? "border-cyan-500 bg-cyan-500/10 ring-1 ring-cyan-500 shadow-sm"
                   : isOffline
                   ? "opacity-60 bg-muted/30 border-border cursor-not-allowed"
                   : "border-border bg-card hover:border-cyan-500/50 hover:shadow-xs"
