@@ -9,11 +9,12 @@ import { OvertimeFilters } from "./components/OvertimeFilters";
 import { EmployeeOvertimeTable } from "./components/EmployeeOvertimeTable";
 import { DetailedOvertimeRequestsTable } from "./components/DetailedOvertimeRequestsTable";
 import { OvertimeDetailModal } from "./components/OvertimeDetailModal";
+import { OvertimeRankingLeaderboard } from "./components/OvertimeRankingLeaderboard";
 import {
   exportOvertimeEmployeesToCsv,
   exportDetailedOvertimeToCsv,
 } from "./utils/exportCsv";
-import { AlertCircle, FileSpreadsheet, Users } from "lucide-react";
+import { AlertCircle, FileSpreadsheet, Users, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function IntercompanyOvertimeModule() {
@@ -48,7 +49,7 @@ export function IntercompanyOvertimeModule() {
     handleRefresh,
   } = useIntercompanyOvertime();
 
-  const [activeTab, setActiveTab] = useState<"summary" | "detailed">("summary");
+  const [activeTab, setActiveTab] = useState<"rankings" | "summary" | "detailed">("rankings");
 
   const handleExportCsv = () => {
     const filenameDate =
@@ -140,13 +141,30 @@ export function IntercompanyOvertimeModule() {
           dailyTrends={filteredDailyTrends}
           statusDistribution={filteredStatusDistribution}
           topEmployees={filteredTopEmployees}
+          onViewEmployee={handleOpenDetail}
+          onSelectRankings={() => setActiveTab("rankings")}
         />
       )}
 
       {/* 5. Directory Tables with Toggle Tabs */}
-      <div className="space-y-3">
+      <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3">
           <div className="inline-flex items-center p-1 rounded-xl bg-muted/60 border border-border/60">
+            <button
+              type="button"
+              onClick={() => setActiveTab("rankings")}
+              className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                activeTab === "rankings"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Trophy className="h-3.5 w-3.5 text-amber-500" />
+              Highest Overtime Rankings
+              <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] bg-amber-500/15 text-amber-700 dark:text-amber-300 font-mono font-bold">
+                Leaderboard
+              </span>
+            </button>
             <button
               type="button"
               onClick={() => setActiveTab("summary")}
@@ -157,7 +175,7 @@ export function IntercompanyOvertimeModule() {
               }`}
             >
               <Users className="h-3.5 w-3.5 text-indigo-500" />
-              Employee Directory & Overtime Totals
+              Employee Directory & Totals
               <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] bg-muted font-mono font-medium">
                 {totalRecords}
               </span>
@@ -180,7 +198,9 @@ export function IntercompanyOvertimeModule() {
           </div>
 
           <div className="text-xs text-muted-foreground">
-            {activeTab === "summary" ? (
+            {activeTab === "rankings" ? (
+              <span>Honor roll of employees ranked by overtime hours and rendering volume</span>
+            ) : activeTab === "summary" ? (
               <span>Aggregated employee overtime hours and request approvals</span>
             ) : (
               <span>Full chronological list of submitted overtime filings</span>
@@ -188,7 +208,12 @@ export function IntercompanyOvertimeModule() {
           </div>
         </div>
 
-        {activeTab === "summary" ? (
+        {activeTab === "rankings" ? (
+          <OvertimeRankingLeaderboard
+            employees={sortedEmployeeSummaries}
+            onViewDetail={handleOpenDetail}
+          />
+        ) : activeTab === "summary" ? (
           <EmployeeOvertimeTable
             records={paginatedEmployeeSummaries}
             totalRecords={totalRecords}

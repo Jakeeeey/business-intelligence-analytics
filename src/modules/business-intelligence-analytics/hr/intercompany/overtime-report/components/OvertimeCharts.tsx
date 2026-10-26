@@ -29,6 +29,8 @@ interface OvertimeChartsProps {
   statusDistribution: StatusDistributionSegment[];
   dailyTrends: DailyOtTrendPoint[];
   topEmployees: EmployeeOvertimeSummary[];
+  onViewEmployee?: (emp: EmployeeOvertimeSummary) => void;
+  onSelectRankings?: () => void;
 }
 
 const emptySubscribe = () => () => {};
@@ -38,6 +40,8 @@ export function OvertimeCharts({
   statusDistribution,
   dailyTrends,
   topEmployees,
+  onViewEmployee,
+  onSelectRankings,
 }: OvertimeChartsProps) {
   const isMounted = React.useSyncExternalStore(emptySubscribe, () => true, () => false);
 
@@ -278,9 +282,19 @@ export function OvertimeCharts({
                 Highest approved overtime hours in the selected period
               </CardDescription>
             </div>
-            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-              Leaderboard
-            </span>
+            {onSelectRankings ? (
+              <button
+                type="button"
+                onClick={onSelectRankings}
+                className="text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 hover:bg-amber-500/25 transition-colors cursor-pointer"
+              >
+                View Full Rankings →
+              </button>
+            ) : (
+              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                Leaderboard
+              </span>
+            )}
           </div>
         </CardHeader>
         <CardContent className="flex-1 pb-4 pt-1">
@@ -293,7 +307,10 @@ export function OvertimeCharts({
               {topEmployees.map((emp, idx) => (
                 <div
                   key={`${emp.companyId}-${emp.userId}`}
-                  className="flex items-center justify-between p-2.5 rounded-xl border border-border/60 bg-muted/20 hover:bg-muted/50 transition-colors"
+                  onClick={() => onViewEmployee && onViewEmployee(emp)}
+                  className={`flex items-center justify-between p-2.5 rounded-xl border border-border/60 bg-muted/20 transition-all ${
+                    onViewEmployee ? "cursor-pointer hover:bg-muted/60 hover:border-amber-500/40" : ""
+                  }`}
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <span

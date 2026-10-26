@@ -259,9 +259,8 @@ export async function GET(request: NextRequest) {
         const uId = Number(u.user_id);
         userLookup.set(uId, u);
 
-        const deptName =
-          (u.user_department && deptMap.get(Number(u.user_department))) ||
-          "General";
+        const deptIdNum = Number(u.user_department);
+        const deptName: string = (!isNaN(deptIdNum) && deptMap.get(deptIdNum)) ? deptMap.get(deptIdNum)! : "General";
         const fullName = [u.user_fname, u.user_mname, u.user_lname, u.suffix_name]
           .filter(Boolean)
           .join(" ")
@@ -305,10 +304,14 @@ export async function GET(request: NextRequest) {
 
         const uId = Number(row.user_id);
         const emp = userLookup.get(uId);
-        const deptName =
-          (row.department_id && deptMap.get(Number(row.department_id))) ||
-          (emp?.user_department && deptMap.get(Number(emp.user_department))) ||
-          "General";
+        const rowDeptId = Number(row.department_id);
+        const empDeptId = Number(emp?.user_department);
+        let deptName = "General";
+        if (!isNaN(rowDeptId) && deptMap.has(rowDeptId)) {
+          deptName = deptMap.get(rowDeptId)!;
+        } else if (!isNaN(empDeptId) && deptMap.has(empDeptId)) {
+          deptName = deptMap.get(empDeptId)!;
+        }
 
         const fullName = emp
           ? [emp.user_fname, emp.user_mname, emp.user_lname, emp.suffix_name]
@@ -369,7 +372,7 @@ export async function GET(request: NextRequest) {
 
         // Update employee summary
         const empKey = `${companyId}-${uId}`;
-        let empSummary = employeeMap.get(empKey);
+        let empSummary: EmployeeOvertimeSummary | undefined = employeeMap.get(empKey);
         if (!empSummary) {
           empSummary = {
             userId: uId,
