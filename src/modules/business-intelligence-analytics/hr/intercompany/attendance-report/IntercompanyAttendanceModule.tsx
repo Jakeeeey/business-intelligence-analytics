@@ -41,15 +41,17 @@ export default function IntercompanyAttendanceModule() {
 
   const [activeTab, setActiveTab] = useState("roster");
 
+  const companySummaries = reportData?.companySummaries;
+  const companyIds = filters.companyIds;
   const filteredCompanySummaries = useMemo(() => {
-    if (!reportData?.companySummaries) return [];
-    if (!filters.companyIds || filters.companyIds.length === 0) {
-      return reportData.companySummaries;
+    if (!companySummaries) return [];
+    if (!companyIds || companyIds.length === 0) {
+      return companySummaries;
     }
-    return reportData.companySummaries.filter((c) =>
-      filters.companyIds?.includes(String(c.companyId))
+    return companySummaries.filter((c) =>
+      companyIds.includes(String(c.companyId))
     );
-  }, [reportData?.companySummaries, filters.companyIds]);
+  }, [companySummaries, companyIds]);
 
   const handleExport = () => {
     if (!reportData || filteredRecords.length === 0) return;
