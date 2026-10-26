@@ -9,12 +9,14 @@ interface CompanyPunctualityCardsProps {
   companies: CompanyPunctualitySummary[];
   selectedCompanyIds?: string[];
   onSelectCompany?: (companyIdStr: string) => void;
+  onClearCompanySelection?: () => void;
 }
 
 export function CompanyPunctualityCards({
   companies,
   selectedCompanyIds = [],
   onSelectCompany,
+  onClearCompanySelection,
 }: CompanyPunctualityCardsProps) {
   if (!companies || companies.length === 0) return null;
 
@@ -25,11 +27,26 @@ export function CompanyPunctualityCards({
           <Building2 className="h-3.5 w-3.5 text-cyan-500" />
           <span>Intercompany Punctuality Overview ({companies.length} Operating Entities)</span>
         </h3>
-        <span className="text-[11px] text-muted-foreground">
-          {selectedCompanyIds.length > 0
-            ? `${selectedCompanyIds.length} Selected (Click to toggle)`
-            : "Click any card to filter"}
-        </span>
+        <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+          {selectedCompanyIds.length > 0 ? (
+            <>
+              <span className="font-semibold text-cyan-600 dark:text-cyan-400">
+                {selectedCompanyIds.length} Selected (Filtering entire dashboard)
+              </span>
+              {onClearCompanySelection && (
+                <button
+                  type="button"
+                  onClick={onClearCompanySelection}
+                  className="text-xs underline hover:text-foreground transition-colors ml-1"
+                >
+                  Clear Selection
+                </button>
+              )}
+            </>
+          ) : (
+            <span>Click any card to filter entire dashboard</span>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">

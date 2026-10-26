@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   AlertCircle,
   Users,
@@ -40,6 +40,16 @@ export default function IntercompanyAttendanceModule() {
   } = useIntercompanyAttendance();
 
   const [activeTab, setActiveTab] = useState("roster");
+
+  const filteredCompanySummaries = useMemo(() => {
+    if (!reportData?.companySummaries) return [];
+    if (!filters.companyIds || filters.companyIds.length === 0) {
+      return reportData.companySummaries;
+    }
+    return reportData.companySummaries.filter((c) =>
+      filters.companyIds?.includes(String(c.companyId))
+    );
+  }, [reportData?.companySummaries, filters.companyIds]);
 
   const handleExport = () => {
     if (!reportData || filteredRecords.length === 0) return;
@@ -171,7 +181,7 @@ export default function IntercompanyAttendanceModule() {
           {/* Tab 2: Visual Telemetry Charts */}
           <TabsContent value="analytics" className="space-y-4 m-0 outline-none">
             <AttendanceCharts
-              companySummaries={reportData.companySummaries}
+              companySummaries={filteredCompanySummaries}
               kpis={currentKpis || reportData.kpis}
             />
           </TabsContent>

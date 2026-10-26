@@ -22,6 +22,12 @@ export function IntercompanyPunctualityModule() {
     filteredRecords,
     paginatedRecords,
     totalRecords,
+    filteredKpis,
+    filteredCompanySummaries,
+    filteredDistribution,
+    filteredDailyTrends,
+    filteredTopPunctual,
+    filteredFrequentLate,
     page,
     setPage,
     pageSize,
@@ -98,7 +104,7 @@ export function IntercompanyPunctualityModule() {
       />
 
       {/* 2. Top Executive KPI Cards */}
-      {data?.kpis && <PunctualityKpiCards kpis={data.kpis} />}
+      {filteredKpis && <PunctualityKpiCards kpis={filteredKpis} />}
 
       {/* 3. Intercompany Entity Cards */}
       {data?.companySummaries && data.companySummaries.length > 0 && (
@@ -106,17 +112,21 @@ export function IntercompanyPunctualityModule() {
           companies={data.companySummaries}
           selectedCompanyIds={filters.companyIds}
           onSelectCompany={handleSelectCompanyCard}
+          onClearCompanySelection={() => {
+            setFilters((prev) => ({ ...prev, companyIds: [] }));
+            setPage(1);
+          }}
         />
       )}
 
       {/* 4. Analytics Visualizations & Leaderboards */}
       {data && (
         <PunctualityCharts
-          companySummaries={data.companySummaries || []}
-          distribution={data.distribution || []}
-          dailyTrends={data.dailyTrends || []}
-          topPunctual={data.topPunctual || []}
-          frequentLate={data.frequentLate || []}
+          companySummaries={filteredCompanySummaries}
+          distribution={filteredDistribution}
+          dailyTrends={filteredDailyTrends}
+          topPunctual={filteredTopPunctual}
+          frequentLate={filteredFrequentLate}
         />
       )}
 
