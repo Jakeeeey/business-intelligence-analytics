@@ -36,7 +36,6 @@ export function AttendanceKpiCards({ kpis }: AttendanceKpiCardsProps) {
   const presentPct = totalWorkforce > 0 ? Math.round((totalPresent / totalWorkforce) * 100) : 0;
   const latePct = totalWorkforce > 0 ? Math.round((totalLate / totalWorkforce) * 100) : 0;
   const absentPct = totalWorkforce > 0 ? Math.round((totalAbsent / totalWorkforce) * 100) : 0;
-  const leavePct = totalWorkforce > 0 ? Math.round((totalOnLeave / totalWorkforce) * 100) : 0;
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">

@@ -4,7 +4,6 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   IntercompanyAttendanceData,
   IntercompanyAttendanceFilters,
-  IntercompanyEmployeeRecord,
   SortField,
   SortOrder,
 } from "../types";

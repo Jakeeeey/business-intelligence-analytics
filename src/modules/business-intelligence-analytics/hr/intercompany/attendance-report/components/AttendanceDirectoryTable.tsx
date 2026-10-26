@@ -31,7 +31,6 @@ import {
   XCircle,
   Plane,
   Building2,
-  User,
   Users,
   Clock,
   FileText,

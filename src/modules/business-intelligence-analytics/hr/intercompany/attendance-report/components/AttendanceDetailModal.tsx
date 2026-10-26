@@ -8,19 +8,15 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
 import {
   Building2,
   Mail,
   Phone,
   Clock,
-  Calendar,
-  User,
   CheckCircle2,
   AlertTriangle,
   XCircle,
   Plane,
-  FileText,
 } from "lucide-react";
 import { IntercompanyEmployeeRecord } from "../types";
 
@@ -152,7 +148,7 @@ export function AttendanceDetailModal({
                   <div className="col-span-2 pt-1 border-t border-purple-500/20 dark:border-purple-500/30">
                     <span className="text-muted-foreground">Reason:</span>
                     <p className="font-normal text-foreground/90 italic text-[11px] mt-0.5">
-                      "{record.leaveReason}"
+                      &ldquo;{record.leaveReason}&rdquo;
                     </p>
                   </div>
                 )}
@@ -195,6 +191,7 @@ export function AttendanceDetailModal({
                   <div className="space-y-1">
                     <span className="text-[10px] text-muted-foreground">Time In Photo</span>
                     <div className="h-28 rounded-lg overflow-hidden border border-border bg-muted flex items-center justify-center">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={record.imageTimeIn}
                         alt="Time In Verification"
@@ -210,6 +207,7 @@ export function AttendanceDetailModal({
                   <div className="space-y-1">
                     <span className="text-[10px] text-muted-foreground">Time Out Photo</span>
                     <div className="h-28 rounded-lg overflow-hidden border border-border bg-muted flex items-center justify-center">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={record.imageTimeOut}
                         alt="Time Out Verification"

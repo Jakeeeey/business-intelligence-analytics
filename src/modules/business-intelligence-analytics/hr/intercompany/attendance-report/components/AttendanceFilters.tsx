@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import {
   Calendar,
   Building2,
@@ -11,7 +11,6 @@ import {
   X,
   Layers,
   ChevronDown,
-  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -79,11 +78,6 @@ export function AttendanceFilters({
   // Temporary date states for custom range editing
   const [tempStartDate, setTempStartDate] = useState(filters.startDate || filters.date || todayStr);
   const [tempEndDate, setTempEndDate] = useState(filters.endDate || filters.date || todayStr);
-
-  useEffect(() => {
-    setTempStartDate(filters.startDate || filters.date || todayStr);
-    setTempEndDate(filters.endDate || filters.date || todayStr);
-  }, [filters.startDate, filters.endDate, filters.date, todayStr]);
 
   // Total days in selected range
   const totalDaysSelected = useMemo(() => {
@@ -194,8 +188,8 @@ export function AttendanceFilters({
     return departments.filter((d) => d.toLowerCase().includes(q));
   }, [departments, deptSearch]);
 
-  const selectedCompanyIds = filters.companyIds || [];
-  const selectedDepartments = filters.departments || [];
+  const selectedCompanyIds = useMemo(() => filters.companyIds || [], [filters.companyIds]);
+  const selectedDepartments = useMemo(() => filters.departments || [], [filters.departments]);
 
   const handleToggleCompany = (companyIdStr: string) => {
     onChange((prev) => {
@@ -371,7 +365,16 @@ export function AttendanceFilters({
                 </span>
               )}
             </label>
-            <Popover open={datePopoverOpen} onOpenChange={setDatePopoverOpen}>
+            <Popover
+              open={datePopoverOpen}
+              onOpenChange={(open) => {
+                setDatePopoverOpen(open);
+                if (open) {
+                  setTempStartDate(filters.startDate || filters.date || todayStr);
+                  setTempEndDate(filters.endDate || filters.date || todayStr);
+                }
+              }}
+            >
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"

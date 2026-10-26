@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React from "react";
 import {
   BarChart,
   Bar,
@@ -32,14 +32,12 @@ const STATUS_COLORS: Record<string, string> = {
   "On Leave": "#a855f7", // purple-500
 };
 
+const emptySubscribe = () => () => {};
+
 export function AttendanceCharts({ companySummaries, kpis }: AttendanceChartsProps) {
-  const [mounted, setMounted] = useState(false);
+  const isMounted = React.useSyncExternalStore(emptySubscribe, () => true, () => false);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) {
+  if (!isMounted) {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="h-72 rounded-2xl border border-border bg-card animate-pulse" />

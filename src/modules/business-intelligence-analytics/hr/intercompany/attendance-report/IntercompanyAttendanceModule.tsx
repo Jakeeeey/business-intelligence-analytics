@@ -3,7 +3,6 @@
 import React, { useState } from "react";
 import {
   AlertCircle,
-  Building2,
   Users,
   BarChart3,
   Loader2,

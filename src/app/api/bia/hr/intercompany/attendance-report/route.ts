@@ -131,10 +131,11 @@ export async function GET(request: NextRequest) {
         .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d));
     } else if (paramStartDate && paramEndDate) {
       let cur = new Date(paramStartDate);
-      const end = new Date(paramEndDate);
+      let end = new Date(paramEndDate);
       if (cur > end) {
         const temp = cur;
         cur = end;
+        end = temp;
       }
       let count = 0;
       while (cur <= end && count < 62) {
