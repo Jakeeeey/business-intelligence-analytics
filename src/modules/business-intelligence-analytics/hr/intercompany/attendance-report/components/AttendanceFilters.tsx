@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   Calendar,
   Building2,
@@ -47,6 +47,13 @@ interface AttendanceFiltersProps {
   onExport: () => void;
 }
 
+function formatDateString(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 export function AttendanceFilters({
   filters,
   onChange,
@@ -58,10 +65,116 @@ export function AttendanceFilters({
   onReset,
   onExport,
 }: AttendanceFiltersProps) {
-  const [companySearch, setCompanySearch] = useState("");
-  const [deptSearch, setDeptSearch] = useState("");
+  const todayStr = useMemo(() => formatDateString(new Date()), []);
+
+  // Popover state
+  const [datePopoverOpen, setDatePopoverOpen] = useState(false);
   const [companyPopoverOpen, setCompanyPopoverOpen] = useState(false);
   const [deptPopoverOpen, setDeptPopoverOpen] = useState(false);
+
+  // Search states
+  const [companySearch, setCompanySearch] = useState("");
+  const [deptSearch, setDeptSearch] = useState("");
+
+  // Temporary date states for custom range editing
+  const [tempStartDate, setTempStartDate] = useState(filters.startDate || filters.date || todayStr);
+  const [tempEndDate, setTempEndDate] = useState(filters.endDate || filters.date || todayStr);
+
+  useEffect(() => {
+    setTempStartDate(filters.startDate || filters.date || todayStr);
+    setTempEndDate(filters.endDate || filters.date || todayStr);
+  }, [filters.startDate, filters.endDate, filters.date, todayStr]);
+
+  // Total days in selected range
+  const totalDaysSelected = useMemo(() => {
+    const s = filters.startDate || filters.date || todayStr;
+    const e = filters.endDate || filters.date || todayStr;
+    const t1 = new Date(s).getTime();
+    const t2 = new Date(e).getTime();
+    if (isNaN(t1) || isNaN(t2)) return 1;
+    return Math.max(1, Math.round(Math.abs(t2 - t1) / (1000 * 60 * 60 * 24)) + 1);
+  }, [filters.startDate, filters.endDate, filters.date, todayStr]);
+
+  // Trigger label for Dates
+  const dateTriggerLabel = useMemo(() => {
+    const s = filters.startDate || filters.date || todayStr;
+    const e = filters.endDate || filters.date || todayStr;
+    if (s === e) {
+      return s === todayStr ? `Today (${s})` : s;
+    }
+    return `${s} → ${e}`;
+  }, [filters.startDate, filters.endDate, filters.date, todayStr]);
+
+  // Quick Preset Handlers
+  const handleApplyPreset = (preset: "today" | "yesterday" | "last3" | "last7" | "last14" | "monthToDate") => {
+    const now = new Date();
+    let start = new Date();
+    let end = new Date();
+
+    switch (preset) {
+      case "today":
+        start = now;
+        end = now;
+        break;
+      case "yesterday":
+        start = new Date(now.getTime() - 86400000);
+        end = start;
+        break;
+      case "last3":
+        start = new Date(now.getTime() - 2 * 86400000);
+        end = now;
+        break;
+      case "last7":
+        start = new Date(now.getTime() - 6 * 86400000);
+        end = now;
+        break;
+      case "last14":
+        start = new Date(now.getTime() - 13 * 86400000);
+        end = now;
+        break;
+      case "monthToDate":
+        start = new Date(now.getFullYear(), now.getMonth(), 1);
+        end = now;
+        break;
+    }
+
+    const sStr = formatDateString(start);
+    const eStr = formatDateString(end);
+
+    setTempStartDate(sStr);
+    setTempEndDate(eStr);
+
+    onChange((prev) => ({
+      ...prev,
+      date: sStr,
+      startDate: sStr,
+      endDate: eStr,
+      dates: undefined,
+    }));
+    setDatePopoverOpen(false);
+  };
+
+  const handleApplyCustomRange = () => {
+    let s = tempStartDate || todayStr;
+    let e = tempEndDate || todayStr;
+    if (s > e) {
+      const temp = s;
+      s = e;
+      e = temp;
+    }
+    onChange((prev) => ({
+      ...prev,
+      date: s,
+      startDate: s,
+      endDate: e,
+      dates: undefined,
+    }));
+    setDatePopoverOpen(false);
+  };
+
+  const handleResetDateToToday = () => {
+    handleApplyPreset("today");
+  };
 
   // Filtered list of companies for search within popover
   const filteredCompanies = useMemo(() => {
@@ -147,7 +260,12 @@ export function AttendanceFilters({
     }));
   };
 
+  const isDateFiltered =
+    (filters.startDate && filters.startDate !== todayStr) ||
+    (filters.endDate && filters.endDate !== todayStr);
+
   const isFiltered =
+    isDateFiltered ||
     selectedCompanyIds.length > 0 ||
     selectedDepartments.length > 0 ||
     filters.attendanceStatus !== "ALL" ||
@@ -186,11 +304,16 @@ export function AttendanceFilters({
                   Intercompany Attendance Filter
                 </h2>
                 <span className="inline-flex items-center rounded-full bg-cyan-500/10 px-2 py-0.5 text-xs font-semibold text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
-                  {totalRecords.toLocaleString()} Personnel
+                  {totalRecords.toLocaleString()} Records
                 </span>
+                {totalDaysSelected > 1 && (
+                  <span className="inline-flex items-center rounded-full bg-blue-500/10 px-2 py-0.5 text-xs font-semibold text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                    {totalDaysSelected} Log Dates
+                  </span>
+                )}
               </div>
               <p className="text-xs text-muted-foreground">
-                Multi-company & multi-department consolidated active workforce monitoring
+                Consolidated multi-company, multi-department & multi-date workforce monitoring
               </p>
             </div>
           </div>
@@ -235,25 +358,159 @@ export function AttendanceFilters({
 
         {/* Filter Controls Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3 pt-2 border-t border-border/60">
-          {/* 1. Date Picker */}
+          {/* 1. Multi-Date / Date Range Picker Popover */}
           <div className="space-y-1.5">
-            <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-              <Calendar className="h-3 w-3 text-cyan-500" />
-              <span>Log Date</span>
+            <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <Calendar className="h-3 w-3 text-cyan-500" />
+                <span>Attendance Dates</span>
+              </span>
+              {totalDaysSelected > 1 && (
+                <span className="text-[10px] font-mono font-bold text-cyan-600 dark:text-cyan-400">
+                  {totalDaysSelected} days
+                </span>
+              )}
             </label>
-            <div className="relative">
-              <Input
-                type="date"
-                value={filters.date}
-                onChange={(e) =>
-                  onChange((prev) => ({
-                    ...prev,
-                    date: e.target.value || prev.date,
-                  }))
-                }
-                className="h-9 text-xs bg-background border-border text-foreground focus-visible:ring-cyan-500/20"
-              />
-            </div>
+            <Popover open={datePopoverOpen} onOpenChange={setDatePopoverOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  className="h-9 w-full justify-between text-xs font-normal bg-background border-border hover:bg-muted/50 px-2.5"
+                >
+                  <span className="truncate max-w-[170px] text-foreground text-left">
+                    {dateTriggerLabel}
+                  </span>
+                  <div className="flex items-center gap-1 ml-1 shrink-0">
+                    {totalDaysSelected > 1 && (
+                      <Badge
+                        variant="secondary"
+                        className="h-5 px-1.5 text-[10px] font-bold bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border-0"
+                      >
+                        {totalDaysSelected}d
+                      </Badge>
+                    )}
+                    <ChevronDown className="h-3.5 w-3.5 opacity-50" />
+                  </div>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent
+                className="w-80 p-3 bg-popover text-popover-foreground border-border shadow-xl rounded-xl space-y-3"
+                align="start"
+              >
+                <div className="flex items-center justify-between border-b border-border/70 pb-2">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                    <Calendar className="h-4 w-4 text-cyan-500" />
+                    <span>Select Date Range / Days</span>
+                  </div>
+                  <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-600 dark:text-cyan-400">
+                    {totalDaysSelected} {totalDaysSelected === 1 ? "day" : "days"}
+                  </span>
+                </div>
+
+                {/* Quick Presets */}
+                <div className="space-y-1.5">
+                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                    Quick Presets
+                  </span>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleApplyPreset("today")}
+                      className="h-7 text-[11px] hover:bg-cyan-500/10 hover:text-cyan-600 border-border"
+                    >
+                      Today
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleApplyPreset("yesterday")}
+                      className="h-7 text-[11px] hover:bg-cyan-500/10 hover:text-cyan-600 border-border"
+                    >
+                      Yesterday
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleApplyPreset("last3")}
+                      className="h-7 text-[11px] hover:bg-cyan-500/10 hover:text-cyan-600 border-border"
+                    >
+                      Last 3 Days
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleApplyPreset("last7")}
+                      className="h-7 text-[11px] hover:bg-cyan-500/10 hover:text-cyan-600 border-border"
+                    >
+                      Last 7 Days
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleApplyPreset("last14")}
+                      className="h-7 text-[11px] hover:bg-cyan-500/10 hover:text-cyan-600 border-border"
+                    >
+                      Last 14 Days
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleApplyPreset("monthToDate")}
+                      className="h-7 text-[11px] hover:bg-cyan-500/10 hover:text-cyan-600 border-border"
+                    >
+                      This Month
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Custom Date Range Inputs */}
+                <div className="space-y-2 pt-2 border-t border-border/60">
+                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                    Custom Date Range
+                  </span>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <span className="text-[10px] text-muted-foreground font-medium">From Date</span>
+                      <Input
+                        type="date"
+                        value={tempStartDate}
+                        onChange={(e) => setTempStartDate(e.target.value)}
+                        className="h-8 text-xs bg-background border-border"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-[10px] text-muted-foreground font-medium">To Date</span>
+                      <Input
+                        type="date"
+                        value={tempEndDate}
+                        onChange={(e) => setTempEndDate(e.target.value)}
+                        className="h-8 text-xs bg-background border-border"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex items-center justify-between pt-2 border-t border-border/60">
+                  <button
+                    type="button"
+                    onClick={handleResetDateToToday}
+                    className="text-xs text-muted-foreground hover:text-foreground font-medium cursor-pointer"
+                  >
+                    Reset to Today
+                  </button>
+                  <Button
+                    size="sm"
+                    onClick={handleApplyCustomRange}
+                    className="h-7 text-xs bg-cyan-600 hover:bg-cyan-700 text-white font-semibold"
+                  >
+                    Apply Dates
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
 
           {/* 2. Multi-Select Company Popover */}
@@ -549,11 +806,34 @@ export function AttendanceFilters({
         </div>
 
         {/* Selected Active Filter Chips (Tags) */}
-        {(selectedCompanyIds.length > 0 || selectedDepartments.length > 0) && (
+        {(isDateFiltered || selectedCompanyIds.length > 0 || selectedDepartments.length > 0) && (
           <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-border/40 text-xs">
             <span className="text-[11px] font-semibold text-muted-foreground mr-1">
               Active Filters:
             </span>
+
+            {/* Date Range Chip */}
+            {isDateFiltered && (
+              <Badge
+                variant="secondary"
+                className="gap-1 text-[11px] font-medium bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/20 py-0.5 px-2 rounded-md"
+              >
+                <Calendar className="h-3 w-3 shrink-0" />
+                <span>
+                  {filters.startDate === filters.endDate
+                    ? filters.startDate
+                    : `${filters.startDate} to ${filters.endDate} (${totalDaysSelected}d)`}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleResetDateToToday}
+                  className="hover:text-destructive transition-colors ml-0.5"
+                  title="Reset date to today"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            )}
 
             {/* Company Chips */}
             {selectedCompanyIds.map((id) => {
@@ -601,6 +881,7 @@ export function AttendanceFilters({
             <button
               type="button"
               onClick={() => {
+                handleResetDateToToday();
                 handleClearCompanies();
                 handleClearDepartments();
               }}

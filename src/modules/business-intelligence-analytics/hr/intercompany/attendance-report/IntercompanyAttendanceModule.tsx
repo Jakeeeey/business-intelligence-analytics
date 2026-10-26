@@ -44,7 +44,10 @@ export default function IntercompanyAttendanceModule() {
 
   const handleExport = () => {
     if (!reportData || filteredRecords.length === 0) return;
-    const dateStr = filters.date || new Date().toISOString().slice(0, 10);
+    const dateStr =
+      filters.startDate && filters.endDate && filters.startDate !== filters.endDate
+        ? `${filters.startDate}_to_${filters.endDate}`
+        : filters.startDate || filters.date || new Date().toISOString().slice(0, 10);
     const compTag =
       filters.companyIds && filters.companyIds.length > 0
         ? `_${filters.companyIds.length}_companies`

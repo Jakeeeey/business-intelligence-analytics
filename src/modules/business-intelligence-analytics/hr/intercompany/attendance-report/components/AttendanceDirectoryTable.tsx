@@ -233,6 +233,16 @@ export function AttendanceDirectoryTable({
                 </TableHead>
 
                 <TableHead
+                  onClick={() => onSort("logDate")}
+                  className="cursor-pointer select-none text-xs font-semibold text-foreground py-3 text-center min-w-[105px]"
+                >
+                  <div className="flex items-center justify-center">
+                    <span>Date</span>
+                    {renderSortIcon("logDate")}
+                  </div>
+                </TableHead>
+
+                <TableHead
                   onClick={() => onSort("timeIn")}
                   className="cursor-pointer select-none text-xs font-semibold text-foreground py-3 text-center min-w-[100px]"
                 >
@@ -262,14 +272,14 @@ export function AttendanceDirectoryTable({
               {loading && data.length === 0 ? (
                 Array.from({ length: 5 }).map((_, idx) => (
                   <TableRow key={idx} className="border-border animate-pulse">
-                    <TableCell colSpan={8} className="py-4">
+                    <TableCell colSpan={9} className="py-4">
                       <div className="h-5 bg-muted/60 rounded-md w-full" />
                     </TableCell>
                   </TableRow>
                 ))
               ) : data.length === 0 ? (
                 <TableRow className="border-border">
-                  <TableCell colSpan={8} className="py-12 text-center">
+                  <TableCell colSpan={9} className="py-12 text-center">
                     <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
                       <Building2 className="h-8 w-8 text-muted-foreground/40" />
                       <p className="text-sm font-semibold text-foreground">
@@ -352,6 +362,11 @@ export function AttendanceDirectoryTable({
                     {/* Status Badge */}
                     <TableCell className="py-2.5 text-center">
                       {renderStatusBadge(rec)}
+                    </TableCell>
+
+                    {/* Log Date */}
+                    <TableCell className="py-2.5 text-center text-xs font-mono text-muted-foreground whitespace-nowrap">
+                      {rec.logDate}
                     </TableCell>
 
                     {/* Time In */}

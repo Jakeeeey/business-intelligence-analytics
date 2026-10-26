@@ -59,6 +59,8 @@ export interface IntercompanyAttendanceKpis {
   overallPunctualityRate: number;
   activeCompaniesCount: number;
   totalCompaniesCount: number;
+  totalDays?: number;
+  uniqueEmployeesCount?: number;
 }
 
 export interface CompanyFilterOption {
@@ -76,6 +78,9 @@ export interface AttendanceStatusDonutSegment {
 
 export interface IntercompanyAttendanceData {
   date: string;
+  startDate?: string;
+  endDate?: string;
+  dates?: string[];
   kpis: IntercompanyAttendanceKpis;
   companySummaries: CompanyAttendanceSummary[];
   records: IntercompanyEmployeeRecord[];
@@ -86,6 +91,9 @@ export interface IntercompanyAttendanceData {
 
 export interface IntercompanyAttendanceFilters {
   date: string;
+  startDate: string; // Start date of range
+  endDate: string; // End date of range
+  dates?: string[]; // Specific multiple dates if discrete mode used
   companyIds: string[]; // Multi-select company IDs, empty array = all
   departments: string[]; // Multi-select department names, empty array = all
   companyId?: string; // Optional legacy single-select fallback
@@ -100,6 +108,7 @@ export type SortField =
   | "department"
   | "position"
   | "attendanceStatus"
+  | "logDate"
   | "timeIn"
   | "timeOut";
 

@@ -116,10 +116,50 @@ export async function GET(request: NextRequest) {
     const defaultDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(
       now.getDate()
     ).padStart(2, "0")}`;
-    const targetDate = (searchParams.get("date") || defaultDate).trim().slice(0, 10);
+
+    const paramStartDate = searchParams.get("startDate")?.trim();
+    const paramEndDate = searchParams.get("endDate")?.trim();
+    const paramDate = searchParams.get("date")?.trim();
+    const paramDates = searchParams.get("dates")?.trim();
+
+    let targetDates: string[] = [];
+
+    if (paramDates) {
+      targetDates = paramDates
+        .split(",")
+        .map((d) => d.trim().slice(0, 10))
+        .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d));
+    } else if (paramStartDate && paramEndDate) {
+      let cur = new Date(paramStartDate);
+      const end = new Date(paramEndDate);
+      if (cur > end) {
+        const temp = cur;
+        cur = end;
+      }
+      let count = 0;
+      while (cur <= end && count < 62) {
+        const y = cur.getFullYear();
+        const m = String(cur.getMonth() + 1).padStart(2, "0");
+        const d = String(cur.getDate()).padStart(2, "0");
+        targetDates.push(`${y}-${m}-${d}`);
+        cur.setDate(cur.getDate() + 1);
+        count++;
+      }
+    } else if (paramDate) {
+      targetDates = [paramDate.slice(0, 10)];
+    }
+
+    if (targetDates.length === 0) {
+      targetDates = [defaultDate];
+    }
+
+    targetDates = Array.from(new Set(targetDates)).sort();
+    const isSingleDate = targetDates.length === 1;
+    const startDate = targetDates[0];
+    const endDate = targetDates[targetDates.length - 1];
     const force = searchParams.get("force") === "true";
 
-    const cacheKey = `att_${targetDate}`;
+    const cacheKey = `att_${startDate}_${endDate}_${targetDates.join(",")}`;
     if (!force && memoryCache.has(cacheKey)) {
       const cached = memoryCache.get(cacheKey)!;
       if (Date.now() - cached.timestamp < CACHE_TTL_MS) {
@@ -167,6 +207,12 @@ export async function GET(request: NextRequest) {
           compHeaders["Authorization"] = `Bearer ${companyToken}`;
         }
 
+        const logFilter = isSingleDate
+          ? `filter[log_date][_eq]=${startDate}`
+          : `filter[log_date][_gte]=${startDate}&filter[log_date][_lte]=${endDate}`;
+
+        const leaveFilter = `filter[status][_neq]=rejected&filter[leave_start][_lte]=${endDate}&filter[leave_end][_gte]=${startDate}`;
+
         const [usersRaw, departmentsRaw, statusesRaw, logsRaw, leavesRaw] = await Promise.all([
           fetchDirectusWithTimeout<AnyRec>(
             `${companyUrl}/items/user?limit=-1&fields=${userFields}`,
@@ -184,15 +230,14 @@ export async function GET(request: NextRequest) {
             4000
           ),
           fetchDirectusWithTimeout<AnyRec>(
-            `${companyUrl}/items/attendance_log?filter[log_date][_eq]=${targetDate}&limit=-1&fields=log_id,user_id,department_id,log_date,time_in,time_out,status,approve_status,image_time_in,image_time_out`,
+            `${companyUrl}/items/attendance_log?${logFilter}&limit=-1&fields=log_id,user_id,department_id,log_date,time_in,time_out,status,approve_status,image_time_in,image_time_out`,
+            compHeaders,
+            6000
+          ),
+          fetchDirectusWithTimeout<AnyRec>(
+            `${companyUrl}/items/leave_request?${leaveFilter}&limit=-1&fields=leave_id,user_id,status,leave_type,leave_start,leave_end,reason,total_days`,
             compHeaders,
             5000
-          ),
-          // Fetch all leaves covering target date that are not rejected (approved or pending)
-          fetchDirectusWithTimeout<AnyRec>(
-            `${companyUrl}/items/leave_request?filter[status][_neq]=rejected&filter[leave_start][_lte]=${targetDate}&filter[leave_end][_gte]=${targetDate}&limit=-1&fields=leave_id,user_id,status,leave_type,leave_start,leave_end,reason,total_days`,
-            compHeaders,
-            4000
           ),
         ]);
 
@@ -216,7 +261,6 @@ export async function GET(request: NextRequest) {
     const departmentNameSet = new Set<string>();
     const companiesList: CompanyFilterOption[] = [];
 
-    let totalWorkforce = 0;
     let totalPresent = 0;
     let totalLate = 0;
     let totalAbsent = 0;
@@ -287,53 +331,45 @@ export async function GET(request: NextRequest) {
         }
       });
 
-      // Attendance map by user_id
-      const attByUser = new Map<number, AnyRec>();
+      // Attendance map by `${userId}_${logDate}`
+      const attByUserAndDate = new Map<string, AnyRec>();
       attendanceLogs.forEach((log) => {
         const uid = Number(log.user_id);
-        if (uid) attByUser.set(uid, log);
+        const lDate = log.log_date ? String(log.log_date).slice(0, 10) : "";
+        if (uid && lDate) {
+          attByUserAndDate.set(`${uid}_${lDate}`, log);
+        }
       });
 
-      // Filed leaves map by user_id (approved or pending)
-      const leaveByUser = new Map<number, AnyRec>();
-      leaves.forEach((lv) => {
-        const uid = Number(lv.user_id);
-        if (uid) leaveByUser.set(uid, lv);
+      // Filed leaves mapped
+      const leavesList = leaves.map((lv) => {
+        const start = lv.leave_start ? String(lv.leave_start).slice(0, 10) : "";
+        const end = lv.leave_end ? String(lv.leave_end).slice(0, 10) : "";
+        const rawStatus = String(lv.status || "").toLowerCase();
+        return {
+          userId: Number(lv.user_id),
+          status: rawStatus === "approved" ? ("approved" as const) : ("pending" as const),
+          leaveType: lv.leave_type ? String(lv.leave_type) : "Leave",
+          reason: lv.reason ? String(lv.reason) : null,
+          start,
+          end,
+          datesFormatted: start && end ? `${start} to ${end}` : start || end || null,
+        };
       });
 
-      let compEmployees = 0;
-      let compPresent = 0;
-      let compLate = 0;
-      let compAbsent = 0;
-      let compLeave = 0;
-      let compFiledLeave = 0;
-
-      users.forEach((u) => {
-        // 1. STRICT: Do not count if not an employee
+      // Filter active workforce
+      const activeEmployeesForComp = users.filter((u) => {
         const isEmployee = parseBit(u.is_employee);
-        if (!isEmployee) return;
+        if (!isEmployee) return false;
 
-        // 2. STRICT: Do not count if marked deleted or inactive
         const isDeleted = parseBit(u.is_deleted) || parseBit(u.isDeleted);
-        if (isDeleted) return;
+        if (isDeleted) return false;
 
-        // 3. STRICT: Do not count if separated on or prior to target date
-        if (u.separation_date && String(u.separation_date).slice(0, 10) <= targetDate) {
-          return;
-        }
+        if (u.separation_cause && String(u.separation_cause).trim().length > 0) return false;
 
-        // 4. STRICT: Do not count if separation cause is recorded
-        if (u.separation_cause && String(u.separation_cause).trim().length > 0) {
-          return;
-        }
-
-        // 5. STRICT: Do not count if employment status is Resigned (7), Terminated (8), or inactive
         const empStatusId = u.employment_status_id ? Number(u.employment_status_id) : null;
-        if (empStatusId && inactiveStatusIds.has(empStatusId)) {
-          return;
-        }
+        if (empStatusId && inactiveStatusIds.has(empStatusId)) return false;
 
-        // 6. Exclude dummy, throwaway, and test user accounts
         const nameCombined = `${u.user_fname || ""} ${u.user_lname || ""}`.toLowerCase();
         if (
           nameCombined.includes("dummy") ||
@@ -341,131 +377,145 @@ export async function GET(request: NextRequest) {
           nameCombined.includes("qa test") ||
           nameCombined.includes("test account")
         ) {
-          return;
+          return false;
         }
 
-        const userId = Number(u.user_id);
-        if (!userId) return;
+        return Boolean(Number(u.user_id));
+      });
 
-        compEmployees++;
-        totalWorkforce++;
+      const compEmployees = activeEmployeesForComp.length;
+      let compPresent = 0;
+      let compLate = 0;
+      let compAbsent = 0;
+      let compLeave = 0;
+      let compFiledLeave = 0;
 
-        const firstName = String(u.user_fname || "").trim();
-        const lastName = String(u.user_lname || "").trim();
-        const middleName = u.user_mname ? String(u.user_mname).trim() : undefined;
-        const suffix = u.suffix_name ? String(u.suffix_name).trim() : "";
-        const fullName =
-          [firstName, middleName, lastName, suffix].filter(Boolean).join(" ") ||
-          `Employee #${userId}`;
-
-        const deptId = u.user_department ? Number(u.user_department) : null;
-        const department = (deptId ? deptMap.get(deptId) : null) || "General Operations";
-        departmentNameSet.add(department);
-
-        const position = String(u.user_position || "").trim() || "Staff Member";
-        const email = String(u.user_email || "").trim();
-        const contact = String(u.user_contact || "").trim();
-        const avatar = u.user_image ? String(u.user_image) : null;
-
-        const rawGender = String(u.gender || "").trim().toLowerCase();
-        let gender = "Other";
-        if (rawGender === "male" || rawGender === "m") gender = "Male";
-        else if (rawGender === "female" || rawGender === "f") gender = "Female";
-
-        // Attendance & Filed Leave Calculation
-        const attLog = attByUser.get(userId);
-        const leaveReq = leaveByUser.get(userId);
-
-        const hasFiledLeave = Boolean(leaveReq);
-        let leaveStatus: "approved" | "pending" | null = null;
-        let leaveType: string | null = null;
-        let leaveReason: string | null = null;
-        let leaveDates: string | null = null;
-
-        if (leaveReq) {
-          const rawStatus = String(leaveReq.status || "").toLowerCase();
-          leaveStatus = rawStatus === "approved" ? "approved" : "pending";
-          leaveType = leaveReq.leave_type ? String(leaveReq.leave_type) : "Leave";
-          leaveReason = leaveReq.reason ? String(leaveReq.reason) : null;
-          const start = leaveReq.leave_start ? String(leaveReq.leave_start).slice(0, 10) : "";
-          const end = leaveReq.leave_end ? String(leaveReq.leave_end).slice(0, 10) : "";
-          leaveDates = start && end ? `${start} to ${end}` : start || end || null;
-
-          compFiledLeave++;
-          totalFiledLeave++;
-          if (leaveStatus === "pending") {
-            totalPendingLeave++;
+      // Iterate through target dates for this company's active employees
+      targetDates.forEach((tDate) => {
+        activeEmployeesForComp.forEach((u) => {
+          // If separated on or prior to this specific date, skip
+          if (u.separation_date && String(u.separation_date).slice(0, 10) <= tDate) {
+            return;
           }
-        }
 
-        let status: AttendanceStatus = "Absent";
-        let timeIn: string | null = null;
-        let timeOut: string | null = null;
-        let approveStatus: string | null = null;
-        let imageTimeIn: string | null = null;
-        let imageTimeOut: string | null = null;
+          const userId = Number(u.user_id);
+          const firstName = String(u.user_fname || "").trim();
+          const lastName = String(u.user_lname || "").trim();
+          const middleName = u.user_mname ? String(u.user_mname).trim() : undefined;
+          const suffix = u.suffix_name ? String(u.suffix_name).trim() : "";
+          const fullName =
+            [firstName, middleName, lastName, suffix].filter(Boolean).join(" ") ||
+            `Employee #${userId}`;
 
-        if (attLog) {
-          const rawStatus = String(attLog.status || "").toLowerCase();
-          if (rawStatus.includes("late")) {
-            status = "Late";
-            compLate++;
-            totalLate++;
+          const deptId = u.user_department ? Number(u.user_department) : null;
+          const department = (deptId ? deptMap.get(deptId) : null) || "General Operations";
+          departmentNameSet.add(department);
+
+          const position = String(u.user_position || "").trim() || "Staff Member";
+          const email = String(u.user_email || "").trim();
+          const contact = String(u.user_contact || "").trim();
+          const avatar = u.user_image ? String(u.user_image) : null;
+
+          const rawGender = String(u.gender || "").trim().toLowerCase();
+          let gender = "Other";
+          if (rawGender === "male" || rawGender === "m") gender = "Male";
+          else if (rawGender === "female" || rawGender === "f") gender = "Female";
+
+          // Attendance & Filed Leave Calculation for this date
+          const attLog = attByUserAndDate.get(`${userId}_${tDate}`);
+          const leaveReq = leavesList.find(
+            (lv) => lv.userId === userId && lv.start <= tDate && lv.end >= tDate
+          );
+
+          const hasFiledLeave = Boolean(leaveReq);
+          let leaveStatus: "approved" | "pending" | null = null;
+          let leaveType: string | null = null;
+          let leaveReason: string | null = null;
+          let leaveDates: string | null = null;
+
+          if (leaveReq) {
+            leaveStatus = leaveReq.status;
+            leaveType = leaveReq.leaveType;
+            leaveReason = leaveReq.reason;
+            leaveDates = leaveReq.datesFormatted;
+
+            compFiledLeave++;
+            totalFiledLeave++;
+            if (leaveStatus === "pending") {
+              totalPendingLeave++;
+            }
+          }
+
+          let status: AttendanceStatus = "Absent";
+          let timeIn: string | null = null;
+          let timeOut: string | null = null;
+          let approveStatus: string | null = null;
+          let imageTimeIn: string | null = null;
+          let imageTimeOut: string | null = null;
+
+          if (attLog) {
+            const rawStatus = String(attLog.status || "").toLowerCase();
+            if (rawStatus.includes("late")) {
+              status = "Late";
+              compLate++;
+              totalLate++;
+            } else {
+              status = "On Time";
+            }
+            compPresent++;
+            totalPresent++;
+
+            timeIn = formatTimeString(attLog.time_in);
+            timeOut = formatTimeString(attLog.time_out);
+            approveStatus = attLog.approve_status ? String(attLog.approve_status) : "Approved";
+            imageTimeIn = attLog.image_time_in ? String(attLog.image_time_in) : null;
+            imageTimeOut = attLog.image_time_out ? String(attLog.image_time_out) : null;
+          } else if (hasFiledLeave && leaveStatus === "approved") {
+            status = "On Leave";
+            compLeave++;
+            totalOnLeave++;
           } else {
-            status = "On Time";
+            status = "Absent";
+            compAbsent++;
+            totalAbsent++;
           }
-          compPresent++;
-          totalPresent++;
 
-          timeIn = formatTimeString(attLog.time_in);
-          timeOut = formatTimeString(attLog.time_out);
-          approveStatus = attLog.approve_status ? String(attLog.approve_status) : "Approved";
-          imageTimeIn = attLog.image_time_in ? String(attLog.image_time_in) : null;
-          imageTimeOut = attLog.image_time_out ? String(attLog.image_time_out) : null;
-        } else if (hasFiledLeave && leaveStatus === "approved") {
-          status = "On Leave";
-          compLeave++;
-          totalOnLeave++;
-        } else {
-          status = "Absent";
-          compAbsent++;
-          totalAbsent++;
-        }
-
-        allRecords.push({
-          id: `${companyId}-${userId}`,
-          userId,
-          employeeId: `${companyCode}-${String(userId).padStart(4, "0")}`,
-          name: fullName,
-          firstName,
-          lastName,
-          middleName,
-          email,
-          contact,
-          companyId,
-          companyName,
-          companyCode,
-          department,
-          departmentId: deptId,
-          position,
-          gender,
-          avatar,
-          attendanceStatus: status,
-          timeIn,
-          timeOut,
-          logDate: targetDate,
-          approveStatus,
-          imageTimeIn,
-          imageTimeOut,
-          hasFiledLeave,
-          leaveStatus,
-          leaveType,
-          leaveReason,
-          leaveDates,
+          allRecords.push({
+            id: isSingleDate ? `${companyId}-${userId}` : `${companyId}-${userId}-${tDate}`,
+            userId,
+            employeeId: `${companyCode}-${String(userId).padStart(4, "0")}`,
+            name: fullName,
+            firstName,
+            lastName,
+            middleName,
+            email,
+            contact,
+            companyId,
+            companyName,
+            companyCode,
+            department,
+            departmentId: deptId,
+            position,
+            gender,
+            avatar,
+            attendanceStatus: status,
+            timeIn,
+            timeOut,
+            logDate: tDate,
+            approveStatus,
+            imageTimeIn,
+            imageTimeOut,
+            hasFiledLeave,
+            leaveStatus,
+            leaveType,
+            leaveReason,
+            leaveDates,
+          });
         });
       });
 
-      const compAttRate = compEmployees > 0 ? Math.round((compPresent / compEmployees) * 100) : 0;
+      const totalCompSlots = compPresent + compLate + compAbsent + compLeave;
+      const compAttRate = totalCompSlots > 0 ? Math.round((compPresent / totalCompSlots) * 100) : 0;
       const compPunctRate =
         compPresent > 0 ? Math.round(((compPresent - compLate) / compPresent) * 100) : 0;
 
@@ -485,8 +535,11 @@ export async function GET(request: NextRequest) {
       });
     });
 
+    const uniqueEmployeesCount = new Set(allRecords.map((r) => `${r.companyId}-${r.userId}`)).size;
+    const totalWorkforce = isSingleDate ? uniqueEmployeesCount : allRecords.length;
+
     const overallAttendanceRate =
-      totalWorkforce > 0 ? Math.round((totalPresent / totalWorkforce) * 100) : 0;
+      allRecords.length > 0 ? Math.round((totalPresent / allRecords.length) * 100) : 0;
     const overallPunctualityRate =
       totalPresent > 0 ? Math.round(((totalPresent - totalLate) / totalPresent) * 100) : 0;
 
@@ -502,10 +555,15 @@ export async function GET(request: NextRequest) {
       overallPunctualityRate,
       activeCompaniesCount,
       totalCompaniesCount: validCompanies.length,
+      totalDays: targetDates.length,
+      uniqueEmployeesCount,
     };
 
     const payload: IntercompanyAttendanceData = {
-      date: targetDate,
+      date: isSingleDate ? startDate : `${startDate} to ${endDate}`,
+      startDate,
+      endDate,
+      dates: targetDates,
       kpis,
       companySummaries: companySummaries.sort((a, b) => b.totalEmployees - a.totalEmployees),
       records: allRecords,

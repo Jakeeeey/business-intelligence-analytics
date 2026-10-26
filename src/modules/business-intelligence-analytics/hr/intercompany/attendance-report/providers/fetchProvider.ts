@@ -7,8 +7,14 @@ export async function fetchIntercompanyAttendanceData(
   signal?: AbortSignal
 ): Promise<IntercompanyAttendanceData> {
   const query = new URLSearchParams();
-  if (filters.date) {
+  if (filters.startDate && filters.endDate) {
+    query.append("startDate", filters.startDate);
+    query.append("endDate", filters.endDate);
+  } else if (filters.date) {
     query.append("date", filters.date);
+  }
+  if (filters.dates && filters.dates.length > 0) {
+    query.append("dates", filters.dates.join(","));
   }
   if (filters.force) {
     query.append("force", "true");

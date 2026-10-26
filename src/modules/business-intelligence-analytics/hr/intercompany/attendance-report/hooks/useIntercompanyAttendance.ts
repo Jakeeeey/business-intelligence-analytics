@@ -18,8 +18,12 @@ function getTodayString(): string {
   return `${year}-${month}-${day}`;
 }
 
+const todayStr = getTodayString();
 const DEFAULT_FILTERS: IntercompanyAttendanceFilters = {
-  date: getTodayString(),
+  date: todayStr,
+  startDate: todayStr,
+  endDate: todayStr,
+  dates: [todayStr],
   companyIds: [],
   departments: [],
   companyId: "ALL",
@@ -46,6 +50,9 @@ export function useIntercompanyAttendance() {
       setError(null);
       try {
         const data = await fetchIntercompanyAttendanceData({
+          startDate: filters.startDate,
+          endDate: filters.endDate,
+          dates: filters.dates,
           date: filters.date,
           force,
         });
@@ -57,10 +64,10 @@ export function useIntercompanyAttendance() {
         setLoading(false);
       }
     },
-    [filters.date]
+    [filters.startDate, filters.endDate, filters.dates, filters.date]
   );
 
-  // Reload data when the selected target date changes
+  // Reload data when the selected target dates change
   useEffect(() => {
     let active = true;
     const controller = new AbortController();
@@ -70,7 +77,12 @@ export function useIntercompanyAttendance() {
       setError(null);
       try {
         const data = await fetchIntercompanyAttendanceData(
-          { date: filters.date },
+          {
+            startDate: filters.startDate,
+            endDate: filters.endDate,
+            dates: filters.dates,
+            date: filters.date,
+          },
           controller.signal
         );
         if (active) {
@@ -92,7 +104,7 @@ export function useIntercompanyAttendance() {
       active = false;
       controller.abort();
     };
-  }, [filters.date]);
+  }, [filters.startDate, filters.endDate, filters.dates, filters.date]);
 
   // Reset pagination when filter criteria change
   useEffect(() => {
@@ -208,6 +220,10 @@ export function useIntercompanyAttendance() {
           valA = a.timeOut || "ZZZ";
           valB = b.timeOut || "ZZZ";
           break;
+        case "logDate":
+          valA = a.logDate;
+          valB = b.logDate;
+          break;
       }
 
       if (valA < valB) return sortOrder === "asc" ? -1 : 1;
@@ -294,8 +310,12 @@ export function useIntercompanyAttendance() {
   };
 
   const resetFilters = () => {
+    const today = getTodayString();
     setFilters({
-      date: getTodayString(),
+      date: today,
+      startDate: today,
+      endDate: today,
+      dates: [today],
       companyIds: [],
       departments: [],
       companyId: "ALL",

@@ -40,12 +40,12 @@ export function AttendanceKpiCards({ kpis }: AttendanceKpiCardsProps) {
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
-      {/* 1. Total Workforce */}
+      {/* 1. Total Workforce / Attendance Slots */}
       <Card className="border-border bg-card shadow-xs hover:border-cyan-500/40 transition-all rounded-2xl">
         <CardContent className="p-4 sm:p-5 flex flex-col justify-between h-full space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Active Workforce
+              {kpis.totalDays && kpis.totalDays > 1 ? "Total Slots" : "Active Workforce"}
             </span>
             <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
               <Users className="h-4 w-4" />
@@ -56,7 +56,9 @@ export function AttendanceKpiCards({ kpis }: AttendanceKpiCardsProps) {
               {totalWorkforce.toLocaleString()}
             </div>
             <p className="text-[11px] text-muted-foreground mt-1 font-medium">
-              Across <span className="font-semibold text-foreground">{activeCompaniesCount}</span> of {totalCompaniesCount} Companies
+              {kpis.totalDays && kpis.totalDays > 1
+                ? `${kpis.totalDays} Days • ${kpis.uniqueEmployeesCount || activeCompaniesCount} Staff (${activeCompaniesCount} Cos)`
+                : `Across ${activeCompaniesCount} of ${totalCompaniesCount} Companies`}
             </p>
           </div>
         </CardContent>
@@ -67,7 +69,7 @@ export function AttendanceKpiCards({ kpis }: AttendanceKpiCardsProps) {
         <CardContent className="p-4 sm:p-5 flex flex-col justify-between h-full space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Present Today
+              {kpis.totalDays && kpis.totalDays > 1 ? "Total Present" : "Present Today"}
             </span>
             <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
               <CheckCircle2 className="h-4 w-4" />
