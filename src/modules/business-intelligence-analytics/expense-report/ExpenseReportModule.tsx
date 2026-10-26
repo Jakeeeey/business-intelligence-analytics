@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useExpenseReport } from "./hooks/useExpenseReport";
 import { exportToPDF } from "./utils/exportPDF";
+import { exportToExcel } from "./utils/exportExcel";
 import Filters from "./components/Filters";
 import KpiCards from "./components/KpiCards";
 import Charts from "./components/Charts";
@@ -37,21 +38,35 @@ export default function ExpenseReportModule({
   const handleExport = React.useCallback(
     async (format: ExportFormat, groupBy?: "coa" | "division") => {
       try {
-        toast.loading("Generating PDF...");
+        if (format === "excel") {
+          toast.loading("Generating Excel file...");
 
-        await exportToPDF({
-          records: filteredRecords,
-          filters,
-          format,
-          groupBy,
-          userName,
-        });
+          exportToExcel({
+            records: filteredRecords,
+            filters,
+            groupBy,
+            userName,
+          });
 
-        toast.dismiss();
-        toast.success("PDF exported successfully!");
+          toast.dismiss();
+          toast.success("Excel exported successfully!");
+        } else {
+          toast.loading("Generating PDF...");
+
+          await exportToPDF({
+            records: filteredRecords,
+            filters,
+            format: format === "detailed" ? "detailed" : "summary",
+            groupBy,
+            userName,
+          });
+
+          toast.dismiss();
+          toast.success("PDF exported successfully!");
+        }
       } catch (err) {
         toast.dismiss();
-        toast.error("Failed to export PDF");
+        toast.error(`Failed to export ${format === "excel" ? "Excel" : "PDF"}`);
         console.error("Export error:", err);
       }
     },

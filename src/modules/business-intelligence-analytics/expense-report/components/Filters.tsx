@@ -66,10 +66,7 @@ export default function Filters({
   const [coaSearch, setCoaSearch] = React.useState("");
   const [transactionTypeSearch] = React.useState("");
   const [exportFormat, setExportFormat] =
-    React.useState<ExportFormat>("summary");
-  const [exportGroupBy, setExportGroupBy] = React.useState<"coa" | "division">(
-    "coa",
-  );
+    React.useState<ExportFormat>("pdf");
   const [exportDialogOpen, setExportDialogOpen] = React.useState(false);
   // const [previewDialogOpen, setPreviewDialogOpen] = React.useState(false);
 
@@ -153,10 +150,7 @@ export default function Filters({
   };
 
   const handleExport = () => {
-    onExport(
-      exportFormat,
-      exportFormat === "detailed" ? exportGroupBy : undefined,
-    );
+    onExport(exportFormat);
     setExportDialogOpen(false);
   };
 
@@ -191,10 +185,10 @@ export default function Filters({
               <DialogTrigger asChild>
                 <Button variant="default" size="sm">
                   <Download className="mr-2 h-4 w-4" />
-                  Export PDF
+                  Export
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="sm:max-w-[480px]">
                 <DialogHeader>
                   <DialogTitle>Export Disbursement Report</DialogTitle>
                   <DialogDescription>
@@ -206,70 +200,44 @@ export default function Filters({
                     value={exportFormat}
                     onValueChange={(v) => setExportFormat(v as ExportFormat)}
                   >
-                    <div className="flex items-start space-x-3 space-y-0 rounded-md border p-4">
-                      <RadioGroupItem value="summary" id="summary" />
+                    <div
+                      className={`flex items-start space-x-3 space-y-0 rounded-md border p-4 cursor-pointer transition-colors ${
+                        exportFormat === "pdf" || exportFormat === "summary" || exportFormat === "detailed"
+                          ? "border-primary bg-primary/5 dark:bg-primary/10"
+                          : "border-border hover:bg-muted/50"
+                      }`}
+                      onClick={() => setExportFormat("pdf")}
+                    >
+                      <RadioGroupItem value="pdf" id="pdf" />
                       <div className="space-y-1 leading-none">
-                        <Label htmlFor="summary" className="font-medium">
-                          Summary Only
+                        <Label htmlFor="pdf" className="font-medium cursor-pointer text-foreground">
+                          PDF (Printable PDF)
                         </Label>
-                        {/* <p className="text-sm text-muted-foreground">
-                          Includes the cover page and compact summary tables
-                        </p> */}
-                      </div>
-                    </div>
-                    {/* <div className="flex items-start space-x-3 space-y-0 rounded-md border p-4">
-                      <RadioGroupItem value="detailed" id="detailed" />
-                      <div className="space-y-1 leading-none">
-                        <Label htmlFor="detailed" className="font-medium">
-                          Detailed Only
-                        </Label>
-                        <p className="text-sm text-muted-foreground">
-                          Includes grouped transaction details with subtotals
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Includes Invoice No., Invoice Date, Supplier TIN, Supplier Name, VAT/NON-VAT, Type of Invoice, and Amount
                         </p>
                       </div>
-                    </div> */}
-                  </RadioGroup>
-
-                  {exportFormat === "detailed" && (
-                    <div>
-                      <h3 className="mb-3 text-sm font-medium">Grouped By</h3>
-                      <RadioGroup
-                        value={exportGroupBy}
-                        onValueChange={(v) =>
-                          setExportGroupBy(v as "coa" | "division")
-                        }
-                      >
-                        <div className="flex items-start space-x-3 space-y-0 rounded-md border p-4">
-                          <RadioGroupItem value="coa" id="groupByCoa" />
-                          <div className="space-y-1 leading-none">
-                            <Label htmlFor="groupByCoa" className="font-medium">
-                              COA
-                            </Label>
-                            <p className="text-sm text-muted-foreground">
-                              Group the detailed export by Chart of Account
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-start space-x-3 space-y-0 rounded-md border p-4">
-                          <RadioGroupItem
-                            value="division"
-                            id="groupByDivision"
-                          />
-                          <div className="space-y-1 leading-none">
-                            <Label
-                              htmlFor="groupByDivision"
-                              className="font-medium"
-                            >
-                              Division
-                            </Label>
-                            <p className="text-sm text-muted-foreground">
-                              Group the detailed export by Division
-                            </p>
-                          </div>
-                        </div>
-                      </RadioGroup>
                     </div>
-                  )}
+
+                    <div
+                      className={`flex items-start space-x-3 space-y-0 rounded-md border p-4 cursor-pointer transition-colors ${
+                        exportFormat === "excel"
+                          ? "border-primary bg-primary/5 dark:bg-primary/10"
+                          : "border-border hover:bg-muted/50"
+                      }`}
+                      onClick={() => setExportFormat("excel")}
+                    >
+                      <RadioGroupItem value="excel" id="excel" />
+                      <div className="space-y-1 leading-none">
+                        <Label htmlFor="excel" className="font-medium cursor-pointer text-foreground">
+                          Excel (.xlsx)
+                        </Label>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Itemized spreadsheet export formatted with optimized column widths
+                        </p>
+                      </div>
+                    </div>
+                  </RadioGroup>
                 </div>
                 <div className="flex justify-end gap-2">
                   <Button

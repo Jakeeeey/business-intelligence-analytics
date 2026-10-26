@@ -42,6 +42,35 @@ export async function GET(req: NextRequest) {
     url.searchParams.append("startDate", startDate);
     url.searchParams.append("endDate", endDate);
 
+    // Start Directus suppliers lookup in parallel
+    const upstreamBase = (
+      process.env.UPSTREAM_API_BASE_URL ||
+      process.env.NEXT_PUBLIC_API_BASE_URL ||
+      ""
+    ).replace(/\/+$/, "");
+    const staticToken = process.env.DIRECTUS_STATIC_TOKEN;
+
+    const directusHeaders: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (staticToken) {
+      directusHeaders["Authorization"] = `Bearer ${staticToken}`;
+    } else if (token) {
+      directusHeaders["Authorization"] = `Bearer ${token}`;
+    }
+
+    const suppliersPromise = upstreamBase
+      ? fetch(
+          `${upstreamBase}/items/suppliers?limit=-1&fields=id,supplier_name,tin_number`,
+          {
+            headers: directusHeaders,
+            cache: "no-store",
+          },
+        )
+          .then((r) => (r.ok ? r.json() : null))
+          .catch(() => null)
+      : Promise.resolve(null);
+
     // Fetch data from Spring API with authentication
     const response = await fetch(url.toString(), {
       headers: {
@@ -93,6 +122,50 @@ export async function GET(req: NextRequest) {
       if (Array.isArray(maybeData)) {
         records = maybeData as unknown[];
       }
+    }
+
+    // Enrich records with supplier TIN from suppliers table if available
+    try {
+      const supJson = await suppliersPromise;
+      const supList = (supJson?.data || []) as Record<string, unknown>[];
+      if (Array.isArray(supList) && supList.length > 0 && records.length > 0) {
+        const tinById = new Map<number, string>();
+        const tinByName = new Map<string, string>();
+
+        for (const s of supList) {
+          const sid = Number(s.id);
+          const tin = s.tin_number ? String(s.tin_number).trim() : "";
+          const name = s.supplier_name
+            ? String(s.supplier_name).trim().toLowerCase()
+            : "";
+          if (tin) {
+            if (sid) tinById.set(sid, tin);
+            if (name) tinByName.set(name, tin);
+          }
+        }
+
+        for (const raw of records) {
+          if (raw && typeof raw === "object") {
+            const rec = raw as Record<string, unknown>;
+            if (!rec.supplierTin && !rec.tin && !rec.tin_number) {
+              const sId = Number(rec.supplierId || rec.payeeId);
+              const sName = String(
+                rec.supplierName || rec.payeeName || "",
+              )
+                .trim()
+                .toLowerCase();
+              const matchedTin =
+                (sId && tinById.get(sId)) || (sName && tinByName.get(sName));
+              if (matchedTin) {
+                rec.supplierTin = matchedTin;
+                rec.tin_number = matchedTin;
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to lookup supplier tin:", e);
     }
 
     return NextResponse.json(records);
