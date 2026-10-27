@@ -41,6 +41,8 @@ type ProspectRecord = {
   latitude?: number | string | null;
   longitude?: number | string | null;
   location?: { coordinates?: number[] | null } | null;
+  customer_image?: string | null;
+  discount_type?: number | null;
 };
 
 function authHeaders(): Headers {
@@ -162,6 +164,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const longitude = fromGeo ? num(coords?.[0]) : num(prospect.longitude);
     const latitude = fromGeo ? num(coords?.[1]) : num(prospect.latitude);
 
+    // GeoJSON is [lng, lat]; reuse the resolved pair so location agrees with the columns.
+    const location =
+      latitude !== null && longitude !== null
+        ? { type: "Point", coordinates: [longitude, latitude] }
+        : null;
+
     const payload: Record<string, unknown> = {
       customer_code: customerCode,
       customer_name: prospect.customer_name ?? "0",
@@ -190,6 +198,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       isEWT: prospect.isEWT ?? 0,
       latitude,
       longitude,
+      location,
+      customer_image: prospect.customer_image ?? null,
+      discount_type: prospect.discount_type ?? null,
       prospect_id: recordId,
     };
     if (prospect.user_id) payload.user_id = prospect.user_id;
