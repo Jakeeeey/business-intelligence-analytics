@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { useIntercompanyOvertime } from "./hooks/useIntercompanyOvertime";
 import { OvertimeKpiCards } from "./components/OvertimeKpiCards";
 import { CompanyOvertimeCards } from "./components/CompanyOvertimeCards";
+import { CompanyOvertimeTable } from "./components/CompanyOvertimeTable";
 import { OvertimeCharts } from "./components/OvertimeCharts";
 import { OvertimeFilters } from "./components/OvertimeFilters";
 import { EmployeeOvertimeTable } from "./components/EmployeeOvertimeTable";
@@ -13,8 +14,9 @@ import { OvertimeRankingLeaderboard } from "./components/OvertimeRankingLeaderbo
 import {
   exportOvertimeEmployeesToCsv,
   exportDetailedOvertimeToCsv,
+  exportCompanyOvertimeToCsv,
 } from "./utils/exportCsv";
-import { AlertCircle, FileSpreadsheet, Users, Trophy } from "lucide-react";
+import { AlertCircle, FileSpreadsheet, Users, Trophy, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function IntercompanyOvertimeModule() {
@@ -49,7 +51,7 @@ export function IntercompanyOvertimeModule() {
     handleRefresh,
   } = useIntercompanyOvertime();
 
-  const [activeTab, setActiveTab] = useState<"rankings" | "summary" | "detailed">("rankings");
+  const [activeTab, setActiveTab] = useState<"rankings" | "company" | "summary" | "detailed">("rankings");
 
   const handleExportCsv = () => {
     const filenameDate =
@@ -57,7 +59,12 @@ export function IntercompanyOvertimeModule() {
         ? `${filters.startDate}_to_${filters.endDate}`
         : filters.startDate || "all";
 
-    if (activeTab === "summary") {
+    if (activeTab === "company") {
+      exportCompanyOvertimeToCsv(
+        filteredCompanySummaries,
+        `intercompany_overtime_companies_${filenameDate}.csv`
+      );
+    } else if (activeTab === "summary") {
       exportOvertimeEmployeesToCsv(
         sortedEmployeeSummaries,
         `intercompany_overtime_employees_${filenameDate}.csv`
@@ -167,6 +174,21 @@ export function IntercompanyOvertimeModule() {
             </button>
             <button
               type="button"
+              onClick={() => setActiveTab("company")}
+              className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                activeTab === "company"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Building2 className="h-3.5 w-3.5 text-blue-500" />
+              Subsidiaries Table
+              <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] bg-muted font-mono font-medium">
+                {filteredCompanySummaries.length}
+              </span>
+            </button>
+            <button
+              type="button"
               onClick={() => setActiveTab("summary")}
               className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                 activeTab === "summary"
@@ -200,6 +222,8 @@ export function IntercompanyOvertimeModule() {
           <div className="text-xs text-muted-foreground">
             {activeTab === "rankings" ? (
               <span>Honor roll of employees ranked by overtime hours and rendering volume</span>
+            ) : activeTab === "company" ? (
+              <span>Subsidiary overtime metrics: Actual Overtime | Filed Overtime | Actual Approved | Request Count</span>
             ) : activeTab === "summary" ? (
               <span>Aggregated employee overtime hours and request approvals</span>
             ) : (
@@ -212,6 +236,17 @@ export function IntercompanyOvertimeModule() {
           <OvertimeRankingLeaderboard
             employees={sortedEmployeeSummaries}
             onViewDetail={handleOpenDetail}
+          />
+        ) : activeTab === "company" ? (
+          <CompanyOvertimeTable
+            companies={filteredCompanySummaries}
+            selectedCompanyIds={filters.companyIds}
+            onSelectCompany={handleSelectCompanyCard}
+            onClearCompanySelection={() => {
+              setFilters((prev) => ({ ...prev, companyIds: [] }));
+              setPage(1);
+            }}
+            loading={loading}
           />
         ) : activeTab === "summary" ? (
           <EmployeeOvertimeTable

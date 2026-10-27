@@ -1,4 +1,8 @@
-import { EmployeeOvertimeSummary, IntercompanyOvertimeRecord } from "../types";
+import {
+  EmployeeOvertimeSummary,
+  IntercompanyOvertimeRecord,
+  CompanyOvertimeSummary,
+} from "../types";
 
 export function exportOvertimeEmployeesToCsv(
   records: EmployeeOvertimeSummary[],
@@ -115,3 +119,53 @@ export function exportDetailedOvertimeToCsv(
   link.click();
   document.body.removeChild(link);
 }
+
+export function exportCompanyOvertimeToCsv(
+  records: CompanyOvertimeSummary[],
+  filename = "intercompany_overtime_companies.csv"
+) {
+  if (!records || records.length === 0) return;
+
+  const headers = [
+    "Company Code",
+    "Company Name",
+    "Status",
+    "Total Employees",
+    "Actual Overtime (Hours)",
+    "Filed Overtime (Hours)",
+    "Actual Approved (Hours)",
+    "Request Count",
+    "Approved Requests",
+    "Pending Requests",
+    "Rejected Requests",
+    "Approval Rate (%)",
+  ];
+
+  const rows = records.map((r) => [
+    r.companyCode,
+    `"${r.companyName.replace(/"/g, '""')}"`,
+    r.status,
+    r.totalEmployees,
+    r.totalActualOtHours,
+    r.totalFiledOtHours,
+    r.totalApprovedOtHours,
+    r.totalOtRequests,
+    r.approvedOtRequests,
+    r.pendingOtRequests,
+    r.rejectedOtRequests,
+    `${r.otApprovalRate}%`,
+  ]);
+
+  const csvContent =
+    "data:text/csv;charset=utf-8," +
+    [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
+
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement("a");
+  link.setAttribute("href", encodedUri);
+  link.setAttribute("download", filename);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+

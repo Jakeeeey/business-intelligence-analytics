@@ -236,17 +236,95 @@ export function useIntercompanyOvertime() {
   const filteredCompanySummaries = useMemo<CompanyOvertimeSummary[]>(() => {
     if (!data?.companySummaries) return [];
 
-    const compSummaries = data.companySummaries;
-    const companyIds = filters.companyIds;
-
-    if (companyIds && companyIds.length > 0) {
-      return compSummaries.filter((c) =>
-        companyIds.includes(String(c.companyId))
-      );
+    if (!hasActiveFilter) {
+      return data.companySummaries;
     }
 
-    return compSummaries;
-  }, [data, filters.companyIds]);
+    const companyMap = new Map<
+      number,
+      {
+        actualMins: number;
+        filedMins: number;
+        appMins: number;
+        totalReqs: number;
+        appReqs: number;
+        pendReqs: number;
+        rejReqs: number;
+      }
+    >();
+
+    filteredOtRecords.forEach((ot) => {
+      const cur = companyMap.get(ot.companyId) || {
+        actualMins: 0,
+        filedMins: 0,
+        appMins: 0,
+        totalReqs: 0,
+        appReqs: 0,
+        pendReqs: 0,
+        rejReqs: 0,
+      };
+      cur.actualMins += ot.actualOtMinutes;
+      cur.filedMins += ot.filedOtMinutes;
+      cur.totalReqs++;
+      if (ot.status === "approved") {
+        cur.appMins += ot.actualApprovedOtMinutes;
+        cur.appReqs++;
+      } else if (ot.status === "pending") {
+        cur.pendReqs++;
+      } else {
+        cur.rejReqs++;
+      }
+      companyMap.set(ot.companyId, cur);
+    });
+
+    const companyIds = filters.companyIds;
+
+    return data.companySummaries
+      .filter((c) => {
+        if (companyIds && companyIds.length > 0) {
+          return companyIds.includes(String(c.companyId));
+        }
+        return true;
+      })
+      .map((c) => {
+        const stats = companyMap.get(c.companyId);
+        if (!stats) {
+          return {
+            ...c,
+            totalActualOtHours: 0,
+            totalFiledOtHours: 0,
+            totalApprovedOtHours: 0,
+            totalOtMinutes: 0,
+            totalOtHours: 0,
+            approvedOtMinutes: 0,
+            approvedOtHours: 0,
+            totalOtRequests: 0,
+            approvedOtRequests: 0,
+            pendingOtRequests: 0,
+            rejectedOtRequests: 0,
+            otApprovalRate: 0,
+          };
+        }
+        const appRate =
+          stats.totalReqs > 0 ? Math.round((stats.appReqs / stats.totalReqs) * 100) : 0;
+
+        return {
+          ...c,
+          totalActualOtHours: Math.round((stats.actualMins / 60) * 10) / 10,
+          totalFiledOtHours: Math.round((stats.filedMins / 60) * 10) / 10,
+          totalApprovedOtHours: Math.round((stats.appMins / 60) * 10) / 10,
+          totalOtMinutes: stats.filedMins,
+          totalOtHours: Math.round((stats.filedMins / 60) * 10) / 10,
+          approvedOtMinutes: stats.appMins,
+          approvedOtHours: Math.round((stats.appMins / 60) * 10) / 10,
+          totalOtRequests: stats.totalReqs,
+          approvedOtRequests: stats.appReqs,
+          pendingOtRequests: stats.pendReqs,
+          rejectedOtRequests: stats.rejReqs,
+          otApprovalRate: appRate,
+        };
+      });
+  }, [data, hasActiveFilter, filteredOtRecords, filters.companyIds]);
 
   // Filtered Status Distribution
   const filteredStatusDistribution = useMemo<StatusDistributionSegment[]>(() => {
