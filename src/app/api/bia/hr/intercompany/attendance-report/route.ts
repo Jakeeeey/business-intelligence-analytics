@@ -88,6 +88,50 @@ function formatTimeString(isoOrTimeString: unknown): string | null {
   return str;
 }
 
+function parseTimeToMinutes(rawTimeIn: unknown): number | null {
+  if (!rawTimeIn || typeof rawTimeIn !== "string") return null;
+  const s = rawTimeIn.trim();
+  if (!s) return null;
+
+  const timePart = s.includes("T") ? s.split("T")[1] : s;
+  const match = timePart.match(/(\d{1,2}):(\d{2})/);
+  if (!match) return null;
+
+  let h = parseInt(match[1], 10);
+  const m = parseInt(match[2], 10);
+  if (isNaN(h) || isNaN(m)) return null;
+
+  const upper = s.toUpperCase();
+  if (upper.includes("PM") && h < 12) {
+    h += 12;
+  } else if (upper.includes("AM") && h === 12) {
+    h = 0;
+  }
+
+  return h * 60 + m;
+}
+
+function checkIfLate(
+  rawStatus: unknown,
+  rawTimeIn: unknown,
+  scheduledHour = 8,
+  scheduledMinute = 0,
+  gracePeriodMinutes = 0
+): boolean {
+  const statusStr = String(rawStatus || "").toLowerCase();
+  if (statusStr.includes("late")) {
+    return true;
+  }
+
+  const arrivalMinutes = parseTimeToMinutes(rawTimeIn);
+  if (arrivalMinutes === null) {
+    return false;
+  }
+
+  const scheduledMinutes = scheduledHour * 60 + scheduledMinute + gracePeriodMinutes;
+  return arrivalMinutes > scheduledMinutes;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const cookieStore = await cookies();
@@ -214,7 +258,7 @@ export async function GET(request: NextRequest) {
 
         const leaveFilter = `filter[status][_neq]=rejected&filter[leave_start][_lte]=${endDate}&filter[leave_end][_gte]=${startDate}`;
 
-        const [usersRaw, departmentsRaw, statusesRaw, logsRaw, leavesRaw] = await Promise.all([
+        const [usersRaw, departmentsRaw, statusesRaw, logsRaw, leavesRaw, deptSchedulesRaw] = await Promise.all([
           fetchDirectusWithTimeout<AnyRec>(
             `${companyUrl}/items/user?limit=-1&fields=${userFields}`,
             compHeaders,
@@ -240,6 +284,11 @@ export async function GET(request: NextRequest) {
             compHeaders,
             5000
           ),
+          fetchDirectusWithTimeout<AnyRec>(
+            `${companyUrl}/items/department_schedule?limit=-1&fields=department_id,work_start,work_end,grace_period`,
+            compHeaders,
+            4000
+          ),
         ]);
 
         return {
@@ -251,6 +300,7 @@ export async function GET(request: NextRequest) {
           statuses: statusesRaw,
           attendanceLogs: logsRaw,
           leaves: leavesRaw,
+          departmentSchedules: deptSchedulesRaw,
           isOnline: true,
         };
       })
@@ -300,10 +350,37 @@ export async function GET(request: NextRequest) {
         return;
       }
 
-      const { companyId, companyName, companyCode, users, departments, statuses, attendanceLogs, leaves } =
-        res.value;
+      const {
+        companyId,
+        companyName,
+        companyCode,
+        users,
+        departments,
+        statuses,
+        attendanceLogs,
+        leaves,
+        departmentSchedules,
+      } = res.value;
 
       activeCompaniesCount++;
+
+      // Department Schedule Map
+      const deptSchedMap = new Map<
+        number,
+        { workStartHour: number; workStartMinute: number; gracePeriod: number }
+      >();
+      (departmentSchedules || []).forEach((ds) => {
+        const id = Number(ds.department_id);
+        if (id && ds.work_start) {
+          const parts = String(ds.work_start).split(":");
+          const h = parseInt(parts[0], 10);
+          const m = parseInt(parts[1], 10);
+          if (!isNaN(h) && !isNaN(m)) {
+            const grace = Number(ds.grace_period) || 0;
+            deptSchedMap.set(id, { workStartHour: h, workStartMinute: m, gracePeriod: grace });
+          }
+        }
+      });
 
       // Department Map
       const deptMap = new Map<number, string>();
@@ -456,7 +533,14 @@ export async function GET(request: NextRequest) {
 
           if (attLog) {
             const rawStatus = String(attLog.status || "").toLowerCase();
-            if (rawStatus.includes("late")) {
+            const sched = deptId ? deptSchedMap.get(deptId) : undefined;
+            const schedH = sched ? sched.workStartHour : 8;
+            const schedM = sched ? sched.workStartMinute : 0;
+            const grace = sched ? sched.gracePeriod : 0;
+
+            const isLate = checkIfLate(rawStatus, attLog.time_in, schedH, schedM, grace);
+
+            if (isLate) {
               status = "Late";
               compLate++;
               totalLate++;
@@ -515,7 +599,7 @@ export async function GET(request: NextRequest) {
         });
       });
 
-      const totalCompSlots = compPresent + compLate + compAbsent + compLeave;
+      const totalCompSlots = compPresent + compAbsent + compLeave;
       const compAttRate = totalCompSlots > 0 ? Math.round((compPresent / totalCompSlots) * 100) : 0;
       const compPunctRate =
         compPresent > 0 ? Math.round(((compPresent - compLate) / compPresent) * 100) : 0;
