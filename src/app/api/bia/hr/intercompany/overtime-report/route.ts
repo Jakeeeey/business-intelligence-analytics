@@ -135,7 +135,7 @@ export async function GET(request: NextRequest) {
     const startDate = targetDates[0];
     const endDate = targetDates[targetDates.length - 1];
 
-    const cacheKey = `ot_v2_${startDate}_${endDate}_${targetDates.join(",")}`;
+    const cacheKey = `ot_v3_${startDate}_${endDate}_${targetDates.join(",")}`;
     if (!force && memoryCache.has(cacheKey)) {
       const cached = memoryCache.get(cacheKey)!;
       if (Date.now() - cached.timestamp < CACHE_TTL_MS) {
@@ -346,13 +346,27 @@ export async function GET(request: NextRequest) {
               .trim()
           : `Employee #${uId}`;
 
-        // 1. Scheduled Time Out
+        // 1. Scheduled Time Out & Overtime Start Baseline
         const rawSched = row.sched_timeout ? String(row.sched_timeout) : null;
-        const schedTime = (rawSched && rawSched !== "00:00:00") ? rawSched : (row.ot_from ? String(row.ot_from) : "17:00:00");
+        const rawOtFrom = row.ot_from ? String(row.ot_from) : null;
+        const rawOtTo = row.ot_to ? String(row.ot_to) : null;
 
-        // 2. Attendance punch out matching on user and date
+        // Check if weekend / rest day
+        const reqDateObj = new Date(`${rDate}T12:00:00`);
+        const dayOfWeek = reqDateObj.getDay(); // 0 = Sunday, 6 = Saturday
+        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+        let schedTime = "17:00:00";
+        if (rawSched && rawSched !== "00:00:00" && rawSched !== rawOtTo) {
+          schedTime = rawSched;
+        } else if (rawOtFrom) {
+          schedTime = rawOtFrom;
+        }
+
+        // 2. Attendance punch matching on user and date
         const matchLog = logMap.get(`${uId}_${rDate}`);
         const logTimeOut = matchLog?.time_out ? String(matchLog.time_out) : null;
+        const logTimeIn = matchLog?.time_in ? String(matchLog.time_in) : null;
         let actualTimeOutFormatted: string | null = null;
         let actualOtMinutes = 0;
 
@@ -361,19 +375,52 @@ export async function GET(request: NextRequest) {
             ? logTimeOut.split("T")[1].slice(0, 5)
             : logTimeOut.slice(0, 5);
 
-          // Calculate actual overtime after scheduled time out
           try {
-            const parts = schedTime.split(":");
-            const sh = parseInt(parts[0], 10) || 17;
-            const sm = parseInt(parts[1], 10) || 0;
-            const schedDateObj = new Date(`${rDate}T${String(sh).padStart(2, "0")}:${String(sm).padStart(2, "0")}:00`);
+            if (isWeekend) {
+              // Weekend / Rest Day OT: full duration rendered between punch-in and punch-out
+              let inDateObj: Date;
+              if (logTimeIn) {
+                inDateObj = logTimeIn.includes("T") ? new Date(logTimeIn) : new Date(`${rDate}T${logTimeIn}`);
+              } else if (rawOtFrom) {
+                inDateObj = new Date(`${rDate}T${rawOtFrom}`);
+              } else {
+                inDateObj = new Date(`${rDate}T08:00:00`);
+              }
 
-            const outDateObj = logTimeOut.includes("T")
-              ? new Date(logTimeOut)
-              : new Date(`${rDate}T${logTimeOut}`);
+              let outDateObj = logTimeOut.includes("T")
+                ? new Date(logTimeOut)
+                : new Date(`${rDate}T${logTimeOut}`);
 
-            if (outDateObj > schedDateObj) {
-              actualOtMinutes = Math.floor((outDateObj.getTime() - schedDateObj.getTime()) / (1000 * 60));
+              if (outDateObj < inDateObj) {
+                outDateObj = new Date(outDateObj.getTime() + 24 * 60 * 60 * 1000);
+              }
+
+              if (outDateObj > inDateObj) {
+                actualOtMinutes = Math.floor((outDateObj.getTime() - inDateObj.getTime()) / (1000 * 60));
+              }
+            } else {
+              // Regular Workday OT: rendered after scheduled shift timeout
+              const parts = schedTime.split(":");
+              const sh = parseInt(parts[0], 10) || 17;
+              const sm = parseInt(parts[1], 10) || 0;
+              const schedDateObj = new Date(`${rDate}T${String(sh).padStart(2, "0")}:${String(sm).padStart(2, "0")}:00`);
+
+              let outDateObj = logTimeOut.includes("T")
+                ? new Date(logTimeOut)
+                : new Date(`${rDate}T${logTimeOut}`);
+
+              // Handle overnight / cross-midnight clock-out (e.g. shift ends 17:00, clocked out at 02:38 next morning)
+              if (outDateObj <= schedDateObj) {
+                const nextDayObj = new Date(outDateObj.getTime() + 24 * 60 * 60 * 1000);
+                const diffHours = (nextDayObj.getTime() - schedDateObj.getTime()) / (1000 * 60 * 60);
+                if (diffHours > 0 && diffHours <= 16) {
+                  outDateObj = nextDayObj;
+                }
+              }
+
+              if (outDateObj > schedDateObj) {
+                actualOtMinutes = Math.floor((outDateObj.getTime() - schedDateObj.getTime()) / (1000 * 60));
+              }
             }
           } catch {
             actualOtMinutes = 0;
@@ -390,14 +437,10 @@ export async function GET(request: NextRequest) {
         else if (s === "rejected" || s === "declined") normalizedStatus = "rejected";
 
         // 5. Actual Approved Overtime
-        // If approved: approved time actually rendered (capped by filed amount if clocked out, or filed amount if approved)
+        // Strictly capped by both filed amount and actual biometric overtime rendered
         let actualApprovedOtMinutes = 0;
-        if (normalizedStatus === "approved") {
-          if (actualOtMinutes > 0) {
-            actualApprovedOtMinutes = Math.min(actualOtMinutes, filedOtMinutes);
-          } else {
-            actualApprovedOtMinutes = filedOtMinutes;
-          }
+        if (normalizedStatus === "approved" && actualOtMinutes > 0) {
+          actualApprovedOtMinutes = Math.min(actualOtMinutes, filedOtMinutes);
         }
 
         const actualOtHours = Math.round((actualOtMinutes / 60) * 10) / 10;
