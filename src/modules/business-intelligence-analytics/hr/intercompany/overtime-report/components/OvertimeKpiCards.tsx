@@ -18,11 +18,11 @@ interface OvertimeKpiCardsProps {
 export function OvertimeKpiCards({ kpis }: OvertimeKpiCardsProps) {
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3.5">
-      {/* 1. Total Overtime Hours */}
+      {/* 1. Actual Overtime */}
       <div className="relative overflow-hidden rounded-2xl border border-indigo-500/20 bg-gradient-to-br from-indigo-500/10 via-indigo-500/5 to-transparent p-4 shadow-sm hover:shadow-md transition-all">
         <div className="flex items-center justify-between">
           <span className="text-[11px] font-semibold tracking-wider uppercase text-indigo-700 dark:text-indigo-300">
-            Total Overtime
+            Actual Overtime
           </span>
           <div className="h-8 w-8 rounded-xl bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
             <Clock className="h-4 w-4" />
@@ -30,20 +30,20 @@ export function OvertimeKpiCards({ kpis }: OvertimeKpiCardsProps) {
         </div>
         <div className="mt-2 flex items-baseline gap-1">
           <span className="text-2xl font-bold tracking-tight text-foreground tabular-nums">
-            {kpis.totalOtHours.toLocaleString()}
+            {kpis.totalActualOtHours.toLocaleString()}
           </span>
           <span className="text-xs font-medium text-muted-foreground">hrs</span>
         </div>
         <p className="text-[11px] text-muted-foreground mt-1">
-          {kpis.totalOtMinutes.toLocaleString()} mins requested
+          {kpis.totalActualOtMinutes.toLocaleString()} mins after timeout
         </p>
       </div>
 
-      {/* 2. Total OT Requests */}
+      {/* 2. Filed Overtime */}
       <div className="relative overflow-hidden rounded-2xl border border-blue-500/20 bg-gradient-to-br from-blue-500/10 via-blue-500/5 to-transparent p-4 shadow-sm hover:shadow-md transition-all">
         <div className="flex items-center justify-between">
           <span className="text-[11px] font-semibold tracking-wider uppercase text-blue-700 dark:text-blue-300">
-            Total OT Requests
+            Filed Overtime
           </span>
           <div className="h-8 w-8 rounded-xl bg-blue-500/15 text-blue-600 dark:text-blue-400 flex items-center justify-center">
             <Users className="h-4 w-4" />
@@ -51,20 +51,20 @@ export function OvertimeKpiCards({ kpis }: OvertimeKpiCardsProps) {
         </div>
         <div className="mt-2 flex items-baseline gap-1">
           <span className="text-2xl font-bold tracking-tight text-foreground tabular-nums">
-            {kpis.totalOtRequests.toLocaleString()}
+            {kpis.totalFiledOtHours.toLocaleString()}
           </span>
-          <span className="text-xs font-medium text-muted-foreground">filed</span>
+          <span className="text-xs font-medium text-muted-foreground">hrs</span>
         </div>
         <p className="text-[11px] text-muted-foreground mt-1">
-          Across {kpis.activeCompaniesCount} subsidiaries
+          {kpis.totalOtRequests.toLocaleString()} requests filed
         </p>
       </div>
 
-      {/* 3. Total Approved Overtime */}
+      {/* 3. Actual Approved Overtime */}
       <div className="relative overflow-hidden rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-transparent p-4 shadow-sm hover:shadow-md transition-all">
         <div className="flex items-center justify-between">
           <span className="text-[11px] font-semibold tracking-wider uppercase text-emerald-700 dark:text-emerald-300">
-            Approved Overtime
+            Actual Approved OT
           </span>
           <div className="h-8 w-8 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
             <CheckCircle2 className="h-4 w-4" />

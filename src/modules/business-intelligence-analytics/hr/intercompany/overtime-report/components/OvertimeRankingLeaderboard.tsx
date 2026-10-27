@@ -36,7 +36,7 @@ interface OvertimeRankingLeaderboardProps {
   onViewDetail: (emp: EmployeeOvertimeSummary) => void;
 }
 
-type RankingCriteria = "approvedHours" | "totalHours" | "requestsCount";
+type RankingCriteria = "approvedHours" | "actualHours" | "filedHours" | "requestsCount";
 
 export function OvertimeRankingLeaderboard({
   employees,
@@ -45,10 +45,14 @@ export function OvertimeRankingLeaderboard({
   const [criteria, setCriteria] = useState<RankingCriteria>("approvedHours");
   const [topLimit, setTopLimit] = useState<number>(10);
 
-  // Filter only employees who have filed overtime
+  // Filter only employees who have filed overtime or rendered actual overtime
   const overtimeEmployees = useMemo(() => {
     return employees.filter(
-      (e) => e.totalOtHours > 0 || e.totalOtRequests > 0
+      (e) =>
+        e.totalOtHours > 0 ||
+        e.totalOtRequests > 0 ||
+        e.totalActualOtHours > 0 ||
+        e.totalApprovedOtHours > 0
     );
   }, [employees]);
 
@@ -57,22 +61,28 @@ export function OvertimeRankingLeaderboard({
     const list = [...overtimeEmployees];
     list.sort((a, b) => {
       if (criteria === "approvedHours") {
-        if (b.approvedOtHours !== a.approvedOtHours) {
-          return b.approvedOtHours - a.approvedOtHours;
+        if (b.totalApprovedOtHours !== a.totalApprovedOtHours) {
+          return b.totalApprovedOtHours - a.totalApprovedOtHours;
         }
-        return b.totalOtHours - a.totalOtHours;
+        return b.totalActualOtHours - a.totalActualOtHours;
       }
-      if (criteria === "totalHours") {
-        if (b.totalOtHours !== a.totalOtHours) {
-          return b.totalOtHours - a.totalOtHours;
+      if (criteria === "actualHours") {
+        if (b.totalActualOtHours !== a.totalActualOtHours) {
+          return b.totalActualOtHours - a.totalActualOtHours;
         }
-        return b.approvedOtHours - a.approvedOtHours;
+        return b.totalApprovedOtHours - a.totalApprovedOtHours;
+      }
+      if (criteria === "filedHours") {
+        if (b.totalFiledOtHours !== a.totalFiledOtHours) {
+          return b.totalFiledOtHours - a.totalFiledOtHours;
+        }
+        return b.totalApprovedOtHours - a.totalApprovedOtHours;
       }
       if (criteria === "requestsCount") {
         if (b.totalOtRequests !== a.totalOtRequests) {
           return b.totalOtRequests - a.totalOtRequests;
         }
-        return b.approvedOtHours - a.approvedOtHours;
+        return b.totalApprovedOtHours - a.totalApprovedOtHours;
       }
       return 0;
     });
@@ -82,8 +92,9 @@ export function OvertimeRankingLeaderboard({
   // Maximum value for proportional progress calculation
   const maxMetricValue = useMemo(() => {
     if (rankedEmployees.length === 0) return 1;
-    if (criteria === "approvedHours") return rankedEmployees[0].approvedOtHours || 1;
-    if (criteria === "totalHours") return rankedEmployees[0].totalOtHours || 1;
+    if (criteria === "approvedHours") return rankedEmployees[0].totalApprovedOtHours || 1;
+    if (criteria === "actualHours") return rankedEmployees[0].totalActualOtHours || 1;
+    if (criteria === "filedHours") return rankedEmployees[0].totalFiledOtHours || 1;
     return rankedEmployees[0].totalOtRequests || 1;
   }, [rankedEmployees, criteria]);
 
@@ -114,7 +125,7 @@ export function OvertimeRankingLeaderboard({
                 </Badge>
               </h3>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Official intercompany overtime honor roll sorted by rendering duration
+                Intercompany ranking: Actual Overtime vs Filed vs Actual Approved Overtime
               </p>
             </div>
           </div>
@@ -124,30 +135,41 @@ export function OvertimeRankingLeaderboard({
             <div className="flex items-center gap-1.5 p-1 rounded-xl bg-background border border-border/80 shadow-xs">
               <button
                 type="button"
-                onClick={() => setCriteria("approvedHours")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                  criteria === "approvedHours"
-                    ? "bg-amber-500 text-white shadow-xs"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                Approved Hours
-              </button>
-              <button
-                type="button"
-                onClick={() => setCriteria("totalHours")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                  criteria === "totalHours"
+                onClick={() => setCriteria("actualHours")}
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  criteria === "actualHours"
                     ? "bg-indigo-600 text-white shadow-xs"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                Total Requested
+                Actual OT
+              </button>
+              <button
+                type="button"
+                onClick={() => setCriteria("approvedHours")}
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  criteria === "approvedHours"
+                    ? "bg-emerald-600 text-white shadow-xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Actual Approved
+              </button>
+              <button
+                type="button"
+                onClick={() => setCriteria("filedHours")}
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  criteria === "filedHours"
+                    ? "bg-blue-600 text-white shadow-xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Filed OT
               </button>
               <button
                 type="button"
                 onClick={() => setCriteria("requestsCount")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                   criteria === "requestsCount"
                     ? "bg-purple-600 text-white shadow-xs"
                     : "text-muted-foreground hover:text-foreground"
@@ -203,18 +225,32 @@ export function OvertimeRankingLeaderboard({
                 </p>
               </div>
 
-              <div className="space-y-2 pt-3 border-t border-border/60">
-                <div className="flex items-center justify-between text-xs">
+              <div className="space-y-1.5 pt-3 border-t border-border/60 text-xs">
+                <div className="flex items-center justify-between">
                   <span className="text-muted-foreground flex items-center gap-1">
-                    <Clock className="h-3 w-3 text-slate-400" /> Approved OT:
+                    <Clock className="h-3 w-3 text-indigo-400" /> Actual OT:
                   </span>
-                  <span className="font-mono font-bold text-foreground text-sm">
-                    {top3[1].approvedOtHours.toFixed(1)} hrs
+                  <span className="font-mono font-bold text-foreground">
+                    {top3[1].totalActualOtHours.toFixed(1)} hrs
                   </span>
                 </div>
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground">Requests / Approval:</span>
-                  <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Filed OT:</span>
+                  <span className="font-mono font-medium text-foreground">
+                    {top3[1].totalFiledOtHours.toFixed(1)} hrs
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground font-medium text-emerald-600 dark:text-emerald-400">
+                    Actual Approved:
+                  </span>
+                  <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                    {top3[1].totalApprovedOtHours.toFixed(1)} hrs
+                  </span>
+                </div>
+                <div className="flex items-center justify-between pt-1 border-t border-border/40 text-[11px]">
+                  <span className="text-muted-foreground">Reqs / Approval:</span>
+                  <span className="font-semibold text-foreground">
                     {top3[1].approvedOtRequests}/{top3[1].totalOtRequests} ({top3[1].approvalRate}%)
                   </span>
                 </div>
@@ -261,18 +297,32 @@ export function OvertimeRankingLeaderboard({
                 </p>
               </div>
 
-              <div className="space-y-2.5 pt-3 border-t border-amber-500/30">
-                <div className="flex items-center justify-between text-xs">
+              <div className="space-y-1.5 pt-3 border-t border-amber-500/30 text-xs">
+                <div className="flex items-center justify-between">
                   <span className="text-muted-foreground flex items-center gap-1 font-medium">
-                    <Clock className="h-3.5 w-3.5 text-amber-500" /> Approved Overtime:
+                    <Clock className="h-3.5 w-3.5 text-amber-500" /> Actual OT:
                   </span>
-                  <span className="font-mono font-black text-amber-600 dark:text-amber-400 text-base">
-                    {top3[0].approvedOtHours.toFixed(1)} hrs
+                  <span className="font-mono font-bold text-foreground text-sm">
+                    {top3[0].totalActualOtHours.toFixed(1)} hrs
                   </span>
                 </div>
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground">Total Filed / Approval:</span>
-                  <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Filed OT:</span>
+                  <span className="font-mono font-medium text-foreground">
+                    {top3[0].totalFiledOtHours.toFixed(1)} hrs
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="font-medium text-emerald-600 dark:text-emerald-400">
+                    Actual Approved OT:
+                  </span>
+                  <span className="font-mono font-black text-emerald-600 dark:text-emerald-400 text-sm">
+                    {top3[0].totalApprovedOtHours.toFixed(1)} hrs
+                  </span>
+                </div>
+                <div className="flex items-center justify-between pt-1 border-t border-amber-500/20 text-[11px]">
+                  <span className="text-muted-foreground">Reqs / Approval:</span>
+                  <span className="font-semibold text-foreground">
                     {top3[0].approvedOtRequests}/{top3[0].totalOtRequests} ({top3[0].approvalRate}%)
                   </span>
                 </div>
@@ -313,18 +363,32 @@ export function OvertimeRankingLeaderboard({
                 </p>
               </div>
 
-              <div className="space-y-2 pt-3 border-t border-border/60">
-                <div className="flex items-center justify-between text-xs">
+              <div className="space-y-1.5 pt-3 border-t border-border/60 text-xs">
+                <div className="flex items-center justify-between">
                   <span className="text-muted-foreground flex items-center gap-1">
-                    <Clock className="h-3 w-3 text-amber-700" /> Approved OT:
+                    <Clock className="h-3 w-3 text-amber-700" /> Actual OT:
                   </span>
-                  <span className="font-mono font-bold text-foreground text-sm">
-                    {top3[2].approvedOtHours.toFixed(1)} hrs
+                  <span className="font-mono font-bold text-foreground">
+                    {top3[2].totalActualOtHours.toFixed(1)} hrs
                   </span>
                 </div>
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground">Requests / Approval:</span>
-                  <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Filed OT:</span>
+                  <span className="font-mono font-medium text-foreground">
+                    {top3[2].totalFiledOtHours.toFixed(1)} hrs
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground font-medium text-emerald-600 dark:text-emerald-400">
+                    Actual Approved:
+                  </span>
+                  <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                    {top3[2].totalApprovedOtHours.toFixed(1)} hrs
+                  </span>
+                </div>
+                <div className="flex items-center justify-between pt-1 border-t border-border/40 text-[11px]">
+                  <span className="text-muted-foreground">Reqs / Approval:</span>
+                  <span className="font-semibold text-foreground">
                     {top3[2].approvedOtRequests}/{top3[2].totalOtRequests} ({top3[2].approvalRate}%)
                   </span>
                 </div>
@@ -359,10 +423,12 @@ export function OvertimeRankingLeaderboard({
           <div className="text-xs text-muted-foreground">
             Ranked by{" "}
             <span className="font-semibold text-foreground">
-              {criteria === "approvedHours"
-                ? "Approved Overtime Hours"
-                : criteria === "totalHours"
-                ? "Total Requested Hours"
+              {criteria === "actualHours"
+                ? "Actual Overtime Hours"
+                : criteria === "approvedHours"
+                ? "Actual Approved OT Hours"
+                : criteria === "filedHours"
+                ? "Filed Overtime Hours"
                 : "Total Requests Filed"}
             </span>
           </div>
@@ -375,7 +441,7 @@ export function OvertimeRankingLeaderboard({
                 <TableHead className="w-16 text-center text-xs font-semibold">
                   Rank
                 </TableHead>
-                <TableHead className="min-w-[180px] text-xs font-semibold">
+                <TableHead className="min-w-[170px] text-xs font-semibold">
                   Employee
                 </TableHead>
                 <TableHead className="text-xs font-semibold">
@@ -384,18 +450,23 @@ export function OvertimeRankingLeaderboard({
                 <TableHead className="text-xs font-semibold">
                   Department
                 </TableHead>
-                <TableHead className="min-w-[200px] text-xs font-semibold">
-                  {criteria === "approvedHours"
-                    ? "Approved Overtime (Hours)"
-                    : criteria === "totalHours"
-                    ? "Total Requested (Hours)"
-                    : "Overtime Requests Filed"}
+                <TableHead className="min-w-[150px] text-xs font-semibold">
+                  Rank Progress
                 </TableHead>
                 <TableHead className="text-right text-xs font-semibold">
-                  Total Reqs
+                  Actual OT
                 </TableHead>
                 <TableHead className="text-right text-xs font-semibold">
-                  Approval Rate
+                  Filed OT
+                </TableHead>
+                <TableHead className="text-right text-xs font-semibold">
+                  Actual Approved
+                </TableHead>
+                <TableHead className="text-right text-xs font-semibold">
+                  Requests
+                </TableHead>
+                <TableHead className="text-right text-xs font-semibold">
+                  Approval %
                 </TableHead>
                 <TableHead className="w-20 text-right text-xs font-semibold">
                   Action
@@ -406,7 +477,7 @@ export function OvertimeRankingLeaderboard({
               {displayedList.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={8}
+                    colSpan={11}
                     className="h-32 text-center text-xs text-muted-foreground"
                   >
                     No overtime activity found for the selected period.
@@ -426,10 +497,12 @@ export function OvertimeRankingLeaderboard({
                       : "bg-muted text-muted-foreground font-semibold border";
 
                   const metricVal =
-                    criteria === "approvedHours"
-                      ? emp.approvedOtHours
-                      : criteria === "totalHours"
-                      ? emp.totalOtHours
+                    criteria === "actualHours"
+                      ? emp.totalActualOtHours
+                      : criteria === "approvedHours"
+                      ? emp.totalApprovedOtHours
+                      : criteria === "filedHours"
+                      ? emp.totalFiledOtHours
                       : emp.totalOtRequests;
 
                   const sharePct = Math.round((metricVal / maxMetricValue) * 100);
@@ -481,17 +554,17 @@ export function OvertimeRankingLeaderboard({
                         </div>
                       </TableCell>
 
-                      {/* Visual Progress & Metric */}
+                      {/* Visual Progress */}
                       <TableCell>
                         <div className="space-y-1">
                           <div className="flex items-center justify-between text-xs">
                             <span className="font-mono font-bold text-foreground">
                               {criteria === "requestsCount"
-                                ? `${metricVal} requests`
+                                ? `${metricVal} reqs`
                                 : `${metricVal.toFixed(1)} hrs`}
                             </span>
                             <span className="text-[10px] text-muted-foreground">
-                              {sharePct}% of #1
+                              {sharePct}%
                             </span>
                           </div>
                           <Progress
@@ -501,6 +574,33 @@ export function OvertimeRankingLeaderboard({
                             }`}
                           />
                         </div>
+                      </TableCell>
+
+                      {/* 1. Actual Overtime */}
+                      <TableCell className="text-right tabular-nums">
+                        <span className="font-semibold text-foreground">
+                          {emp.totalActualOtHours.toFixed(1)} hrs
+                        </span>
+                      </TableCell>
+
+                      {/* 2. Filed Overtime */}
+                      <TableCell className="text-right tabular-nums">
+                        <span className="text-muted-foreground">
+                          {emp.totalFiledOtHours.toFixed(1)} hrs
+                        </span>
+                      </TableCell>
+
+                      {/* 3. Actual Approved Overtime */}
+                      <TableCell className="text-right tabular-nums">
+                        <span
+                          className={`font-bold ${
+                            emp.totalApprovedOtHours > 0
+                              ? "text-emerald-600 dark:text-emerald-400"
+                              : "text-muted-foreground"
+                          }`}
+                        >
+                          {emp.totalApprovedOtHours.toFixed(1)} hrs
+                        </span>
                       </TableCell>
 
                       {/* Total Reqs */}

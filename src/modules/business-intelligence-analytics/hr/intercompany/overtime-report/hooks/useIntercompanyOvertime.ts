@@ -185,15 +185,17 @@ export function useIntercompanyOvertime() {
     let appOtReqs = 0;
     let pendOtReqs = 0;
     let rejOtReqs = 0;
-    let otMins = 0;
+    let actualOtMins = 0;
+    let filedOtMins = 0;
     let appOtMins = 0;
 
     filteredOtRecords.forEach((ot) => {
       otReqs++;
-      otMins += ot.durationMinutes;
+      actualOtMins += ot.actualOtMinutes;
+      filedOtMins += ot.filedOtMinutes;
       if (ot.status === "approved") {
         appOtReqs++;
-        appOtMins += ot.durationMinutes;
+        appOtMins += ot.actualApprovedOtMinutes;
       } else if (ot.status === "pending") {
         pendOtReqs++;
       } else {
@@ -210,12 +212,16 @@ export function useIntercompanyOvertime() {
 
     return {
       totalEmployees: filteredEmployeeSummaries.length,
-      totalOtMinutes: otMins,
-      totalOtHours: Math.round((otMins / 60) * 10) / 10,
-      totalOtRequests: otReqs,
-      totalApprovedOtRequests: appOtReqs,
+      totalActualOtMinutes: actualOtMins,
+      totalActualOtHours: Math.round((actualOtMins / 60) * 10) / 10,
+      totalFiledOtMinutes: filedOtMins,
+      totalFiledOtHours: Math.round((filedOtMins / 60) * 10) / 10,
       totalApprovedOtMinutes: appOtMins,
       totalApprovedOtHours: Math.round((appOtMins / 60) * 10) / 10,
+      totalOtMinutes: filedOtMins,
+      totalOtHours: Math.round((filedOtMins / 60) * 10) / 10,
+      totalOtRequests: otReqs,
+      totalApprovedOtRequests: appOtReqs,
       totalPendingOtRequests: pendOtReqs,
       totalRejectedOtRequests: rejOtReqs,
       otApprovalRate,
@@ -292,19 +298,30 @@ export function useIntercompanyOvertime() {
       return data.dailyTrends;
     }
 
-    const tMap = new Map<string, { totalOtMinutes: number; approvedOtMinutes: number; otCount: number; approvedCount: number }>();
+    const tMap = new Map<
+      string,
+      {
+        actualOtMinutes: number;
+        filedOtMinutes: number;
+        approvedOtMinutes: number;
+        otCount: number;
+        approvedCount: number;
+      }
+    >();
 
     filteredOtRecords.forEach((ot) => {
       const cur = tMap.get(ot.requestDate) || {
-        totalOtMinutes: 0,
+        actualOtMinutes: 0,
+        filedOtMinutes: 0,
         approvedOtMinutes: 0,
         otCount: 0,
         approvedCount: 0,
       };
-      cur.totalOtMinutes += ot.durationMinutes;
+      cur.actualOtMinutes += ot.actualOtMinutes;
+      cur.filedOtMinutes += ot.filedOtMinutes;
       cur.otCount++;
       if (ot.status === "approved") {
-        cur.approvedOtMinutes += ot.durationMinutes;
+        cur.approvedOtMinutes += ot.actualApprovedOtMinutes;
         cur.approvedCount++;
       }
       tMap.set(ot.requestDate, cur);
@@ -315,10 +332,14 @@ export function useIntercompanyOvertime() {
       result.push({
         date: d,
         displayDate: d.slice(5),
-        totalOtMinutes: v.totalOtMinutes,
-        totalOtHours: Math.round((v.totalOtMinutes / 60) * 10) / 10,
+        actualOtMinutes: v.actualOtMinutes,
+        actualOtHours: Math.round((v.actualOtMinutes / 60) * 10) / 10,
+        filedOtMinutes: v.filedOtMinutes,
+        filedOtHours: Math.round((v.filedOtMinutes / 60) * 10) / 10,
         approvedOtMinutes: v.approvedOtMinutes,
         approvedOtHours: Math.round((v.approvedOtMinutes / 60) * 10) / 10,
+        totalOtMinutes: v.filedOtMinutes,
+        totalOtHours: Math.round((v.filedOtMinutes / 60) * 10) / 10,
         otRequestsCount: v.otCount,
         approvedRequestsCount: v.approvedCount,
       });
@@ -354,11 +375,17 @@ export function useIntercompanyOvertime() {
         case "department":
           comparison = a.department.localeCompare(b.department);
           break;
+        case "actualOtHours":
+          comparison = a.totalActualOtHours - b.totalActualOtHours;
+          break;
+        case "filedOtHours":
+          comparison = a.totalFiledOtHours - b.totalFiledOtHours;
+          break;
         case "totalOtHours":
-          comparison = a.totalOtHours - b.totalOtHours;
+          comparison = a.totalFiledOtHours - b.totalFiledOtHours;
           break;
         case "approvedOtHours":
-          comparison = a.approvedOtHours - b.approvedOtHours;
+          comparison = a.totalApprovedOtHours - b.totalApprovedOtHours;
           break;
         case "totalOtRequests":
           comparison = a.totalOtRequests - b.totalOtRequests;

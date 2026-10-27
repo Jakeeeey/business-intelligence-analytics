@@ -124,10 +124,10 @@ export function DetailedOvertimeRequestsTable({
         <Table>
           <TableHeader>
             <TableRow className="border-b border-border/60 hover:bg-transparent">
-              <TableHead className="text-xs font-semibold select-none w-28">
+              <TableHead className="text-xs font-semibold select-none w-24">
                 Request Date
               </TableHead>
-              <TableHead className="text-xs font-semibold select-none min-w-[170px]">
+              <TableHead className="text-xs font-semibold select-none min-w-[160px]">
                 Employee Name
               </TableHead>
               <TableHead className="text-xs font-semibold select-none">
@@ -136,20 +136,26 @@ export function DetailedOvertimeRequestsTable({
               <TableHead className="text-xs font-semibold select-none">
                 Department
               </TableHead>
-              <TableHead className="text-xs font-semibold select-none">
-                OT Window
+              <TableHead className="text-xs font-semibold select-none text-center">
+                Sched Timeout
+              </TableHead>
+              <TableHead className="text-xs font-semibold select-none text-center">
+                Actual Punch Out
               </TableHead>
               <TableHead className="text-xs font-semibold select-none text-right">
-                Duration
+                Actual Overtime
               </TableHead>
-              <TableHead className="text-xs font-semibold select-none min-w-[200px]">
-                Purpose / Reason
+              <TableHead className="text-xs font-semibold select-none text-right">
+                Filed Overtime
+              </TableHead>
+              <TableHead className="text-xs font-semibold select-none text-right">
+                Actual Approved OT
               </TableHead>
               <TableHead className="text-xs font-semibold select-none text-center">
                 Status
               </TableHead>
-              <TableHead className="text-xs font-semibold select-none text-right w-28">
-                Filed Date
+              <TableHead className="text-xs font-semibold select-none min-w-[160px]">
+                Purpose / Reason
               </TableHead>
             </TableRow>
           </TableHeader>
@@ -157,14 +163,14 @@ export function DetailedOvertimeRequestsTable({
             {loading ? (
               Array.from({ length: 6 }).map((_, idx) => (
                 <TableRow key={idx}>
-                  <TableCell colSpan={9} className="py-3">
+                  <TableCell colSpan={11} className="py-3">
                     <div className="h-6 w-full rounded bg-muted/40 animate-pulse" />
                   </TableCell>
                 </TableRow>
               ))
             ) : paginatedRecords.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="h-40 text-center text-xs text-muted-foreground">
+                <TableCell colSpan={11} className="h-40 text-center text-xs text-muted-foreground">
                   No overtime request filings found for the selected criteria.
                 </TableCell>
               </TableRow>
@@ -204,37 +210,64 @@ export function DetailedOvertimeRequestsTable({
                     <span className="text-muted-foreground">{ot.department}</span>
                   </TableCell>
 
-                  <TableCell>
-                    {ot.otFrom && ot.otTo ? (
-                      <span className="font-mono text-xs text-foreground">
-                        {ot.otFrom} → {ot.otTo}
+                  <TableCell className="text-center font-mono text-muted-foreground">
+                    {ot.schedTimeout ? ot.schedTimeout.substring(0, 5) : (ot.otFrom ? ot.otFrom.substring(0, 5) : "—")}
+                  </TableCell>
+
+                  <TableCell className="text-center font-mono">
+                    {ot.actualTimeOut ? (
+                      <span className="font-semibold text-indigo-600 dark:text-indigo-400">
+                        {ot.actualTimeOut.substring(0, 5)}
                       </span>
                     ) : (
                       <span className="text-muted-foreground">—</span>
                     )}
                   </TableCell>
 
+                  {/* 1. Actual Overtime */}
                   <TableCell className="text-right tabular-nums">
-                    <span className="font-bold text-foreground">
-                      {ot.durationHours.toFixed(1)} hrs
+                    <span className="font-semibold text-foreground">
+                      {ot.actualOtHours.toFixed(1)} hrs
                     </span>
                     <span className="text-[10px] text-muted-foreground block">
-                      ({ot.durationMinutes}m)
+                      ({ot.actualOtMinutes}m)
                     </span>
                   </TableCell>
 
-                  <TableCell>
-                    <p className="text-xs text-foreground/90 line-clamp-2 max-w-xs">
-                      {ot.purpose || "Overtime Work"}
-                    </p>
+                  {/* 2. Filed Overtime */}
+                  <TableCell className="text-right tabular-nums">
+                    <span className="font-medium text-foreground">
+                      {ot.filedOtHours.toFixed(1)} hrs
+                    </span>
+                    <span className="text-[10px] text-muted-foreground block">
+                      ({ot.filedOtMinutes}m)
+                    </span>
+                  </TableCell>
+
+                  {/* 3. Actual Approved Overtime */}
+                  <TableCell className="text-right tabular-nums">
+                    <span
+                      className={`font-bold ${
+                        ot.status === "approved"
+                          ? "text-emerald-600 dark:text-emerald-400"
+                          : "text-muted-foreground"
+                      }`}
+                    >
+                      {ot.actualApprovedOtHours.toFixed(1)} hrs
+                    </span>
+                    <span className="text-[10px] text-muted-foreground block">
+                      ({ot.actualApprovedOtMinutes}m)
+                    </span>
                   </TableCell>
 
                   <TableCell className="text-center">
                     {renderStatusBadge(ot.status)}
                   </TableCell>
 
-                  <TableCell className="text-right text-muted-foreground tabular-nums">
-                    {ot.filedAt ? new Date(ot.filedAt).toLocaleDateString() : "—"}
+                  <TableCell>
+                    <p className="text-xs text-foreground/90 line-clamp-2 max-w-xs">
+                      {ot.purpose || "Overtime Work"}
+                    </p>
                   </TableCell>
                 </TableRow>
               ))

@@ -18,8 +18,17 @@ export interface IntercompanyOvertimeRecord {
   avatar: string | null;
   requestDate: string;
   schedTimeout: string | null;
+  actualTimeOut: string | null; // e.g. "19:15" from biometric/attendance log
   otFrom: string | null;
   otTo: string | null;
+  // Core 3-way overtime metrics requested by user
+  actualOtMinutes: number; // time rendered after scheduled time out
+  actualOtHours: number;
+  filedOtMinutes: number; // requested duration
+  filedOtHours: number;
+  actualApprovedOtMinutes: number; // approved time actually rendered
+  actualApprovedOtHours: number;
+  // Legacy alias fields
   durationMinutes: number;
   durationHours: number;
   purpose: string;
@@ -45,6 +54,14 @@ export interface EmployeeOvertimeSummary {
   approvedOtRequests: number;
   pendingOtRequests: number;
   rejectedOtRequests: number;
+  // Core 3-way overtime metrics
+  totalActualOtMinutes: number;
+  totalActualOtHours: number;
+  totalFiledOtMinutes: number;
+  totalFiledOtHours: number;
+  totalApprovedOtMinutes: number;
+  totalApprovedOtHours: number;
+  // Aliases for compatibility
   totalOtMinutes: number;
   totalOtHours: number;
   approvedOtMinutes: number;
@@ -62,6 +79,11 @@ export interface CompanyOvertimeSummary {
   approvedOtRequests: number;
   pendingOtRequests: number;
   rejectedOtRequests: number;
+  // Core 3-way overtime metrics
+  totalActualOtHours: number;
+  totalFiledOtHours: number;
+  totalApprovedOtHours: number;
+  // Legacy aliases
   totalOtMinutes: number;
   totalOtHours: number;
   approvedOtMinutes: number;
@@ -71,12 +93,18 @@ export interface CompanyOvertimeSummary {
 
 export interface IntercompanyOvertimeKpis {
   totalEmployees: number;
-  totalOtMinutes: number;
-  totalOtHours: number;
-  totalOtRequests: number;
-  totalApprovedOtRequests: number;
+  // Core 3-way overtime metrics
+  totalActualOtMinutes: number;
+  totalActualOtHours: number;
+  totalFiledOtMinutes: number;
+  totalFiledOtHours: number;
   totalApprovedOtMinutes: number;
   totalApprovedOtHours: number;
+  // Legacy aliases
+  totalOtMinutes: number;
+  totalOtHours: number;
+  totalApprovedOtRequests: number;
+  totalOtRequests: number;
   totalPendingOtRequests: number;
   totalRejectedOtRequests: number;
   otApprovalRate: number; // percentage
@@ -95,10 +123,15 @@ export interface CompanyFilterOption {
 export interface DailyOtTrendPoint {
   date: string;
   displayDate: string;
-  totalOtMinutes: number;
-  totalOtHours: number;
+  actualOtMinutes: number;
+  actualOtHours: number;
+  filedOtMinutes: number;
+  filedOtHours: number;
   approvedOtMinutes: number;
   approvedOtHours: number;
+  // Legacy aliases
+  totalOtMinutes: number;
+  totalOtHours: number;
   otRequestsCount: number;
   approvedRequestsCount: number;
 }
@@ -140,8 +173,10 @@ export type OvertimeSortField =
   | "employeeId"
   | "company"
   | "department"
-  | "totalOtHours"
+  | "actualOtHours"
+  | "filedOtHours"
   | "approvedOtHours"
+  | "totalOtHours"
   | "totalOtRequests"
   | "approvedOtRequests"
   | "approvalRate";

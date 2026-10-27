@@ -137,28 +137,28 @@ export function EmployeeOvertimeTable({
                 Department / Role {renderSortIndicator("department")}
               </TableHead>
               <TableHead
-                onClick={() => onSort("totalOtRequests")}
+                onClick={() => onSort("actualOtHours")}
                 className="cursor-pointer text-xs font-semibold select-none text-right"
               >
-                Total OT Reqs {renderSortIndicator("totalOtRequests")}
+                Actual OT (Hours) {renderSortIndicator("actualOtHours")}
               </TableHead>
               <TableHead
-                onClick={() => onSort("approvedOtRequests")}
+                onClick={() => onSort("filedOtHours")}
                 className="cursor-pointer text-xs font-semibold select-none text-right"
               >
-                Approved Reqs {renderSortIndicator("approvedOtRequests")}
-              </TableHead>
-              <TableHead
-                onClick={() => onSort("totalOtHours")}
-                className="cursor-pointer text-xs font-semibold select-none text-right"
-              >
-                Total OT (Hours) {renderSortIndicator("totalOtHours")}
+                Filed OT (Hours) {renderSortIndicator("filedOtHours")}
               </TableHead>
               <TableHead
                 onClick={() => onSort("approvedOtHours")}
                 className="cursor-pointer text-xs font-semibold select-none text-right"
               >
-                Approved OT (Hours) {renderSortIndicator("approvedOtHours")}
+                Actual Approved OT {renderSortIndicator("approvedOtHours")}
+              </TableHead>
+              <TableHead
+                onClick={() => onSort("totalOtRequests")}
+                className="cursor-pointer text-xs font-semibold select-none text-right"
+              >
+                Requests (Appr/Total) {renderSortIndicator("totalOtRequests")}
               </TableHead>
               <TableHead
                 onClick={() => onSort("approvalRate")}
@@ -188,7 +188,7 @@ export function EmployeeOvertimeTable({
               </TableRow>
             ) : (
               records.map((emp) => {
-                const hasOt = emp.totalOtHours > 0;
+                const hasOt = emp.totalOtHours > 0 || emp.totalActualOtHours > 0;
 
                 return (
                   <TableRow
@@ -223,12 +223,44 @@ export function EmployeeOvertimeTable({
                       </div>
                     </TableCell>
 
+                    {/* 1. Actual Overtime */}
                     <TableCell className="text-right tabular-nums">
-                      <span className="font-medium text-foreground">
-                        {emp.totalOtRequests}
+                      <span className="font-semibold text-foreground">
+                        {emp.totalActualOtHours.toFixed(1)} hrs
+                      </span>
+                      <span className="text-[10px] text-muted-foreground block">
+                        ({emp.totalActualOtMinutes}m)
                       </span>
                     </TableCell>
 
+                    {/* 2. Filed Overtime */}
+                    <TableCell className="text-right tabular-nums">
+                      <span className="font-medium text-foreground">
+                        {emp.totalFiledOtHours.toFixed(1)} hrs
+                      </span>
+                      <span className="text-[10px] text-muted-foreground block">
+                        ({emp.totalFiledOtMinutes}m)
+                      </span>
+                    </TableCell>
+
+                    {/* 3. Actual Approved Overtime */}
+                    <TableCell className="text-right tabular-nums">
+                      <span
+                        className={`font-bold inline-flex items-center gap-1 ${
+                          emp.totalApprovedOtHours > 0
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : "text-muted-foreground"
+                        }`}
+                      >
+                        <Clock className="h-3 w-3 text-emerald-500 shrink-0" />
+                        {emp.totalApprovedOtHours.toFixed(1)} hrs
+                      </span>
+                      <span className="text-[10px] text-muted-foreground block">
+                        ({emp.totalApprovedOtMinutes}m)
+                      </span>
+                    </TableCell>
+
+                    {/* Requests (Approved / Total) */}
                     <TableCell className="text-right tabular-nums">
                       <span
                         className={`font-semibold ${
@@ -239,6 +271,9 @@ export function EmployeeOvertimeTable({
                       >
                         {emp.approvedOtRequests}
                       </span>
+                      <span className="text-muted-foreground text-[11px]">
+                        {" "}/ {emp.totalOtRequests}
+                      </span>
                       {emp.pendingOtRequests > 0 && (
                         <span className="text-[10px] text-amber-600 dark:text-amber-400 block">
                           ({emp.pendingOtRequests} pending)
@@ -246,25 +281,7 @@ export function EmployeeOvertimeTable({
                       )}
                     </TableCell>
 
-                    <TableCell className="text-right tabular-nums">
-                      <span className="text-muted-foreground">
-                        {emp.totalOtHours.toFixed(1)} hrs
-                      </span>
-                    </TableCell>
-
-                    <TableCell className="text-right tabular-nums">
-                      <span
-                        className={`font-bold inline-flex items-center gap-1 ${
-                          emp.approvedOtHours > 0
-                            ? "text-emerald-600 dark:text-emerald-400"
-                            : "text-muted-foreground"
-                        }`}
-                      >
-                        <Clock className="h-3 w-3 text-emerald-500 shrink-0" />
-                        {emp.approvedOtHours.toFixed(1)} hrs
-                      </span>
-                    </TableCell>
-
+                    {/* Approval Rate */}
                     <TableCell className="text-right tabular-nums">
                       {hasOt ? (
                         <span

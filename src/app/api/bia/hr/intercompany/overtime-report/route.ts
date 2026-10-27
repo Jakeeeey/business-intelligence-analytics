@@ -135,7 +135,7 @@ export async function GET(request: NextRequest) {
     const startDate = targetDates[0];
     const endDate = targetDates[targetDates.length - 1];
 
-    const cacheKey = `ot_${startDate}_${endDate}_${targetDates.join(",")}`;
+    const cacheKey = `ot_v2_${startDate}_${endDate}_${targetDates.join(",")}`;
     if (!force && memoryCache.has(cacheKey)) {
       const cached = memoryCache.get(cacheKey)!;
       if (Date.now() - cached.timestamp < CACHE_TTL_MS) {
@@ -173,7 +173,7 @@ export async function GET(request: NextRequest) {
     const userFields =
       "user_id,user_fname,user_lname,user_mname,suffix_name,user_department,user_position,gender,user_image,is_employee,is_deleted,isDeleted";
 
-    // 2. Concurrently query each company's active employees, departments, and overtime requests
+    // 2. Concurrently query each company's employees, departments, overtime requests, and attendance logs
     const companyFetchResults = await Promise.allSettled(
       validCompanies.map(async (company) => {
         const companyId = Number(company.company_id);
@@ -189,7 +189,7 @@ export async function GET(request: NextRequest) {
           compHeaders["Authorization"] = `Bearer ${companyToken}`;
         }
 
-        const [usersRaw, departmentsRaw, otRaw] = await Promise.all([
+        const [usersRaw, departmentsRaw, otRaw, logsRaw] = await Promise.all([
           fetchDirectusWithTimeout<AnyRec>(
             `${companyUrl}/items/user?limit=-1&fields=${userFields}`,
             compHeaders,
@@ -205,6 +205,11 @@ export async function GET(request: NextRequest) {
             compHeaders,
             6000
           ),
+          fetchDirectusWithTimeout<AnyRec>(
+            `${companyUrl}/items/attendance_log?limit=-1&fields=log_id,user_id,log_date,time_in,time_out&filter[log_date][_gte]=${startDate}&filter[log_date][_lte]=${endDate}`,
+            compHeaders,
+            6000
+          ),
         ]);
 
         return {
@@ -215,6 +220,7 @@ export async function GET(request: NextRequest) {
           usersRaw,
           departmentsRaw,
           otRaw,
+          logsRaw,
         };
       })
     );
@@ -234,6 +240,7 @@ export async function GET(request: NextRequest) {
         usersRaw,
         departmentsRaw,
         otRaw,
+        logsRaw,
       } = result.value;
 
       // Map departments
@@ -246,6 +253,16 @@ export async function GET(request: NextRequest) {
         }
       }
 
+      // Map attendance logs by `${userId}_${logDate}`
+      const logMap = new Map<string, AnyRec>();
+      for (const l of logsRaw) {
+        if (l.user_id && l.log_date) {
+          const uId = Number(l.user_id);
+          const lDate = String(l.log_date).slice(0, 10);
+          logMap.set(`${uId}_${lDate}`, l);
+        }
+      }
+
       // Filter active employees (exclude deleted / non-employees)
       const activeUsers = usersRaw.filter((u) => {
         if (parseBit(u.is_deleted) || parseBit(u.isDeleted)) return false;
@@ -253,14 +270,14 @@ export async function GET(request: NextRequest) {
         return true;
       });
 
-      // Map active employees
+      // Seed active employees
       const userLookup = new Map<number, AnyRec>();
       for (const u of activeUsers) {
         const uId = Number(u.user_id);
         userLookup.set(uId, u);
 
         const deptIdNum = Number(u.user_department);
-        const deptName: string = (!isNaN(deptIdNum) && deptMap.get(deptIdNum)) ? deptMap.get(deptIdNum)! : "General";
+        const deptName: string = (!isNaN(deptIdNum) && deptMap.has(deptIdNum)) ? deptMap.get(deptIdNum)! : "General";
         const fullName = [u.user_fname, u.user_mname, u.user_lname, u.suffix_name]
           .filter(Boolean)
           .join(" ")
@@ -281,6 +298,14 @@ export async function GET(request: NextRequest) {
           approvedOtRequests: 0,
           pendingOtRequests: 0,
           rejectedOtRequests: 0,
+          // 3-way metrics
+          totalActualOtMinutes: 0,
+          totalActualOtHours: 0,
+          totalFiledOtMinutes: 0,
+          totalFiledOtHours: 0,
+          totalApprovedOtMinutes: 0,
+          totalApprovedOtHours: 0,
+          // Aliases
           totalOtMinutes: 0,
           totalOtHours: 0,
           approvedOtMinutes: 0,
@@ -289,14 +314,15 @@ export async function GET(request: NextRequest) {
         });
       }
 
-      // Filter OT records for the selected target dates
+      // Process OT records for the selected target dates
       const dateSet = new Set(targetDates);
       let compTotalOtReqs = 0;
       let compApprovedOtReqs = 0;
       let compPendingOtReqs = 0;
       let compRejectedOtReqs = 0;
-      let compTotalOtMins = 0;
-      let compApprovedOtMins = 0;
+      let compTotalActualMins = 0;
+      let compTotalFiledMins = 0;
+      let compTotalApprovedMins = 0;
 
       for (const row of otRaw) {
         const rDate = row.request_date ? String(row.request_date).slice(0, 10) : "";
@@ -320,13 +346,63 @@ export async function GET(request: NextRequest) {
               .trim()
           : `Employee #${uId}`;
 
-        const durationMinutes = Number(row.duration_minutes) || 0;
-        const durationHours = Math.round((durationMinutes / 60) * 10) / 10;
+        // 1. Scheduled Time Out
+        const rawSched = row.sched_timeout ? String(row.sched_timeout) : null;
+        const schedTime = (rawSched && rawSched !== "00:00:00") ? rawSched : (row.ot_from ? String(row.ot_from) : "17:00:00");
 
+        // 2. Attendance punch out matching on user and date
+        const matchLog = logMap.get(`${uId}_${rDate}`);
+        const logTimeOut = matchLog?.time_out ? String(matchLog.time_out) : null;
+        let actualTimeOutFormatted: string | null = null;
+        let actualOtMinutes = 0;
+
+        if (logTimeOut) {
+          actualTimeOutFormatted = logTimeOut.includes("T")
+            ? logTimeOut.split("T")[1].slice(0, 5)
+            : logTimeOut.slice(0, 5);
+
+          // Calculate actual overtime after scheduled time out
+          try {
+            const parts = schedTime.split(":");
+            const sh = parseInt(parts[0], 10) || 17;
+            const sm = parseInt(parts[1], 10) || 0;
+            const schedDateObj = new Date(`${rDate}T${String(sh).padStart(2, "0")}:${String(sm).padStart(2, "0")}:00`);
+
+            const outDateObj = logTimeOut.includes("T")
+              ? new Date(logTimeOut)
+              : new Date(`${rDate}T${logTimeOut}`);
+
+            if (outDateObj > schedDateObj) {
+              actualOtMinutes = Math.floor((outDateObj.getTime() - schedDateObj.getTime()) / (1000 * 60));
+            }
+          } catch {
+            actualOtMinutes = 0;
+          }
+        }
+
+        // 3. Filed Overtime (requested duration)
+        const filedOtMinutes = Number(row.duration_minutes) || 0;
+
+        // 4. Normalized approval status
         let normalizedStatus: RequestStatus = "pending";
         const s = String(row.status || "").toLowerCase();
         if (s === "approved") normalizedStatus = "approved";
         else if (s === "rejected" || s === "declined") normalizedStatus = "rejected";
+
+        // 5. Actual Approved Overtime
+        // If approved: approved time actually rendered (capped by filed amount if clocked out, or filed amount if approved)
+        let actualApprovedOtMinutes = 0;
+        if (normalizedStatus === "approved") {
+          if (actualOtMinutes > 0) {
+            actualApprovedOtMinutes = Math.min(actualOtMinutes, filedOtMinutes);
+          } else {
+            actualApprovedOtMinutes = filedOtMinutes;
+          }
+        }
+
+        const actualOtHours = Math.round((actualOtMinutes / 60) * 10) / 10;
+        const filedOtHours = Math.round((filedOtMinutes / 60) * 10) / 10;
+        const actualApprovedOtHours = Math.round((actualApprovedOtMinutes / 60) * 10) / 10;
 
         allOvertimeRecords.push({
           id: `${companyId}-ot-${row.overtime_id}`,
@@ -345,11 +421,20 @@ export async function GET(request: NextRequest) {
           gender: String(emp?.gender || "N/A"),
           avatar: emp?.user_image ? String(emp.user_image) : null,
           requestDate: rDate,
-          schedTimeout: row.sched_timeout ? String(row.sched_timeout).slice(0, 5) : null,
+          schedTimeout: schedTime.slice(0, 5),
+          actualTimeOut: actualTimeOutFormatted,
           otFrom: row.ot_from ? String(row.ot_from).slice(0, 5) : null,
           otTo: row.ot_to ? String(row.ot_to).slice(0, 5) : null,
-          durationMinutes,
-          durationHours,
+          // 3-way metrics
+          actualOtMinutes,
+          actualOtHours,
+          filedOtMinutes,
+          filedOtHours,
+          actualApprovedOtMinutes,
+          actualApprovedOtHours,
+          // Legacy aliases
+          durationMinutes: filedOtMinutes,
+          durationHours: filedOtHours,
           purpose: String(row.purpose || "Overtime Work"),
           remarks: String(row.remarks || ""),
           status: normalizedStatus,
@@ -360,10 +445,12 @@ export async function GET(request: NextRequest) {
         });
 
         compTotalOtReqs++;
-        compTotalOtMins += durationMinutes;
+        compTotalActualMins += actualOtMinutes;
+        compTotalFiledMins += filedOtMinutes;
+        compTotalApprovedMins += actualApprovedOtMinutes;
+
         if (normalizedStatus === "approved") {
           compApprovedOtReqs++;
-          compApprovedOtMins += durationMinutes;
         } else if (normalizedStatus === "pending") {
           compPendingOtReqs++;
         } else {
@@ -388,6 +475,12 @@ export async function GET(request: NextRequest) {
             approvedOtRequests: 0,
             pendingOtRequests: 0,
             rejectedOtRequests: 0,
+            totalActualOtMinutes: 0,
+            totalActualOtHours: 0,
+            totalFiledOtMinutes: 0,
+            totalFiledOtHours: 0,
+            totalApprovedOtMinutes: 0,
+            totalApprovedOtHours: 0,
             totalOtMinutes: 0,
             totalOtHours: 0,
             approvedOtMinutes: 0,
@@ -398,10 +491,16 @@ export async function GET(request: NextRequest) {
         }
 
         empSummary.totalOtRequests++;
-        empSummary.totalOtMinutes += durationMinutes;
+        empSummary.totalActualOtMinutes += actualOtMinutes;
+        empSummary.totalFiledOtMinutes += filedOtMinutes;
+        empSummary.totalApprovedOtMinutes += actualApprovedOtMinutes;
+
+        // Legacy aliases
+        empSummary.totalOtMinutes += filedOtMinutes;
+        empSummary.approvedOtMinutes += actualApprovedOtMinutes;
+
         if (normalizedStatus === "approved") {
           empSummary.approvedOtRequests++;
-          empSummary.approvedOtMinutes += durationMinutes;
         } else if (normalizedStatus === "pending") {
           empSummary.pendingOtRequests++;
         } else {
@@ -424,18 +523,27 @@ export async function GET(request: NextRequest) {
         approvedOtRequests: compApprovedOtReqs,
         pendingOtRequests: compPendingOtReqs,
         rejectedOtRequests: compRejectedOtReqs,
-        totalOtMinutes: compTotalOtMins,
-        totalOtHours: Math.round((compTotalOtMins / 60) * 10) / 10,
-        approvedOtMinutes: compApprovedOtMins,
-        approvedOtHours: Math.round((compApprovedOtMins / 60) * 10) / 10,
+        totalActualOtHours: Math.round((compTotalActualMins / 60) * 10) / 10,
+        totalFiledOtHours: Math.round((compTotalFiledMins / 60) * 10) / 10,
+        totalApprovedOtHours: Math.round((compTotalApprovedMins / 60) * 10) / 10,
+        totalOtMinutes: compTotalFiledMins,
+        totalOtHours: Math.round((compTotalFiledMins / 60) * 10) / 10,
+        approvedOtMinutes: compTotalApprovedMins,
+        approvedOtHours: Math.round((compTotalApprovedMins / 60) * 10) / 10,
         otApprovalRate: compOtApprovalRate,
       });
     }
 
     // 4. Finalize employee summaries
     const employeeSummaries = Array.from(employeeMap.values()).map((emp) => {
-      emp.totalOtHours = Math.round((emp.totalOtMinutes / 60) * 10) / 10;
-      emp.approvedOtHours = Math.round((emp.approvedOtMinutes / 60) * 10) / 10;
+      emp.totalActualOtHours = Math.round((emp.totalActualOtMinutes / 60) * 10) / 10;
+      emp.totalFiledOtHours = Math.round((emp.totalFiledOtMinutes / 60) * 10) / 10;
+      emp.totalApprovedOtHours = Math.round((emp.totalApprovedOtMinutes / 60) * 10) / 10;
+
+      // Legacy aliases
+      emp.totalOtHours = emp.totalFiledOtHours;
+      emp.approvedOtHours = emp.totalApprovedOtHours;
+
       emp.approvalRate =
         emp.totalOtRequests > 0
           ? Math.round((emp.approvedOtRequests / emp.totalOtRequests) * 100)
@@ -444,14 +552,15 @@ export async function GET(request: NextRequest) {
     });
 
     employeeSummaries.sort((a, b) => {
-      if (b.approvedOtHours !== a.approvedOtHours) {
-        return b.approvedOtHours - a.approvedOtHours;
+      if (b.totalApprovedOtHours !== a.totalApprovedOtHours) {
+        return b.totalApprovedOtHours - a.totalApprovedOtHours;
       }
-      return b.totalOtHours - a.totalOtHours;
+      return b.totalActualOtHours - a.totalActualOtHours;
     });
 
     // 5. Executive KPIs
-    let totalOtMinutes = 0;
+    let totalActualOtMinutes = 0;
+    let totalFiledOtMinutes = 0;
     let totalApprovedOtMinutes = 0;
     let totalOtRequests = 0;
     let totalApprovedOtRequests = 0;
@@ -460,10 +569,12 @@ export async function GET(request: NextRequest) {
 
     for (const ot of allOvertimeRecords) {
       totalOtRequests++;
-      totalOtMinutes += ot.durationMinutes;
+      totalActualOtMinutes += ot.actualOtMinutes;
+      totalFiledOtMinutes += ot.filedOtMinutes;
+      totalApprovedOtMinutes += ot.actualApprovedOtMinutes;
+
       if (ot.status === "approved") {
         totalApprovedOtRequests++;
-        totalApprovedOtMinutes += ot.durationMinutes;
       } else if (ot.status === "pending") {
         totalPendingOtRequests++;
       } else {
@@ -477,26 +588,32 @@ export async function GET(request: NextRequest) {
         : 0;
 
     let topOtEmployee = "N/A";
-    if (employeeSummaries.length > 0 && employeeSummaries[0].approvedOtHours > 0) {
-      topOtEmployee = `${employeeSummaries[0].name} (${employeeSummaries[0].approvedOtHours}h)`;
+    if (employeeSummaries.length > 0 && employeeSummaries[0].totalApprovedOtHours > 0) {
+      topOtEmployee = `${employeeSummaries[0].name} (${employeeSummaries[0].totalApprovedOtHours}h)`;
     }
 
     let topOtCompany = "N/A";
     const sortedCos = [...companySummaries].sort(
-      (a, b) => b.approvedOtHours - a.approvedOtHours
+      (a, b) => b.totalApprovedOtHours - a.totalApprovedOtHours
     );
-    if (sortedCos.length > 0 && sortedCos[0].approvedOtHours > 0) {
-      topOtCompany = `${sortedCos[0].companyCode} (${sortedCos[0].approvedOtHours}h)`;
+    if (sortedCos.length > 0 && sortedCos[0].totalApprovedOtHours > 0) {
+      topOtCompany = `${sortedCos[0].companyCode} (${sortedCos[0].totalApprovedOtHours}h)`;
     }
 
     const kpis: IntercompanyOvertimeKpis = {
       totalEmployees: employeeSummaries.length,
-      totalOtMinutes,
-      totalOtHours: Math.round((totalOtMinutes / 60) * 10) / 10,
-      totalOtRequests,
-      totalApprovedOtRequests,
+      // 3-way overtime metrics
+      totalActualOtMinutes,
+      totalActualOtHours: Math.round((totalActualOtMinutes / 60) * 10) / 10,
+      totalFiledOtMinutes,
+      totalFiledOtHours: Math.round((totalFiledOtMinutes / 60) * 10) / 10,
       totalApprovedOtMinutes,
       totalApprovedOtHours: Math.round((totalApprovedOtMinutes / 60) * 10) / 10,
+      // Legacy aliases
+      totalOtMinutes: totalFiledOtMinutes,
+      totalOtHours: Math.round((totalFiledOtMinutes / 60) * 10) / 10,
+      totalOtRequests,
+      totalApprovedOtRequests,
       totalPendingOtRequests,
       totalRejectedOtRequests,
       otApprovalRate,
@@ -507,18 +624,19 @@ export async function GET(request: NextRequest) {
     };
 
     // 6. Daily Trends
-    const dailyMap = new Map<string, { totalMins: number; approvedMins: number; count: number; approvedCount: number }>();
+    const dailyMap = new Map<string, { actualMins: number; filedMins: number; approvedMins: number; count: number; approvedCount: number }>();
     for (const d of targetDates) {
-      dailyMap.set(d, { totalMins: 0, approvedMins: 0, count: 0, approvedCount: 0 });
+      dailyMap.set(d, { actualMins: 0, filedMins: 0, approvedMins: 0, count: 0, approvedCount: 0 });
     }
 
     for (const ot of allOvertimeRecords) {
       const cur = dailyMap.get(ot.requestDate);
       if (cur) {
-        cur.totalMins += ot.durationMinutes;
+        cur.actualMins += ot.actualOtMinutes;
+        cur.filedMins += ot.filedOtMinutes;
+        cur.approvedMins += ot.actualApprovedOtMinutes;
         cur.count++;
         if (ot.status === "approved") {
-          cur.approvedMins += ot.durationMinutes;
           cur.approvedCount++;
         }
       }
@@ -528,10 +646,14 @@ export async function GET(request: NextRequest) {
       ([date, v]) => ({
         date,
         displayDate: date.slice(5),
-        totalOtMinutes: v.totalMins,
-        totalOtHours: Math.round((v.totalMins / 60) * 10) / 10,
+        actualOtMinutes: v.actualMins,
+        actualOtHours: Math.round((v.actualMins / 60) * 10) / 10,
+        filedOtMinutes: v.filedMins,
+        filedOtHours: Math.round((v.filedMins / 60) * 10) / 10,
         approvedOtMinutes: v.approvedMins,
         approvedOtHours: Math.round((v.approvedMins / 60) * 10) / 10,
+        totalOtMinutes: v.filedMins,
+        totalOtHours: Math.round((v.filedMins / 60) * 10) / 10,
         otRequestsCount: v.count,
         approvedRequestsCount: v.approvedCount,
       })

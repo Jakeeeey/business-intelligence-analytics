@@ -114,10 +114,24 @@ export function OvertimeDetailModal({
             <div className="p-3 rounded-xl border border-indigo-500/20 bg-indigo-500/5 dark:bg-indigo-950/20">
               <div className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-400 font-medium mb-1">
                 <Clock className="h-3.5 w-3.5" />
-                <span>Total OT</span>
+                <span>Actual Overtime</span>
               </div>
               <p className="text-lg font-bold text-foreground tabular-nums">
-                {employee.totalOtHours.toFixed(1)}{" "}
+                {employee.totalActualOtHours.toFixed(1)}{" "}
+                <span className="text-xs font-normal text-muted-foreground">hrs</span>
+              </p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                {employee.totalActualOtMinutes.toLocaleString()} mins rendered
+              </p>
+            </div>
+
+            <div className="p-3 rounded-xl border border-blue-500/20 bg-blue-500/5 dark:bg-blue-950/20">
+              <div className="flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 font-medium mb-1">
+                <FileText className="h-3.5 w-3.5" />
+                <span>Filed Overtime</span>
+              </div>
+              <p className="text-lg font-bold text-foreground tabular-nums">
+                {employee.totalFiledOtHours.toFixed(1)}{" "}
                 <span className="text-xs font-normal text-muted-foreground">hrs</span>
               </p>
               <p className="text-[11px] text-muted-foreground mt-0.5">
@@ -128,10 +142,10 @@ export function OvertimeDetailModal({
             <div className="p-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 dark:bg-emerald-950/20">
               <div className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-medium mb-1">
                 <ShieldCheck className="h-3.5 w-3.5" />
-                <span>Approved OT</span>
+                <span>Actual Approved OT</span>
               </div>
               <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
-                {employee.approvedOtHours.toFixed(1)}{" "}
+                {employee.totalApprovedOtHours.toFixed(1)}{" "}
                 <span className="text-xs font-normal text-muted-foreground">hrs</span>
               </p>
               <p className="text-[11px] text-muted-foreground mt-0.5">
@@ -148,23 +162,7 @@ export function OvertimeDetailModal({
                 {employee.approvalRate}%
               </p>
               <p className="text-[11px] text-muted-foreground mt-0.5">
-                {employee.approvedOtRequests} of {employee.totalOtRequests}
-              </p>
-            </div>
-
-            <div className="p-3 rounded-xl border border-border/80 bg-muted/30">
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium mb-1">
-                <FileText className="h-3.5 w-3.5" />
-                <span>Pending / Rejected</span>
-              </div>
-              <p className="text-lg font-bold text-foreground tabular-nums">
-                {employee.pendingOtRequests}{" "}
-                <span className="text-xs font-normal text-muted-foreground">
-                  / {employee.rejectedOtRequests}
-                </span>
-              </p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">
-                {employee.pendingOtRequests} awaiting review
+                {employee.pendingOtRequests} pending / {employee.rejectedOtRequests} rej
               </p>
             </div>
           </div>
@@ -199,20 +197,38 @@ export function OvertimeDetailModal({
                           {ot.requestDate}
                         </span>
                         <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
-                          {ot.durationHours.toFixed(1)} hrs ({ot.durationMinutes} mins)
+                          Actual: {ot.actualOtHours.toFixed(1)} hrs
                         </span>
+                        <span className="text-xs font-medium px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                          Filed: {ot.filedOtHours.toFixed(1)} hrs
+                        </span>
+                        {ot.status === "approved" && (
+                          <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                            Approved: {ot.actualApprovedOtHours.toFixed(1)} hrs
+                          </span>
+                        )}
                       </div>
                       {renderStatusBadge(ot.status)}
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-muted-foreground pt-1 border-t border-border/40">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs text-muted-foreground pt-1 border-t border-border/40">
                       <div>
-                        <span className="font-medium text-foreground">OT Window:</span>{" "}
-                        {ot.otFrom && ot.otTo ? `${ot.otFrom} → ${ot.otTo}` : "Not specified"}
+                        <span className="font-medium text-foreground">Sched Timeout:</span>{" "}
+                        <span className="font-mono">
+                          {ot.schedTimeout ? ot.schedTimeout.substring(0, 5) : (ot.otFrom ? ot.otFrom.substring(0, 5) : "—")}
+                        </span>
                       </div>
                       <div>
-                        <span className="font-medium text-foreground">Filed:</span>{" "}
-                        {ot.filedAt ? new Date(ot.filedAt).toLocaleDateString() : "—"}
+                        <span className="font-medium text-foreground">Actual Punch Out:</span>{" "}
+                        <span className="font-mono font-semibold text-indigo-600 dark:text-indigo-400">
+                          {ot.actualTimeOut ? ot.actualTimeOut.substring(0, 5) : "No punch log"}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-foreground">OT Window:</span>{" "}
+                        <span className="font-mono">
+                          {ot.otFrom && ot.otTo ? `${ot.otFrom.substring(0, 5)} → ${ot.otTo.substring(0, 5)}` : "—"}
+                        </span>
                       </div>
                     </div>
 
