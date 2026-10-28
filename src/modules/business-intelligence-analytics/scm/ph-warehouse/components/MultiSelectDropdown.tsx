@@ -38,9 +38,6 @@ export const MultiSelectDropdown: React.FC<MultiSelectDropdownProps> = ({
     return options.filter((opt) => opt.label.toLowerCase().includes(lower));
   }, [options, search]);
 
-  const allSelected =
-    options.length > 0 && selectedValues.length === options.length;
-
   const handleSelectAll = () => {
     if (search.trim()) {
       // Select matches
