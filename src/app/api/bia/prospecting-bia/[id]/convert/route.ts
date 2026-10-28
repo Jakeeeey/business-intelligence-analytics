@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { nowUTC } from "@/modules/business-intelligence-analytics/prospecting-bia/utils/datetime";
+import { normalizeProspectStatus } from "@/modules/business-intelligence-analytics/prospecting-bia/utils/prospect-status";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -10,6 +11,8 @@ const DIRECTUS_TOKEN = process.env.DIRECTUS_STATIC_TOKEN;
 const NOT_SET_STORE_TYPE = 999; // `store_type` catalog id for "NOT SET"
 
 type ProspectRecord = {
+  customer_id?: number | string | null;
+  prospect_status?: unknown;
   customer_code?: string | null;
   customer_name?: string | null;
   type?: string | null;
@@ -38,6 +41,8 @@ type ProspectRecord = {
   latitude?: number | string | null;
   longitude?: number | string | null;
   location?: { coordinates?: number[] | null } | null;
+  customer_image?: string | null;
+  discount_type?: number | null;
 };
 
 function authHeaders(): Headers {
@@ -55,11 +60,34 @@ function num(value: number | string | null | undefined): number | null {
 }
 
 /**
- * Converts an approved/converted prospect into a `customer` record.
- * Maps prospect fields onto the customer schema, applying safe NOT-NULL fallbacks,
- * and refuses to create a duplicate `customer_code`.
+ * Reads the caller's user id (`sub`) from the `vos_access_token` JWT cookie.
+ * @param {NextRequest} req - The incoming request.
+ * @returns {number | null} The numeric `sub`, or null when absent/unparseable.
  */
-export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+function jwtSub(req: NextRequest): number | null {
+  try {
+    const token = req.cookies.get("vos_access_token")?.value;
+    if (!token) return null;
+    const parts = token.split(".");
+    if (parts.length < 2 || !parts[1]) return null;
+    const normalized = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized + "=".repeat((4 - (normalized.length % 4)) % 4);
+    const payload = JSON.parse(Buffer.from(padded, "base64").toString("utf-8")) as {
+      sub?: unknown;
+    };
+    const sub = Number(payload.sub);
+    return Number.isFinite(sub) && sub > 0 ? sub : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Finalizes a prospect in one operation: creates the linked `customer` row,
+ * then marks the prospect `converted` and stores the 1:1 link both ways.
+ * Idempotent when `customer_prospect.customer_id` is already set.
+ */
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const recordId = parseInt(id, 10);
@@ -84,7 +112,22 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
       return NextResponse.json({ success: false, message: "Prospect not found" }, { status: 404 });
     }
 
-    // 2. Duplicate guard by customer_code (unique on the customer table)
+    // 2. Eligibility gate — only contacted, follow-up, or converted prospects can be finalized.
+    const prospectStatus = normalizeProspectStatus(prospect.prospect_status);
+    if (prospectStatus !== "contacted" && prospectStatus !== "follow-up" && prospectStatus !== "converted") {
+      return NextResponse.json(
+        { success: false, message: "Only contacted, follow-up, or converted prospects can be finalized." },
+        { status: 400 }
+      );
+    }
+
+    // 3. Idempotent: already finalized — do not create a second customer.
+    const linkedCustomerId = Number(prospect.customer_id);
+    if (Number.isFinite(linkedCustomerId) && linkedCustomerId > 0) {
+      return NextResponse.json({ success: true, alreadyLinked: true }, { status: 200 });
+    }
+
+    // 4. Duplicate guard by customer_code (unique on the customer table)
     const customerCode = (prospect.customer_code ?? "").trim() || "0";
     const dupRes = await fetch(
       `${DIRECTUS_BASE}/items/customer?filter[customer_code][_eq]=${encodeURIComponent(customerCode)}&limit=1&fields=id`,
@@ -100,11 +143,32 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
       }
     }
 
-    // 3. Map prospect → customer (NOT-NULL fallbacks applied)
+    // 5. Resolve a real encoder id — never 0.
+    const prospectEncoder = Number(prospect.encoder_id);
+    const encoderId =
+      Number.isFinite(prospectEncoder) && prospectEncoder > 0 ? prospectEncoder : jwtSub(req);
+    if (!encoderId) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "Cannot finalize: the prospect has no encoder and no user identity was found. Sign in again and retry.",
+        },
+        { status: 400 }
+      );
+    }
+
+    // 6. Map prospect → customer (NOT-NULL fallbacks applied)
     const coords = prospect.location?.coordinates;
     const fromGeo = Array.isArray(coords) && coords.length === 2;
     const longitude = fromGeo ? num(coords?.[0]) : num(prospect.longitude);
     const latitude = fromGeo ? num(coords?.[1]) : num(prospect.latitude);
+
+    // GeoJSON is [lng, lat]; reuse the resolved pair so location agrees with the columns.
+    const location =
+      latitude !== null && longitude !== null
+        ? { type: "Point", coordinates: [longitude, latitude] }
+        : null;
 
     const payload: Record<string, unknown> = {
       customer_code: customerCode,
@@ -123,21 +187,25 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
       payment_term: prospect.payment_term ?? null,
       store_type: prospect.store_type ?? NOT_SET_STORE_TYPE,
       price_type: prospect.price_type ?? null,
-      encoder_id: prospect.encoder_id ?? 0,
+      encoder_id: encoderId,
       credit_type: prospect.credit_type ?? 0,
       company_code: prospect.company_code ?? -1,
       otherDetails: prospect.otherDetails ?? null,
       classification: prospect.classification ?? null,
       date_entered: nowUTC(),
-      isActive: prospect.isActive ?? 0,
+      isActive: 1,
       isVAT: prospect.isVAT ?? 0,
       isEWT: prospect.isEWT ?? 0,
       latitude,
       longitude,
+      location,
+      customer_image: prospect.customer_image ?? null,
+      discount_type: prospect.discount_type ?? null,
+      prospect_id: recordId,
     };
     if (prospect.user_id) payload.user_id = prospect.user_id;
 
-    // 4. Insert
+    // 7. Insert
     const insertRes = await fetch(`${DIRECTUS_BASE}/items/customer`, {
       method: "POST",
       headers: authHeaders(),
@@ -153,9 +221,35 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
       );
     }
 
-    const { data: created } = await insertRes.json();
+    const { data: created } = (await insertRes.json()) as { data: { id: number } & Record<string, unknown> };
+
+    // 8. Only after a successful insert, link + mark converted.
+    const linkRes = await fetch(`${DIRECTUS_BASE}/items/customer_prospect/${recordId}`, {
+      method: "PATCH",
+      headers: authHeaders(),
+      body: JSON.stringify({ prospect_status: "converted", customer_id: created.id }),
+    });
+
+    if (!linkRes.ok) {
+      const text = await linkRes.text().catch(() => "");
+      console.error("[prospect convert] link failed:", linkRes.status, text);
+      return NextResponse.json(
+        {
+          success: false,
+          message: `Customer ${created.id} was created but linking the prospect failed. Backfill it from the converted prospect.`,
+          data: { customer: created, customer_id: created.id },
+        },
+        { status: 502 }
+      );
+    }
+
+    const { data: updated } = await linkRes.json();
     return NextResponse.json(
-      { success: true, data: created, message: "Prospect converted to a customer." },
+      {
+        success: true,
+        data: { customer: created, prospect: updated },
+        message: "Prospect converted to a customer.",
+      },
       { status: 201 }
     );
   } catch (error: unknown) {

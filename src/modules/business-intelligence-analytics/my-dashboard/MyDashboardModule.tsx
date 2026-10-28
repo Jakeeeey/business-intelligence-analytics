@@ -11,6 +11,10 @@ import {
     RefreshCw,
     Receipt,
     CalendarCheck2,
+    Truck,
+    Building2,
+    Clock,
+    Users,
 } from "lucide-react";
 import {
     Card,
@@ -28,6 +32,12 @@ import AccountsPayableDetailedCard from "./components/AccountsPayableDetailedCar
 import CompanyExpenseReportCard from "./components/CompanyExpenseReportCard";
 import CompanyPayrollCutoffProgressCard from "./components/CompanyPayrollCutoffProgressCard";
 import HoldingsPayrollCutoffProgressCard from "./components/HoldingsPayrollCutoffProgressCard";
+import DriverKPICard from "./components/DriverKPICard";
+import DepartmentHeadSummaryCard from "./components/DepartmentHeadSummaryCard";
+import CompanyAttendanceReportCard from "./components/CompanyAttendanceReportCard";
+import CompanyPunctualityReportCard from "./components/CompanyPunctualityReportCard";
+import CompanyPunctualityDetailedCard from "./components/CompanyPunctualityDetailedCard";
+import CompanyTotalEmployeeCard from "./components/CompanyTotalEmployeeCard";
 import SalesOrderDraftCard from "./components/SalesOrderDraftCard";
 import SalesOrderPendingCard from "./components/SalesOrderPendingCard";
 import SalesOrderInvoiceCard from "./components/SalesOrderInvoiceCard";
@@ -52,6 +62,21 @@ function getCardIcon(key: string) {
     }
     if (lower.includes("payroll") || lower.includes("cutoff")) {
         return <CalendarCheck2 className="h-4 w-4" />;
+    }
+    if (lower.includes("attendance")) {
+        return <Building2 className="h-4 w-4" />;
+    }
+    if (lower.includes("punctuality")) {
+        return <Clock className="h-4 w-4" />;
+    }
+    if (lower.includes("employee") || lower.includes("workforce") || lower.includes("headcount")) {
+        return <Users className="h-4 w-4" />;
+    }
+    if (lower.includes("driver") || lower.includes("logistics")) {
+        return <Truck className="h-4 w-4" />;
+    }
+    if (lower.includes("department") || lower.includes("dept") || lower.includes("attendance")) {
+        return <Building2 className="h-4 w-4" />;
     }
     return <BarChart3 className="h-4 w-4" />;
 }
@@ -296,6 +321,97 @@ export default function MyDashboardModule({ className = "" }: MyDashboardProps) 
                                             ) {
                                                 return (
                                                     <HoldingsPayrollCutoffProgressCard
+                                                        key={card.id}
+                                                        card={card}
+                                                    />
+                                                );
+                                            }
+
+                                            if (
+                                                card.key === "driver-kpi" ||
+                                                card.key === "driver_kpi"
+                                            ) {
+                                                return (
+                                                    <DriverKPICard
+                                                        key={card.id}
+                                                        card={card}
+                                                    />
+                                                );
+                                            }
+
+                                            if (
+                                                card.key === "department-head" ||
+                                                card.key === "department_head" ||
+                                                card.key === "department-head-summary" ||
+                                                card.key === "department_head_summary"
+                                            ) {
+                                                return (
+                                                    <DepartmentHeadSummaryCard
+                                                        key={card.id}
+                                                        card={card}
+                                                    />
+                                                );
+                                            }
+
+                                            if (
+                                                card.key === "company-attendance-report" ||
+                                                card.key === "company_attendance_report" ||
+                                                card.key === "company-attendance" ||
+                                                card.key === "company_attendance"
+                                            ) {
+                                                return (
+                                                    <CompanyAttendanceReportCard
+                                                        key={card.id}
+                                                        card={card}
+                                                    />
+                                                );
+                                            }
+
+                                            if (
+                                                card.key === "company-punctuality-report" ||
+                                                card.key === "company_punctuality_report" ||
+                                                card.key === "company-punctuality" ||
+                                                card.key === "company_punctuality" ||
+                                                card.key === "punctuality-report" ||
+                                                card.key === "punctuality_report" ||
+                                                card.key === "punctuality"
+                                            ) {
+                                                return (
+                                                    <CompanyPunctualityReportCard
+                                                        key={card.id}
+                                                        card={card}
+                                                    />
+                                                );
+                                            }
+
+                                            if (
+                                                card.key === "company-punctuality-detailed" ||
+                                                card.key === "company_punctuality_detailed" ||
+                                                card.key === "company-punctuality-detailed-report" ||
+                                                card.key === "company_punctuality_detailed_report" ||
+                                                card.key === "punctuality-detailed" ||
+                                                card.key === "punctuality_detailed"
+                                            ) {
+                                                return (
+                                                    <CompanyPunctualityDetailedCard
+                                                        key={card.id}
+                                                        card={card}
+                                                    />
+                                                );
+                                            }
+
+                                            if (
+                                                card.key === "company-total-employee" ||
+                                                card.key === "company_total_employee" ||
+                                                card.key === "company-total-employees" ||
+                                                card.key === "company_total_employees" ||
+                                                card.key === "total-employee" ||
+                                                card.key === "total_employee" ||
+                                                card.key === "total-employees" ||
+                                                card.key === "total_employees"
+                                            ) {
+                                                return (
+                                                    <CompanyTotalEmployeeCard
                                                         key={card.id}
                                                         card={card}
                                                     />
