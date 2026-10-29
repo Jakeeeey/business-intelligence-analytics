@@ -92,25 +92,55 @@ function formatTimeString(isoOrTimeString: unknown): string | null {
   return str;
 }
 
+function parseTimeToMinutes(rawTimeIn: unknown): number | null {
+  if (!rawTimeIn || typeof rawTimeIn !== "string") return null;
+  const s = rawTimeIn.trim();
+  if (!s) return null;
+
+  const timePart = s.includes("T") ? s.split("T")[1] : s;
+  const match = timePart.match(/(\d{1,2}):(\d{2})/);
+  if (!match) return null;
+
+  let h = parseInt(match[1], 10);
+  const m = parseInt(match[2], 10);
+  if (isNaN(h) || isNaN(m)) return null;
+
+  const upper = s.toUpperCase();
+  if (upper.includes("PM") && h < 12) {
+    h += 12;
+  } else if (upper.includes("AM") && h === 12) {
+    h = 0;
+  }
+
+  return h * 60 + m;
+}
+
 /**
  * Calculates late minutes past standard shift (8:00 AM = 480 mins from midnight)
  */
 function calculateDelayMinutes(rawTimeIn: string | null | undefined, scheduledHour = 8, scheduledMinute = 0): number {
-  if (!rawTimeIn) return 0;
-  const s = String(rawTimeIn).trim();
-  const timePart = s.includes("T") ? s.split("T")[1] : s;
-  const parts = timePart.split(":");
-  if (parts.length < 2) return 0;
+  const arrivalTotalMinutes = parseTimeToMinutes(rawTimeIn);
+  if (arrivalTotalMinutes === null) return 0;
 
-  const h = parseInt(parts[0], 10);
-  const m = parseInt(parts[1], 10);
-  if (isNaN(h) || isNaN(m)) return 0;
-
-  const arrivalTotalMinutes = h * 60 + m;
   const scheduledTotalMinutes = scheduledHour * 60 + scheduledMinute;
 
   if (arrivalTotalMinutes > scheduledTotalMinutes) {
     return arrivalTotalMinutes - scheduledTotalMinutes;
+  }
+  return 0;
+}
+
+/**
+ * Calculates early minutes before standard shift (8:00 AM = 480 mins from midnight) when on-time
+ */
+function calculateEarlyMinutes(rawTimeIn: string | null | undefined, scheduledHour = 8, scheduledMinute = 0): number {
+  const arrivalTotalMinutes = parseTimeToMinutes(rawTimeIn);
+  if (arrivalTotalMinutes === null) return 0;
+
+  const scheduledTotalMinutes = scheduledHour * 60 + scheduledMinute;
+
+  if (arrivalTotalMinutes <= scheduledTotalMinutes) {
+    return scheduledTotalMinutes - arrivalTotalMinutes;
   }
   return 0;
 }
@@ -315,6 +345,9 @@ export async function GET(request: NextRequest) {
         onTimeDays: number;
         lateDays: number;
         totalDelayMinutes: number;
+        totalEarlyMinutes: number;
+        maxEarlyMinutes: number;
+        earliestArrivalMinutes: number | null;
         earliestArrival?: string | null;
       }
     >();
@@ -451,6 +484,8 @@ export async function GET(request: NextRequest) {
           let puncStatus: PunctualityStatus = "Absent";
           let timeInFormatted: string | null = null;
           let timeOutFormatted: string | null = null;
+          let arrivalMinutes: number | null = null;
+          let earlyMinutes = 0;
           let delayMinutes = 0;
           let undertimeMinutes = 0;
 
@@ -461,7 +496,9 @@ export async function GET(request: NextRequest) {
             timeOutFormatted = formatTimeString(log.time_out);
             const rawStatus = String(log.status || "").toLowerCase();
 
+            arrivalMinutes = parseTimeToMinutes(log.time_in);
             delayMinutes = calculateDelayMinutes(log.time_in as string | null);
+            earlyMinutes = calculateEarlyMinutes(log.time_in as string | null);
 
             // Undertime detection
             if (rawStatus.includes("undertime")) {
@@ -545,11 +582,26 @@ export async function GET(request: NextRequest) {
               onTimeDays: 0,
               lateDays: 0,
               totalDelayMinutes: 0,
-              earliestArrival: timeInFormatted,
+              totalEarlyMinutes: 0,
+              maxEarlyMinutes: 0,
+              earliestArrivalMinutes: null,
+              earliestArrival: null,
             };
             uStat.totalDays++;
-            if (delayMinutes === 0) uStat.onTimeDays++;
-            else {
+            if (puncStatus === "On Time") {
+              uStat.onTimeDays++;
+              uStat.totalEarlyMinutes += earlyMinutes;
+              if (earlyMinutes > uStat.maxEarlyMinutes) {
+                uStat.maxEarlyMinutes = earlyMinutes;
+              }
+              if (
+                arrivalMinutes !== null &&
+                (uStat.earliestArrivalMinutes === null || arrivalMinutes < uStat.earliestArrivalMinutes)
+              ) {
+                uStat.earliestArrivalMinutes = arrivalMinutes;
+                uStat.earliestArrival = timeInFormatted;
+              }
+            } else if (delayMinutes > 0) {
               uStat.lateDays++;
               uStat.totalDelayMinutes += delayMinutes;
             }
@@ -584,6 +636,8 @@ export async function GET(request: NextRequest) {
             timeOut: timeOutFormatted,
             rawTimeIn: (log?.time_in as string) || null,
             rawTimeOut: (log?.time_out as string) || null,
+            arrivalMinutes,
+            earlyMinutes,
             delayMinutes,
             undertimeMinutes,
             logDate: currentDate,
@@ -706,6 +760,7 @@ export async function GET(request: NextRequest) {
     userPunctualityMap.forEach((u) => {
       const pRate = u.totalDays > 0 ? Math.round((u.onTimeDays / u.totalDays) * 100) : 0;
       const avgDelay = u.lateDays > 0 ? Math.round(u.totalDelayMinutes / u.lateDays) : 0;
+      const avgEarly = u.onTimeDays > 0 ? Math.round(u.totalEarlyMinutes / u.onTimeDays) : 0;
       allUsersArray.push({
         userId: u.userId,
         employeeId: u.employeeId,
@@ -721,12 +776,21 @@ export async function GET(request: NextRequest) {
         punctualityRate: pRate,
         avgDelayMinutes: avgDelay,
         earliestArrival: u.earliestArrival,
+        earliestArrivalMinutes: u.earliestArrivalMinutes,
+        maxEarlyMinutes: u.maxEarlyMinutes,
+        avgEarlyMinutes: avgEarly,
       });
     });
 
-    // Top Punctual (sorted by highest rate, then onTimeDays desc, avgDelay asc)
+    // Top Punctual (based on on-time arrivals, calculated by earliest clock-in time rather than number of on-time days)
     const topPunctual = [...allUsersArray]
-      .sort((a, b) => b.punctualityRate - a.punctualityRate || b.onTimeDays - a.onTimeDays || a.avgDelayMinutes - b.avgDelayMinutes)
+      .filter((u) => u.onTimeDays > 0 && u.earliestArrivalMinutes !== null)
+      .sort(
+        (a, b) =>
+          (a.earliestArrivalMinutes ?? 9999) - (b.earliestArrivalMinutes ?? 9999) ||
+          (b.avgEarlyMinutes ?? 0) - (a.avgEarlyMinutes ?? 0) ||
+          a.avgDelayMinutes - b.avgDelayMinutes
+      )
       .slice(0, 8);
 
     // Frequent Late (sorted by lateDays desc, avgDelayMinutes desc)

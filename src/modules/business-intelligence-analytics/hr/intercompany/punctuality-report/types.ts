@@ -31,6 +31,8 @@ export interface IntercompanyPunctualityRecord {
   timeOut: string | null;
   rawTimeIn?: string | null;
   rawTimeOut?: string | null;
+  arrivalMinutes?: number | null; // minutes from midnight of actual timeIn
+  earlyMinutes?: number; // minutes clocked in before scheduled shift start when On Time
   delayMinutes: number; // 0 if on time or early, > 0 if late
   undertimeMinutes: number; // > 0 if left early
   logDate: string;
@@ -85,6 +87,9 @@ export interface PunctualityLeaderboardItem {
   punctualityRate: number;
   avgDelayMinutes: number;
   earliestArrival?: string | null;
+  earliestArrivalMinutes?: number | null;
+  maxEarlyMinutes?: number;
+  avgEarlyMinutes?: number;
 }
 
 export interface IntercompanyPunctualityKpis {
