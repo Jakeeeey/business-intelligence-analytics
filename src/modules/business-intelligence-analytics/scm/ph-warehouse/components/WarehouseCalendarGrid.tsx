@@ -210,7 +210,7 @@ export const WarehouseCalendarGrid: React.FC<Props> = ({
                     renderedCells.push(
                       <td
                         key={`empty-${row.supplierId}-${currentDayIdx}`}
-                        className={`h-9 min-w-[42px] border-r border-border/40 ${
+                        className={`h-11 min-w-[42px] border-r border-border/40 ${
                           isToday ? "bg-primary/[0.03]" : ""
                         }`}
                       />
