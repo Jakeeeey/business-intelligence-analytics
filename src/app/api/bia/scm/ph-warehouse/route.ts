@@ -89,7 +89,7 @@ export async function GET(req: NextRequest) {
         }));
       }
 
-      // Query physical_inventory items covering the month
+      // Query physical_inventory items covering the month where is_scm = 1
       const piFilter = JSON.stringify({
         _and: [
           {
@@ -100,6 +100,11 @@ export async function GET(req: NextRequest) {
           {
             cutOff_date: {
               _gte: startDate,
+            },
+          },
+          {
+            is_scm: {
+              _eq: 1,
             },
           },
         ],
@@ -151,7 +156,9 @@ export async function GET(req: NextRequest) {
     const supplierMap = new Map<number, { name: string; shortcut?: string }>();
     suppliers.forEach((s) => supplierMap.set(s.id, { name: s.name, shortcut: s.shortcut }));
 
-    const mappedData = piRecords.map((r) => {
+    const mappedData = piRecords
+      .filter((r) => parseBit(r.is_scm))
+      .map((r) => {
       const bInfo = branchMap.get(Number(r.branch_id));
       const sInfo = supplierMap.get(Number(r.supplier_id));
 

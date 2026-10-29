@@ -21,6 +21,7 @@ export const InventoryScheduleCell: React.FC<Props> = ({ record, colSpan }) => {
 
   const isCommitted = Boolean(record.isComitted);
   const isCancelled = Boolean(record.isCancelled);
+  const isOffset = Boolean(record.is_offset);
 
   // Simple, elegant, minimalist cell
   let cellClass =
@@ -52,9 +53,22 @@ export const InventoryScheduleCell: React.FC<Props> = ({ record, colSpan }) => {
         className="p-1 cursor-pointer align-middle"
       >
         <div
-          className={`h-7 px-2 flex items-center justify-center rounded border text-xs font-medium transition-colors select-none ${cellClass}`}
+          className={`h-11 px-1.5 py-0.5 flex flex-col items-center justify-center rounded border text-xs font-medium transition-colors select-none ${cellClass}`}
         >
-          <span className="truncate">{record.ph_no}</span>
+          <span className="truncate leading-tight font-semibold">{record.ph_no}</span>
+          <span
+            className={`text-[9px] uppercase tracking-wider font-bold leading-tight mt-0.5 px-1 py-0.2 rounded ${
+              isOffset
+                ? isCommitted
+                  ? "bg-white/20 text-white"
+                  : "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300"
+                : isCommitted
+                ? "text-emerald-100 opacity-90"
+                : "text-muted-foreground opacity-80"
+            }`}
+          >
+            {isOffset ? "Offset" : "No Offset"}
+          </span>
         </div>
       </td>
 
@@ -114,6 +128,13 @@ export const InventoryScheduleCell: React.FC<Props> = ({ record, colSpan }) => {
             </div>
 
             <div className="rounded border p-2.5 bg-muted/30">
+              <span className="text-xs text-muted-foreground block">Offset Status</span>
+              <span className="font-medium text-foreground">
+                {isOffset ? "Offset" : "No Offset"}
+              </span>
+            </div>
+
+            <div className="rounded border p-2.5 bg-muted/30 col-span-2">
               <span className="text-xs text-muted-foreground block">Total Amount</span>
               <span className="font-medium text-foreground">
                 {new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }).format(
