@@ -29,10 +29,26 @@ export function IntercompanyDashboardModule() {
   } = useHrManagerDashboard();
 
   const handleFilterChange = (field: string, value: unknown) => {
-    setFilters((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
+    setFilters((prev) => {
+      const next = {
+        ...prev,
+        [field]: value,
+      };
+      if (field === "dateRange") {
+        if (value === "custom" && !prev.startDate) {
+          const now = new Date();
+          const end = now.toISOString().slice(0, 10);
+          const past = new Date(now);
+          past.setDate(past.getDate() - 30);
+          next.startDate = past.toISOString().slice(0, 10);
+          next.endDate = end;
+        } else if (value !== "custom") {
+          next.startDate = "";
+          next.endDate = "";
+        }
+      }
+      return next;
+    });
   };
 
   return (

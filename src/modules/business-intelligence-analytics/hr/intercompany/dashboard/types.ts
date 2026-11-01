@@ -153,7 +153,7 @@ export interface IntercompanyDashboardData {
 
 export interface DashboardFilters {
   company: string; // "ALL" or companyCode
-  dateRange: "today" | "week" | "month" | "quarter" | "year" | "all";
+  dateRange: "today" | "week" | "month" | "quarter" | "year" | "custom" | "all";
   startDate?: string;
   endDate?: string;
   search?: string;

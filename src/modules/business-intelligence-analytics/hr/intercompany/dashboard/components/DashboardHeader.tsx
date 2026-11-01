@@ -126,6 +126,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
               <option value="month">Current Month (MTD)</option>
               <option value="quarter">Current Quarter (QTD)</option>
               <option value="year">Current Year (YTD)</option>
+              <option value="custom">Custom Date Range...</option>
             </select>
           </div>
         </div>
@@ -147,7 +148,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
             {filters.search && (
               <button
                 onClick={() => onFilterChange("search", "")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
               >
                 Clear
               </button>
@@ -155,6 +156,88 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Custom Date Range Picker Row */}
+      {filters.dateRange === "custom" && (
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/50 rounded-xl transition-all animate-in fade-in-50 duration-200">
+          <div className="flex items-center gap-2 text-xs font-semibold text-indigo-900 dark:text-indigo-200">
+            <Calendar className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
+            <span>Select Custom Horizon:</span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+            <div className="flex items-center gap-1.5">
+              <label className="text-xs font-medium text-slate-600 dark:text-slate-300">
+                From:
+              </label>
+              <input
+                type="date"
+                value={filters.startDate || ""}
+                onChange={(e) => onFilterChange("startDate", e.target.value)}
+                className="px-2.5 py-1.5 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 transition shadow-2xs"
+              />
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <label className="text-xs font-medium text-slate-600 dark:text-slate-300">
+                To:
+              </label>
+              <input
+                type="date"
+                value={filters.endDate || ""}
+                onChange={(e) => onFilterChange("endDate", e.target.value)}
+                className="px-2.5 py-1.5 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 transition shadow-2xs"
+              />
+            </div>
+
+            {/* Quick Horizon Presets */}
+            <div className="flex items-center gap-1 ml-auto sm:ml-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const now = new Date();
+                  const end = now.toISOString().slice(0, 10);
+                  const past = new Date(now);
+                  past.setDate(past.getDate() - 14);
+                  onFilterChange("startDate", past.toISOString().slice(0, 10));
+                  onFilterChange("endDate", end);
+                }}
+                className="px-2 py-1 text-xs font-medium text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-md transition cursor-pointer"
+              >
+                Past 14d
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const now = new Date();
+                  const end = now.toISOString().slice(0, 10);
+                  const past = new Date(now);
+                  past.setDate(past.getDate() - 30);
+                  onFilterChange("startDate", past.toISOString().slice(0, 10));
+                  onFilterChange("endDate", end);
+                }}
+                className="px-2 py-1 text-xs font-medium text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-md transition cursor-pointer"
+              >
+                Past 30d
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const now = new Date();
+                  const end = now.toISOString().slice(0, 10);
+                  const past = new Date(now);
+                  past.setDate(past.getDate() - 60);
+                  onFilterChange("startDate", past.toISOString().slice(0, 10));
+                  onFilterChange("endDate", end);
+                }}
+                className="px-2 py-1 text-xs font-medium text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-md transition cursor-pointer"
+              >
+                Past 60d
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

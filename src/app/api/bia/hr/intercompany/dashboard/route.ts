@@ -185,9 +185,10 @@ export async function GET(request: NextRequest) {
     const now = new Date();
     const todayStr = now.toISOString().slice(0, 10);
     let startDate: string | null = customStartDate || null;
-    const endDate: string | null = customEndDate || todayStr;
+    let endDate: string | null = customEndDate || null;
 
-    if (!startDate && dateRangeParam !== "all") {
+    if (!startDate && dateRangeParam !== "all" && dateRangeParam !== "custom") {
+      endDate = customEndDate || todayStr;
       if (dateRangeParam === "today") {
         startDate = todayStr;
       } else if (dateRangeParam === "week") {
@@ -201,6 +202,10 @@ export async function GET(request: NextRequest) {
         startDate = `${now.getFullYear()}-${String(qMonth).padStart(2, "0")}-01`;
       } else if (dateRangeParam === "year") {
         startDate = `${now.getFullYear()}-01-01`;
+      }
+    } else if (dateRangeParam === "custom") {
+      if (startDate && !endDate) {
+        endDate = todayStr;
       }
     }
 
@@ -293,6 +298,8 @@ export async function GET(request: NextRequest) {
           };
         }
 
+        const endOfDay = endDate ? (endDate.includes("T") ? endDate : `${endDate}T23:59:59`) : null;
+
         // Build filtered URLs
         let attUrl = `${companyUrl}/items/attendance_log?limit=2000&fields=log_id,user_id,log_date,time_in,time_out,status`;
         if (startDate) attUrl += `&filter[log_date][_gte]=${startDate}`;
@@ -304,18 +311,23 @@ export async function GET(request: NextRequest) {
 
         let resigUrl = `${companyUrl}/items/resignation_request?limit=-1&fields=id,user_id,status,reason,resignation_date,filed_at`;
         if (startDate) resigUrl += `&filter[filed_at][_gte]=${startDate}`;
+        if (endOfDay) resigUrl += `&filter[filed_at][_lte]=${endOfDay}`;
 
         let userResigUrl = `${companyUrl}/items/user_resignation?limit=-1&fields=id,user_id,filing_date,last_day`;
         if (startDate) userResigUrl += `&filter[filing_date][_gte]=${startDate}`;
+        if (endDate) userResigUrl += `&filter[filing_date][_lte]=${endDate}`;
 
         let conUrl = `${companyUrl}/items/employee_concerns?limit=-1&fields=id,subject_of_concern,concern,is_anonymous,status,created_at`;
         if (startDate) conUrl += `&filter[created_at][_gte]=${startDate}`;
+        if (endOfDay) conUrl += `&filter[created_at][_lte]=${endOfDay}`;
 
         let mrUrl = `${companyUrl}/items/manpower_request?limit=-1&fields=id,request_no,position,no_manpower_needed,rate,status,purpose,created_at`;
         if (startDate) mrUrl += `&filter[created_at][_gte]=${startDate}`;
+        if (endOfDay) mrUrl += `&filter[created_at][_lte]=${endOfDay}`;
 
         let evalUrl = `${companyUrl}/items/employee_evaluation?limit=-1&fields=id,user_id,total_score,rating_band,result,evaluation_date`;
         if (startDate) evalUrl += `&filter[evaluation_date][_gte]=${startDate}`;
+        if (endDate) evalUrl += `&filter[evaluation_date][_lte]=${endDate}`;
 
         // Fetch remaining collections concurrently
         const [
