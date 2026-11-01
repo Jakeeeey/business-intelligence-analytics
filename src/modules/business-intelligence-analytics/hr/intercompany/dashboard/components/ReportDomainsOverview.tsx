@@ -119,7 +119,7 @@ export const ReportDomainsOverview: React.FC<ReportDomainsOverviewProps> = ({
       icon: Award,
       color: "purple",
       metrics: [
-        { label: "Avg Score", value: `${evaluation.avgScore.toFixed(1)}/5` },
+        { label: "Avg Score", value: evaluation.avgScore > 0 ? `${evaluation.avgScore.toFixed(1)}/5` : "-" },
         { label: "Pass Rate", value: `${evaluation.passRate}%` },
         { label: "Regularized", value: String(evaluation.regularizedCount) },
       ],

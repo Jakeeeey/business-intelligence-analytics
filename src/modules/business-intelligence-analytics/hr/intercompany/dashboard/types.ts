@@ -79,7 +79,7 @@ export interface CompanyMatrixRow {
   openRequisitions: number;
   avgAppraisalScore: number;
   unresolvedConcerns: number;
-  healthIndex: "Optimal" | "Moderate" | "Attention";
+  healthIndex: "Optimal" | "Moderate" | "Attention" | "Offline";
 }
 
 export type ActionCategory =

@@ -88,8 +88,11 @@ export const PillarKpiCards: React.FC<PillarKpiCardsProps> = ({ data }) => {
     },
     {
       title: "Appraisal Performance",
-      value: `${evaluation.avgScore.toFixed(1)}/5.0`,
-      subtitle: `${evaluation.passRate}% Pass Rate (Rank: ${evaluation.predominantBand || "Good"})`,
+      value: evaluation.avgScore > 0 ? `${evaluation.avgScore.toFixed(1)}/5.0` : "-",
+      subtitle:
+        evaluation.totalEvaluations > 0
+          ? `${evaluation.passRate}% Pass Rate (Rank: ${evaluation.predominantBand || "Good"})`
+          : "No evaluations recorded",
       badge: `${evaluation.regularizedCount} Regularized`,
       icon: Award,
       trend: `${evaluation.totalEvaluations} Evaluations`,

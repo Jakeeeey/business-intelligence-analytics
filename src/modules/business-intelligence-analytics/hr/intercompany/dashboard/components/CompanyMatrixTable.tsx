@@ -97,11 +97,17 @@ export const CompanyMatrixTable: React.FC<CompanyMatrixTableProps> = ({
           </span>
         );
       case "Attention":
-      default:
         return (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
             <AlertCircle className="w-3 h-3 text-rose-500" />
             Attention
+          </span>
+        );
+      case "Offline":
+      default:
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+            Offline
           </span>
         );
     }
@@ -261,74 +267,100 @@ export const CompanyMatrixTable: React.FC<CompanyMatrixTableProps> = ({
                     </div>
                   </td>
                   <td className="py-3.5 px-4 text-right font-medium text-slate-900 dark:text-slate-100">
-                    {row.headcount.toLocaleString()}
+                    {row.status === "OFFLINE" && row.headcount === 0 ? "-" : row.headcount.toLocaleString()}
                   </td>
                   <td className="py-3.5 px-4 text-right">
-                    <span
-                      className={`font-semibold ${
-                        row.attendanceRate >= 95
-                          ? "text-emerald-600 dark:text-emerald-400"
-                          : row.attendanceRate >= 90
-                          ? "text-slate-700 dark:text-slate-200"
-                          : "text-amber-600 dark:text-amber-400"
-                      }`}
-                    >
-                      {row.attendanceRate}%
-                    </span>
+                    {row.status === "OFFLINE" || row.attendanceRate === 0 ? (
+                      <span className="text-slate-400">-</span>
+                    ) : (
+                      <span
+                        className={`font-semibold ${
+                          row.attendanceRate >= 95
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : row.attendanceRate >= 90
+                            ? "text-slate-700 dark:text-slate-200"
+                            : "text-amber-600 dark:text-amber-400"
+                        }`}
+                      >
+                        {row.attendanceRate}%
+                      </span>
+                    )}
                   </td>
                   <td className="py-3.5 px-4 text-right">
-                    <span
-                      className={`font-semibold ${
-                        row.punctualityRate >= 90
-                          ? "text-emerald-600 dark:text-emerald-400"
-                          : row.punctualityRate >= 80
-                          ? "text-slate-700 dark:text-slate-200"
-                          : "text-rose-600 dark:text-rose-400"
-                      }`}
-                    >
-                      {row.punctualityRate}%
-                    </span>
+                    {row.status === "OFFLINE" || row.punctualityRate === 0 ? (
+                      <span className="text-slate-400">-</span>
+                    ) : (
+                      <span
+                        className={`font-semibold ${
+                          row.punctualityRate >= 90
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : row.punctualityRate >= 80
+                            ? "text-slate-700 dark:text-slate-200"
+                            : "text-rose-600 dark:text-rose-400"
+                        }`}
+                      >
+                        {row.punctualityRate}%
+                      </span>
+                    )}
                   </td>
                   <td className="py-3.5 px-4 text-right font-mono text-xs">
-                    {row.overtimeHours.toLocaleString()} hrs
+                    {row.status === "OFFLINE" ? (
+                      <span className="text-slate-400">-</span>
+                    ) : (
+                      `${row.overtimeHours.toLocaleString()} hrs`
+                    )}
                   </td>
                   <td className="py-3.5 px-4 text-right">
-                    <span
-                      className={`font-medium ${
-                        row.turnoverRate > 5
-                          ? "text-rose-600 dark:text-rose-400 font-semibold"
-                          : "text-slate-600 dark:text-slate-400"
-                      }`}
-                    >
-                      {row.turnoverRate}%
-                    </span>
+                    {row.status === "OFFLINE" ? (
+                      <span className="text-slate-400">-</span>
+                    ) : (
+                      <span
+                        className={`font-medium ${
+                          row.turnoverRate > 5
+                            ? "text-rose-600 dark:text-rose-400 font-semibold"
+                            : "text-slate-600 dark:text-slate-400"
+                        }`}
+                      >
+                        {row.turnoverRate}%
+                      </span>
+                    )}
                   </td>
                   <td className="py-3.5 px-4 text-right">
-                    <span
-                      className={`font-semibold px-2 py-0.5 rounded-md text-xs ${
-                        row.openRequisitions > 0
-                          ? "bg-cyan-50 text-cyan-700 dark:bg-cyan-950/60 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800"
-                          : "text-slate-400"
-                      }`}
-                    >
-                      {row.openRequisitions}
-                    </span>
+                    {row.status === "OFFLINE" ? (
+                      <span className="text-slate-400">-</span>
+                    ) : (
+                      <span
+                        className={`font-semibold px-2 py-0.5 rounded-md text-xs ${
+                          row.openRequisitions > 0
+                            ? "bg-cyan-50 text-cyan-700 dark:bg-cyan-950/60 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800"
+                            : "text-slate-400"
+                        }`}
+                      >
+                        {row.openRequisitions}
+                      </span>
+                    )}
                   </td>
                   <td className="py-3.5 px-4 text-right font-mono font-medium">
-                    {row.avgAppraisalScore > 0
-                      ? `${row.avgAppraisalScore.toFixed(1)}/5.0`
-                      : "-"}
+                    {row.avgAppraisalScore > 0 ? (
+                      <span>{row.avgAppraisalScore.toFixed(1)} / 5.0</span>
+                    ) : (
+                      <span className="text-slate-400">-</span>
+                    )}
                   </td>
                   <td className="py-3.5 px-4 text-right">
-                    <span
-                      className={`font-semibold px-2 py-0.5 rounded-md text-xs ${
-                        row.unresolvedConcerns > 0
-                          ? "bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
-                          : "text-slate-400"
-                      }`}
-                    >
-                      {row.unresolvedConcerns}
-                    </span>
+                    {row.status === "OFFLINE" ? (
+                      <span className="text-slate-400">-</span>
+                    ) : (
+                      <span
+                        className={`font-semibold px-2 py-0.5 rounded-md text-xs ${
+                          row.unresolvedConcerns > 0
+                            ? "bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
+                            : "text-slate-400"
+                        }`}
+                      >
+                        {row.unresolvedConcerns}
+                      </span>
+                    )}
                   </td>
                   <td className="py-3.5 px-4 text-center">
                     {getHealthBadge(row.healthIndex)}
