@@ -52,14 +52,14 @@ export async function GET(req: NextRequest) {
           { status: 400 }
         );
       }
-      const extra = type === "customer_prospect" ? "&filter[prospect_status][_eq]=pending" : "";
-      const data = await fetchFromDirectus(type, extra);
+      // All statuses are returned; the module filters by workflow status client-side.
+      const data = await fetchFromDirectus(type);
       return NextResponse.json(data);
     }
 
-    // Default: fetch all in parallel
+    // Default: fetch all in parallel, across every prospect status
     const [customerProspects, salesmen, storeTypes] = await Promise.all([
-      fetchFromDirectus("customer_prospect", "&filter[prospect_status][_eq]=pending"),
+      fetchFromDirectus("customer_prospect"),
       fetchFromDirectus("salesman"),
       fetchFromDirectus("store_type"),
     ]);
