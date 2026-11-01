@@ -11,6 +11,7 @@ import {
   UserMinus,
   Award,
   UserPlus,
+  Briefcase,
   ChevronRight,
 } from "lucide-react";
 import { IntercompanyDashboardData } from "../types";
@@ -137,6 +138,19 @@ export const ReportDomainsOverview: React.FC<ReportDomainsOverviewProps> = ({
         { label: "Fulfillment", value: `${manpower.fulfillmentRate}%` },
       ],
       tag: `${manpower.openPositions} Open Positions`,
+    },
+    {
+      title: "Vacancies Report",
+      subtitle: "Unfilled Headcount & Hiring SLA Aging",
+      path: "/bia/hr/intercompany/vacancies-report",
+      icon: Briefcase,
+      color: "rose",
+      metrics: [
+        { label: "Open Seats", value: String(manpower.openPositions) },
+        { label: "Fulfillment", value: `${manpower.fulfillmentRate}%` },
+        { label: "Requisitions", value: String(manpower.totalRequisitions) },
+      ],
+      tag: `${manpower.openPositions} Active Vacancies`,
     },
   ];
 
