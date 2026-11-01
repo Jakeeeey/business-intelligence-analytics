@@ -31,12 +31,12 @@ interface CachedReport {
 }
 
 const memoryCache = new Map<string, CachedReport>();
-const CACHE_TTL_MS = 15000; // 15s
+const CACHE_TTL_MS = 60000; // 60s cache
 
 async function fetchDirectusWithTimeout<T>(
   url: string,
   headers: Record<string, string>,
-  timeoutMs = 6000
+  timeoutMs = 2500
 ): Promise<{ data: T[]; ok: boolean }> {
   try {
     const res = await fetch(url, {
@@ -177,7 +177,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const force = searchParams.get("force") === "true";
 
-    const cacheKey = "intercompany_hr_manager_dashboard_v2";
+    const cacheKey = "intercompany_hr_manager_dashboard_v3";
     if (!force && memoryCache.has(cacheKey)) {
       const cached = memoryCache.get(cacheKey)!;
       if (Date.now() - cached.timestamp < CACHE_TTL_MS) {
@@ -191,12 +191,20 @@ export async function GET(request: NextRequest) {
     if (staticToken) primaryHeaders["Authorization"] = `Bearer ${staticToken}`;
     else if (token) primaryHeaders["Authorization"] = `Bearer ${token}`;
 
-    // 1. Fetch company_list
-    const companiesRes = await fetchDirectusWithTimeout<AnyRec>(
+    // 1. Fetch company_list from primary Directus (with 1 retry if needed)
+    let companiesRes = await fetchDirectusWithTimeout<AnyRec>(
       `${primaryBaseUrl}/items/company_list?limit=-1&fields=company_id,company_name,company_code,directus,directus_token,status,is_default,is_mother_company`,
       primaryHeaders,
-      6000
+      4000
     );
+
+    if (!companiesRes.ok || companiesRes.data.length === 0) {
+      companiesRes = await fetchDirectusWithTimeout<AnyRec>(
+        `${primaryBaseUrl}/items/company_list?limit=-1&fields=company_id,company_name,company_code,directus,directus_token,status,is_default,is_mother_company`,
+        primaryHeaders,
+        5000
+      );
+    }
 
     const validCompanies = companiesRes.data.filter((c) => {
       if (!c.directus || typeof c.directus !== "string" || !c.directus.trim()) return false;
@@ -207,7 +215,8 @@ export async function GET(request: NextRequest) {
     const userFields =
       "user_id,is_employee,is_deleted,isDeleted,separation_date,separation_cause,gender,civil_status,employment_status_id,user_fname,user_lname,user_department,user_position";
 
-    // 2. Concurrently query report data across all companies
+    // 2. Query each company with fast probe:
+    // First test `user` endpoint. If unreachable, mark company offline immediately to avoid stalling sockets.
     const companyFetchResults = await Promise.allSettled(
       validCompanies.map(async (company) => {
         const companyId = Number(company.company_id);
@@ -221,8 +230,34 @@ export async function GET(request: NextRequest) {
         };
         if (companyToken) compHeaders["Authorization"] = `Bearer ${companyToken}`;
 
+        // 2a. Fast probe check on user endpoint
+        const usersRes = await fetchDirectusWithTimeout<AnyRec>(
+          `${companyUrl}/items/user?limit=-1&fields=${userFields}`,
+          compHeaders,
+          2500
+        );
+
+        // If offline / unreachable / 401, return immediately
+        if (!usersRes.ok) {
+          return {
+            companyId,
+            companyName,
+            companyCode,
+            isOnline: false,
+            users: [],
+            concerns: [],
+            resigReqs: [],
+            userResigs: [],
+            manpowerReqs: [],
+            manpowerRecs: [],
+            evaluations: [],
+            overtimes: [],
+            attendanceLogs: [],
+          };
+        }
+
+        // 2b. If online, fetch remaining collections concurrently with 2500ms timeout
         const [
-          usersRes,
           concernsRes,
           resigReqRes,
           userResigRes,
@@ -232,69 +267,53 @@ export async function GET(request: NextRequest) {
           otRes,
           attRes,
         ] = await Promise.all([
-          // Users with correct schema
-          fetchDirectusWithTimeout<AnyRec>(
-            `${companyUrl}/items/user?limit=-1&fields=${userFields}`,
-            compHeaders,
-            6000
-          ),
-          // Employee Concerns
           fetchDirectusWithTimeout<AnyRec>(
             `${companyUrl}/items/employee_concerns?limit=-1&fields=id,subject_of_concern,concern,is_anonymous,status,created_at`,
             compHeaders,
-            6000
+            2500
           ),
-          // Resignation Requests
           fetchDirectusWithTimeout<AnyRec>(
             `${companyUrl}/items/resignation_request?limit=-1&fields=id,user_id,status,reason,resignation_date,filed_at`,
             compHeaders,
-            6000
+            2500
           ),
-          // User Resignations
           fetchDirectusWithTimeout<AnyRec>(
             `${companyUrl}/items/user_resignation?limit=-1&fields=id,user_id,filing_date,last_day`,
             compHeaders,
-            6000
+            2500
           ),
-          // Manpower Requests
           fetchDirectusWithTimeout<AnyRec>(
             `${companyUrl}/items/manpower_request?limit=-1&fields=id,request_no,position,no_manpower_needed,rate,status,purpose,created_at`,
             compHeaders,
-            6000
+            2500
           ),
-          // Manpower Recommendations
           fetchDirectusWithTimeout<AnyRec>(
             `${companyUrl}/items/manpower_recommendation?limit=-1&fields=id,manpower_request_id,status`,
             compHeaders,
-            6000
+            2500
           ),
-          // Employee Evaluations
           fetchDirectusWithTimeout<AnyRec>(
             `${companyUrl}/items/employee_evaluation?limit=-1&fields=id,user_id,total_score,rating_band,result,evaluation_date`,
             compHeaders,
-            6000
+            2500
           ),
-          // Overtime Requests
           fetchDirectusWithTimeout<AnyRec>(
             `${companyUrl}/items/overtime_request?limit=-1&fields=overtime_id,user_id,duration_minutes,status,approved_at`,
             compHeaders,
-            6000
+            2500
           ),
-          // Attendance Logs
           fetchDirectusWithTimeout<AnyRec>(
-            `${companyUrl}/items/attendance_log?limit=1500&fields=log_id,user_id,log_date,time_in,time_out,status`,
+            `${companyUrl}/items/attendance_log?limit=1000&fields=log_id,user_id,log_date,time_in,time_out,status`,
             compHeaders,
-            6000
+            2500
           ),
         ]);
-
-        const isOnline = usersRes.ok || concernsRes.ok || manpowerReqRes.ok || attRes.ok;
 
         return {
           companyId,
           companyName,
           companyCode,
-          isOnline,
+          isOnline: true,
           users: usersRes.data,
           concerns: concernsRes.data,
           resigReqs: resigReqRes.data,
@@ -360,8 +379,8 @@ export async function GET(request: NextRequest) {
       if (result.status === "fulfilled") {
         const val = result.value;
 
-        // If completely offline or returned 0 across all endpoints
-        if (!val.isOnline && val.users.length === 0 && val.attendanceLogs.length === 0) {
+        // If company is offline or probe failed
+        if (!val.isOnline || val.users.length === 0) {
           companyMatrix.push({
             companyId: cId,
             companyName: cName,
@@ -795,7 +814,10 @@ export async function GET(request: NextRequest) {
       lastUpdated,
     };
 
-    memoryCache.set(cacheKey, { data: responseData, timestamp: Date.now() });
+    // Only cache when valid data was retrieved
+    if (totalEmployeesAll > 0 && companyMatrix.length > 0) {
+      memoryCache.set(cacheKey, { data: responseData, timestamp: Date.now() });
+    }
 
     return NextResponse.json(responseData);
   } catch (error: unknown) {
