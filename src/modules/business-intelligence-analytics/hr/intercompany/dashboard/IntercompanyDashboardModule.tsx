@@ -13,6 +13,7 @@ import { DashboardCharts } from "./components/DashboardCharts";
 export function IntercompanyDashboardModule() {
   const {
     data,
+    rawData,
     loading,
     error,
     refresh,
@@ -59,7 +60,7 @@ export function IntercompanyDashboardModule() {
         onRefresh={refresh}
         loading={loading}
         lastUpdated={data?.lastUpdated}
-        companiesList={data?.companiesList || []}
+        companiesList={rawData?.companiesList || data?.companiesList || []}
       />
 
       {loading && !data ? (

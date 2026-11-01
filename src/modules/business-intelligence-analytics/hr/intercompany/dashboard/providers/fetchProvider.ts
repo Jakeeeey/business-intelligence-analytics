@@ -1,11 +1,24 @@
-import { IntercompanyDashboardData } from "../types";
+import { DashboardFilters, IntercompanyDashboardData } from "../types";
 
 const API_BASE = "/api/bia/hr/intercompany/dashboard";
 
 export async function fetchIntercompanyDashboardData(
-  force = false
+  force = false,
+  filters?: Partial<DashboardFilters>
 ): Promise<IntercompanyDashboardData> {
-  const url = force ? `${API_BASE}?force=true` : API_BASE;
+  const params = new URLSearchParams();
+  if (force) params.set("force", "true");
+  if (filters?.company && filters.company !== "ALL") {
+    params.set("company", filters.company);
+  }
+  if (filters?.dateRange && filters.dateRange !== "all") {
+    params.set("dateRange", filters.dateRange);
+  }
+  if (filters?.startDate) params.set("startDate", filters.startDate);
+  if (filters?.endDate) params.set("endDate", filters.endDate);
+
+  const qs = params.toString();
+  const url = qs ? `${API_BASE}?${qs}` : API_BASE;
   const res = await fetch(url, {
     method: "GET",
     headers: {
@@ -24,4 +37,3 @@ export async function fetchIntercompanyDashboardData(
 
   return res.json();
 }
-

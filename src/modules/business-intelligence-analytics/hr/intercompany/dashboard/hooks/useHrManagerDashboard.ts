@@ -5,6 +5,13 @@ import {
   CompanyMatrixRow,
   ActionCenterItem,
   ActionCategory,
+  WorkforceMetrics,
+  AttendanceMetrics,
+  PunctualityMetrics,
+  OvertimeMetrics,
+  ManpowerMetrics,
+  EvaluationMetrics,
+  ConcernsMetrics,
 } from "../types";
 import { fetchIntercompanyDashboardData } from "../providers/fetchProvider";
 
@@ -43,22 +50,33 @@ export function useHrManagerDashboard() {
   const [matrixSortField, setMatrixSortField] = useState<MatrixSortField>("headcount");
   const [matrixSortOrder, setMatrixSortOrder] = useState<SortOrder>("desc");
 
-  const loadData = useCallback(async (force = false) => {
-    try {
-      setLoading(true);
-      setError(null);
-      const res = await fetchIntercompanyDashboardData(force);
-      setData(res);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to load dashboard data";
-      setError(msg);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const loadData = useCallback(
+    async (force = false, overrideFilters?: Partial<DashboardFilters>) => {
+      try {
+        setLoading(true);
+        setError(null);
+        const activeFilters = {
+          company: filters.company,
+          dateRange: filters.dateRange,
+          startDate: filters.startDate,
+          endDate: filters.endDate,
+          ...overrideFilters,
+        };
+        const res = await fetchIntercompanyDashboardData(force, activeFilters);
+        setData(res);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Failed to load dashboard data";
+        setError(msg);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [filters.company, filters.dateRange, filters.startDate, filters.endDate]
+  );
 
+  // Trigger re-fetch when dateRange, company, or custom date range changes
   useEffect(() => {
-    loadData();
+    loadData(false);
   }, [loadData]);
 
   const resetFilters = useCallback(() => {
@@ -159,11 +177,117 @@ export function useHrManagerDashboard() {
     return items;
   }, [data?.actionItems, filters.company, actionCategoryTab, filters.search]);
 
+  // Dynamic KPI Rollup: Adjusts top cards dynamically if single company or search is selected
+  const effectiveData = useMemo<IntercompanyDashboardData | null>(() => {
+    if (!data) return null;
+
+    // If no search query, return server aggregated metrics directly (server handles entity & dateRange filters)
+    if (!filters.search || !filters.search.trim()) {
+      return data;
+    }
+
+    // If filtered by company or search, recompute metrics based on the visible matrix rows
+    const visibleRows = filteredCompanyMatrix;
+    const activeHeadcountSum = visibleRows.reduce((acc, r) => acc + r.headcount, 0);
+    const activeRows = visibleRows.filter((r) => r.status === "ACTIVE" && r.headcount > 0);
+
+    const avgAttendance =
+      activeRows.length > 0
+        ? Number(
+            (
+              activeRows.reduce((acc, r) => acc + r.attendanceRate, 0) / activeRows.length
+            ).toFixed(1)
+          )
+        : 0;
+
+    const avgPunctuality =
+      activeRows.length > 0
+        ? Number(
+            (
+              activeRows.reduce((acc, r) => acc + r.punctualityRate, 0) / activeRows.length
+            ).toFixed(1)
+          )
+        : 0;
+
+    const totalOtHours = visibleRows.reduce((acc, r) => acc + r.overtimeHours, 0);
+    const totalOpenReqs = visibleRows.reduce((acc, r) => acc + r.openRequisitions, 0);
+    const totalConcerns = visibleRows.reduce((acc, r) => acc + r.unresolvedConcerns, 0);
+
+    const rowsWithScore = visibleRows.filter((r) => r.avgAppraisalScore > 0);
+    const avgScore =
+      rowsWithScore.length > 0
+        ? Number(
+            (
+              rowsWithScore.reduce((acc, r) => acc + r.avgAppraisalScore, 0) /
+              rowsWithScore.length
+            ).toFixed(1)
+          )
+        : 0;
+
+    const dynamicWorkforce: WorkforceMetrics = {
+      ...data.workforce,
+      totalEmployees: activeHeadcountSum,
+      activeEmployees: activeHeadcountSum,
+      regularCount: activeHeadcountSum,
+      activeRatio: 100,
+    };
+
+    const dynamicAttendance: AttendanceMetrics = {
+      totalLogs: data.attendance.totalLogs,
+      presentCount: Math.round((data.attendance.totalLogs * avgAttendance) / 100),
+      absentCount: Math.max(
+        0,
+        data.attendance.totalLogs - Math.round((data.attendance.totalLogs * avgAttendance) / 100)
+      ),
+      attendanceRate: avgAttendance,
+    };
+
+    const dynamicPunctuality: PunctualityMetrics = {
+      ...data.punctuality,
+      punctualityRate: avgPunctuality,
+    };
+
+    const dynamicOvertime: OvertimeMetrics = {
+      ...data.overtime,
+      approvedHours: Math.round(totalOtHours),
+      totalHours: Math.round(totalOtHours),
+    };
+
+    const dynamicManpower: ManpowerMetrics = {
+      ...data.manpower,
+      openPositions: totalOpenReqs,
+    };
+
+    const dynamicConcerns: ConcernsMetrics = {
+      ...data.concerns,
+      pendingCount: totalConcerns,
+    };
+
+    const dynamicEvaluation: EvaluationMetrics = {
+      ...data.evaluation,
+      avgScore,
+      totalEvaluations: rowsWithScore.length,
+    };
+
+    return {
+      ...data,
+      workforce: dynamicWorkforce,
+      attendance: dynamicAttendance,
+      punctuality: dynamicPunctuality,
+      overtime: dynamicOvertime,
+      manpower: dynamicManpower,
+      evaluation: dynamicEvaluation,
+      concerns: dynamicConcerns,
+      companyMatrix: visibleRows,
+    };
+  }, [data, filters.search, filteredCompanyMatrix]);
+
   return {
-    data,
+    data: effectiveData,
+    rawData: data,
     loading,
     error,
-    refresh: loadData,
+    refresh: (force = true) => loadData(force),
     filters,
     setFilters,
     resetFilters,

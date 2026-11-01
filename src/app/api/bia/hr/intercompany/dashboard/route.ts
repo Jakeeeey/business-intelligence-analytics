@@ -176,8 +176,35 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const force = searchParams.get("force") === "true";
+    const companyParam = searchParams.get("company") || "ALL";
+    const dateRangeParam = searchParams.get("dateRange") || "all";
+    const customStartDate = searchParams.get("startDate");
+    const customEndDate = searchParams.get("endDate");
 
-    const cacheKey = "intercompany_hr_manager_dashboard_v3";
+    // Compute date range horizon
+    const now = new Date();
+    const todayStr = now.toISOString().slice(0, 10);
+    let startDate: string | null = customStartDate || null;
+    const endDate: string | null = customEndDate || todayStr;
+
+    if (!startDate && dateRangeParam !== "all") {
+      if (dateRangeParam === "today") {
+        startDate = todayStr;
+      } else if (dateRangeParam === "week") {
+        const d = new Date(now);
+        d.setDate(d.getDate() - 7);
+        startDate = d.toISOString().slice(0, 10);
+      } else if (dateRangeParam === "month") {
+        startDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+      } else if (dateRangeParam === "quarter") {
+        const qMonth = Math.floor(now.getMonth() / 3) * 3 + 1;
+        startDate = `${now.getFullYear()}-${String(qMonth).padStart(2, "0")}-01`;
+      } else if (dateRangeParam === "year") {
+        startDate = `${now.getFullYear()}-01-01`;
+      }
+    }
+
+    const cacheKey = `dashboard_v5_${companyParam}_${dateRangeParam}_${startDate || "none"}_${endDate || "none"}`;
     if (!force && memoryCache.has(cacheKey)) {
       const cached = memoryCache.get(cacheKey)!;
       if (Date.now() - cached.timestamp < CACHE_TTL_MS) {
@@ -191,7 +218,7 @@ export async function GET(request: NextRequest) {
     if (staticToken) primaryHeaders["Authorization"] = `Bearer ${staticToken}`;
     else if (token) primaryHeaders["Authorization"] = `Bearer ${token}`;
 
-    // 1. Fetch company_list from primary Directus (with 1 retry if needed)
+    // 1. Fetch company_list from primary Directus (with retry)
     let companiesRes = await fetchDirectusWithTimeout<AnyRec>(
       `${primaryBaseUrl}/items/company_list?limit=-1&fields=company_id,company_name,company_code,directus,directus_token,status,is_default,is_mother_company`,
       primaryHeaders,
@@ -206,19 +233,30 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const validCompanies = companiesRes.data.filter((c) => {
+    const allValidCompanies = companiesRes.data.filter((c) => {
       if (!c.directus || typeof c.directus !== "string" || !c.directus.trim()) return false;
       if (String(c.status || "ACTIVE").toUpperCase() === "INACTIVE") return false;
       return true;
     });
 
+    // If company filter specified, narrow down to that company, else process all
+    const targetCompanies =
+      companyParam !== "ALL"
+        ? allValidCompanies.filter(
+            (c) =>
+              String(c.company_code || "").toUpperCase() === companyParam.toUpperCase() ||
+              String(c.company_id) === companyParam
+          )
+        : allValidCompanies;
+
+    const companiesToProcess = targetCompanies.length > 0 ? targetCompanies : allValidCompanies;
+
     const userFields =
       "user_id,is_employee,is_deleted,isDeleted,separation_date,separation_cause,gender,civil_status,employment_status_id,user_fname,user_lname,user_department,user_position";
 
-    // 2. Query each company with fast probe:
-    // First test `user` endpoint. If unreachable, mark company offline immediately to avoid stalling sockets.
+    // 2. Query each company with fast probe and date-filtered queries
     const companyFetchResults = await Promise.allSettled(
-      validCompanies.map(async (company) => {
+      companiesToProcess.map(async (company) => {
         const companyId = Number(company.company_id);
         const companyName = String(company.company_name || `Company #${companyId}`).trim();
         const companyCode = String(company.company_code || `CMP-${companyId}`).trim();
@@ -230,14 +268,13 @@ export async function GET(request: NextRequest) {
         };
         if (companyToken) compHeaders["Authorization"] = `Bearer ${companyToken}`;
 
-        // 2a. Fast probe check on user endpoint
+        // Fast probe check on user endpoint
         const usersRes = await fetchDirectusWithTimeout<AnyRec>(
           `${companyUrl}/items/user?limit=-1&fields=${userFields}`,
           compHeaders,
           2500
         );
 
-        // If offline / unreachable / 401, return immediately
         if (!usersRes.ok) {
           return {
             companyId,
@@ -256,7 +293,31 @@ export async function GET(request: NextRequest) {
           };
         }
 
-        // 2b. If online, fetch remaining collections concurrently with 2500ms timeout
+        // Build filtered URLs
+        let attUrl = `${companyUrl}/items/attendance_log?limit=2000&fields=log_id,user_id,log_date,time_in,time_out,status`;
+        if (startDate) attUrl += `&filter[log_date][_gte]=${startDate}`;
+        if (endDate) attUrl += `&filter[log_date][_lte]=${endDate}`;
+
+        let otUrl = `${companyUrl}/items/overtime_request?limit=-1&fields=overtime_id,user_id,duration_minutes,status,approved_at,request_date`;
+        if (startDate) otUrl += `&filter[request_date][_gte]=${startDate}`;
+        if (endDate) otUrl += `&filter[request_date][_lte]=${endDate}`;
+
+        let resigUrl = `${companyUrl}/items/resignation_request?limit=-1&fields=id,user_id,status,reason,resignation_date,filed_at`;
+        if (startDate) resigUrl += `&filter[filed_at][_gte]=${startDate}`;
+
+        let userResigUrl = `${companyUrl}/items/user_resignation?limit=-1&fields=id,user_id,filing_date,last_day`;
+        if (startDate) userResigUrl += `&filter[filing_date][_gte]=${startDate}`;
+
+        let conUrl = `${companyUrl}/items/employee_concerns?limit=-1&fields=id,subject_of_concern,concern,is_anonymous,status,created_at`;
+        if (startDate) conUrl += `&filter[created_at][_gte]=${startDate}`;
+
+        let mrUrl = `${companyUrl}/items/manpower_request?limit=-1&fields=id,request_no,position,no_manpower_needed,rate,status,purpose,created_at`;
+        if (startDate) mrUrl += `&filter[created_at][_gte]=${startDate}`;
+
+        let evalUrl = `${companyUrl}/items/employee_evaluation?limit=-1&fields=id,user_id,total_score,rating_band,result,evaluation_date`;
+        if (startDate) evalUrl += `&filter[evaluation_date][_gte]=${startDate}`;
+
+        // Fetch remaining collections concurrently
         const [
           concernsRes,
           resigReqRes,
@@ -267,46 +328,18 @@ export async function GET(request: NextRequest) {
           otRes,
           attRes,
         ] = await Promise.all([
-          fetchDirectusWithTimeout<AnyRec>(
-            `${companyUrl}/items/employee_concerns?limit=-1&fields=id,subject_of_concern,concern,is_anonymous,status,created_at`,
-            compHeaders,
-            2500
-          ),
-          fetchDirectusWithTimeout<AnyRec>(
-            `${companyUrl}/items/resignation_request?limit=-1&fields=id,user_id,status,reason,resignation_date,filed_at`,
-            compHeaders,
-            2500
-          ),
-          fetchDirectusWithTimeout<AnyRec>(
-            `${companyUrl}/items/user_resignation?limit=-1&fields=id,user_id,filing_date,last_day`,
-            compHeaders,
-            2500
-          ),
-          fetchDirectusWithTimeout<AnyRec>(
-            `${companyUrl}/items/manpower_request?limit=-1&fields=id,request_no,position,no_manpower_needed,rate,status,purpose,created_at`,
-            compHeaders,
-            2500
-          ),
+          fetchDirectusWithTimeout<AnyRec>(conUrl, compHeaders, 2500),
+          fetchDirectusWithTimeout<AnyRec>(resigUrl, compHeaders, 2500),
+          fetchDirectusWithTimeout<AnyRec>(userResigUrl, compHeaders, 2500),
+          fetchDirectusWithTimeout<AnyRec>(mrUrl, compHeaders, 2500),
           fetchDirectusWithTimeout<AnyRec>(
             `${companyUrl}/items/manpower_recommendation?limit=-1&fields=id,manpower_request_id,status`,
             compHeaders,
             2500
           ),
-          fetchDirectusWithTimeout<AnyRec>(
-            `${companyUrl}/items/employee_evaluation?limit=-1&fields=id,user_id,total_score,rating_band,result,evaluation_date`,
-            compHeaders,
-            2500
-          ),
-          fetchDirectusWithTimeout<AnyRec>(
-            `${companyUrl}/items/overtime_request?limit=-1&fields=overtime_id,user_id,duration_minutes,status,approved_at`,
-            compHeaders,
-            2500
-          ),
-          fetchDirectusWithTimeout<AnyRec>(
-            `${companyUrl}/items/attendance_log?limit=1000&fields=log_id,user_id,log_date,time_in,time_out,status`,
-            compHeaders,
-            2500
-          ),
+          fetchDirectusWithTimeout<AnyRec>(evalUrl, compHeaders, 2500),
+          fetchDirectusWithTimeout<AnyRec>(otUrl, compHeaders, 2500),
+          fetchDirectusWithTimeout<AnyRec>(attUrl, compHeaders, 2500),
         ]);
 
         return {
@@ -327,7 +360,7 @@ export async function GET(request: NextRequest) {
       })
     );
 
-    // 3. Aggregate all metrics
+    // 3. Aggregate metrics
     let totalEmployeesAll = 0;
     let activeEmployeesAll = 0;
     let inactiveEmployeesAll = 0;
@@ -371,7 +404,7 @@ export async function GET(request: NextRequest) {
     const concernsCategoryMap = new Map<string, number>();
 
     companyFetchResults.forEach((result, idx) => {
-      const fallbackCompany = validCompanies[idx];
+      const fallbackCompany = companiesToProcess[idx];
       const cId = Number(fallbackCompany.company_id);
       const cName = String(fallbackCompany.company_name || `Company #${cId}`).trim();
       const cCode = String(fallbackCompany.company_code || `CMP-${cId}`).trim();
@@ -379,7 +412,6 @@ export async function GET(request: NextRequest) {
       if (result.status === "fulfilled") {
         const val = result.value;
 
-        // If company is offline or probe failed
         if (!val.isOnline || val.users.length === 0) {
           companyMatrix.push({
             companyId: cId,
@@ -429,7 +461,7 @@ export async function GET(request: NextRequest) {
           else casualContractualCountAll++;
         });
 
-        // Attendance & Punctuality from attendance_log
+        // Attendance & Punctuality from filtered logs
         let compOnTime = 0;
         let compLate = 0;
         val.attendanceLogs.forEach((l) => {
@@ -453,7 +485,7 @@ export async function GET(request: NextRequest) {
             ? 92.0
             : 0;
 
-        // Overtime
+        // Overtime from filtered requests
         const otCount = val.overtimes.length;
         totalOvertimes += otCount;
         let compOtHours = 0;
@@ -806,7 +838,7 @@ export async function GET(request: NextRequest) {
       attendanceTrends,
       companyDistribution,
       concernsDistribution,
-      companiesList: validCompanies.map((c) => ({
+      companiesList: allValidCompanies.map((c) => ({
         companyId: Number(c.company_id),
         companyName: String(c.company_name || "").trim(),
         companyCode: String(c.company_code || "").trim(),
@@ -814,7 +846,6 @@ export async function GET(request: NextRequest) {
       lastUpdated,
     };
 
-    // Only cache when valid data was retrieved
     if (totalEmployeesAll > 0 && companyMatrix.length > 0) {
       memoryCache.set(cacheKey, { data: responseData, timestamp: Date.now() });
     }
