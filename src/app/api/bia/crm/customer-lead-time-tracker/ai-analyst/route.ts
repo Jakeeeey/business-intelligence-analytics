@@ -4,6 +4,7 @@ import { GoogleGenAI } from "@google/genai";
 export async function POST(request: NextRequest) {
   try {
     const apiKey = process.env.GEMINI_API_KEY;
+    const model = process.env.GEMINI_MODEL || "gemini-3.8-flash";
     
     if (!apiKey) {
       return NextResponse.json(
@@ -41,7 +42,7 @@ export async function POST(request: NextRequest) {
 
     // Call Gemini via the new SDK (using the 2.5-flash model)
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model,
       contents: prompt,
     });
 
