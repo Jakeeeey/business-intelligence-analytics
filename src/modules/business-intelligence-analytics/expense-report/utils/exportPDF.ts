@@ -2,6 +2,15 @@ import jsPDF from "jspdf";
 import autoTable, { RowInput } from "jspdf-autotable";
 
 import type { DisbursementRecord, ExpenseFilters, ExportFormat } from "../type";
+import {
+  getInvoiceNo,
+  getInvoiceDate,
+  getSupplierTin,
+  getSupplierName,
+  getVatType,
+  getTypeOfInvoice,
+  getAmount,
+} from "./exportExcel";
 import { PdfEngine } from "@/components/pdf-layout-design/PdfEngine";
 import type {
   PdfConfig,
@@ -13,7 +22,7 @@ import {
 } from "@/components/pdf-layout-design/services/pdf-template";
 
 // Prefer template label used by the project's PDF templates collection
-const TEMPLATE_NAME = "Letter - Portrait";
+const TEMPLATE_NAME = "Letter - Landscape";
 
 export type ExportOptions = {
   records: DisbursementRecord[];
@@ -66,7 +75,7 @@ export async function exportToPDF(
     records = [],
     filters,
     format = "detailed",
-    groupBy = "coa",
+    groupBy,
     userName = "System",
     preview = false,
     templateName = TEMPLATE_NAME,
@@ -155,9 +164,14 @@ export async function exportToPDF(
     const byConfig = templates.find(
       (t) =>
         t.config?.paperSize === "Letter" &&
-        t.config?.orientation === "portrait",
+        t.config?.orientation === "landscape",
     );
     if (byConfig) return byConfig.name;
+
+    const anyLandscape = templates.find(
+      (t) => t.config?.orientation === "landscape",
+    );
+    if (anyLandscape) return anyLandscape.name;
 
     return TEMPLATE_NAME;
   }
@@ -245,7 +259,7 @@ export async function exportToPDF(
 
       // small right-side totals (grand total) below the header block
       const grandTotal = records.reduce(
-        (s, r) => s + (r.lineAmount || 0),
+        (s, r) => s + getAmount(r),
         0,
       );
       doc.setFont("helvetica", "bold");
@@ -267,63 +281,101 @@ export async function exportToPDF(
 
       const tableStart = headerBottomY + 5;
 
-      // Build autoTable body grouped by COA or Division
-      const groups = groupRecords(records, groupBy);
-
       const body: RowInput[] = [];
 
-      for (const grp of groups) {
-        // Group header row spanning all columns
-        body.push([
-          {
-            content: `Account: ${grp.key}`,
-            colSpan: 5,
-            // remove internal borders for group header row; only outer table sides will be drawn
-            styles: {
-              halign: "left",
-              fontStyle: "bold",
-              fillColor: [240, 240, 240],
-              lineWidth: 0,
-              lineColor: [255, 255, 255],
-            },
-          },
-        ]);
+      if (groupBy) {
+        // Build autoTable body grouped by COA or Division
+        const groups = groupRecords(records, groupBy);
 
-        // Records
-        for (const r of grp.rows) {
+        for (const grp of groups) {
+          // Group header row spanning all columns
+          body.push([
+            {
+              content: `${groupBy === "coa" ? "Account" : "Division"}: ${grp.key}`,
+              colSpan: 11,
+              // remove internal borders for group header row; only outer table sides will be drawn
+              styles: {
+                halign: "left",
+                fontStyle: "bold",
+                fillColor: [240, 240, 240],
+                lineWidth: 0,
+                lineColor: [255, 255, 255],
+              },
+            },
+          ]);
+
+          // Records
+          for (const r of grp.rows) {
+            body.push([
+              fmtDate(r.lineDate || r.transactionDate),
+              r.payeeName || "-",
+              r.coaTitle || "-",
+              getInvoiceNo(r),
+              getInvoiceDate(r),
+              getSupplierTin(r),
+              getSupplierName(r),
+              getVatType(r),
+              getTypeOfInvoice(r),
+              r.lineRemarks || r.disbursementRemarks || "-",
+              {
+                content: fmtCurrency(getAmount(r)),
+                styles: { halign: "right" },
+              },
+            ]);
+          }
+
+          // Subtotal row for the group
+          const subtotal = grp.rows.reduce((s, rr) => s + getAmount(rr), 0);
+          body.push([
+            {
+              content: `Subtotal (${grp.key})`,
+              colSpan: 10,
+              // remove internal borders for subtotal row as well
+              styles: {
+                halign: "right",
+                fontStyle: "bold",
+                lineWidth: 0,
+                lineColor: [255, 255, 255],
+              },
+            },
+            {
+              content: fmtCurrency(subtotal),
+              styles: {
+                halign: "right",
+                fontStyle: "bold",
+                lineWidth: 0,
+                lineColor: [255, 255, 255],
+              },
+            },
+          ]);
+        }
+      } else {
+        // Direct list of records without grouping
+        for (const r of records) {
           body.push([
             fmtDate(r.lineDate || r.transactionDate),
             r.payeeName || "-",
             r.coaTitle || "-",
+            getInvoiceNo(r),
+            getInvoiceDate(r),
+            getSupplierTin(r),
+            getSupplierName(r),
+            getVatType(r),
+            getTypeOfInvoice(r),
+            r.lineRemarks || r.disbursementRemarks || "-",
             {
-              content: fmtCurrency(r.lineAmount || 0),
+              content: fmtCurrency(getAmount(r)),
               styles: { halign: "right" },
             },
-            r.lineRemarks || r.disbursementRemarks || "",
           ]);
         }
-
-        // Subtotal row for the group
-        const subtotal = grp.rows.reduce((s, rr) => s + (rr.lineAmount || 0), 0);
-        body.push([
-          {
-            content: `Subtotal (${grp.key})`,
-            colSpan: 4,
-            // remove internal borders for subtotal row as well
-            styles: { halign: "right", fontStyle: "bold", lineWidth: 0, lineColor: [255, 255, 255] },
-          },
-          {
-            content: fmtCurrency(subtotal),
-            styles: { halign: "right", fontStyle: "bold", lineWidth: 0, lineColor: [255, 255, 255] },
-          },
-        ]);
       }
 
       // Overall grand total row (highlighted)
       body.push([
         {
           content: "GRAND TOTAL",
-          colSpan: 4,
+          colSpan: 10,
           // match subtotal styling: remove internal borders so only side borders remain
           styles: {
             halign: "right",
@@ -345,45 +397,46 @@ export async function exportToPDF(
         },
       ]);
 
-      // Column widths (approx) - compute dynamically and ensure they fit inside usable width
-      // assign widths in mm and guarantee the sum does not exceed usableWidth
+      // Column widths (approx 260mm total base width in landscape) - compute dynamically and ensure they fit inside usable width
       const colWidths: Record<number, number> = (() => {
-        const minRemarks = 20;
-        const base = { 0: 20, 1: 62, 2: 58, 3: 22 };
-        const used = base[0] + base[1] + base[2] + base[3];
-        let remaining = usableWidth - used;
-        if (remaining < minRemarks) {
-          // scale down the base columns proportionally while enforcing sensible minimums
-          const scale = Math.max(0.45, (usableWidth - minRemarks) / used);
-          const s0 = Math.max(10, Math.round(base[0] * scale));
-          const s1 = Math.max(20, Math.round(base[1] * scale));
-          const s2 = Math.max(20, Math.round(base[2] * scale));
-          const s3 = Math.max(10, Math.round(base[3] * scale));
-          remaining = usableWidth - (s0 + s1 + s2 + s3);
-          return {
-            0: s0,
-            1: s1,
-            2: s2,
-            3: s3,
-            4: Math.max(remaining, minRemarks),
-          };
+        const base = [18, 25, 25, 22, 18, 22, 28, 18, 24, 34, 26];
+        const baseTotal = 260;
+        const widths: Record<number, number> = {};
+        let allocated = 0;
+        for (let i = 0; i < base.length - 1; i++) {
+          const w = Math.round((base[i] / baseTotal) * usableWidth);
+          widths[i] = w;
+          allocated += w;
         }
-        return { 0: base[0], 1: base[1], 2: base[2], 3: base[3], 4: remaining };
+        widths[base.length - 1] = Math.max(22, usableWidth - allocated);
+        return widths;
       })();
 
       // Draw table using jspdf-autotable - respect the page margins
       autoTable(doc, {
         startY: tableStart,
         margin: { left: leftX, right: margins.right ?? 10 },
-        head: [["Date", "Payee", "Account", "Amount", "Remarks"]],
+        head: [[
+          "Date",
+          "Payee",
+          "Account",
+          "Invoice No.",
+          "Invoice Date",
+          "Supplier TIN",
+          "Supplier Name",
+          "VAT/NON-VAT",
+          "Type of Invoice",
+          "Remarks",
+          "Amount (Gross)",
+        ]],
         body: body,
         theme: "grid",
         // default (body) grid lines
         tableLineWidth: 0.25,
         tableLineColor: [180, 180, 180],
         styles: {
-          fontSize: 8,
-          cellPadding: 3,
+          fontSize: 6.8,
+          cellPadding: 1.8,
           overflow: "linebreak",
           textColor: 0,
           lineWidth: 0.25,
@@ -394,16 +447,21 @@ export async function exportToPDF(
           textColor: 0,
           fontStyle: "bold",
           halign: "center",
-          // keep per-cell value small so plugin still draws cell rects, but we'll draw a stronger bottom border via hook
           lineWidth: 0.25,
           lineColor: [120, 120, 120],
         },
         columnStyles: {
-          0: { cellWidth: colWidths[0], lineWidth: 0.25 },
+          0: { cellWidth: colWidths[0], halign: "center", lineWidth: 0.25 },
           1: { cellWidth: colWidths[1], lineWidth: 0.25 },
           2: { cellWidth: colWidths[2], lineWidth: 0.25 },
-          3: { cellWidth: colWidths[3], halign: "right", lineWidth: 0.25 },
-          4: { cellWidth: colWidths[4], lineWidth: 0.25 },
+          3: { cellWidth: colWidths[3], lineWidth: 0.25 },
+          4: { cellWidth: colWidths[4], halign: "center", lineWidth: 0.25 },
+          5: { cellWidth: colWidths[5], lineWidth: 0.25 },
+          6: { cellWidth: colWidths[6], lineWidth: 0.25 },
+          7: { cellWidth: colWidths[7], halign: "center", lineWidth: 0.25 },
+          8: { cellWidth: colWidths[8], lineWidth: 0.25 },
+          9: { cellWidth: colWidths[9], lineWidth: 0.25 },
+          10: { cellWidth: colWidths[10], halign: "right", lineWidth: 0.25 },
         },
         bodyStyles: {
           valign: "middle",
@@ -500,8 +558,8 @@ export async function exportToPDF(
       console.warn("[exportToPDF] falling back to direct jsPDF generation");
       const fallbackConfig: PdfConfig = {
         paperSize: "Letter",
-        customSize: { width: 215.9, height: 279.4 },
-        orientation: "portrait",
+        customSize: { width: 279.4, height: 215.9 },
+        orientation: "landscape",
         elements: {},
         margins: { top: 10, right: 10, bottom: 10, left: 10 },
         showGrid: false,
@@ -518,9 +576,9 @@ export async function exportToPDF(
         },
       } as unknown as PdfConfig;
 
-      // Use default Letter size and call the same renderBody
+      // Use default Letter landscape size and call the same renderBody
       const doc2: jsPDF = new jsPDF({
-        orientation: "portrait",
+        orientation: "landscape",
         unit: "mm",
         format: "letter",
       });

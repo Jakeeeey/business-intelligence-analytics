@@ -60,8 +60,6 @@ export function FiltersBar({
     }));
   }, [salesmen]);
 
-  const activeValues = selectedSalesmanIds.map(String);
-
   // Convert fiscal period YYYY-MM-DD to YYYY-MM for the html month input
   const monthInputValue = React.useMemo(() => {
     if (!fiscalPeriod) return "";
@@ -89,7 +87,13 @@ export function FiltersBar({
               <MultiSelectFilter
               options={supervisorOptions}
               selectedValues={selectedSupervisorIds}
-              onValuesChange={onChangeSupervisor}
+              onValuesChange={(vals) => {
+                if (vals.includes("__ALL__")) {
+                  onChangeSupervisor([]);
+                } else {
+                  onChangeSupervisor(vals);
+                }
+              }}
               placeholder="Select supervisor..."
               searchPlaceholder="Search supervisor..."
               allLabel="All Supervisors"
@@ -104,9 +108,19 @@ export function FiltersBar({
         <div className="flex-1">
             <MultiSelectFilter
             options={salesmanOptions}
-            selectedValues={activeValues}
+            selectedValues={
+                selectedSalesmanIds.includes(-1)
+                  ? ["__NONE__"]
+                  : selectedSalesmanIds.map(String)
+            }
             onValuesChange={(vals) => {
-                onChangeSalesmen(vals.map(Number));
+                if (vals.includes("__NONE__")) {
+                    onChangeSalesmen([-1]);
+                } else if (vals.includes("__ALL__")) {
+                    onChangeSalesmen([]);
+                } else {
+                    onChangeSalesmen(vals.map(Number));
+                }
             }}
             placeholder="Select salesman..."
             searchPlaceholder="Search salesman..."

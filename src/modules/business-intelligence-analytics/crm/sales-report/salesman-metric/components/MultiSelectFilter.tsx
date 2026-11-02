@@ -1,9 +1,10 @@
 "use client";
 
 import * as React from "react";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
     Command,
     CommandEmpty,
@@ -18,10 +19,9 @@ import {
     PopoverTrigger,
 } from "@/components/ui/popover";
 
-
 export interface MultiSelectFilterProps {
     options: { value: string; label: string }[];
-    selectedValues: string[]; // empty array means ALL are selected
+    selectedValues: string[]; // empty array means ALL are selected initially, OR user explicitly deselected all
     onValuesChange: (values: string[]) => void;
     placeholder?: string;
     searchPlaceholder?: string;
@@ -42,48 +42,69 @@ export function MultiSelectFilter({
 }: MultiSelectFilterProps) {
     const [open, setOpen] = React.useState(false);
 
-    // If selectedValues is empty, we treat it as ALL selected
-    const isAllSelected = selectedValues.length === 0 || selectedValues.length === options.length;
+    // If selectedValues has "__ALL__", or is empty initially and not manually cleared
+    // Let's use a clear indicator:
+    // If selectedValues contains "__NONE__", exactly 0 items are selected.
+    // If selectedValues is empty [] or contains all option values or contains "__ALL__", all are selected.
+    const isNoneSelected = selectedValues.length === 1 && selectedValues[0] === "__NONE__";
+    const isAllSelected = !isNoneSelected && (
+        selectedValues.length === 0 ||
+        selectedValues.includes("__ALL__") ||
+        (options.length > 0 && options.every(opt => selectedValues.includes(opt.value)))
+    );
 
-    const handleSelect = (val: string) => {
-        if (val === "all") {
-            // Toggle all
-            if (isAllSelected) {
-                onValuesChange([]);
-            } else {
-                onValuesChange([]);
+    const handleSelectAll = (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onValuesChange(["__ALL__"]);
+    };
+
+    const handleClearAll = (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onValuesChange(["__NONE__"]);
+    };
+
+    const handleToggleItem = (val: string) => {
+        let currentEffective: string[] = [];
+
+        if (isAllSelected) {
+            currentEffective = options.map((o) => o.value);
+        } else if (isNoneSelected) {
+            currentEffective = [];
+        } else {
+            currentEffective = selectedValues.filter(v => v !== "__ALL__" && v !== "__NONE__");
+        }
+
+        let next: string[];
+        if (currentEffective.includes(val)) {
+            next = currentEffective.filter((v) => v !== val);
+            if (next.length === 0) {
+                next = ["__NONE__"];
             }
         } else {
-            // Toggle specific value
-            let newValues = [...selectedValues];
-            if (isAllSelected) {
-                // If currently all selected (by default []), and we uncheck one,
-                // we need to explicitly select all EXCEPT the unchecked one.
-                newValues = options.map(o => o.value).filter(v => v !== val);
-            } else {
-                if (newValues.includes(val)) {
-                    newValues = newValues.filter(v => v !== val);
-                } else {
-                    newValues.push(val);
-                }
-            }
-
-            // If we selected everything, just send empty array
-            if (newValues.length === options.length) {
-                onValuesChange([]);
-            } else {
-                onValuesChange(newValues);
+            next = [...currentEffective, val];
+            if (options.length > 0 && next.length === options.length) {
+                next = ["__ALL__"];
             }
         }
+
+        onValuesChange(next);
     };
 
     const displayText = React.useMemo(() => {
+        if (isNoneSelected) return placeholder;
         if (isAllSelected) return allLabel;
-        if (selectedValues.length === 1) {
-            return options.find(o => o.value === selectedValues[0])?.label || placeholder;
+
+        const effectiveValues = selectedValues.filter(v => v !== "__ALL__" && v !== "__NONE__");
+        if (effectiveValues.length === 1) {
+            return options.find((o) => o.value === effectiveValues[0])?.label || placeholder;
         }
-        return `${selectedValues.length} Selected`;
-    }, [isAllSelected, selectedValues, options, placeholder, allLabel]);
+        if (effectiveValues.length > 1) {
+            return `${effectiveValues.length} Selected`;
+        }
+        return placeholder;
+    }, [isNoneSelected, isAllSelected, selectedValues, options, placeholder, allLabel]);
 
     return (
         <Popover open={open} onOpenChange={setOpen}>
@@ -92,50 +113,66 @@ export function MultiSelectFilter({
                     variant="outline"
                     role="combobox"
                     aria-expanded={open}
-                    className={cn("w-full justify-between h-8 bg-transparent hover:bg-muted/10 border-none font-bold text-xs uppercase tracking-widest px-2", className)}
+                    className={cn(
+                        "w-full justify-between h-8 bg-transparent hover:bg-muted/10 border-none font-bold text-xs uppercase tracking-widest px-2",
+                        className
+                    )}
                     disabled={disabled}
                 >
                     <span className="truncate">{displayText}</span>
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[300px] p-0" align="start">
+            <PopoverContent className="w-[320px] p-0 shadow-lg border border-border" align="start">
                 <Command>
                     <CommandInput placeholder={searchPlaceholder} className="h-9 text-xs" />
-                    <CommandList>
+                    
+                    {/* Header Action Bar: Select All / Clear All */}
+                    <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/60 bg-muted/20">
+                        <button
+                            type="button"
+                            onClick={handleSelectAll}
+                            className={cn(
+                                "text-xs font-semibold hover:text-foreground transition-colors",
+                                isAllSelected ? "text-primary" : "text-muted-foreground"
+                            )}
+                        >
+                            Select All
+                        </button>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={handleClearAll}
+                            className="h-6 px-2.5 text-[11px] font-medium rounded-md border-border/80 text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                        >
+                            Clear All
+                        </Button>
+                    </div>
+
+                    <CommandList className="max-h-[260px] overflow-y-auto">
                         <CommandEmpty>No results found.</CommandEmpty>
                         <CommandGroup>
-                            <CommandItem
-                                value="all_options"
-                                onSelect={() => handleSelect("all")}
-                                className="font-bold cursor-pointer text-xs"
-                            >
-                                <Check
-                                    className={cn(
-                                        "mr-2 h-4 w-4",
-                                        isAllSelected ? "opacity-100" : "opacity-0"
-                                    )}
-                                />
-                                {allLabel}
-                            </CommandItem>
                             {options.map((opt) => {
-                                const isSelected = isAllSelected || selectedValues.includes(opt.value);
+                                const isChecked = !isNoneSelected && (
+                                    isAllSelected || selectedValues.includes(opt.value)
+                                );
                                 return (
                                     <CommandItem
                                         key={opt.value}
                                         value={opt.label}
-                                        onSelect={() => handleSelect(opt.value)}
-                                        className="cursor-pointer text-xs"
+                                        onSelect={() => handleToggleItem(opt.value)}
+                                        className="cursor-pointer text-xs flex items-center gap-2.5 py-1.5 px-3 hover:bg-accent/50 aria-selected:bg-accent"
                                     >
-                                        <Check
-                                            className={cn(
-                                                "mr-2 h-4 w-4",
-                                                isSelected ? "opacity-100" : "opacity-0"
-                                            )}
+                                        <Checkbox
+                                            checked={isChecked}
+                                            className="pointer-events-none rounded-sm border-muted-foreground/50 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                                         />
-                                        {opt.label}
+                                        <span className="break-words leading-tight flex-1 text-foreground">
+                                            {opt.label}
+                                        </span>
                                     </CommandItem>
-                                )
+                                );
                             })}
                         </CommandGroup>
                     </CommandList>

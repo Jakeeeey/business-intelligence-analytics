@@ -35,6 +35,23 @@ export type DisbursementRecord = {
   lineAmount: number;
   lineRemarks: string;
   lineDateCreated: string; // "YYYY-MM-DDTHH:mm:ssZ"
+  // Additional invoice & supplier details
+  supplierId?: number | null;
+  supplierName?: string | null;
+  supplierType?: string | null;
+  supplierTin?: string | null;
+  tin_number?: string | null;
+  tinNumber?: string | null;
+  invoiceNo?: string | null;
+  invoiceDate?: string | null;
+  tin?: string | null;
+  vatType?: string | null;
+  vatNonVat?: string | null;
+  vatStatus?: string | null;
+  isVat?: number | boolean | null;
+  typeOfInvoice?: string | null;
+  invoiceType?: string | null;
+  amountType?: "Gross" | "Net";
 };
 
 export type DateRangePreset =
@@ -127,7 +144,7 @@ export type ExpenseByPeriod = {
   transactionCount: number;
 };
 
-export type ExportFormat = "summary" | "detailed";
+export type ExportFormat = "summary" | "detailed" | "pdf" | "excel";
 
 export type TooltipProps = {
   active?: boolean;

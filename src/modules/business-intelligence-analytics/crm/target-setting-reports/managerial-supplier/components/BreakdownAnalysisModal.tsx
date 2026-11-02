@@ -31,7 +31,7 @@ interface BreakdownAnalysisModalProps {
     onClose: () => void;
     data: VSalesPerformanceDataDto[];
     ids: number[];
-    salesmanName: string;
+    salesmanName?: string;
     supplierName: string;
     periodLabel: string;
     startDate: string;
@@ -361,8 +361,12 @@ export function BreakdownAnalysisModal({
                                     <Store className="h-3 w-3" /> Breakdown Analysis
                                 </div>
                                 <DialogTitle className="text-2xl font-black tracking-tight uppercase flex flex-col sm:flex-row sm:items-baseline gap-2">
-                                    <span className="text-primary italic">{salesmanName}</span>
-                                    <span className="text-muted-foreground text-sm font-bold tracking-widest">SUPPLYING</span>
+                                    {salesmanName ? (
+                                        <>
+                                            <span className="text-primary italic">{salesmanName}</span>
+                                            <span className="text-muted-foreground text-sm font-bold tracking-widest">SUPPLYING</span>
+                                        </>
+                                    ) : null}
                                     <span className="text-emerald-500">{supplierName}</span>
                                 </DialogTitle>
                                 <DialogDescription className="text-xs font-medium uppercase tracking-wider mt-1">
