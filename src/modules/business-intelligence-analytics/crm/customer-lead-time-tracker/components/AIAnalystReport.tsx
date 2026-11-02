@@ -45,6 +45,23 @@ function computeMetrics(rows: LeadTimeRow[]) {
   };
 }
 
+function cleanMarkdownLatex(text: string): string {
+  if (!text) return "";
+  return text
+    // Replace LaTeX inequality and math symbols
+    .replace(/\\le(?:q)?\b\s*/g, "<= ")
+    .replace(/\\ge(?:q)?\b\s*/g, ">= ")
+    .replace(/\\approx\b\s*/g, "~ ")
+    .replace(/\\neq\b\s*/g, "!= ")
+    .replace(/\\times\b\s*/g, "× ")
+    // Replace \text{...} with the inner text
+    .replace(/\\text\{([^}]+)\}/g, "$1")
+    // Replace escaped percent \%
+    .replace(/\\%/g, "%")
+    // Remove dollar signs enclosing math
+    .replace(/\$([^$]+)\$/g, (_, inner) => inner.trim());
+}
+
 export function AIAnalystReport({ rows, loading: rowsLoading }: { rows: LeadTimeRow[]; loading?: boolean }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -189,7 +206,7 @@ export function AIAnalystReport({ rows, loading: rowsLoading }: { rows: LeadTime
                     td: ({node: _node, ...props}) => <td className="border-b border-indigo-100 dark:border-indigo-900 p-2" {...props} />,
                   }}
                 >
-                  {report}
+                  {cleanMarkdownLatex(report)}
                 </ReactMarkdown>
               </div>
             </div>
