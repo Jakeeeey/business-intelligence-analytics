@@ -1,6 +1,7 @@
 export type RecordData = Record<string, unknown>;
 export interface SummaryCard { key: string; title: string; weight: number; scorePercent: number | null; included: boolean }
 export interface Summary { overallPercent: number | null; targetPercent: number; meetsTarget: boolean | null; weightCovered: number; cardsIncluded: number; cardsTotal: number; cards: SummaryCard[] }
+export interface Branch { id: string; name: string }
 
 let refreshing: Promise<boolean> | undefined;
 

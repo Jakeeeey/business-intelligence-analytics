@@ -28,6 +28,10 @@ async function proxy(req: NextRequest, context: { params: Promise<{ path: string
     return NextResponse.json({ message: "Provide a valid date range (YYYY-MM-DD)." }, { status: 400 });
   }
   try {
+    if (process.env.NODE_ENV === "development") {
+      console.log(`[warehouse-kpi proxy] ${req.method} ${path.join("/")} search=${req.nextUrl.search}`);
+      console.log(`[warehouse-kpi proxy] upstream URL: ${url}`);
+    }
     const response = await fetch(url, {
       method: "GET",
       headers: { Authorization: `Bearer ${token}`, Accept: "application/json", "Content-Type": "application/json" },
@@ -35,7 +39,11 @@ async function proxy(req: NextRequest, context: { params: Promise<{ path: string
       signal: AbortSignal.timeout(30000),
       redirect: "error",
     });
-    return new NextResponse(response.status === 204 ? null : await response.text(), {
+    const body = await response.text();
+    if (process.env.NODE_ENV === "development") {
+      console.log(`[warehouse-kpi proxy] upstream status=${response.status} body=${body.slice(0, 500)}`);
+    }
+    return new NextResponse(response.status === 204 ? null : body, {
       status: response.status,
       headers: { "Content-Type": response.headers.get("content-type") || "application/json", "Cache-Control": "no-store" },
     });
