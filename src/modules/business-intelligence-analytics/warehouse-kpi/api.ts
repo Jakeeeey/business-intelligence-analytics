@@ -1,7 +1,33 @@
+import { z } from "zod";
+
 export type RecordData = Record<string, unknown>;
-export interface SummaryCard { key: string; title: string; weight: number; scorePercent: number | null; included: boolean }
-export interface Summary { overallPercent: number | null; targetPercent: number; meetsTarget: boolean | null; weightCovered: number; cardsIncluded: number; cardsTotal: number; cards: SummaryCard[] }
-export interface Branch { id: string; name: string }
+const count = z.number().int().nonnegative();
+const percentage = z.number().min(0).max(100);
+const scopeSchema = z.object({ branchIds: z.array(z.number().int().positive()), from: z.iso.date(), to: z.iso.date() });
+const cardSchema = z.object({
+  key: z.string().min(1), title: z.string().min(1), weight: z.number().nonnegative(),
+  scorePercent: percentage.nullable(), included: z.boolean(),
+  auditsDone: count.nullish(), auditsCounted: count.nullish(),
+});
+const summarySchema = scopeSchema.extend({
+  overallPercent: percentage.nullable(), targetPercent: percentage, meetsTarget: z.boolean().nullable(),
+  weightCovered: z.number().nonnegative(), cardsIncluded: count, cardsTotal: count, cards: z.array(cardSchema),
+});
+const loadingSchema = scopeSchema.extend({
+  consolidations: count, timedToAudited: count, withoutAuditedTime: count, timesOutOfOrder: count,
+});
+const locationSchema = scopeSchema.extend({ expectedChecks: count, submittedChecks: count, missedChecks: count });
+const branchesSchema = z.object({ branches: z.array(z.object({ id: z.string().min(1), name: z.string().min(1) })) });
+const responseSchemas: Record<string, z.ZodType> = {
+  summary: summarySchema, "loading-readiness": loadingSchema, "location-compliance": locationSchema, branches: branchesSchema,
+};
+
+export type SummaryScope = z.infer<typeof scopeSchema>;
+export type SummaryCard = z.infer<typeof cardSchema>;
+export type Summary = z.infer<typeof summarySchema>;
+export type Branch = z.infer<typeof branchesSchema>["branches"][number];
+export type LoadingReadinessCoverage = z.infer<typeof loadingSchema>;
+export type LocationComplianceCoverage = z.infer<typeof locationSchema>;
 
 let refreshing: Promise<boolean> | undefined;
 
@@ -23,9 +49,65 @@ export async function sessionFetch(url: string, options?: RequestInit): Promise<
 export async function warehouseRequest<T>(path: string, signal?: AbortSignal): Promise<T> {
   const response = await sessionFetch(`/api/bia/warehouse-kpi/${path}`, { signal, cache: "no-store" });
   const data = await response.json().catch(() => null);
-  if (!response.ok) throw new Error(data?.message || `Request failed (${response.status}).`);
+  if (!response.ok) {
+    let backendMessage: string | undefined;
+    const dataObj = typeof data === "object" && data !== null ? data as Record<string, unknown> : undefined;
+    if (dataObj && typeof dataObj.message === "string" && dataObj.message.trim()) backendMessage = dataObj.message;
+    const statusSpecific = response.status === 401 ? "Session expired or not authenticated." :
+      response.status === 403 ? "Access denied." :
+      response.status === 400 ? "Invalid filters. Check the date range and select a single branch." :
+      response.status >= 500 ? "The warehouse service is unavailable. Please retry." :
+      undefined;
+    throw new Error(backendMessage ?? statusSpecific ?? `Request failed (${response.status}).`);
+  }
   if (data === null) throw new Error("The service returned an invalid response.");
+  const endpoint = path.split("?")[0];
+  const schema = responseSchemas[endpoint];
+  if (schema) {
+    const parsed = schema.safeParse(data);
+    if (!parsed.success) {
+      const field = parsed.error.issues[0]?.path.join(".") || "response";
+      throw new Error(`Invalid ${endpoint} response: missing or malformed ${field}.`);
+    }
+  }
   return data as T;
+}
+
+export function getMonthPeriod(month: number, today = new Date()) {
+  if (!Number.isInteger(month) || month < 0 || month > today.getMonth()) throw new Error("Select a past or current month.");
+  const prefix = `${today.getFullYear()}-${String(month + 1).padStart(2, "0")}`;
+  const lastDay = month === today.getMonth() ? today.getDate() : new Date(today.getFullYear(), month + 1, 0).getDate();
+  return { from: `${prefix}-01`, to: `${prefix}-${String(lastDay).padStart(2, "0")}` };
+}
+
+export function scopeLabel(scope: SummaryScope, branches: Branch[] = []) {
+  if (scope.branchIds.length === 0) return "No branches reported by the service";
+  return scope.branchIds.map(id => {
+    const branch = branches.find(item => item.id === String(id));
+    return branch ? `${branch.name} (#${id})` : `Branch #${id}`;
+  }).join(", ");
+}
+
+export function scopeWarning(scope: SummaryScope, branchId: string, from: string, to: string) {
+  if ((branchId && (scope.branchIds.length !== 1 || scope.branchIds[0] !== Number(branchId))) || scope.from !== from || scope.to !== to) {
+    return "The service returned a different branch or period scope. These figures apply to the reported scope, not the requested filter.";
+  }
+  return "";
+}
+
+export function sameScope(actual: SummaryScope, expected: SummaryScope) {
+  const ids = [...actual.branchIds].sort((a, b) => a - b);
+  const expectedIds = [...expected.branchIds].sort((a, b) => a - b);
+  return actual.from === expected.from && actual.to === expected.to
+    && ids.length === expectedIds.length && ids.every((id, index) => id === expectedIds[index]);
+}
+
+export function summarizeAuditCompletion(card: SummaryCard) {
+  const { auditsDone: done, auditsCounted: counted, scorePercent: score } = card;
+  if (counted === 0) return score === null ? "No data" : null;
+  if (counted == null || done == null) return "Audit completion unavailable";
+  if (score === null && counted > 0 && done === 0) return `Not audited, 0 of ${counted}`;
+  return `Audits done: ${done} of ${counted}`;
 }
 
 export function percent(value: unknown) { return typeof value === "number" && Number.isFinite(value) ? `${value.toFixed(2)}%` : "--"; }

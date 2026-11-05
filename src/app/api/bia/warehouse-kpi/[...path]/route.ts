@@ -5,6 +5,24 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const reports = new Set(["summary", "inventory-accuracy", "picking-accuracy", "stocking-level-accuracy", "receiving-accuracy", "loading-readiness", "location-compliance", "housekeeping", "sop-safety", "damage-loss"]);
+const branchIdPattern = /^\d+$/;
+
+function parseSingleBranchId(searchParams: URLSearchParams): { branchId?: string; error?: { status: number; message: string } } {
+  const values = searchParams.getAll("branchId");
+  if (values.length === 0) return {};
+  if (values.length > 1) return { error: { status: 400, message: "Only one branchId may be provided." } };
+  const value = values[0];
+  if (!branchIdPattern.test(value) || !Number.isSafeInteger(Number(value)) || Number(value) <= 0) {
+    return { error: { status: 400, message: "branchId must be a single positive integer." } };
+  }
+  return { branchId: value };
+}
+
+function isDateOnly(value: string | null): value is string {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value) || Number(value.slice(0, 4)) === 0) return false;
+  const date = new Date(`${value}T00:00:00Z`);
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}
 
 async function proxy(req: NextRequest, context: { params: Promise<{ path: string[] }> }) {
   const token = req.cookies.get(COOKIE_NAME)?.value;
@@ -24,14 +42,17 @@ async function proxy(req: NextRequest, context: { params: Promise<{ path: string
   url.search = req.nextUrl.search;
   const from = url.searchParams.get("from");
   const to = url.searchParams.get("to");
-  if ((from && !/^\d{4}-\d{2}-\d{2}$/.test(from)) || (to && !/^\d{4}-\d{2}-\d{2}$/.test(to)) || (from && to && from > to)) {
-    return NextResponse.json({ message: "Provide a valid date range (YYYY-MM-DD)." }, { status: 400 });
+  const branchValidation = parseSingleBranchId(url.searchParams);
+  if (branchValidation.error) {
+    return NextResponse.json({ message: branchValidation.error.message }, { status: branchValidation.error.status });
+  }
+  if (url.searchParams.getAll("from").length !== 1 || url.searchParams.getAll("to").length !== 1 || !isDateOnly(from) || !isDateOnly(to)) {
+    return NextResponse.json({ message: "Provide exactly one from and to date, each a real date in YYYY-MM-DD format with a positive year." }, { status: 400 });
+  }
+  if (from > to) {
+    return NextResponse.json({ message: "From date must be on or before to date." }, { status: 400 });
   }
   try {
-    if (process.env.NODE_ENV === "development") {
-      console.log(`[warehouse-kpi proxy] ${req.method} ${path.join("/")} search=${req.nextUrl.search}`);
-      console.log(`[warehouse-kpi proxy] upstream URL: ${url}`);
-    }
     const response = await fetch(url, {
       method: "GET",
       headers: { Authorization: `Bearer ${token}`, Accept: "application/json", "Content-Type": "application/json" },
@@ -39,11 +60,7 @@ async function proxy(req: NextRequest, context: { params: Promise<{ path: string
       signal: AbortSignal.timeout(30000),
       redirect: "error",
     });
-    const body = await response.text();
-    if (process.env.NODE_ENV === "development") {
-      console.log(`[warehouse-kpi proxy] upstream status=${response.status} body=${body.slice(0, 500)}`);
-    }
-    return new NextResponse(response.status === 204 ? null : body, {
+    return new NextResponse(response.status === 204 ? null : await response.text(), {
       status: response.status,
       headers: { "Content-Type": response.headers.get("content-type") || "application/json", "Cache-Control": "no-store" },
     });
