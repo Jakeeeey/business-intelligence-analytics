@@ -74,10 +74,24 @@ export async function warehouseRequest<T>(path: string, signal?: AbortSignal): P
 }
 
 export function getMonthPeriod(month: number, today = new Date()) {
-  if (!Number.isInteger(month) || month < 0 || month > today.getMonth()) throw new Error("Select a past or current month.");
-  const prefix = `${today.getFullYear()}-${String(month + 1).padStart(2, "0")}`;
-  const lastDay = month === today.getMonth() ? today.getDate() : new Date(today.getFullYear(), month + 1, 0).getDate();
-  return { from: `${prefix}-01`, to: `${prefix}-${String(lastDay).padStart(2, "0")}` };
+  return getPeriodFromSelections([month], today.getFullYear(), today);
+}
+
+export function getPeriodFromSelections(selectedMonths: number[], selectedYear: number, today = new Date()) {
+  // Months are represented 1-12 (January = 1) at the API boundary.
+  const months = selectedMonths.length ? selectedMonths : [today.getMonth() + 1];
+  const year = selectedYear || today.getFullYear();
+  const firstDays = months.map(m => new Date(year, m - 1, 1));
+  const lastDays = months.map(m => {
+    const zeroIndexed = m - 1;
+    const last = new Date(year, zeroIndexed + 1, 0).getDate();
+    const isCurrent = year === today.getFullYear() && zeroIndexed === today.getMonth();
+    return new Date(year, zeroIndexed, isCurrent ? today.getDate() : last);
+  });
+  const from = new Date(Math.min(...firstDays.map(d => d.getTime())));
+  const to = new Date(Math.max(...lastDays.map(d => d.getTime())));
+  const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return { from: fmt(from), to: fmt(to) };
 }
 
 export function scopeLabel(scope: SummaryScope, branches: Branch[] = []) {
@@ -88,9 +102,17 @@ export function scopeLabel(scope: SummaryScope, branches: Branch[] = []) {
   }).join(", ");
 }
 
-export function scopeWarning(scope: SummaryScope, branchId: string, from: string, to: string) {
-  if ((branchId && (scope.branchIds.length !== 1 || scope.branchIds[0] !== Number(branchId))) || scope.from !== from || scope.to !== to) {
-    return "The service returned a different branch or period scope. These figures apply to the reported scope, not the requested filter.";
+export function scopeWarning(scope: SummaryScope, branchIds: string[], from: string, to: string) {
+  const requested = branchIds.map(Number).filter(id => Number.isFinite(id));
+  if (requested.length > 0) {
+    const allReported = requested.every(id => scope.branchIds.includes(id));
+    const noExtra = scope.branchIds.length === requested.length;
+    if (!allReported || !noExtra) {
+      return "The service returned a different branch scope. These figures apply to the reported branches, not every requested filter.";
+    }
+  }
+  if (scope.from !== from || scope.to !== to) {
+    return "The service returned a different period scope. These figures apply to the reported dates, not the requested filter.";
   }
   return "";
 }

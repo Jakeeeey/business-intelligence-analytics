@@ -7,15 +7,20 @@ export const dynamic = "force-dynamic";
 const reports = new Set(["summary", "inventory-accuracy", "picking-accuracy", "stocking-level-accuracy", "receiving-accuracy", "loading-readiness", "location-compliance", "housekeeping", "sop-safety", "damage-loss"]);
 const branchIdPattern = /^\d+$/;
 
-function parseSingleBranchId(searchParams: URLSearchParams): { branchId?: string; error?: { status: number; message: string } } {
-  const values = searchParams.getAll("branchId");
-  if (values.length === 0) return {};
-  if (values.length > 1) return { error: { status: 400, message: "Only one branchId may be provided." } };
-  const value = values[0];
-  if (!branchIdPattern.test(value) || !Number.isSafeInteger(Number(value)) || Number(value) <= 0) {
-    return { error: { status: 400, message: "branchId must be a single positive integer." } };
+function parseBranchIds(searchParams: URLSearchParams): { branchIds: string[]; error?: { status: number; message: string } } {
+  const values = searchParams.getAll("branchId").map(v => v.trim()).filter(Boolean);
+  if (values.length === 0) return { branchIds: [] };
+  const seen = new Set<string>();
+  const ids: string[] = [];
+  for (const value of values) {
+    if (!branchIdPattern.test(value) || !Number.isSafeInteger(Number(value)) || Number(value) <= 0) {
+      return { branchIds: [], error: { status: 400, message: "branchId must be positive integers." } };
+    }
+    if (seen.has(value)) continue;
+    seen.add(value);
+    ids.push(value);
   }
-  return { branchId: value };
+  return { branchIds: ids };
 }
 
 function isDateOnly(value: string | null): value is string {
@@ -42,7 +47,7 @@ async function proxy(req: NextRequest, context: { params: Promise<{ path: string
   url.search = req.nextUrl.search;
   const from = url.searchParams.get("from");
   const to = url.searchParams.get("to");
-  const branchValidation = parseSingleBranchId(url.searchParams);
+  const branchValidation = parseBranchIds(url.searchParams);
   if (branchValidation.error) {
     return NextResponse.json({ message: branchValidation.error.message }, { status: branchValidation.error.status });
   }

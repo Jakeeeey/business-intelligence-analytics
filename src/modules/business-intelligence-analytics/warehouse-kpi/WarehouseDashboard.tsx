@@ -1,28 +1,172 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Branch, Summary, SummaryScope, LoadingReadinessCoverage, LocationComplianceCoverage, getMonthPeriod, percent, sameScope, scopeLabel, scopeWarning, summarizeAuditCompletion } from "./api";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { ChevronDown, Filter } from "lucide-react";
+import {
+  Branch,
+  Summary,
+  SummaryScope,
+  getPeriodFromSelections,
+  percent,
+  sameScope,
+  scopeLabel,
+  scopeWarning,
+  summarizeAuditCompletion,
+} from "./api";
 import { useWarehouseResource } from "./useWarehouseResource";
 
-function CardCoverage({ endpoint, query, revision, branchId, from, to, summaryScope }: {
+const MONTHS = [
+  { value: 1, label: "January" },
+  { value: 2, label: "February" },
+  { value: 3, label: "March" },
+  { value: 4, label: "April" },
+  { value: 5, label: "May" },
+  { value: 6, label: "June" },
+  { value: 7, label: "July" },
+  { value: 8, label: "August" },
+  { value: 9, label: "September" },
+  { value: 10, label: "October" },
+  { value: 11, label: "November" },
+  { value: 12, label: "December" },
+];
+
+function monthTriggerLabel(selected: number[]): string {
+  if (selected.length === 0 || selected.length === MONTHS.length) return "All months";
+  if (selected.length === 1) return MONTHS.find(m => m.value === selected[0])?.label || "Month";
+  return `Months (${selected.length}/12)`;
+}
+
+function warehouseTriggerLabel(selected: string[], total: number): string {
+  if (selected.length === 0) return "All warehouses";
+  if (selected.length === 1) return "Warehouse (1)";
+  return `Warehouses (${selected.length}/${total})`;
+}
+
+type Option<V> = { label: string; value: V };
+
+function SearchableMultiSelect<V>({
+  options,
+  value,
+  onChange,
+  triggerLabel,
+  searchPlaceholder = "Search...",
+}: {
+  options: Option<V>[];
+  value: V[];
+  onChange: (next: V[]) => void;
+  triggerLabel: (selected: V[]) => string;
+  searchPlaceholder?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const selectedSet = new Set(value);
+
+  const filtered = options.filter(o =>
+    o.label.toLowerCase().includes(search.toLowerCase())
+  );
+  const allSelected = filtered.length > 0 && filtered.every(o => selectedSet.has(o.value));
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" className="flex items-center gap-2 w-full min-w-[140px]" aria-haspopup="listbox">
+          {triggerLabel(value)}
+          <ChevronDown className="size-4 ml-auto opacity-50 shrink-0" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="p-2 w-[260px]" align="start">
+        <div className="space-y-2">
+          <Input
+            placeholder={searchPlaceholder}
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="h-8 text-sm pl-8 pr-3"
+          />
+          <div className="flex items-center justify-between px-2 py-1 text-xs border rounded bg-muted">
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={allSelected}
+              onClick={() => {
+                setSearch("");
+                onChange(options.map(o => o.value));
+                setOpen(false);
+              }}
+              className="flex-1 text-left px-2 py-1 text-xs"
+            >
+              Select All
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={value.length === 0}
+              onClick={() => {
+                setSearch("");
+                onChange([]);
+                setOpen(false);
+              }}
+              className="flex-1 text-left px-2 py-1 text-xs"
+            >
+              Clear All
+            </Button>
+          </div>
+          <div className="max-h-56 overflow-y-auto overflow-x-hidden p-1 space-y-0.5">
+            {filtered.length === 0 ? (
+              <div className="px-2 py-1 text-xs text-muted-foreground">No matches</div>
+            ) : (
+              filtered.map(o => {
+                const checked = selectedSet.has(o.value);
+                return (
+                  <label
+                    key={String(o.value)}
+                    className="flex items-center gap-2 cursor-pointer select-none rounded-sm px-2 py-1.5 text-sm hover:bg-accent data-[state=checked]:bg-accent"
+                  >
+                    <Checkbox
+                      checked={checked}
+                      onCheckedChange={checked => {
+                        const next = checked
+                          ? [...value, o.value]
+                          : value.filter(x => x !== o.value);
+                        onChange(next);
+                      }}
+                    />
+                    <span className="truncate">{o.label}</span>
+                  </label>
+                );
+              })
+            )}
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function CardCoverage({ endpoint, query, revision, summaryScope }: {
   endpoint: "loading-readiness" | "location-compliance";
-  query: string; revision: number; branchId: string; from: string; to: string;
-  summaryScope: SummaryScope;
+  query: string; revision: number; summaryScope: SummaryScope;
 }) {
   const [retry, setRetry] = useState(0);
-  const loading = useWarehouseResource<LoadingReadinessCoverage>(endpoint === "loading-readiness" ? `${endpoint}?${query}` : null, revision + retry);
-  const location = useWarehouseResource<LocationComplianceCoverage>(endpoint === "location-compliance" ? `${endpoint}?${query}` : null, revision + retry);
+  const loading = useWarehouseResource<{ consolidations?: number | null; timedToAudited?: number | null; withoutAuditedTime?: number | null; timesOutOfOrder?: number | null }>(
+    endpoint === "loading-readiness" ? `${endpoint}?${query}` : null, revision + retry
+  );
+  const location = useWarehouseResource<{ expectedChecks?: number | null; submittedChecks?: number | null; missedChecks?: number | null }>(
+    endpoint === "location-compliance" ? `${endpoint}?${query}` : null, revision + retry
+  );
   const resource = endpoint === "loading-readiness" ? loading : location;
-  const warning = resource.data ? scopeWarning(resource.data, branchId, from, to)
-    || (!sameScope(resource.data, summaryScope) ? "The coverage response has a different scope from the displayed score." : "") : "";
+  const warning = resource.data ? (
+    (!sameScope(resource.data as SummaryScope, summaryScope) ? "The coverage response has a different scope from the displayed score." : "")
+  ) : "";
 
   if (resource.loading) return <p role="status" className="text-sm text-muted-foreground">Loading measurement coverage...</p>;
   if (resource.error || warning) return (
@@ -47,20 +191,43 @@ function CardCoverage({ endpoint, query, revision, branchId, from, to, summarySc
 }
 
 export default function WarehouseDashboard() {
-  const [branchId, setBranchId] = useState("");
   const today = new Date();
-  const year = today.getFullYear();
-  const currentMonth = today.getMonth();
-  const [month, setMonth] = useState(() => new Date().getMonth());
-  const { from, to } = getMonthPeriod(Math.min(month, currentMonth), today);
+  const currentYear = today.getFullYear();
+
+  const [selectedYear, setSelectedYear] = useState(currentYear);
+  const [selectedMonths, setSelectedMonths] = useState<number[]>(MONTHS.map(m => m.value));
+  const [allBranches, setAllBranches] = useState(true);
+  const [selectedBranches, setSelectedBranches] = useState<string[]>([]);
   const [revision, setRevision] = useState(0);
-  const query = new URLSearchParams({ from, to, ...(branchId ? { branchId } : {}) }).toString();
-  const { data: summary, error, loading } = useWarehouseResource<Summary>(`summary?${query}`, revision);
+
   const { data: branchData, error: branchError, loading: branchesLoading } = useWarehouseResource<{ branches: Branch[] }>("branches", revision);
+
+  const { from, to } = getPeriodFromSelections(selectedMonths, selectedYear, today);
+
+  const query = useMemo(() => {
+    const params = new URLSearchParams({ from, to });
+    if (!allBranches) {
+      selectedBranches.forEach(id => params.append("branchId", id));
+    }
+    return params.toString();
+  }, [allBranches, selectedBranches, from, to]);
+
+  const { data: summary, error, loading } = useWarehouseResource<Summary>(`summary?${query}`, revision);
   const score = summary?.overallPercent;
   const measured = typeof score === "number" && Number.isFinite(score);
   const progress = measured ? Math.min(100, Math.max(0, score)) : 0;
-  const warning = summary ? scopeWarning(summary, branchId, from, to) : "";
+  const warning = summary ? scopeWarning(summary, allBranches ? [] : selectedBranches, from, to) : "";
+
+  const availableBranches = branchData?.branches ?? [];
+  const yearOptions = [currentYear, currentYear - 1, currentYear - 2].filter(y => y >= 1900);
+
+  const resetFilters = () => {
+    setSelectedYear(currentYear);
+    setSelectedMonths(MONTHS.map(m => m.value));
+    setAllBranches(true);
+    setSelectedBranches([]);
+    setRevision(value => value + 1);
+  };
 
   return <div className="mx-auto max-w-7xl space-y-6">
     <div>
@@ -68,30 +235,56 @@ export default function WarehouseDashboard() {
       <h1 className="mt-2 text-3xl font-semibold tracking-tight">Executive performance</h1>
       <p className="mt-2 text-sm text-muted-foreground">Backend-calculated performance and measurement coverage for the selected period.</p>
     </div>
-    <Card><CardContent className="flex flex-wrap items-end gap-3 pt-6">
-      <div className="w-full space-y-2 sm:w-64">
-        <Label htmlFor="warehouse-branch">Warehouse</Label>
-        <Select value={branchId || "default"} onValueChange={value => setBranchId(value === "default" ? "" : value)} disabled={branchesLoading}>
-          <SelectTrigger id="warehouse-branch" className="w-full" aria-label="Warehouse"><SelectValue placeholder="Select branch" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="default">Default Warehouses</SelectItem>
-            {branchData?.branches.map(branch => <SelectItem key={branch.id} value={branch.id}>{branch.name}</SelectItem>)}
-            {branchId && !branchesLoading && !branchData?.branches.some(branch => branch.id === branchId) && <SelectItem value={branchId}>Branch #{branchId}</SelectItem>}
-          </SelectContent>
-        </Select>
-        {branchesLoading && <p role="status" className="text-xs text-muted-foreground">Loading branches...</p>}
-        {branchData?.branches.length === 0 && <p className="text-xs text-muted-foreground">No branches are configured.</p>}
-      </div>
-      <div className="w-full space-y-2 sm:w-56">
-        <Label htmlFor="warehouse-month">Month</Label>
-        <Select value={String(Math.min(month, currentMonth))} onValueChange={value => setMonth(Number(value))}>
-          <SelectTrigger id="warehouse-month" className="w-full" aria-label="Month"><SelectValue /></SelectTrigger>
-          <SelectContent>{Array.from({ length: currentMonth + 1 }, (_, index) => <SelectItem key={index} value={String(index)}>{new Date(year, index, 1).toLocaleDateString("en-PH", { month: "long", year: "numeric" })}</SelectItem>)}</SelectContent>
-        </Select>
-      </div>
-      <Button variant="outline" onClick={() => setRevision(value => value + 1)}>Refresh</Button>
-      <p className="pb-2 text-xs text-muted-foreground">{month >= currentMonth ? "Current month through today" : "Full calendar month"}</p>
-    </CardContent></Card>
+
+    <Card className="border bg-background">
+      <CardContent className="pt-5 pb-4 px-5">
+        <div className="flex items-center gap-3 flex-wrap">
+          <Filter className="size-4 text-muted-foreground shrink-0" />
+          <div className="flex items-center gap-2 shrink-0">
+            <Label htmlFor="warehouse-year" className="text-xs text-muted-foreground shrink-0">Year</Label>
+            <select
+              id="warehouse-year"
+              value={String(selectedYear)}
+              onChange={e => { setSelectedYear(Number(e.target.value)); setRevision(value => value + 1); }}
+              className="border border-input rounded-md bg-background px-3 py-1.5 text-sm focus-visible:ring-ring focus-visible:ring-[3px] outline-none"
+            >
+              {yearOptions.map(y => (
+                <option key={y} value={String(y)}>{String(y)}</option>
+              ))}
+            </select>
+          </div>
+          <SearchableMultiSelect
+            options={MONTHS}
+            value={selectedMonths}
+            onChange={setSelectedMonths}
+            triggerLabel={monthTriggerLabel}
+            searchPlaceholder="Search months..."
+          />
+          <SearchableMultiSelect
+            options={availableBranches.map(b => ({ label: b.name, value: b.id }))}
+            value={allBranches ? [] : selectedBranches}
+            onChange={next => {
+              setAllBranches(next.length === 0);
+              setSelectedBranches(next);
+              setRevision(value => value + 1);
+            }}
+            triggerLabel={selected => warehouseTriggerLabel(selected, availableBranches.length)}
+            searchPlaceholder="Search warehouses..."
+          />
+          <div className="flex items-end gap-2 ml-auto shrink-0">
+            <Button variant="outline" onClick={resetFilters} size="sm">Reset filters</Button>
+            <Button variant="outline" onClick={() => setRevision(value => value + 1)} size="sm">Refresh</Button>
+          </div>
+        </div>
+        <p className="pt-2 text-xs text-muted-foreground">
+          {allBranches ? "All warehouses" : `${selectedBranches.length} warehouse(s) selected`}{" · "}
+          {selectedMonths.length === MONTHS.length ? "All months" : selectedMonths.map(m => MONTHS.find(x => x.value === m)?.label).join(", ")}{" · "}
+          {selectedYear}
+        </p>
+      </CardContent>
+    </Card>
+
+    {branchesLoading && <p role="status" className="text-xs text-muted-foreground">Loading branches...</p>}
     {branchError && <Alert variant="destructive"><AlertDescription>
       <p>{branchError} Computed branches are shown by ID when names are unavailable.</p>
       <Button variant="outline" className="mt-2" onClick={() => setRevision(value => value + 1)}>Retry branches</Button>
@@ -120,7 +313,7 @@ export default function WarehouseDashboard() {
           </div>
         </div>
         <div className="space-y-1 text-sm text-muted-foreground">
-          <p className="break-words">Computed branches: {scopeLabel(summary, branchData?.branches)}</p>
+          <p className="break-words">Computed branches: {scopeLabel(summary, availableBranches)}</p>
           <p>Computed period: {summary.from} to {summary.to} (inclusive)</p>
         </div>
         <Progress aria-label="Overall score" className="h-2.5 bg-emerald-500/20 [&_[data-slot=progress-indicator]]:bg-emerald-500" value={progress} />
@@ -134,13 +327,14 @@ export default function WarehouseDashboard() {
           <CardContent className="space-y-3">
             <p className="text-3xl font-semibold tabular-nums">{card.included ? percent(card.scorePercent) : "--"}</p>
             <Progress aria-label={`${card.title} score`} value={card.included ? card.scorePercent ?? 0 : 0} />
-            <div className="flex flex-wrap items-center justify-between gap-2 text-sm"><span>Weight: {card.weight}%</span><span className="text-muted-foreground">{card.included ? "Performance score" : "Not counted"}</span></div>
-            {(card.key === "loading-readiness" || card.key === "location-compliance") && <CardCoverage key={query} endpoint={card.key} query={query} revision={revision} branchId={branchId} from={from} to={to} summaryScope={summary} />}
+            <div className="flex flex-wrap items-center justify-between gap-2 text-sm"><span>Weight: {card.weight}%</span><span className="text-muted-foreground">{card.included ? "Performance score" : "No data reported"}</span></div>
+            {(card.key === "loading-readiness" || card.key === "location-compliance") && <CardCoverage key={query} endpoint={card.key} query={query} revision={revision} summaryScope={summary} />}
             {audit && <p className="text-sm text-muted-foreground">{audit}</p>}
             {card.key === "customer-satisfaction" && <p className="text-sm text-muted-foreground">Not implemented by the backend yet.</p>}
           </CardContent>
         </Card>;
       })}</div>
+      <p className="text-xs text-muted-foreground">No data reported means the backend found no measurable records for that KPI for the selected branches and period; the score is not included in the weighted total.</p>
     </section>}
   </div>;
 }
