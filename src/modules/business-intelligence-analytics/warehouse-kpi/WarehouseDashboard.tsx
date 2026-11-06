@@ -60,12 +60,14 @@ function SearchableMultiSelect<V>({
   onChange,
   triggerLabel,
   searchPlaceholder = "Search...",
+  buttonClassName,
 }: {
   options: Option<V>[];
   value: V[];
   onChange: (next: V[]) => void;
   triggerLabel: (selected: V[]) => string;
   searchPlaceholder?: string;
+  buttonClassName?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -79,7 +81,7 @@ function SearchableMultiSelect<V>({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="outline" className="flex items-center gap-2 w-full min-w-[140px]" aria-haspopup="listbox">
+        <Button variant="outline" className={`flex items-center gap-2 shrink-0 ${buttonClassName ?? "min-w-[140px]"}`} aria-haspopup="listbox">
           {triggerLabel(value)}
           <ChevronDown className="size-4 ml-auto opacity-50 shrink-0" />
         </Button>
@@ -237,16 +239,16 @@ export default function WarehouseDashboard() {
     </div>
 
     <Card className="border bg-background">
-      <CardContent className="pt-5 pb-4 px-5">
-        <div className="flex items-center gap-3 flex-wrap">
+      <CardContent className="pt-3 pb-2 px-4">
+        <div className="flex items-center gap-2 flex-wrap md:flex-nowrap">
           <Filter className="size-4 text-muted-foreground shrink-0" />
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1 shrink-0">
             <Label htmlFor="warehouse-year" className="text-xs text-muted-foreground shrink-0">Year</Label>
             <select
               id="warehouse-year"
               value={String(selectedYear)}
               onChange={e => { setSelectedYear(Number(e.target.value)); setRevision(value => value + 1); }}
-              className="border border-input rounded-md bg-background px-3 py-1.5 text-sm focus-visible:ring-ring focus-visible:ring-[3px] outline-none"
+              className="w-[110px] border border-input rounded-md bg-background px-2 py-1 text-sm focus-visible:ring-ring focus-visible:ring-[3px] outline-none"
             >
               {yearOptions.map(y => (
                 <option key={y} value={String(y)}>{String(y)}</option>
@@ -259,6 +261,7 @@ export default function WarehouseDashboard() {
             onChange={setSelectedMonths}
             triggerLabel={monthTriggerLabel}
             searchPlaceholder="Search months..."
+            buttonClassName="w-[200px]"
           />
           <SearchableMultiSelect
             options={availableBranches.map(b => ({ label: b.name, value: b.id }))}
@@ -270,17 +273,13 @@ export default function WarehouseDashboard() {
             }}
             triggerLabel={selected => warehouseTriggerLabel(selected, availableBranches.length)}
             searchPlaceholder="Search warehouses..."
+            buttonClassName="w-[220px]"
           />
-          <div className="flex items-end gap-2 ml-auto shrink-0">
-            <Button variant="outline" onClick={resetFilters} size="sm">Reset filters</Button>
-            <Button variant="outline" onClick={() => setRevision(value => value + 1)} size="sm">Refresh</Button>
+          <div className="flex items-center gap-1 ml-auto shrink-0">
+            <Button variant="outline" onClick={resetFilters} size="sm" className="h-8 px-3">Reset filters</Button>
+            <Button variant="outline" onClick={() => setRevision(value => value + 1)} size="sm" className="h-8 px-3">Refresh</Button>
           </div>
         </div>
-        <p className="pt-2 text-xs text-muted-foreground">
-          {allBranches ? "All warehouses" : `${selectedBranches.length} warehouse(s) selected`}{" · "}
-          {selectedMonths.length === MONTHS.length ? "All months" : selectedMonths.map(m => MONTHS.find(x => x.value === m)?.label).join(", ")}{" · "}
-          {selectedYear}
-        </p>
       </CardContent>
     </Card>
 
