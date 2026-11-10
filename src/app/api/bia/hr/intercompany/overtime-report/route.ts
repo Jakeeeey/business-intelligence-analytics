@@ -159,7 +159,6 @@ export async function GET(request: NextRequest) {
     const validCompanies = companiesRaw.filter((c) => {
       if (!c.directus || typeof c.directus !== "string" || !c.directus.trim()) return false;
       if (String(c.status || "ACTIVE").toUpperCase() === "INACTIVE") return false;
-      if (String(c.directus).includes(":8056")) return false;
       return true;
     });
 

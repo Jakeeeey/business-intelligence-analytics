@@ -342,10 +342,12 @@ export function PunctualityCharts({
                       </div>
                       <div className="text-right shrink-0">
                         <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
-                          {u.punctualityRate}%
+                          {u.earliestArrival || "--:--"}
                         </span>
                         <p className="text-[10px] text-muted-foreground tabular-nums">
-                          {u.onTimeDays} on-time
+                          {u.maxEarlyMinutes && u.maxEarlyMinutes > 0
+                            ? `${u.maxEarlyMinutes}m early`
+                            : "On-Time"}
                         </p>
                       </div>
                     </div>

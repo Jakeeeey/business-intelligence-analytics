@@ -417,6 +417,21 @@ export function useIntercompanyPunctuality() {
       };
     }
 
+    const parseTimeToMins = (raw: string | null | undefined): number | null => {
+      if (!raw) return null;
+      const s = raw.trim();
+      const timePart = s.includes("T") ? s.split("T")[1] : s;
+      const match = timePart.match(/(\d{1,2}):(\d{2})/);
+      if (!match) return null;
+      let h = parseInt(match[1], 10);
+      const m = parseInt(match[2], 10);
+      if (isNaN(h) || isNaN(m)) return null;
+      const upper = s.toUpperCase();
+      if (upper.includes("PM") && h < 12) h += 12;
+      else if (upper.includes("AM") && h === 12) h = 0;
+      return h * 60 + m;
+    };
+
     const userMap = new Map<
       string,
       {
@@ -432,6 +447,9 @@ export function useIntercompanyPunctuality() {
         onTimeDays: number;
         lateDays: number;
         totalDelayMinutes: number;
+        totalEarlyMinutes: number;
+        maxEarlyMinutes: number;
+        earliestArrivalMinutes: number | null;
         earliestArrival?: string | null;
       }
     >();
@@ -454,13 +472,30 @@ export function useIntercompanyPunctuality() {
         onTimeDays: 0,
         lateDays: 0,
         totalDelayMinutes: 0,
-        earliestArrival: r.timeIn,
+        totalEarlyMinutes: 0,
+        maxEarlyMinutes: 0,
+        earliestArrivalMinutes: null,
+        earliestArrival: null,
       };
 
       cur.totalDays++;
       if (r.punctualityStatus === "On Time") {
         cur.onTimeDays++;
-      } else {
+        const arrMins = r.arrivalMinutes ?? parseTimeToMins(r.rawTimeIn || r.timeIn);
+        const earlyMins =
+          r.earlyMinutes ?? (arrMins !== null && arrMins <= 480 ? 480 - arrMins : 0);
+        cur.totalEarlyMinutes += earlyMins;
+        if (earlyMins > cur.maxEarlyMinutes) {
+          cur.maxEarlyMinutes = earlyMins;
+        }
+        if (
+          arrMins !== null &&
+          (cur.earliestArrivalMinutes === null || arrMins < cur.earliestArrivalMinutes)
+        ) {
+          cur.earliestArrivalMinutes = arrMins;
+          cur.earliestArrival = r.timeIn;
+        }
+      } else if ((r.delayMinutes || 0) > 0) {
         cur.lateDays++;
         cur.totalDelayMinutes += r.delayMinutes || 0;
       }
@@ -472,15 +507,23 @@ export function useIntercompanyPunctuality() {
     userMap.forEach((u) => {
       const rate = u.totalDays > 0 ? Math.round((u.onTimeDays / u.totalDays) * 100) : 0;
       const avgD = u.lateDays > 0 ? Math.round(u.totalDelayMinutes / u.lateDays) : 0;
+      const avgEarly = u.onTimeDays > 0 ? Math.round(u.totalEarlyMinutes / u.onTimeDays) : 0;
       userList.push({
         ...u,
         punctualityRate: rate,
         avgDelayMinutes: avgD,
+        avgEarlyMinutes: avgEarly,
       });
     });
 
     const topPunctual = [...userList]
-      .sort((a, b) => b.punctualityRate - a.punctualityRate || b.onTimeDays - a.onTimeDays || a.avgDelayMinutes - b.avgDelayMinutes)
+      .filter((u) => u.onTimeDays > 0 && u.earliestArrivalMinutes !== null)
+      .sort(
+        (a, b) =>
+          (a.earliestArrivalMinutes ?? 9999) - (b.earliestArrivalMinutes ?? 9999) ||
+          (b.avgEarlyMinutes ?? 0) - (a.avgEarlyMinutes ?? 0) ||
+          a.avgDelayMinutes - b.avgDelayMinutes
+      )
       .slice(0, 8);
 
     const frequentLate = [...userList]
