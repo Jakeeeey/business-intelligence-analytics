@@ -2,7 +2,12 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { fetchPhysicalInventorySchedule } from "../providers/fetchProvider";
-import { PhysicalInventoryRecord, BranchLookup, SupplierLookup } from "../types";
+import {
+  PhysicalInventoryRecord,
+  BranchLookup,
+  SupplierLookup,
+  BranchSupplierInventoryItem,
+} from "../types";
 
 export type StatusValue = "committed" | "pending" | "cancelled";
 
@@ -17,6 +22,9 @@ export function usePHWarehouse() {
   const [records, setRecords] = useState<PhysicalInventoryRecord[]>([]);
   const [branches, setBranches] = useState<BranchLookup[]>([]);
   const [suppliers, setSuppliers] = useState<SupplierLookup[]>([]);
+  const [currentInventoryByBranch, setCurrentInventoryByBranch] = useState<Record<number, number>>({});
+  const [branchSupplierInventory, setBranchSupplierInventory] = useState<BranchSupplierInventoryItem[]>([]);
+  const [lastCommittedByBranchSupplier, setLastCommittedByBranchSupplier] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
@@ -28,6 +36,9 @@ export function usePHWarehouse() {
         setRecords(res.data);
         setBranches(res.branches || []);
         setSuppliers(res.suppliers || []);
+        setCurrentInventoryByBranch(res.currentInventoryByBranch || {});
+        setBranchSupplierInventory(res.branchSupplierInventory || []);
+        setLastCommittedByBranchSupplier(res.lastCommittedByBranchSupplier || {});
       } else {
         setError(res.message || "Failed to load schedule");
       }
@@ -72,7 +83,7 @@ export function usePHWarehouse() {
     });
   }, [records, selectedStatuses, selectedBranchIds]);
 
-  // Unique branches from records or master list
+  // Unique branches from records, master list, or inventory items
   const availableBranches = useMemo(() => {
     const map = new Map<number, BranchLookup>();
     branches.forEach((b) => map.set(b.id, b));
@@ -85,8 +96,17 @@ export function usePHWarehouse() {
         });
       }
     });
+    branchSupplierInventory.forEach((bs) => {
+      if (!map.has(bs.branchId)) {
+        map.set(bs.branchId, {
+          id: bs.branchId,
+          name: bs.branchName || `Branch #${bs.branchId}`,
+          code: bs.branchCode || "",
+        });
+      }
+    });
     return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
-  }, [branches, records]);
+  }, [branches, records, branchSupplierInventory]);
 
   // Filtered branches based on branch filter dropdown
   const filteredBranches = useMemo(() => {
@@ -112,6 +132,9 @@ export function usePHWarehouse() {
     branches: availableBranches,
     filteredBranches,
     suppliers,
+    currentInventoryByBranch,
+    branchSupplierInventory,
+    lastCommittedByBranchSupplier,
     daysInMonth,
     refresh: loadData,
     error,
