@@ -5,6 +5,7 @@ export interface PhysicalInventoryRecord {
   cutOff_date: string;
   starting_date: string;
   price_type: string;
+  price_type_name?: string;
   stock_type: string;
   branch_id: number;
   branch_name?: string;
@@ -39,12 +40,25 @@ export interface SupplierLookup {
   shortcut?: string;
 }
 
+export interface BranchSupplierInventoryItem {
+  branchId: number;
+  branchName?: string;
+  branchCode?: string;
+  supplierId: number;
+  supplierName?: string;
+  supplierShortcut?: string;
+  pesoValue: number;
+}
+
 export interface PHWarehouseApiResponse {
   success: boolean;
   message?: string;
   data: PhysicalInventoryRecord[];
   branches: BranchLookup[];
   suppliers: SupplierLookup[];
+  currentInventoryByBranch: Record<number, number>;
+  branchSupplierInventory: BranchSupplierInventoryItem[];
+  lastCommittedByBranchSupplier: Record<string, string>; // key: `${branchId}-${supplierId}` -> ISO date string
   year: number;
   month: number; // 1-12
 }
@@ -53,4 +67,3 @@ export interface CellSpan {
   record: PhysicalInventoryRecord;
   colSpan: number;
 }
-

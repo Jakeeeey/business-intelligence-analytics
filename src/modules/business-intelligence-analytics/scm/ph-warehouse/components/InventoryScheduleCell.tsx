@@ -16,6 +16,18 @@ interface Props {
   colSpan: number;
 }
 
+// Known common price types fallback mapping if Directus doesn't supply name
+const KNOWN_PRICE_TYPES: Record<string, string> = {
+  "1": "REGULAR",
+  "2": "WHOLESALE",
+  "3": "RETAIL",
+  "4": "SPECIAL",
+  "5": "DEALER",
+  "6": "DISTRIBUTOR",
+  "10": "SUPERMARKET",
+  "16": "LIST PRICE",
+};
+
 export const InventoryScheduleCell: React.FC<Props> = ({ record, colSpan }) => {
   const [open, setOpen] = useState(false);
 
@@ -35,7 +47,8 @@ export const InventoryScheduleCell: React.FC<Props> = ({ record, colSpan }) => {
       "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900";
   }
 
-  const formatDateTime = (dateStr: string | null) => {
+  // Format date only: M/D/YYYY
+  const formatDateOnly = (dateStr: string | null) => {
     if (!dateStr) return "-";
     try {
       const d = new Date(dateStr);
@@ -44,6 +57,35 @@ export const InventoryScheduleCell: React.FC<Props> = ({ record, colSpan }) => {
       return dateStr;
     }
   };
+
+  // Format creation / encoded date & time in local Philippine Time: dd/mm/yyyy hh:mm A
+  const formatDateTimePHT = (dateStr: string | null) => {
+    if (!dateStr) return "-";
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      const day = String(d.getDate()).padStart(2, "0");
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const year = d.getFullYear();
+      const timeStr = d.toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+      });
+      return `${day}/${month}/${year} ${timeStr}`;
+    } catch {
+      return dateStr;
+    }
+  };
+
+  // Resolve Price Type readable label
+  const rawPriceType = record.price_type || "";
+  const resolvedPriceTypeName =
+    record.price_type_name ||
+    KNOWN_PRICE_TYPES[rawPriceType] ||
+    (rawPriceType && isNaN(Number(rawPriceType)) ? rawPriceType : `Price Type #${rawPriceType}`);
+
+  const displaySupplier = record.supplier_name || `Supplier #${record.supplier_id}`;
 
   return (
     <>
@@ -73,7 +115,7 @@ export const InventoryScheduleCell: React.FC<Props> = ({ record, colSpan }) => {
       </td>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <div className="flex items-center justify-between pr-6">
               <DialogTitle className="text-base font-semibold">
@@ -96,6 +138,7 @@ export const InventoryScheduleCell: React.FC<Props> = ({ record, colSpan }) => {
           </DialogHeader>
 
           <div className="grid grid-cols-2 gap-3 text-sm py-2">
+            {/* Branch */}
             <div className="rounded border p-2.5 bg-muted/30">
               <span className="text-xs text-muted-foreground block">Branch</span>
               <span className="font-medium text-foreground">
@@ -103,30 +146,41 @@ export const InventoryScheduleCell: React.FC<Props> = ({ record, colSpan }) => {
               </span>
             </div>
 
-            <div className="rounded border p-2.5 bg-muted/30">
+            {/* Supplier - multiline wrap and tooltip title */}
+            <div className="rounded border p-2.5 bg-muted/30" title={displaySupplier}>
               <span className="text-xs text-muted-foreground block">Supplier</span>
-              <span className="font-medium text-foreground truncate block">
-                {record.supplier_name || `Supplier #${record.supplier_id}`}
+              <span className="font-medium text-foreground whitespace-normal break-words leading-tight block">
+                {displaySupplier}
               </span>
             </div>
 
+            {/* Starting Date */}
             <div className="rounded border p-2.5 bg-muted/30">
               <span className="text-xs text-muted-foreground block">Starting Date</span>
-              <span className="font-medium text-foreground">{formatDateTime(record.starting_date)}</span>
+              <span className="font-medium text-foreground">{formatDateOnly(record.starting_date)}</span>
             </div>
 
+            {/* Cut-Off Date */}
             <div className="rounded border p-2.5 bg-muted/30">
               <span className="text-xs text-muted-foreground block">Cut-Off Date</span>
-              <span className="font-medium text-foreground">{formatDateTime(record.cutOff_date)}</span>
+              <span className="font-medium text-foreground">{formatDateOnly(record.cutOff_date)}</span>
             </div>
 
+            {/* Date Encoded */}
+            <div className="rounded border p-2.5 bg-muted/30">
+              <span className="text-xs text-muted-foreground block">Date Encoded</span>
+              <span className="font-medium text-foreground">{formatDateTimePHT(record.date_encoded)}</span>
+            </div>
+
+            {/* Price / Stock Type */}
             <div className="rounded border p-2.5 bg-muted/30">
               <span className="text-xs text-muted-foreground block">Price / Stock Type</span>
               <span className="font-medium text-foreground">
-                {record.price_type || "-"} / {record.stock_type || "-"}
+                {resolvedPriceTypeName} / {record.stock_type || "-"}
               </span>
             </div>
 
+            {/* Offset Status */}
             <div className="rounded border p-2.5 bg-muted/30">
               <span className="text-xs text-muted-foreground block">Offset Status</span>
               <span className="font-medium text-foreground">
@@ -134,7 +188,8 @@ export const InventoryScheduleCell: React.FC<Props> = ({ record, colSpan }) => {
               </span>
             </div>
 
-            <div className="rounded border p-2.5 bg-muted/30 col-span-2">
+            {/* Total Amount */}
+            <div className="rounded border p-2.5 bg-muted/30">
               <span className="text-xs text-muted-foreground block">Total Amount</span>
               <span className="font-medium text-foreground">
                 {new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }).format(
