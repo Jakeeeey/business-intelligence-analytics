@@ -80,7 +80,7 @@ export const SchedulingFilters: React.FC<Props> = ({
       {/* Title & Subtitle Section */}
       <div className="space-y-0.5">
         <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
-          Physical Inventory Scheduling Warehouse {selectedYear}
+          Physical Inventory Scheduling Warehouse
         </h1>
         <p className="text-xs text-muted-foreground">
           Monthly warehouse schedule and physical inventory commit tracking for {selectedMonthName}

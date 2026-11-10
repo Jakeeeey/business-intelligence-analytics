@@ -22,6 +22,9 @@ export default function PHWarehouseSchedulingModule() {
     branches,
     filteredBranches,
     suppliers,
+    currentInventoryByBranch,
+    branchSupplierInventory,
+    lastCommittedByBranchSupplier,
     daysInMonth,
     refresh,
     error,
@@ -60,6 +63,9 @@ export default function PHWarehouseSchedulingModule() {
         branches={filteredBranches}
         suppliers={suppliers}
         records={records}
+        currentInventoryByBranch={currentInventoryByBranch}
+        branchSupplierInventory={branchSupplierInventory}
+        lastCommittedByBranchSupplier={lastCommittedByBranchSupplier}
         loading={loading}
       />
     </div>
