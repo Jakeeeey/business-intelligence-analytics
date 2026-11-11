@@ -54,6 +54,49 @@ function warehouseTriggerLabel(selected: string[], total: number): string {
 
 type Option<V> = { label: string; value: V };
 
+type PerformanceTone = "green" | "yellow" | "orange" | "red" | "neutral";
+
+function performanceTone(value: number | null | undefined, passingTarget: number): PerformanceTone {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "neutral";
+  if (value >= passingTarget) return "green";
+  if (value >= passingTarget * 0.75) return "yellow";
+  if (value >= passingTarget * 0.5) return "orange";
+  return "red";
+}
+
+const performanceStyles: Record<PerformanceTone, { text: string; progress: string; ring: string; badge: string }> = {
+  green: {
+    text: "text-emerald-600 dark:text-emerald-400",
+    progress: "bg-emerald-500/20 [&_[data-slot=progress-indicator]]:bg-emerald-500",
+    ring: "text-emerald-500",
+    badge: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+  },
+  yellow: {
+    text: "text-yellow-600 dark:text-yellow-400",
+    progress: "bg-yellow-500/20 [&_[data-slot=progress-indicator]]:bg-yellow-500",
+    ring: "text-yellow-500",
+    badge: "border-yellow-500/30 bg-yellow-500/10 text-yellow-700 dark:text-yellow-400",
+  },
+  orange: {
+    text: "text-orange-600 dark:text-orange-400",
+    progress: "bg-orange-500/20 [&_[data-slot=progress-indicator]]:bg-orange-500",
+    ring: "text-orange-500",
+    badge: "border-orange-500/30 bg-orange-500/10 text-orange-700 dark:text-orange-400",
+  },
+  red: {
+    text: "text-red-600 dark:text-red-400",
+    progress: "bg-red-500/20 [&_[data-slot=progress-indicator]]:bg-red-500",
+    ring: "text-red-500",
+    badge: "border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-400",
+  },
+  neutral: {
+    text: "text-muted-foreground",
+    progress: "bg-muted [&_[data-slot=progress-indicator]]:bg-muted-foreground",
+    ring: "text-muted-foreground",
+    badge: "",
+  },
+};
+
 function SearchableMultiSelect<V>({
   options,
   value,
@@ -218,6 +261,8 @@ export default function WarehouseDashboard() {
   const score = summary?.overallPercent;
   const measured = typeof score === "number" && Number.isFinite(score);
   const progress = measured ? Math.min(100, Math.max(0, score)) : 0;
+  const overallTone = performanceTone(score, summary?.targetPercent ?? 100);
+  const overallStyle = performanceStyles[overallTone];
   const warning = summary ? scopeWarning(summary, allBranches ? [] : selectedBranches, from, to) : "";
 
   const availableBranches = branchData?.branches ?? [];
@@ -303,11 +348,11 @@ export default function WarehouseDashboard() {
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0 space-y-3">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Current Score</h2>
-            <p className="text-3xl font-semibold tabular-nums sm:text-4xl">{percent(score)} <span className="text-sm text-muted-foreground">/ 100%</span></p>
-            <Badge variant="secondary" className={summary.meetsTarget === true ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" : undefined}>{summary.meetsTarget === null ? "No measurable data" : summary.meetsTarget ? `Meets ${summary.targetPercent}% target` : `Below ${summary.targetPercent}% target`}</Badge>
+            <p className={`text-3xl font-semibold tabular-nums sm:text-4xl ${overallStyle.text}`}>{percent(score)} <span className="text-sm text-muted-foreground">/ 100%</span></p>
+            <Badge variant="secondary" className={overallStyle.badge}>{!measured ? "No measurable data" : score! >= summary.targetPercent ? `Meets ${summary.targetPercent}% target` : `Below ${summary.targetPercent}% target`}</Badge>
           </div>
           <div role="img" aria-label={measured ? `Current score: ${percent(score)}` : "Current score: no measurable data"} className="relative size-24 shrink-0 sm:size-32">
-            <svg viewBox="0 0 120 120" className="size-full -rotate-90" aria-hidden="true"><circle cx="60" cy="60" r="48" fill="none" stroke="currentColor" strokeWidth="12" className="text-muted" /><circle cx="60" cy="60" r="48" fill="none" stroke="currentColor" strokeWidth="12" strokeLinecap="round" pathLength="100" strokeDasharray="100" strokeDashoffset={100 - progress} className="text-emerald-500 motion-safe:transition-[stroke-dashoffset] motion-safe:duration-500" opacity={progress > 0 ? 1 : 0} /></svg>
+            <svg viewBox="0 0 120 120" className="size-full -rotate-90" aria-hidden="true"><circle cx="60" cy="60" r="48" fill="none" stroke="currentColor" strokeWidth="12" className="text-muted" /><circle cx="60" cy="60" r="48" fill="none" stroke="currentColor" strokeWidth="12" strokeLinecap="round" pathLength="100" strokeDasharray="100" strokeDashoffset={100 - progress} className={`${overallStyle.ring} motion-safe:transition-[stroke-dashoffset] motion-safe:duration-500`} opacity={progress > 0 ? 1 : 0} /></svg>
             <span aria-hidden="true" className="absolute inset-0 flex items-center justify-center text-base font-semibold tabular-nums sm:text-xl">{percent(score)}</span>
           </div>
         </div>
@@ -315,17 +360,20 @@ export default function WarehouseDashboard() {
           <p className="break-words">Computed branches: {scopeLabel(summary, availableBranches)}</p>
           <p>Computed period: {summary.from} to {summary.to} (inclusive)</p>
         </div>
-        <Progress aria-label="Overall score" className="h-2.5 bg-emerald-500/20 [&_[data-slot=progress-indicator]]:bg-emerald-500" value={progress} />
+        <Progress aria-label="Overall score" className={`h-2.5 ${overallStyle.progress}`} value={progress} />
         <div className="flex flex-wrap justify-between gap-2 text-sm"><span>Target: {summary.targetPercent}%</span><span>Weighted performance of {summary.cardsIncluded} of {summary.cardsTotal} KPIs</span></div>
         <p className="text-sm text-muted-foreground">Based on {summary.weightCovered}% of the total weight. KPIs without data are not counted.</p>
       </CardContent></Card>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{summary.cards.map((card, index) => {
         const audit = card.key === "housekeeping" || card.key === "sop-safety" ? summarizeAuditCompletion(card) : null;
+        const cardMeasured = card.included && typeof card.scorePercent === "number" && Number.isFinite(card.scorePercent);
+        const cardTone = performanceTone(cardMeasured ? card.scorePercent : null, summary.targetPercent);
+        const cardStyle = performanceStyles[cardTone];
         return <Card key={card.key}>
           <CardHeader><CardTitle className="text-base">{index + 1}. {card.title}</CardTitle></CardHeader>
           <CardContent className="space-y-3">
-            <p className="text-3xl font-semibold tabular-nums">{card.included ? percent(card.scorePercent) : "--"}</p>
-            <Progress aria-label={`${card.title} score`} value={card.included ? card.scorePercent ?? 0 : 0} />
+            <p className={`text-3xl font-semibold tabular-nums ${cardStyle.text}`}>{cardMeasured ? percent(card.scorePercent) : "--"}</p>
+            <Progress aria-label={`${card.title} score`} className={cardStyle.progress} value={cardMeasured ? card.scorePercent : 0} />
             <div className="flex flex-wrap items-center justify-between gap-2 text-sm"><span>Weight: {card.weight}%</span><span className="text-muted-foreground">{card.included ? "Performance score" : "No data reported"}</span></div>
             {(card.key === "loading-readiness" || card.key === "location-compliance") && <CardCoverage key={query} endpoint={card.key} query={query} revision={revision} summaryScope={summary} />}
             {audit && <p className="text-sm text-muted-foreground">{audit}</p>}
