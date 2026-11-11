@@ -16,6 +16,8 @@ export function usePHAudit() {
   const [loading, setLoading] = useState<boolean>(true);
   const [records, setRecords] = useState<PhysicalInventoryRecord[]>([]);
   const [branches, setBranches] = useState<BranchLookup[]>([]);
+  const [currentInventoryByBranch, setCurrentInventoryByBranch] = useState<Record<number, number>>({});
+  const [lastCommittedByBranch, setLastCommittedByBranch] = useState<Record<number, string>>({});
   const [error, setError] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
@@ -26,6 +28,8 @@ export function usePHAudit() {
       if (res.success) {
         setRecords(res.data);
         setBranches(res.branches || []);
+        setCurrentInventoryByBranch(res.currentInventoryByBranch || {});
+        setLastCommittedByBranch(res.lastCommittedByBranch || {});
       } else {
         setError(res.message || "Failed to load audit schedule");
       }
@@ -70,7 +74,7 @@ export function usePHAudit() {
     });
   }, [records, selectedStatuses, selectedBranchIds]);
 
-  // Unique branches from records or master list
+  // Unique branches from records, master list, or branches with inventory
   const availableBranches = useMemo(() => {
     const map = new Map<number, BranchLookup>();
     branches.forEach((b) => map.set(b.id, b));
@@ -83,8 +87,18 @@ export function usePHAudit() {
         });
       }
     });
+    Object.keys(currentInventoryByBranch).forEach((bIdStr) => {
+      const bId = Number(bIdStr);
+      if (!map.has(bId)) {
+        map.set(bId, {
+          id: bId,
+          name: `Branch #${bId}`,
+          code: "",
+        });
+      }
+    });
     return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
-  }, [branches, records]);
+  }, [branches, records, currentInventoryByBranch]);
 
   // Filtered branches based on branch filter dropdown
   const filteredBranches = useMemo(() => {
@@ -109,9 +123,10 @@ export function usePHAudit() {
     allRecords: records,
     branches: availableBranches,
     filteredBranches,
+    currentInventoryByBranch,
+    lastCommittedByBranch,
     daysInMonth,
     refresh: loadData,
     error,
   };
 }
-

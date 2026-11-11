@@ -21,6 +21,8 @@ export default function PHAuditSchedulingModule() {
     records,
     branches,
     filteredBranches,
+    currentInventoryByBranch,
+    lastCommittedByBranch,
     daysInMonth,
     refresh,
     error,
@@ -51,16 +53,17 @@ export default function PHAuditSchedulingModule() {
         </Alert>
       )}
 
-      {/* Calendar Matrix View (Branch-only rows) */}
+      {/* Calendar Matrix View (Branch rows with Current Inventory & Last Committed Cutoff Date) */}
       <AuditCalendarGrid
         selectedYear={selectedYear}
         selectedMonth={selectedMonth}
         daysInMonth={daysInMonth}
         branches={filteredBranches}
         records={records}
+        currentInventoryByBranch={currentInventoryByBranch}
+        lastCommittedByBranch={lastCommittedByBranch}
         loading={loading}
       />
     </div>
   );
 }
-
