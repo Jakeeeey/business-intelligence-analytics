@@ -292,7 +292,7 @@ export async function GET(req: NextRequest) {
       if (SPRING_API_BASE_URL) {
         const runningEndpoints = [
           `${SPRING_API_BASE_URL.replace(/\/$/, "")}/api/view-running-inventory/all`,
-          `${SPRING_API_BASE_URL.replace(/\/$/, "")}/api/view-running-inventory-by-unit/all`,
+          `${SPRING_API_BASE_URL.replace(/\/$/, "")}/api/view-running-inventory/all`,
         ];
 
         let runningInventoryList: AnyRec[] = [];
