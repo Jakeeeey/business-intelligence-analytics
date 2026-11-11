@@ -65,12 +65,16 @@ export async function GET(req: NextRequest) {
     let branches: Array<{ id: number; name: string; code: string }> = [];
     let suppliers: Array<{ id: number; name: string; shortcut?: string }> = [];
     let piRecords: AnyRec[] = [];
+    const lastCommittedByBranchSupplier: Record<string, string> = {};
+    const priceTypeMap = new Map<string, string>();
 
     // Attempt Directus fetch
     if (DIRECTUS_BASE && DIRECTUS_TOKEN) {
-      const [brRes, supRes] = await Promise.all([
+      const [brRes, supRes, ptRes1, ptRes2] = await Promise.all([
         directusGET("/items/branches", { fields: "id,branch_name,branch_code", limit: "-1" }),
         directusGET("/items/suppliers", { fields: "id,supplier_name,supplier_shortcut", limit: "-1" }),
+        directusGET("/items/price_type", { limit: "-1" }),
+        directusGET("/items/price_types", { limit: "-1" }),
       ]);
 
       if (brRes.ok && Array.isArray(brRes.data)) {
@@ -88,6 +92,18 @@ export async function GET(req: NextRequest) {
           shortcut: s.supplier_shortcut ? String(s.supplier_shortcut).trim() : undefined,
         }));
       }
+
+      // Populate Price Type lookup if available from Directus
+      const priceTypeRows = (ptRes1.ok && Array.isArray(ptRes1.data) ? ptRes1.data : [])
+        .concat(ptRes2.ok && Array.isArray(ptRes2.data) ? ptRes2.data : []);
+
+      priceTypeRows.forEach((pt) => {
+        const id = String(pt.id ?? pt.price_type_id ?? pt.price_type ?? "").trim();
+        const name = String(pt.name ?? pt.price_type_name ?? pt.description ?? pt.label ?? "").trim();
+        if (id && name) {
+          priceTypeMap.set(id, name);
+        }
+      });
 
       // Query physical_inventory items covering the month where is_scm = 1
       const piFilter = JSON.stringify({
@@ -110,21 +126,48 @@ export async function GET(req: NextRequest) {
         ],
       });
 
-      const piRes = await directusGET("/items/physical_inventory", {
-        filter: piFilter,
-        fields: "*",
-        limit: "-1",
-        sort: "starting_date",
-      });
+      // Also query all historical committed physical_inventory to find the latest committed date per branch & supplier
+      const [piRes, allCommittedRes] = await Promise.all([
+        directusGET("/items/physical_inventory", {
+          filter: piFilter,
+          fields: "*",
+          limit: "-1",
+          sort: "starting_date",
+        }),
+        directusGET("/items/physical_inventory", {
+          filter: JSON.stringify({
+            _and: [
+              { is_scm: { _eq: 1 } },
+              { isComitted: { _eq: 1 } },
+              { isCancelled: { _neq: 1 } },
+            ],
+          }),
+          fields: "branch_id,supplier_id,cutOff_date,starting_date,committed_at",
+          limit: "-1",
+          sort: "-cutOff_date",
+        }),
+      ]);
 
       if (piRes.ok && Array.isArray(piRes.data)) {
         piRecords = piRes.data;
       }
+
+      if (allCommittedRes.ok && Array.isArray(allCommittedRes.data)) {
+        allCommittedRes.data.forEach((r) => {
+          const bId = Number(r.branch_id);
+          const sId = Number(r.supplier_id);
+          const key = `${bId}-${sId}`;
+          const dateStr = String(r.cutOff_date || r.starting_date || r.committed_at || "");
+          if (key && dateStr && !lastCommittedByBranchSupplier[key]) {
+            lastCommittedByBranchSupplier[key] = dateStr;
+          }
+        });
+      }
     }
 
     // Fallback: If Directus returned no physical_inventory records or isn't connected, try Spring API
+    const token = req.cookies.get("vos_access_token")?.value;
     if (piRecords.length === 0 && SPRING_API_BASE_URL) {
-      const token = req.cookies.get("vos_access_token")?.value;
       try {
         const springRes = await fetch(
           `${SPRING_API_BASE_URL.replace(/\/$/, "")}/api/physical-inventory?year=${year}&month=${month}`,
@@ -154,47 +197,201 @@ export async function GET(req: NextRequest) {
     branches.forEach((b) => branchMap.set(b.id, { name: b.name, code: b.code }));
 
     const supplierMap = new Map<number, { name: string; shortcut?: string }>();
-    suppliers.forEach((s) => supplierMap.set(s.id, { name: s.name, shortcut: s.shortcut }));
+    const supplierShortcutMap = new Map<string, number>();
+    suppliers.forEach((s) => {
+      supplierMap.set(s.id, { name: s.name, shortcut: s.shortcut });
+      if (s.shortcut) {
+        supplierShortcutMap.set(s.shortcut.toLowerCase().trim(), s.id);
+      }
+      supplierShortcutMap.set(s.name.toLowerCase().trim(), s.id);
+    });
 
     const mappedData = piRecords
       .filter((r) => parseBit(r.is_scm))
       .map((r) => {
-      const bInfo = branchMap.get(Number(r.branch_id));
-      const sInfo = supplierMap.get(Number(r.supplier_id));
+        const bInfo = branchMap.get(Number(r.branch_id));
+        const sInfo = supplierMap.get(Number(r.supplier_id));
+        const rawPt = String(r.price_type || "").trim();
+        const ptName = priceTypeMap.get(rawPt) || undefined;
 
-      return {
-        id: Number(r.id),
-        ph_no: String(r.ph_no || ""),
-        date_encoded: String(r.date_encoded || ""),
-        cutOff_date: String(r.cutOff_date || ""),
-        starting_date: String(r.starting_date || ""),
-        price_type: String(r.price_type || ""),
-        stock_type: String(r.stock_type || ""),
-        branch_id: Number(r.branch_id),
-        branch_name: bInfo?.name || `Branch #${r.branch_id}`,
-        branch_code: bInfo?.code || "",
-        remarks: String(r.remarks || ""),
-        status: String(r.status || "PENDING_REVIEW"),
-        isComitted: parseBit(r.isComitted),
-        committed_at: r.committed_at ? String(r.committed_at) : null,
-        isCancelled: parseBit(r.isCancelled),
-        cancelled_at: r.cancelled_at ? String(r.cancelled_at) : null,
-        is_scm: parseBit(r.is_scm),
-        is_offset: parseBit(r.is_offset),
-        total_amount: Number(r.total_amount || 0),
-        supplier_id: Number(r.supplier_id),
-        supplier_name: sInfo?.name || `Supplier #${r.supplier_id}`,
-        supplier_shortcut: sInfo?.shortcut || undefined,
-        category_id: Number(r.category_id),
-        encoder_id: Number(r.encoder_id),
-      };
+        return {
+          id: Number(r.id),
+          ph_no: String(r.ph_no || ""),
+          date_encoded: String(r.date_encoded || ""),
+          cutOff_date: String(r.cutOff_date || ""),
+          starting_date: String(r.starting_date || ""),
+          price_type: rawPt,
+          price_type_name: ptName,
+          stock_type: String(r.stock_type || ""),
+          branch_id: Number(r.branch_id),
+          branch_name: bInfo?.name || `Branch #${r.branch_id}`,
+          branch_code: bInfo?.code || "",
+          remarks: String(r.remarks || ""),
+          status: String(r.status || "PENDING_REVIEW"),
+          isComitted: parseBit(r.isComitted),
+          committed_at: r.committed_at ? String(r.committed_at) : null,
+          isCancelled: parseBit(r.isCancelled),
+          cancelled_at: r.cancelled_at ? String(r.cancelled_at) : null,
+          is_scm: parseBit(r.is_scm),
+          is_offset: parseBit(r.is_offset),
+          total_amount: Number(r.total_amount || 0),
+          supplier_id: Number(r.supplier_id),
+          supplier_name: sInfo?.name || `Supplier #${r.supplier_id}`,
+          supplier_shortcut: sInfo?.shortcut || undefined,
+          category_id: Number(r.category_id),
+          encoder_id: Number(r.encoder_id),
+        };
+      });
+
+    // Also populate lastCommitted from current mapped records if missing
+    mappedData.forEach((rec) => {
+      if (rec.isComitted) {
+        const key = `${rec.branch_id}-${rec.supplier_id}`;
+        const dateStr = rec.cutOff_date || rec.starting_date || rec.committed_at;
+        if (dateStr) {
+          const currentBest = lastCommittedByBranchSupplier[key];
+          if (!currentBest || new Date(dateStr).getTime() > new Date(currentBest).getTime()) {
+            lastCommittedByBranchSupplier[key] = dateStr;
+          }
+        }
+      }
     });
+
+    // 2. Fetch Running Inventory & Products Cost to compute Current Inventory per Branch & Supplier in Peso value
+    const currentInventoryByBranch: Record<number, number> = {};
+    const branchSupplierMap = new Map<string, {
+      branchId: number;
+      branchName?: string;
+      branchCode?: string;
+      supplierId: number;
+      supplierName?: string;
+      supplierShortcut?: string;
+      pesoValue: number;
+    }>();
+
+    try {
+      // a. Fetch products cost_per_unit map from Directus
+      const productCostMap = new Map<number, number>();
+      if (DIRECTUS_BASE && DIRECTUS_TOKEN) {
+        const prodRes = await directusGET("/items/products", {
+          fields: "product_id,cost_per_unit,estimated_unit_cost,price_per_unit",
+          limit: "-1",
+        });
+        if (prodRes.ok && Array.isArray(prodRes.data)) {
+          prodRes.data.forEach((p) => {
+            const pId = Number(p.product_id);
+            const cost = Number(p.cost_per_unit || p.estimated_unit_cost || p.price_per_unit || 0);
+            if (pId) {
+              productCostMap.set(pId, cost);
+            }
+          });
+        }
+      }
+
+      // b. Fetch running inventory from Spring Boot endpoint: /api/view-running-inventory/all
+      if (SPRING_API_BASE_URL) {
+        const runningEndpoints = [
+          `${SPRING_API_BASE_URL.replace(/\/$/, "")}/api/view-running-inventory/all`,
+          `${SPRING_API_BASE_URL.replace(/\/$/, "")}/api/view-running-inventory/all`,
+        ];
+
+        let runningInventoryList: AnyRec[] = [];
+        for (const ep of runningEndpoints) {
+          try {
+            const res = await fetch(ep, {
+              headers: {
+                Authorization: token ? `Bearer ${token}` : "",
+                "Content-Type": "application/json",
+              },
+              cache: "no-store",
+            });
+            if (res.ok) {
+              const body = await res.json();
+              if (Array.isArray(body)) {
+                runningInventoryList = body;
+                break;
+              } else if (Array.isArray(body?.data)) {
+                runningInventoryList = body.data;
+                break;
+              }
+            }
+          } catch {
+            // try next endpoint
+          }
+        }
+
+        // c. Sum (running quantity * cost_per_unit) grouped by branch_id and supplier_id
+        runningInventoryList.forEach((item) => {
+          const branchId = Number(item.branchId || item.branch_id || 0);
+          if (!branchId) return;
+
+          const productId = Number(item.productId || item.product_id || 0);
+          const qty = Number(
+            item.runningInventoryUnit ??
+            item.runningInventory ??
+            item.running_inventory_unit ??
+            item.running_inventory ??
+            item.quantity ??
+            item.qty ??
+            0
+          );
+
+          // Get unit cost from product lookup or item payload
+          const cost =
+            productCostMap.get(productId) ??
+            Number(item.costPerUnit || item.cost_per_unit || item.unitCost || item.price || 0);
+
+          const pesoVal = qty * cost;
+          currentInventoryByBranch[branchId] = (currentInventoryByBranch[branchId] || 0) + pesoVal;
+
+          // Find supplier id
+          let sId = Number(item.supplierId || item.supplier_id || 0);
+          if (!sId) {
+            const shortcutStr = String(item.supplierShortcut || item.supplier_shortcut || "").toLowerCase().trim();
+            const nameStr = String(item.supplierName || item.supplier_name || "").toLowerCase().trim();
+            if (shortcutStr && supplierShortcutMap.has(shortcutStr)) {
+              sId = supplierShortcutMap.get(shortcutStr)!;
+            } else if (nameStr && supplierShortcutMap.has(nameStr)) {
+              sId = supplierShortcutMap.get(nameStr)!;
+            }
+          }
+
+          const sInfo = supplierMap.get(sId);
+          const bInfo = branchMap.get(branchId);
+          const sName = sInfo?.name || String(item.supplierName || item.supplier_name || `Supplier #${sId}`);
+          const sShortcut = sInfo?.shortcut || (item.supplierShortcut ? String(item.supplierShortcut) : undefined);
+
+          const key = `${branchId}-${sId}`;
+          const existing = branchSupplierMap.get(key);
+          if (existing) {
+            existing.pesoValue += pesoVal;
+          } else {
+            branchSupplierMap.set(key, {
+              branchId,
+              branchName: bInfo?.name || String(item.branchName || item.branch_name || `Branch #${branchId}`),
+              branchCode: bInfo?.code || "",
+              supplierId: sId,
+              supplierName: sName,
+              supplierShortcut: sShortcut,
+              pesoValue: pesoVal,
+            });
+          }
+        });
+      }
+    } catch (err) {
+      console.warn("Failed to compute current inventory per branch:", err);
+    }
+
+    const branchSupplierInventory = Array.from(branchSupplierMap.values());
 
     return NextResponse.json({
       success: true,
       data: mappedData,
       branches,
       suppliers,
+      currentInventoryByBranch,
+      branchSupplierInventory,
+      lastCommittedByBranchSupplier,
       year,
       month,
     });
@@ -207,6 +404,9 @@ export async function GET(req: NextRequest) {
         data: [],
         branches: [],
         suppliers: [],
+        currentInventoryByBranch: {},
+        branchSupplierInventory: [],
+        lastCommittedByBranchSupplier: {},
         year: new Date().getFullYear(),
         month: new Date().getMonth() + 1,
       },
@@ -214,4 +414,3 @@ export async function GET(req: NextRequest) {
     );
   }
 }
-
